@@ -6,7 +6,15 @@ import { api } from "../convex/_generated/api.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const envPath = resolve(root, ".env.local");
-const tenantSlug = process.argv[2] ?? "henke-wonen";
+const args = process.argv.slice(2);
+const confirmReset = args.includes("--confirm-reset-imported-catalog");
+const tenantSlug = args.find((arg) => !arg.startsWith("--")) ?? "henke-wonen";
+
+if (!confirmReset) {
+  throw new Error(
+    "Catalog reset is destructive. Re-run with --confirm-reset-imported-catalog after checking the target Convex environment."
+  );
+}
 
 function loadEnv(path) {
   try {

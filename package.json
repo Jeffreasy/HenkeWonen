@@ -19,6 +19,7 @@
     "test:a11y": "node tools/test_portal_a11y.mjs",
     "test:calculators": "node tools/test_calculators.mjs",
     "test:quote-document": "node tools/test_quote_document_model.mjs",
+    "test:workflow-guardrails": "node tools/test_workflow_mutation_guardrails.mjs",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy"
   },
