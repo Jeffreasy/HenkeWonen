@@ -1,0 +1,431 @@
+{
+  "generatedAt": "2026-04-30T00:00:00.000+02:00",
+  "scope": "Henke Wonen portal UI/UX and design-system audit",
+  "pagesInspected": [
+    "/portal",
+    "/portal/klanten",
+    "/portal/klanten/[id]",
+    "/portal/projecten",
+    "/portal/projecten/[id]",
+    "/portal/offertes",
+    "/portal/offertes/[id]",
+    "/portal/catalogus",
+    "/portal/catalogus/data-issues",
+    "/portal/leveranciers",
+    "/portal/imports",
+    "/portal/imports/[batchId]",
+    "/portal/import-profielen",
+    "/portal/instellingen/werkzaamheden",
+    "/portal/instellingen/categorieen",
+    "/portal/instellingen/offertetemplates"
+  ],
+  "routeSpotCheck": [
+    { "route": "/portal", "status": 200 },
+    { "route": "/portal/klanten", "status": 200 },
+    { "route": "/portal/projecten", "status": 200 },
+    { "route": "/portal/offertes", "status": 200 },
+    { "route": "/portal/catalogus", "status": 200 },
+    { "route": "/portal/imports", "status": 200 },
+    { "route": "/portal/import-profielen", "status": 200 },
+    { "route": "/portal/catalogus/data-issues", "status": 200 },
+    { "route": "/portal/leveranciers", "status": 200 },
+    { "route": "/portal/instellingen/werkzaamheden", "status": 200 },
+    { "route": "/portal/instellingen/categorieen", "status": 200 },
+    { "route": "/portal/instellingen/offertetemplates", "status": 200 }
+  ],
+  "componentsFound": [
+    {
+      "name": "PortalLayout",
+      "path": "src/components/layout/PortalLayout.astro",
+      "category": "layout",
+      "status": "exists"
+    },
+    {
+      "name": "Sidebar",
+      "path": "src/components/layout/Sidebar.tsx",
+      "category": "layout",
+      "status": "exists"
+    },
+    {
+      "name": "DashboardShell",
+      "path": "src/components/dashboard/DashboardShell.tsx",
+      "category": "domain"
+    },
+    {
+      "name": "CustomerWorkspace",
+      "path": "src/components/customers/CustomerWorkspace.tsx",
+      "category": "domain"
+    },
+    {
+      "name": "ProjectWorkspace",
+      "path": "src/components/projects/ProjectWorkspace.tsx",
+      "category": "domain"
+    },
+    {
+      "name": "QuoteWorkspace",
+      "path": "src/components/quotes/QuoteWorkspace.tsx",
+      "category": "domain"
+    },
+    {
+      "name": "ProductList",
+      "path": "src/components/catalog/ProductList.tsx",
+      "category": "domain"
+    },
+    {
+      "name": "ImportPreview",
+      "path": "src/components/imports/ImportPreview.tsx",
+      "category": "domain"
+    },
+    {
+      "name": "ImportProfiles",
+      "path": "src/components/imports/ImportProfiles.tsx",
+      "category": "domain"
+    },
+    {
+      "name": "ProductionReadiness",
+      "path": "src/components/imports/ProductionReadiness.tsx",
+      "category": "domain"
+    },
+    {
+      "name": "CatalogDataIssues",
+      "path": "src/components/catalog/CatalogDataIssues.tsx",
+      "category": "domain"
+    }
+  ],
+  "componentsMissing": [
+    "Button",
+    "IconButton",
+    "Input",
+    "Textarea",
+    "Select",
+    "Checkbox",
+    "RadioGroup",
+    "Switch",
+    "Badge",
+    "StatusBadge",
+    "Card",
+    "Panel",
+    "DataTable",
+    "EmptyState",
+    "LoadingState",
+    "ErrorState",
+    "Alert",
+    "Toast",
+    "Modal",
+    "Drawer",
+    "Tabs",
+    "Breadcrumbs",
+    "PageHeader",
+    "SectionHeader",
+    "StatCard",
+    "SearchInput",
+    "FilterBar",
+    "Pagination",
+    "Tooltip",
+    "CommandSearch"
+  ],
+  "existingCssPatterns": {
+    "globalCssFile": "src/styles/global.css",
+    "tokensInCss": [
+      "--bg",
+      "--surface",
+      "--surface-muted",
+      "--ink",
+      "--muted",
+      "--line",
+      "--accent",
+      "--accent-strong",
+      "--success",
+      "--warning",
+      "--danger",
+      "--sidebar",
+      "--radius"
+    ],
+    "utilityClasses": [
+      "portal-frame",
+      "portal-main",
+      "sidebar",
+      "page-header",
+      "grid",
+      "dashboard-grid",
+      "two-column",
+      "three-column",
+      "panel",
+      "card",
+      "table-wrap",
+      "toolbar",
+      "field",
+      "button",
+      "icon-button",
+      "table",
+      "badge",
+      "tabs",
+      "tab",
+      "empty-state"
+    ]
+  },
+  "duplicatePatterns": [
+    {
+      "pattern": "table markup repeated in domain components",
+      "countApprox": 10,
+      "recommendation": "Create DataTable and migrate catalog/import/customer/project/supplier tables"
+    },
+    {
+      "pattern": "form field markup repeated",
+      "countApprox": 8,
+      "recommendation": "Create Field, Input, Select, Textarea and validation helper components"
+    },
+    {
+      "pattern": "inline layout styles",
+      "countApprox": 47,
+      "recommendation": "Replace with layout primitives and spacing tokens"
+    },
+    {
+      "pattern": "loading, empty and error states use same empty-state class",
+      "countApprox": 35,
+      "recommendation": "Create semantic LoadingState, EmptyState, ErrorState and Alert components"
+    },
+    {
+      "pattern": "page headers repeated in Astro pages",
+      "countApprox": 16,
+      "recommendation": "Create PageHeader component with actions and optional breadcrumbs"
+    }
+  ],
+  "uxIssues": [
+    {
+      "area": "layout",
+      "severity": "medium",
+      "issue": "No topbar or breadcrumbs, making detail pages lose context",
+      "recommendation": "Add Topbar and Breadcrumbs to PortalShell"
+    },
+    {
+      "area": "navigation",
+      "severity": "medium",
+      "issue": "Sidebar has no active state or grouped navigation",
+      "recommendation": "Add active route highlighting and group settings/import sections"
+    },
+    {
+      "area": "dashboard",
+      "severity": "medium",
+      "issue": "Dashboard shows metrics but not enough actionable daily work",
+      "recommendation": "Add open actions, blocked imports, quotes to follow up and planning"
+    },
+    {
+      "area": "catalog",
+      "severity": "high",
+      "issue": "Catalog table is too basic for thousands of products",
+      "recommendation": "Use server-side DataTable with filters for supplier, category, productKind, status and price source"
+    },
+    {
+      "area": "imports",
+      "severity": "high",
+      "issue": "Import and VAT review screens are data dense and hard to scan",
+      "recommendation": "Add DataTable, tabs, filter bars, confirmations and compact summaries"
+    },
+    {
+      "area": "quotes",
+      "severity": "high",
+      "issue": "Quote builder is functional but not ergonomic enough for in-store selling",
+      "recommendation": "Create quote workbench with sticky totals, product picker, room grouping and line type templates"
+    },
+    {
+      "area": "customers",
+      "severity": "medium",
+      "issue": "Customer list has no search or filters",
+      "recommendation": "Add Customer DataTable with search, status and type filters"
+    },
+    {
+      "area": "projects",
+      "severity": "medium",
+      "issue": "Workflow actions are buttons, not a clear process view",
+      "recommendation": "Add project workflow rail and separate internal/customer-visible notes"
+    },
+    {
+      "area": "data issues",
+      "severity": "medium",
+      "issue": "Duplicate EAN comparison is text heavy inside table cells",
+      "recommendation": "Use comparison cards or a detail drawer with side-by-side product data"
+    }
+  ],
+  "accessibilityIssues": [
+    {
+      "severity": "high",
+      "issue": "Global focus-visible styles are incomplete",
+      "recommendation": "Add consistent focus rings for buttons, inputs, selects, tabs and links"
+    },
+    {
+      "severity": "medium",
+      "issue": "Status is often indicated by color only",
+      "recommendation": "Use StatusBadge with text labels, icons and accessible labels"
+    },
+    {
+      "severity": "medium",
+      "issue": "Error and empty states share the same visual component",
+      "recommendation": "Split Alert, ErrorState, EmptyState and LoadingState"
+    },
+    {
+      "severity": "medium",
+      "issue": "Icon-only actions are not centrally forced to have aria-label",
+      "recommendation": "Create IconButton requiring aria-label"
+    },
+    {
+      "severity": "medium",
+      "issue": "Tab controls are visual only",
+      "recommendation": "Add Tabs component with tablist semantics and aria-selected"
+    },
+    {
+      "severity": "medium",
+      "issue": "Mobile table behavior is not designed",
+      "recommendation": "Add DataTable responsive variants"
+    }
+  ],
+  "designTokensProposal": {
+    "colors": {
+      "bg": "#f6f2ea",
+      "bgSubtle": "#efe7da",
+      "surface": "#fffdf8",
+      "surfaceRaised": "#ffffff",
+      "surfaceMuted": "#f1eadf",
+      "text": "#211f1c",
+      "textMuted": "#6d655b",
+      "border": "#d8d0c3",
+      "borderStrong": "#bfb3a2",
+      "accent": "#9a5f1b",
+      "accentStrong": "#7a4310",
+      "accentSoft": "#f4e6cf",
+      "success": "#166534",
+      "successBg": "#dcfce7",
+      "warning": "#9a6507",
+      "warningBg": "#fef3c7",
+      "danger": "#b91c1c",
+      "dangerBg": "#fee2e2",
+      "info": "#1d4e89",
+      "infoBg": "#dbeafe"
+    },
+    "spacing": {
+      "1": "4px",
+      "2": "8px",
+      "3": "12px",
+      "4": "16px",
+      "5": "20px",
+      "6": "24px",
+      "8": "32px",
+      "10": "40px"
+    },
+    "radius": {
+      "xs": "4px",
+      "sm": "6px",
+      "md": "8px",
+      "lg": "12px"
+    },
+    "shadow": {
+      "xs": "0 1px 2px rgba(31, 26, 18, 0.06)",
+      "sm": "0 6px 16px rgba(31, 26, 18, 0.06)",
+      "md": "0 14px 32px rgba(31, 26, 18, 0.10)"
+    },
+    "typography": {
+      "fontSans": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "textXs": "0.75rem",
+      "textSm": "0.875rem",
+      "textMd": "1rem",
+      "textLg": "1.125rem",
+      "textXl": "1.35rem",
+      "text2xl": "1.75rem",
+      "text3xl": "2.25rem"
+    }
+  },
+  "implementationPhases": [
+    {
+      "phase": 1,
+      "name": "Design tokens and base UI components",
+      "goal": "Stabilize visual primitives and remove repeated low-level markup",
+      "files": ["src/styles/global.css", "src/components/ui/*"],
+      "risk": "low",
+      "impact": "high",
+      "acceptanceCriteria": [
+        "Button, Badge, Field, Alert, EmptyState and LoadingState exist",
+        "No regression in npm run check/build",
+        "Focus and disabled states are consistent"
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Portal shell and navigation",
+      "goal": "Add consistent page context and navigation",
+      "files": ["src/components/layout/*", "src/components/ui/PageHeader.tsx"],
+      "risk": "medium",
+      "impact": "high",
+      "acceptanceCriteria": [
+        "Active sidebar state exists",
+        "Breadcrumbs exist on detail routes",
+        "PageHeader handles actions consistently"
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "DataTable and filter/search patterns",
+      "goal": "Make large datasets manageable",
+      "files": ["src/components/ui/DataTable.tsx", "src/components/ui/FilterBar.tsx", "convex/catalog.ts", "convex/imports.ts"],
+      "risk": "medium-high",
+      "impact": "very high",
+      "acceptanceCriteria": [
+        "Catalog uses server-side filters and pagination",
+        "Import rows can filter by rowKind/status",
+        "DataTable has loading, empty, error and responsive states"
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "Imports, VAT review and data issues polish",
+      "goal": "Make production release flow safe and quickly scannable",
+      "files": ["src/components/imports/*", "src/components/catalog/CatalogDataIssues.tsx"],
+      "risk": "medium",
+      "impact": "high",
+      "acceptanceCriteria": [
+        "BLOCKED/READY is clear within seconds",
+        "Bulk VAT mapping requires confirmation",
+        "Duplicate EAN review remains review-only"
+      ]
+    },
+    {
+      "phase": 5,
+      "name": "Customers, projects and quotes UX polish",
+      "goal": "Improve daily backoffice workflows",
+      "files": ["src/components/customers/*", "src/components/projects/*", "src/components/quotes/*"],
+      "risk": "medium",
+      "impact": "high",
+      "acceptanceCriteria": [
+        "Customer detail has timeline and loaned item structure",
+        "Project detail has workflow rail",
+        "Quote builder has sticky totals and product picker"
+      ]
+    },
+    {
+      "phase": 6,
+      "name": "Responsive and accessibility pass",
+      "goal": "Make the portal reliable on laptop, tablet and mobile",
+      "files": ["src/components/ui/*", "src/styles/global.css", "src/components/**/*.tsx"],
+      "risk": "low-medium",
+      "impact": "medium-high",
+      "acceptanceCriteria": [
+        "Keyboard focus is visible everywhere",
+        "Icon buttons have aria-label",
+        "Tables have mobile pattern",
+        "Alerts and loading states are semantic"
+      ]
+    }
+  ],
+  "priorityScorePerArea": {
+    "designTokens": 95,
+    "baseUiComponents": 95,
+    "portalShellNavigation": 85,
+    "dataTablePattern": 100,
+    "importsVatReviewPolish": 90,
+    "catalogSearchFilters": 90,
+    "quoteBuilderUx": 88,
+    "customerProjectDossiers": 78,
+    "accessibility": 92,
+    "responsive": 84
+  },
+  "safeFixesApplied": []
+}

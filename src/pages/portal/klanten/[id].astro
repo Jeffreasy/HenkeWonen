@@ -1,0 +1,27 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import CustomerDetail from "../../../components/customers/CustomerDetail";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+const customerId = Astro.params.id ?? "";
+const breadcrumbs = [
+  { label: "Portal", href: "/portal" },
+  { label: "Klanten", href: "/portal/klanten" },
+  { label: "Detail" }
+];
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Klantdossier" session={session}>
+  <PageHeader
+    eyebrow="Klantdossier"
+    title="Details"
+    description="Klantinformatie, contactmomenten en dossiercontext."
+    breadcrumbs={breadcrumbs}
+  />
+  <CustomerDetail client:load session={session} customerId={customerId} />
+</PortalLayout>

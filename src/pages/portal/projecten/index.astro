@@ -1,0 +1,20 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import ProjectWorkspace from "../../../components/projects/ProjectWorkspace";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Projecten" session={session}>
+  <PageHeader
+    eyebrow="Werkproces"
+    title="Projecten"
+    description="Volg aanvragen van offerte en inmeten tot bestellen, uitvoering en afronding."
+  />
+  <ProjectWorkspace client:load session={session} />
+</PortalLayout>

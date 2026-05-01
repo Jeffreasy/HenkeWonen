@@ -1,0 +1,25 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import ServiceRulesSettings from "../../../components/settings/ServiceRulesSettings";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Werkzaamheden" session={session}>
+  <PageHeader
+    eyebrow="Instellingen"
+    title="Werkzaamheden"
+    description="Beheer arbeidsregels, servicekosten en calculatieregels voor offertes."
+  >
+    <div class="toolbar">
+      <a class="button secondary" href="/portal/instellingen/categorieen">Categorieën</a>
+      <a class="button secondary" href="/portal/instellingen/offertetemplates">Offertesjablonen</a>
+    </div>
+  </PageHeader>
+  <ServiceRulesSettings client:load session={session} />
+</PortalLayout>

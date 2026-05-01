@@ -1,0 +1,22 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import QuoteTemplatesSettings from "../../../components/settings/QuoteTemplatesSettings";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Offertesjablonen" session={session}>
+  <PageHeader
+    eyebrow="Instellingen"
+    title="Offertesjablonen"
+    description="Beheer standaard offerteteksten, voorwaarden en sjabloonregels."
+  >
+    <a class="button secondary" href="/portal/instellingen/werkzaamheden">Werkzaamheden</a>
+  </PageHeader>
+  <QuoteTemplatesSettings client:load session={session} />
+</PortalLayout>

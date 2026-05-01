@@ -1,0 +1,110 @@
+{
+  "tenantSlug": "henke-wonen",
+  "generatedAt": "2026-04-30T16:49:30.000Z",
+  "status": "BLOCKED",
+  "ready": false,
+  "outcome": "Nog niet READY, correct geblokkeerd",
+  "beginState": {
+    "activeImportProfiles": 16,
+    "totalVatMappings": 55,
+    "resolvedVatMappings": 1,
+    "unresolvedVatMappings": 54,
+    "allowUnknownVatMode": 0,
+    "duplicateEanOpenIssues": 25,
+    "productRows": 10291,
+    "previewRows": 10691,
+    "priceRules": 13015,
+    "unknownVatModePriceRules": 12984,
+    "productionImportStatus": "BLOCKED"
+  },
+  "autoDecisions": {
+    "highConfidenceOpenMappings": 0,
+    "applied": 0,
+    "reason": "Geen open bronkolommen met expliciete incl./excl. btw. De expliciete Co-pro incl. btw kolom stond al op inclusive."
+  },
+  "humanDecisions": {
+    "required": 54,
+    "decisionTable": "docs/vat-mapping-human-decision-table-2026-04-30.md",
+    "decisionInput": "docs/vat-mapping-decisions.json",
+    "allowedValues": ["inclusive", "exclusive"],
+    "unknownAllowedOnlyWithExplicitAllowUnknown": true
+  },
+  "applyResult": {
+    "dryRun": true,
+    "decisionCount": 0,
+    "applied": 0,
+    "skipped": 0,
+    "failed": 0,
+    "unresolvedBefore": 54,
+    "unresolvedAfter": 54,
+    "report": "docs/vat-mapping-apply-result-2026-04-30.md"
+  },
+  "guardrailChecks": {
+    "catalogImportWithoutOverride": {
+      "ran": true,
+      "expectedFailure": true,
+      "passed": true,
+      "reason": "54 unresolved vatMode profile columns"
+    },
+    "catalogImportDevOverride": {
+      "ran": false,
+      "reason": "Niet nodig en bewust niet gebruikt; er zijn geen mappings toegepast en productie blijft geblokkeerd."
+    }
+  },
+  "verification": {
+    "npmRunCheck": "OK",
+    "npmRunBuild": "OK",
+    "npmRunCatalogPreview": "OK",
+    "npmRunTestPortal": "OK",
+    "npmRunTestA11y": "OK",
+    "buildWarnings": [
+      "Lokale Node.js versie 25 wordt niet ondersteund door Vercel Serverless Functions; Vercel gebruikt Node.js 24 als runtime."
+    ]
+  },
+  "catalogPreview": {
+    "productRows": 10291,
+    "previewRows": 10691,
+    "priceRules": 13015,
+    "unknownVatModePriceRules": 12984,
+    "sourceFiles": 21,
+    "sourceFilesWithProductRows": 17
+  },
+  "catalogBaseline": {
+    "activeProducts": 7775,
+    "productPrices": 13015,
+    "productsWithoutPriceRules": 0,
+    "orphanPriceRules": 0,
+    "duplicateProductImportKeys": 0,
+    "duplicatePriceSourceKeys": 0,
+    "priceRulesAmountLteZero": 0,
+    "sectionRowsImportedAsProducts": 0,
+    "vatModeUnknownPriceRules": 12984,
+    "duplicateSupplierEanGroups": 25,
+    "auditWarning": "Convex importProductionAudit leest veel bytes maar blijft binnen de execution limit."
+  },
+  "filesCreated": [
+    "docs/vat-mapping-current-state-2026-04-30.md",
+    "docs/vat-mapping-current-state-2026-04-30.json",
+    "docs/vat-mapping-human-decision-table-2026-04-30.md",
+    "docs/vat-mapping-decisions.json",
+    "docs/vat-mapping-apply-result-2026-04-30.md",
+    "docs/vat-mapping-production-readiness-2026-04-30.md",
+    "docs/vat-mapping-production-readiness-2026-04-30.json"
+  ],
+  "filesChanged": [
+    "tools/export_vat_mapping_review.mjs",
+    "tools/apply_vat_mapping_decisions.mjs",
+    "tools/upload_catalog_batch_import.mjs"
+  ],
+  "openRisks": [
+    "54 btw-mappings vereisen menselijke bevestiging voordat productie-import READY kan worden.",
+    "25 dubbele supplier+EAN waarschuwingen blijven zichtbaar als datakwaliteitswaarschuwing, maar blokkeren productie-import niet."
+  ],
+  "nextSteps": [
+    "Vul docs/vat-mapping-decisions.json met expliciete beslissingen.",
+    "Draai node tools/apply_vat_mapping_decisions.mjs als dry-run.",
+    "Draai node tools/apply_vat_mapping_decisions.mjs --apply na controle.",
+    "Controleer dat unresolvedVatMappings 0 is.",
+    "Draai npm run catalog:import zonder dev override."
+  ]
+}

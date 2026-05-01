@@ -1,0 +1,27 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import ProjectDetail from "../../../components/projects/ProjectDetail";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+const projectId = Astro.params.id ?? "";
+const breadcrumbs = [
+  { label: "Portal", href: "/portal" },
+  { label: "Projecten", href: "/portal/projecten" },
+  { label: "Detail" }
+];
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Project" session={session}>
+  <PageHeader
+    eyebrow="Project"
+    title="Projectopvolging"
+    description="Status, planning, notities en uitvoering binnen het projectdossier."
+    breadcrumbs={breadcrumbs}
+  />
+  <ProjectDetail client:load session={session} projectId={projectId} />
+</PortalLayout>

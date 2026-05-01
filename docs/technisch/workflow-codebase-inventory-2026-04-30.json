@@ -1,0 +1,271 @@
+{
+  "generatedAt": "2026-04-30",
+  "scope": "root-codebase controle voor Henke Wonen workflowdocumentatie",
+  "routes": [
+    {
+      "path": "/portal",
+      "title": "Dashboard",
+      "components": ["PortalLayout", "PageHeader", "DashboardShell", "ProductionReadiness"],
+      "data": ["dashboardtellingen", "productiegereedheid", "pipeline"],
+      "actions": ["navigeren naar modules", "readiness verversen"],
+      "guardrails": ["production import status is blocked zolang btw-mappings openstaan"]
+    },
+    {
+      "path": "/portal/klanten",
+      "title": "Klanten",
+      "components": ["CustomerWorkspace", "CustomerList", "CustomerForm"],
+      "data": ["customers"],
+      "actions": ["klanten zoeken", "klanten filteren", "klant aanmaken"],
+      "guardrails": ["geen klant-deleteflow"]
+    },
+    {
+      "path": "/portal/klanten/[id]",
+      "title": "Klantdossier",
+      "components": ["CustomerDetail"],
+      "data": ["customer", "projects", "customerContacts", "loanedItems"],
+      "actions": ["contactmoment toevoegen", "uitgeleend item registreren"],
+      "guardrails": ["returned marker bestaat in data maar is niet als hoofd-UI actie aangesloten"]
+    },
+    {
+      "path": "/portal/projecten",
+      "title": "Projecten",
+      "components": ["ProjectWorkspace", "ProjectForm", "DataTable"],
+      "data": ["projects", "customers"],
+      "actions": ["project zoeken", "project filteren", "project aanmaken"],
+      "guardrails": ["project vereist bestaande klant"]
+    },
+    {
+      "path": "/portal/projecten/[id]",
+      "title": "Projectdetail",
+      "components": ["ProjectDetail", "ProjectWorkflowRail", "MeasurementPanel", "Timeline"],
+      "data": ["project", "customer", "projectRooms", "workflowEvents", "measurement"],
+      "actions": ["projectruimte toevoegen", "inmeten plannen", "workflowevent toevoegen", "inmeting beheren"],
+      "guardrails": ["factuur/boekhouder zijn workflowevents, geen volledige factuurflow"]
+    },
+    {
+      "path": "/portal/offertes",
+      "title": "Offertes",
+      "components": ["QuoteWorkspace", "QuoteBuilder"],
+      "data": ["quotes", "projects", "customers", "quoteTemplates"],
+      "actions": ["offerte maken", "offerte zoeken", "offerte selecteren", "offerte bewerken"],
+      "guardrails": ["offerte vanuit bestaand project"]
+    },
+    {
+      "path": "/portal/offertes/[id]",
+      "title": "Offertebuilder",
+      "components": ["QuoteWorkspace", "QuoteBuilder", "QuoteLineEditor", "MeasurementLinePicker", "QuoteTotals"],
+      "data": ["quote", "quoteLines", "quoteTemplates", "readyMeasurementLines"],
+      "actions": ["offertepost toevoegen", "sjabloonregel laden", "uit inmeting laden", "offertepost verwijderen", "voorwaarden aanpassen"],
+      "guardrails": ["meetregels worden alleen na bevestiging toegevoegd", "prijs en btw blijven handmatig/catalogusgestuurd"]
+    },
+    {
+      "path": "/portal/catalogus",
+      "title": "Catalogus",
+      "components": ["ProductList"],
+      "data": ["products", "categories"],
+      "actions": ["zoeken", "filteren op categorie", "meer laden"],
+      "guardrails": ["geen product edit flow in hoofdroute"]
+    },
+    {
+      "path": "/portal/catalogus/data-issues",
+      "title": "Datakwaliteit",
+      "components": ["CatalogDataIssues"],
+      "data": ["duplicateEanIssues"],
+      "actions": ["synchroniseren", "filteren", "reviewstatus/notitie opslaan"],
+      "guardrails": ["geen automatische merge"]
+    },
+    {
+      "path": "/portal/leveranciers",
+      "title": "Leveranciers",
+      "components": ["SupplierWorkspace"],
+      "data": ["suppliers", "productCounts", "importProfiles", "sourceFiles", "latestImport"],
+      "actions": ["leverancier toevoegen", "zoeken/filteren", "productlijststatus bijwerken"],
+      "guardrails": ["geen importprofielmutaties vanuit leverancierspagina"]
+    },
+    {
+      "path": "/portal/imports",
+      "title": "Imports",
+      "components": ["ImportPreview", "ProductionReadiness"],
+      "data": ["productImportBatches", "productImportRows"],
+      "actions": ["batch bekijken", "batch aanmaken", "btw-mapping opslaan", "definitief verwerken"],
+      "guardrails": ["blokkeert bij fouten, dubbele bronsleutels en unknown btw zonder uitzondering"]
+    },
+    {
+      "path": "/portal/imports/[batchId]",
+      "title": "Importbatch detail",
+      "components": ["ImportPreview"],
+      "data": ["productImportBatch", "productImportRows"],
+      "actions": ["auditregels filteren", "reconciliation bekijken", "definitief verwerken indien toegestaan"],
+      "guardrails": ["row limit 300 in portal detail"]
+    },
+    {
+      "path": "/portal/import-profielen",
+      "title": "Importprofielen",
+      "components": ["ImportProfiles", "ProductionReadiness"],
+      "data": ["vatMappingReview", "importProfiles"],
+      "actions": ["btw-modus per kolom zetten", "bulk inclusive/exclusive", "markeren als beoordeeld", "unknown-btw uitzondering"],
+      "guardrails": ["unknown-btw is standaard blokkade"]
+    },
+    {
+      "path": "/portal/instellingen/werkzaamheden",
+      "title": "Werkzaamheden",
+      "components": ["ServiceRulesSettings"],
+      "data": ["serviceCostRules"],
+      "actions": ["bekijken"],
+      "guardrails": ["alleen-lezen in huidige UI"]
+    },
+    {
+      "path": "/portal/instellingen/categorieen",
+      "title": "Categorieen",
+      "components": ["CategoriesSettings"],
+      "data": ["categories"],
+      "actions": ["bekijken"],
+      "guardrails": ["alleen-lezen in huidige UI"]
+    },
+    {
+      "path": "/portal/instellingen/offertetemplates",
+      "title": "Offertesjablonen",
+      "components": ["QuoteTemplatesSettings"],
+      "data": ["quoteTemplates"],
+      "actions": ["sjabloonregels bekijken", "voorwaarden en betalingsafspraken opslaan"],
+      "guardrails": ["wijzigingen gelden voor nieuwe offertes; bestaande offertes bewaren eigen teksten"]
+    }
+  ],
+  "modules": [
+    "dashboard",
+    "klanten",
+    "projecten",
+    "inmeting",
+    "offertes",
+    "catalogus",
+    "leveranciers",
+    "imports",
+    "importprofielen",
+    "datakwaliteit",
+    "instellingen"
+  ],
+  "features": [
+    "Nederlandse UI labels via status helpers",
+    "DataTable met mobile cards op geselecteerde schermen",
+    "mobiele navigatie",
+    "inmeetcalculators",
+    "offertesjablonen",
+    "btw-mapping guardrails",
+    "duplicate EAN review"
+  ],
+  "userActions": {
+    "customers": ["createCustomer", "searchCustomers", "filterCustomers", "openCustomer", "createCustomerContact"],
+    "projects": ["createProject", "searchProjects", "filterProjects", "addProjectRoom", "planMeasurement", "createWorkflowEvent"],
+    "measurements": ["createMeasurement", "updateMeasurement", "addMeasurementRoom", "addMeasurementLine", "markLineReadyForQuote"],
+    "quotes": ["createQuote", "addQuoteLine", "loadTemplateLine", "loadMeasurementLines", "deleteQuoteLine", "updateQuoteTerms"],
+    "catalog": ["searchProducts", "filterCategory", "loadMore"],
+    "suppliers": ["createSupplier", "updateProductListStatus", "searchSuppliers", "filterSupplierStatus"],
+    "imports": ["listBatches", "createPreviewBatch", "savePreviewMapping", "commitBatchWhenAllowed"],
+    "vatMappings": ["setVatMode", "bulkSetVatMode", "markReviewed", "allowUnknownWithWarning"],
+    "dataIssues": ["syncDuplicateEanIssues", "saveDuplicateEanReview"]
+  },
+  "convexFunctions": {
+    "portal": [
+      "dashboard",
+      "listCustomers",
+      "createCustomer",
+      "customerDetail",
+      "createCustomerContact",
+      "listProjects",
+      "createProject",
+      "projectDetail",
+      "addProjectRoom",
+      "updateProjectStatus",
+      "createWorkflowEvent",
+      "listQuotesWorkspace",
+      "createQuote",
+      "addQuoteLine",
+      "deleteQuoteLine",
+      "updateQuoteTerms",
+      "listSuppliers",
+      "createSupplier",
+      "updateSupplierProductListStatus",
+      "listQuoteTemplates",
+      "updateQuoteTemplateContent",
+      "listCategories",
+      "listServiceRules"
+    ],
+    "measurements": [
+      "getForProject",
+      "listReadyForQuoteByProject",
+      "createForProject",
+      "updateMeasurement",
+      "addMeasurementRoom",
+      "addMeasurementLine",
+      "updateMeasurementLineStatus",
+      "markMeasurementLineConverted",
+      "listWasteProfiles",
+      "seedDefaultWasteProfiles"
+    ],
+    "catalog": ["listProductsForPortal", "listProducts", "getProductCount", "listCollections", "createProduct", "addPrice"],
+    "imports": ["listBatchesForPortal", "getBatchForPortal", "listProfilesForPortal", "saveMapping"],
+    "catalogImport": ["createPreviewBatch", "appendPreviewRows", "savePreviewMapping", "commitPreviewBatchChunk", "getCatalogImportStats"],
+    "catalogReview": [
+      "productionReadiness",
+      "vatMappingReview",
+      "updateProfileVatMode",
+      "bulkUpdateProfileVatModes",
+      "markProfileVatColumnsReviewed",
+      "setProfileAllowUnknownVatMode",
+      "duplicateEanReview",
+      "syncDuplicateEanIssues",
+      "updateDuplicateEanIssueReview"
+    ]
+  },
+  "dataEntities": [
+    "tenants",
+    "users",
+    "customers",
+    "customerContacts",
+    "categories",
+    "suppliers",
+    "brands",
+    "productCollections",
+    "products",
+    "priceLists",
+    "productPrices",
+    "productImportBatches",
+    "productImportRows",
+    "serviceCostRules",
+    "projects",
+    "projectRooms",
+    "measurements",
+    "measurementRooms",
+    "measurementLines",
+    "wasteProfiles",
+    "quotes",
+    "quoteLines",
+    "quoteTemplates",
+    "projectWorkflowEvents",
+    "importProfiles",
+    "catalogDataIssues",
+    "supplierOrders",
+    "invoices",
+    "timelineEvents"
+  ],
+  "limitations": [
+    "geen automatische prijskeuze uit inmeting",
+    "geen automatische productkeuze uit inmeting",
+    "geen automatische btw-keuze bij onbekende prijskolommen",
+    "geen automatische EAN-merge",
+    "geen volledige PDF-offerteflow",
+    "geen volledige factuurflow",
+    "geen boekhoudkoppeling als uitgewerkte flow",
+    "werkzaamheden en categorieen zijn in UI alleen-lezen",
+    "leverancier bewerken is beperkt tot productlijststatus",
+    "klant bewerken/verwijderen is niet als hoofdactie zichtbaar"
+  ],
+  "guardrails": [
+    "tenant-scoped queries and mutations",
+    "production import blocked by unresolved VAT mappings",
+    "duplicate EAN review-only",
+    "measurement conversion requires explicit confirmation",
+    "quote totals recalculated by existing quote logic",
+    "catalog import skips invalid/zero price rows in existing import logic"
+  ]
+}

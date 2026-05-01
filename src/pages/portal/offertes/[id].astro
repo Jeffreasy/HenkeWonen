@@ -1,0 +1,27 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import QuoteWorkspace from "../../../components/quotes/QuoteWorkspace";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+const quoteId = Astro.params.id ?? "";
+const breadcrumbs = [
+  { label: "Portal", href: "/portal" },
+  { label: "Offertes", href: "/portal/offertes" },
+  { label: "Detail" }
+];
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Offerte" session={session}>
+  <PageHeader
+    eyebrow="Offerte"
+    title="Offertebuilder"
+    description="Offerte samenstellen en regels beheren."
+    breadcrumbs={breadcrumbs}
+  />
+  <QuoteWorkspace client:load session={session} quoteId={quoteId} />
+</PortalLayout>

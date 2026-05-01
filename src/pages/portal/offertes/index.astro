@@ -1,0 +1,20 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import QuoteWorkspace from "../../../components/quotes/QuoteWorkspace";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Offertes" session={session}>
+  <PageHeader
+    eyebrow="Verkoop"
+    title="Offertes"
+    description="Bouw offertes met productregels, arbeid, materialen, maatwerk en voorwaarden."
+  />
+  <QuoteWorkspace client:load session={session} />
+</PortalLayout>

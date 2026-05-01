@@ -1,0 +1,22 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import ImportPreview from "../../../components/imports/ImportPreview";
+import ProductionReadiness from "../../../components/imports/ProductionReadiness";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Imports" session={session}>
+  <PageHeader
+    eyebrow="Prijslijsten"
+    title="Imports"
+    description="Importbatches, voorvertoningen en productiegereedheid voor leverancierbestanden."
+  />
+  <ProductionReadiness client:load session={session} />
+  <ImportPreview client:load session={session} />
+</PortalLayout>

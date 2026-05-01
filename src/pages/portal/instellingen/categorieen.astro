@@ -1,0 +1,25 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import CategoriesSettings from "../../../components/settings/CategoriesSettings";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Categorieën" session={session}>
+  <PageHeader
+    eyebrow="Instellingen"
+    title="Categorieën"
+    description="Beheer productgroepen en catalogusstructuur voor Henke Wonen."
+  >
+    <div class="toolbar">
+      <a class="button secondary" href="/portal/instellingen/werkzaamheden">Werkzaamheden</a>
+      <a class="button secondary" href="/portal/instellingen/offertetemplates">Offertesjablonen</a>
+    </div>
+  </PageHeader>
+  <CategoriesSettings client:load session={session} />
+</PortalLayout>

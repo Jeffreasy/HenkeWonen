@@ -1,0 +1,1123 @@
+{
+  "fileCount": 22,
+  "sheetCount": 33,
+  "preview": {
+    "rows": 10291,
+    "prices": 13015,
+    "uniqueImportKeys": 7775,
+    "categoryCounts": {
+      "Gordijnen": 8205,
+      "Tapijt": 1033,
+      "PVC Dryback": 320,
+      "PVC Click": 274,
+      "Entreematten": 111,
+      "PVC Vloeren": 85,
+      "Plinten": 67,
+      "Palletcollectie PVC": 54,
+      "Karpetten": 26,
+      "Wandpanelen": 24,
+      "Vinyl": 23,
+      "Egaline": 16,
+      "Douchepanelen": 15,
+      "Traprenovatie": 15,
+      "Lijm": 9,
+      "Tegels": 8,
+      "Kit": 6
+    },
+    "supplierCounts": {
+      "Headlam": 8205,
+      "Interfloor": 988,
+      "Floorlife": 640,
+      "Co-pro": 209,
+      "Ambiant": 68,
+      "vtwonen": 66,
+      "Roots": 59,
+      "EVC": 56
+    },
+    "sourceCounts": {
+      "DATA\\Leveranciers\\HenkeWonen\\Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx": 8205,
+      "DATA\\Leveranciers\\HenkeWonen\\henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls": 988,
+      "DATA\\Leveranciers\\HenkeWonen\\Prijslijst PVC 11-2025 click dryback apart.xlsx": 262,
+      "DATA\\Leveranciers\\HenkeWonen\\PVC 11-2025 click dryback apart floorlife.xlsx": 262,
+      "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Co-pro Entreematten 2025.xlsx": 111,
+      "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Co-pro prijslijst Plinten 2025-07.xlsx": 67,
+      "DATA\\Leveranciers\\HenkeWonen\\Roots collectie NL 2026 incl. adviesverkoopprijs per pak vanaf 1.05.2026 - A.xlsx": 59,
+      "DATA\\Leveranciers\\HenkeWonen\\Prijslijst EVC 2025 click en dryback apart.xlsx": 56,
+      "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\PVC - palletcollectie op palletafname_2025 2025-06-11 07_31_31 (005).xlsx": 54,
+      "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Prijslijst Ambiant Tapijt 2025-04.xlsx": 45,
+      "DATA\\Leveranciers\\HenkeWonen\\Prijslijst vtwonen pvc 11-2023 click en dryback apart.xlsx": 40,
+      "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Co-pro prijslijst lijm kit en egaline 2025-04.xlsx": 31,
+      "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Prijslijst VT Wonen Karpetten 2024.xlsx": 26,
+      "DATA\\Leveranciers\\HenkeWonen\\Prijslijst Wandpanelen 2025-05.xlsx": 24,
+      "DATA\\Leveranciers\\HenkeWonen\\Prijslijst Douchepanelen en tegels 2025-04.xlsx": 23,
+      "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Prijslijst Ambiant Vinyl 07-2024.xlsx": 23,
+      "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Prijslijst Traprenovatie Floorlife 2025.xlsx": 15
+    },
+    "priceTypeCounts": {
+      "advice_retail": 10510,
+      "commission": 891,
+      "pallet": 840,
+      "cut_length": 235,
+      "roll": 235,
+      "trailer": 120,
+      "purchase": 96,
+      "net_purchase": 59,
+      "step": 15,
+      "package": 14
+    },
+    "priceUnitCounts": {
+      "m1": 9709,
+      "m2": 2083,
+      "meter": 268,
+      "piece": 244,
+      "custom": 207,
+      "pack": 169,
+      "trailer": 120,
+      "roll": 99,
+      "package": 93,
+      "pallet": 23
+    },
+    "vatModeCounts": {
+      "unknown": 12984,
+      "inclusive": 31
+    },
+    "mergedPriceListRisks": [],
+    "duplicateIdentities": [
+      {
+        "identity": "Floorlife|PVC Dryback|9030150419",
+        "rows": 6
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60228744",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60228752",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60228761",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60228779",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60228787",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60228795",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60228809",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60228817",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60228825",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60228833",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60228841",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60228850",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002169",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002177",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002185",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002193",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002207",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002215",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002223",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002231",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002240",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002258",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002266",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002274",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002282",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002291",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002304",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002312",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002321",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002339",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002347",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002355",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002363",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002371",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002380",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002398",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002401",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002410",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002428",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60002436",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224382",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224391",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224404",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224412",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224421",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224439",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224447",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224455",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224463",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224471",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224480",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224498",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224501",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224510",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224528",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60224536",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003122",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003131",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003149",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003157",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003165",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003173",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003181",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003190",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003203",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003211",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003220",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003238",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003246",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003254",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003262",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003271",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003289",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003297",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003301",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003319",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003327",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003335",
+        "rows": 2
+      },
+      {
+        "identity": "Headlam|Gordijnen|GPC60003343",
+        "rows": 2
+      }
+    ],
+    "futureValiditySamples": [
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab active-SDN 609 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 4,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab active-SDN 612 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 5,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab active-SDN 624 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 6,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab active-SDN 636 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 7,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab active-SDN 644 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 8,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab active-SDN 649 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 9,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab active-SDN 656 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 10,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab active-SDN 669 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 11,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab active-SDN 670 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 12,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab active-SDN 688 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 13,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab active-SDN 690 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 14,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab active-SDN 695 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 15,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab Artistic-SDY 352 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 16,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab Artistic-SDY 361 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 17,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab Artistic-SDY 380 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 18,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab Artistic-SDY 381 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 19,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab Artistic-SDY 383 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 20,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab Artistic-SDY 384 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 21,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab Artistic-SDY 385 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 22,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab Artistic-SDY 386 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 23,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab Artistic-SDY 388 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 24,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab Artistic-SDY 389 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 25,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab Artistic-SDY 390 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 26,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab Artistic-SDY 397 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 27,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab bologna-SDY 222 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 28,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab bologna-SDY 235 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 29,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab bologna-SDY 255 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 30,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab bologna-SDY 271 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 31,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab bologna-SDY 273 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 32,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab bologna-SDY 280 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 33,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab bologna-SDY 281 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 34,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab bologna-SDY 283 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 35,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab bologna-SDY 285 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 36,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab bologna-SDY 287 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 37,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab bologna-SDY 289 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 38,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab bologna-SDY 290 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 39,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab ceres wool 404 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 40,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab ceres wool 408 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 41,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab ceres wool 441 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 42,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      },
+      {
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi",
+        "productName": "400 ab ceres wool 453 henke-swifterbant-artikeloverzi",
+        "sourceRowNumber": 43,
+        "hasValidity": true,
+        "pricesMissingValidity": 0
+      }
+    ]
+  },
+  "coverage": {
+    "headerClassCounts": {
+      "unmapped": 212,
+      "price": 13153,
+      "identity": 10967,
+      "mapped_metadata": 11912,
+      "product_name": 26249,
+      "dimension_or_package": 14625,
+      "attribute": 76209,
+      "quantity_or_logistics": 385,
+      "commercial_alias": 2320
+    },
+    "topUnmappedHeaders": [
+      [
+        "Leverancier",
+        59
+      ],
+      [
+        "Size",
+        59
+      ],
+      [
+        "H",
+        59
+      ],
+      [
+        "Artikel",
+        10
+      ],
+      [
+        "Verfmethode",
+        10
+      ],
+      [
+        "Omschrijving stof",
+        5
+      ],
+      [
+        "Samenstelling",
+        5
+      ],
+      [
+        "Wasvoorschrift",
+        5
+      ]
+    ],
+    "topSuspiciousUnmappedHeaders": [
+      [
+        "Artikel",
+        10
+      ]
+    ],
+    "quantityHeaders": {
+      "Afname pallet = stuks": "palletQuantity",
+      "Pakinhoud (m²)": "packageQuantity",
+      "aantal per pallet": "palletQuantity",
+      "bundel": "bundleSize",
+      "Besteleenheid": "orderUnit",
+      "plinten per pallet": "palletQuantity",
+      "plinten per trailer": "trailerQuantity"
+    },
+    "rowCompare": [
+      {
+        "sourcePath": "DATA\\Henke Wonen Jeffrey.xlsx",
+        "sheetName": "Producten overzicht",
+        "auditProductRows": 5,
+        "normalizedRows": 0,
+        "delta": 5
+      },
+      {
+        "sourcePath": "DATA\\Henke Wonen Jeffrey.xlsx",
+        "sheetName": "Werkzaamheden kosten totaal",
+        "auditProductRows": 10,
+        "normalizedRows": 0,
+        "delta": 10
+      },
+      {
+        "sourcePath": "DATA\\Henke Wonen Jeffrey.xlsx",
+        "sheetName": "Proces verloop",
+        "auditProductRows": 0,
+        "normalizedRows": 0,
+        "delta": 0
+      },
+      {
+        "sourcePath": "DATA\\Henke Wonen Jeffrey.xlsx",
+        "sheetName": "Klantcontactformulier voorbeeld",
+        "auditProductRows": 0,
+        "normalizedRows": 0,
+        "delta": 0,
+        "note": "Geen header gevonden."
+      },
+      {
+        "sourcePath": "DATA\\Henke Wonen Jeffrey.xlsx",
+        "sheetName": "Offerte voorbeeld",
+        "auditProductRows": 0,
+        "normalizedRows": 0,
+        "delta": 0,
+        "note": "Geen header gevonden."
+      },
+      {
+        "sourcePath": "DATA\\Henke Wonen Jeffrey.xlsx",
+        "sheetName": "Factuur voorbeeld",
+        "auditProductRows": 0,
+        "normalizedRows": 0,
+        "delta": 0,
+        "note": "Geen header gevonden."
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+        "sheetName": "Collectie Compleet",
+        "auditProductRows": 8215,
+        "normalizedRows": 8215,
+        "delta": 0
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sheetName": "henke-swifterbant-artikeloverzi",
+        "auditProductRows": 988,
+        "normalizedRows": 988,
+        "delta": 0
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Prijslijst Douchepanelen en tegels 2025-04.xlsx",
+        "sheetName": "Blad1",
+        "auditProductRows": 24,
+        "normalizedRows": 23,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Prijslijst EVC 2025 click en dryback apart.xlsx",
+        "sheetName": "Drbyack",
+        "auditProductRows": 37,
+        "normalizedRows": 36,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Prijslijst EVC 2025 click en dryback apart.xlsx",
+        "sheetName": "Click",
+        "auditProductRows": 21,
+        "normalizedRows": 20,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Prijslijst PVC 11-2025 click dryback apart.xlsx",
+        "sheetName": "Floorlife PVC Dryback",
+        "auditProductRows": 143,
+        "normalizedRows": 142,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Prijslijst PVC 11-2025 click dryback apart.xlsx",
+        "sheetName": "Floorlife PVC SRC",
+        "auditProductRows": 121,
+        "normalizedRows": 120,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Prijslijst vtwonen pvc 11-2023 click en dryback apart.xlsx",
+        "sheetName": "Prijslijst - vtwonen PVC drybac",
+        "auditProductRows": 27,
+        "normalizedRows": 26,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Prijslijst vtwonen pvc 11-2023 click en dryback apart.xlsx",
+        "sheetName": "Prijslijst - vtwonen PVC click",
+        "auditProductRows": 15,
+        "normalizedRows": 14,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Prijslijst Wandpanelen 2025-05.xlsx",
+        "sheetName": "Blad1",
+        "auditProductRows": 25,
+        "normalizedRows": 24,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Co-pro Entreematten 2025.xlsx",
+        "sheetName": "Ambiant Entreematten",
+        "auditProductRows": 111,
+        "normalizedRows": 111,
+        "delta": 0
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+        "sheetName": "Blad1",
+        "auditProductRows": 37,
+        "normalizedRows": 31,
+        "delta": 6
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Co-pro prijslijst Plinten 2025-07.xlsx",
+        "sheetName": "juli 2025",
+        "auditProductRows": 68,
+        "normalizedRows": 67,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Prijslijst Ambiant Tapijt 2025-04.xlsx",
+        "sheetName": "Tapijt",
+        "auditProductRows": 46,
+        "normalizedRows": 45,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Prijslijst Ambiant Vinyl 07-2024.xlsx",
+        "sheetName": "Vinyl",
+        "auditProductRows": 24,
+        "normalizedRows": 23,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Prijslijst EVC 2025 click en dryback apart.xlsx",
+        "sheetName": "*",
+        "auditProductRows": 0,
+        "normalizedRows": 0,
+        "delta": 0,
+        "note": "Exacte kopie van DATA\\Leveranciers\\HenkeWonen\\Prijslijst EVC 2025 click en dryback apart.xlsx; overgeslagen in importpreview."
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Prijslijst PVC 11-2025 click dryback apart.xlsx",
+        "sheetName": "*",
+        "auditProductRows": 0,
+        "normalizedRows": 0,
+        "delta": 0,
+        "note": "Exacte kopie van DATA\\Leveranciers\\HenkeWonen\\Prijslijst PVC 11-2025 click dryback apart.xlsx; overgeslagen in importpreview."
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Prijslijst Traprenovatie Floorlife 2025.xlsx",
+        "sheetName": "Prijslijst ",
+        "auditProductRows": 16,
+        "normalizedRows": 15,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Prijslijst VT Wonen Karpetten 2024.xlsx",
+        "sheetName": "Blad1",
+        "auditProductRows": 26,
+        "normalizedRows": 26,
+        "delta": 0
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Prijslijst vtwonen pvc 11-2023 click en dryback apart.xlsx",
+        "sheetName": "*",
+        "auditProductRows": 0,
+        "normalizedRows": 0,
+        "delta": 0,
+        "note": "Exacte kopie van DATA\\Leveranciers\\HenkeWonen\\Prijslijst vtwonen pvc 11-2023 click en dryback apart.xlsx; overgeslagen in importpreview."
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\PVC - palletcollectie op palletafname_2025 2025-06-11 07_31_31 (005).xlsx",
+        "sheetName": "Collectie overzicht",
+        "auditProductRows": 65,
+        "normalizedRows": 54,
+        "delta": 11
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\PVC - palletcollectie op palletafname_2025 2025-06-11 07_31_31 (005).xlsx",
+        "sheetName": "*",
+        "auditProductRows": 0,
+        "normalizedRows": 0,
+        "delta": 0,
+        "note": "Exacte kopie van DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\PVC - palletcollectie op palletafname_2025 2025-06-11 07_31_31 (005).xlsx; overgeslagen in importpreview."
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\PVC 11-2025 click dryback apart floorlife.xlsx",
+        "sheetName": "Floorlife PVC Dryback",
+        "auditProductRows": 143,
+        "normalizedRows": 142,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\PVC 11-2025 click dryback apart floorlife.xlsx",
+        "sheetName": "Floorlife PVC SRC",
+        "auditProductRows": 121,
+        "normalizedRows": 120,
+        "delta": 1
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\PVC 11-2025 click dryback apart floorlife.xlsx",
+        "sheetName": "Blad1",
+        "auditProductRows": 0,
+        "normalizedRows": 0,
+        "delta": 0,
+        "note": "Geen header gevonden."
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Roots collectie NL 2026 incl. adviesverkoopprijs per pak vanaf 1.05.2026 - A.xlsx",
+        "sheetName": "ROOTS 2026 VANAF Q2",
+        "auditProductRows": 59,
+        "normalizedRows": 59,
+        "delta": 0
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Roots collectie NL 2026 incl. adviesverkoopprijs per pak vanaf 1.05.2026 - A.xlsx",
+        "sheetName": "Sheet1",
+        "auditProductRows": 0,
+        "normalizedRows": 0,
+        "delta": 0,
+        "note": "Geen header gevonden."
+      }
+    ],
+    "importRowsWithoutPrices": [
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+        "sheetName": "Collectie Compleet",
+        "rowNumber": 1325,
+        "productName": "DAHLIA 140CM 61 BEIGE Overgordijn",
+        "categoryName": "Gordijnen"
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+        "sheetName": "Collectie Compleet",
+        "rowNumber": 2033,
+        "productName": "EXTERNE STOFLEVERING 00 Overgordijn",
+        "categoryName": "Gordijnen"
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+        "sheetName": "Collectie Compleet",
+        "rowNumber": 2034,
+        "productName": "EXTERNE STOFLEVERING VOERING Overgordijn",
+        "categoryName": "Gordijnen"
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+        "sheetName": "Collectie Compleet",
+        "rowNumber": 2116,
+        "productName": "FIRE FR+DIMOUT 73 Overgordijn",
+        "categoryName": "Gordijnen"
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+        "sheetName": "Collectie Compleet",
+        "rowNumber": 2122,
+        "productName": "FIRE FR+DIMOUT 86 ALPACA FR Overgordijn",
+        "categoryName": "Gordijnen"
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+        "sheetName": "Collectie Compleet",
+        "rowNumber": 5569,
+        "productName": "VIRAGO FR 305CM ZLB 60MV LACE Vitrage",
+        "categoryName": "Gordijnen"
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+        "sheetName": "Collectie Compleet",
+        "rowNumber": 5755,
+        "productName": "VOERING RAINBOW 280 49 Overgordijn",
+        "categoryName": "Gordijnen"
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+        "sheetName": "Collectie Compleet",
+        "rowNumber": 6865,
+        "productName": "FIRE FR+DIMOUT 73 Overgordijn",
+        "categoryName": "Gordijnen"
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+        "sheetName": "Collectie Compleet",
+        "rowNumber": 6871,
+        "productName": "FIRE FR+DIMOUT 86 ALPACA FR Overgordijn",
+        "categoryName": "Gordijnen"
+      },
+      {
+        "sourcePath": "DATA\\Leveranciers\\HenkeWonen\\Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+        "sheetName": "Collectie Compleet",
+        "rowNumber": 8071,
+        "productName": "VOERING RAINBOW 280 49 Overgordijn",
+        "categoryName": "Gordijnen"
+      }
+    ]
+  },
+  "findings": [
+    {
+      "severity": "HOOG",
+      "title": "btw-modus is meestal onbekend",
+      "detail": "12984 prijsregels hebben vatMode=unknown. Definitieve import moet mapping blokkeren of expliciet laten bevestigen."
+    },
+    {
+      "severity": "MIDDEL",
+      "title": "catalogusrijen zonder prijs",
+      "detail": "10 rijen normaliseren wel als product maar krijgen geen prijsregel; deze moeten in preview als warning zichtbaar zijn."
+    },
+    {
+      "severity": "INFO",
+      "title": "deduplicatie verklaart lager productaantal",
+      "detail": "10291 previewrijen leveren 7775 unieke importKeys op; Convex productaantal lager dan rijaantal is dus verwacht, maar prijzen moeten per priceList/sourceKey blijven bestaan."
+    }
+  ]
+}

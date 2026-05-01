@@ -1,0 +1,43 @@
+{
+  "name": "henke-wonen-portal",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "catalog:audit": "node tools/run_python_tool.mjs tools/audit_excel_data.py",
+    "catalog:preview": "node tools/run_python_tool.mjs tools/build_catalog_import.py",
+    "catalog:reset": "node tools/reset_catalog_import.mjs",
+    "catalog:import": "node tools/upload_catalog_batch_import.mjs",
+    "catalog:import:dev": "node tools/upload_catalog_batch_import.mjs --allow-unknown-vat",
+    "catalog:import:legacy": "node tools/upload_catalog_import.mjs",
+    "portal:demo-seed": "node tools/seed_demo_portal_data.mjs",
+    "test:portal": "node tools/test_portal_routes.mjs",
+    "test:a11y": "node tools/test_portal_a11y.mjs",
+    "test:calculators": "node tools/test_calculators.mjs",
+    "test:quote-document": "node tools/test_quote_document_model.mjs",
+    "convex:dev": "convex dev",
+    "convex:deploy": "convex deploy"
+  },
+  "dependencies": {
+    "@astrojs/check": "latest",
+    "@astrojs/react": "latest",
+    "@astrojs/vercel": "latest",
+    "@convex-dev/react-query": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "astro": "latest",
+    "convex": "latest",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "typescript": "latest"
+  },
+  "devDependencies": {
+    "tailwindcss": "latest"
+  }
+}

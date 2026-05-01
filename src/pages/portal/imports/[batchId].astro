@@ -1,0 +1,27 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import ImportPreview from "../../../components/imports/ImportPreview";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+const batchId = Astro.params.batchId ?? "";
+const breadcrumbs = [
+  { label: "Portal", href: "/portal" },
+  { label: "Imports", href: "/portal/imports" },
+  { label: "Batchdetail" }
+];
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Import" session={session}>
+  <PageHeader
+    eyebrow="Importvoorvertoning"
+    title="Batch"
+    description="Auditregels, waarschuwingen en voorvertoningsdetails voor deze importbatch."
+    breadcrumbs={breadcrumbs}
+  />
+  <ImportPreview client:load session={session} batchId={batchId} />
+</PortalLayout>

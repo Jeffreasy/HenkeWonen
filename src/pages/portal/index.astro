@@ -1,0 +1,21 @@
+---
+import PortalLayout from "../../components/layout/PortalLayout.astro";
+import DashboardShell from "../../components/dashboard/DashboardShell";
+import { PageHeader } from "../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Overzicht" session={session}>
+  <PageHeader
+    eyebrow="Overzicht"
+    title="Henke Wonen operationeel systeem"
+    description="Klanten, projecten, offertes, productdata en importvoorbereiding voor Henke Wonen."
+  />
+
+  <DashboardShell client:load session={session} />
+</PortalLayout>

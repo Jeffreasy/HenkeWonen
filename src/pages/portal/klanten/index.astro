@@ -1,0 +1,20 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import CustomerWorkspace from "../../../components/customers/CustomerWorkspace";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Klanten" session={session}>
+  <PageHeader
+    eyebrow="CRM"
+    title="Klanten"
+    description="Klantgegevens, contactmomenten, afspraken en uitgeleende items centraal beheren."
+  />
+  <CustomerWorkspace client:load session={session} />
+</PortalLayout>

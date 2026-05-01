@@ -1,0 +1,1926 @@
+{
+  "bySourceFileName": [
+    {
+      "importedPrices": 8205,
+      "importedProducts": 5954,
+      "priceLists": 1,
+      "sourceFileName": "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx"
+    },
+    {
+      "importedPrices": 988,
+      "importedProducts": 988,
+      "priceLists": 1,
+      "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls"
+    },
+    {
+      "importedPrices": 786,
+      "importedProducts": 260,
+      "priceLists": 2,
+      "sourceFileName": "Prijslijst PVC 11-2025 click dryback apart.xlsx"
+    },
+    {
+      "importedPrices": 786,
+      "importedProducts": 260,
+      "priceLists": 2,
+      "sourceFileName": "PVC 11-2025 click dryback apart floorlife.xlsx"
+    },
+    {
+      "importedPrices": 469,
+      "importedProducts": 67,
+      "priceLists": 1,
+      "sourceFileName": "Co-pro prijslijst Plinten 2025-07.xlsx"
+    },
+    {
+      "importedPrices": 420,
+      "importedProducts": 111,
+      "priceLists": 1,
+      "sourceFileName": "Co-pro Entreematten 2025.xlsx"
+    },
+    {
+      "importedPrices": 270,
+      "importedProducts": 44,
+      "priceLists": 1,
+      "sourceFileName": "Prijslijst Ambiant Tapijt 2025-04.xlsx"
+    },
+    {
+      "importedPrices": 168,
+      "importedProducts": 56,
+      "priceLists": 2,
+      "sourceFileName": "Prijslijst EVC 2025 click en dryback apart.xlsx"
+    },
+    {
+      "importedPrices": 162,
+      "importedProducts": 31,
+      "priceLists": 1,
+      "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx"
+    },
+    {
+      "importedPrices": 146,
+      "importedProducts": 59,
+      "priceLists": 1,
+      "sourceFileName": "Roots collectie NL 2026 incl. adviesverkoopprijs per pak vanaf 1.05.2026 - A.xlsx"
+    },
+    {
+      "importedPrices": 138,
+      "importedProducts": 23,
+      "priceLists": 1,
+      "sourceFileName": "Prijslijst Ambiant Vinyl 07-2024.xlsx"
+    },
+    {
+      "importedPrices": 120,
+      "importedProducts": 40,
+      "priceLists": 2,
+      "sourceFileName": "Prijslijst vtwonen pvc 11-2023 click en dryback apart.xlsx"
+    },
+    {
+      "importedPrices": 108,
+      "importedProducts": 54,
+      "priceLists": 1,
+      "sourceFileName": "PVC - palletcollectie op palletafname_2025 2025-06-11 07_31_31 (005).xlsx"
+    },
+    {
+      "importedPrices": 72,
+      "importedProducts": 24,
+      "priceLists": 1,
+      "sourceFileName": "Prijslijst Wandpanelen 2025-05.xlsx"
+    },
+    {
+      "importedPrices": 69,
+      "importedProducts": 23,
+      "priceLists": 1,
+      "sourceFileName": "Prijslijst Douchepanelen en tegels 2025-04.xlsx"
+    },
+    {
+      "importedPrices": 57,
+      "importedProducts": 15,
+      "priceLists": 1,
+      "sourceFileName": "Prijslijst Traprenovatie Floorlife 2025.xlsx"
+    },
+    {
+      "importedPrices": 51,
+      "importedProducts": 26,
+      "priceLists": 1,
+      "sourceFileName": "Prijslijst VT Wonen Karpetten 2024.xlsx"
+    }
+  ],
+  "exists": true,
+  "importBatches": {
+    "batches": [],
+    "count": 0,
+    "errorRows": 0,
+    "totalRows": 0,
+    "validRows": 0,
+    "warningRows": 0
+  },
+  "issues": {
+    "activeProductsWithEmptyArticleNumberAndEanAndSupplierCode": {
+      "count": 69,
+      "samples": [
+        {
+          "category": "Tapijt",
+          "id": "kd79re4k7448manjqhx3mfgp5585s46p",
+          "name": "Sacramento",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd79r6vbq6pj8jhjr0wysaa6vx85rw0b",
+          "name": "Scottsdale",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd71fdh82jezqzxndhfnjd6jen85s2cg",
+          "name": "Lexington",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7e60rzsb3bqyyxvnysb19n4985s279",
+          "name": "Weave Tex",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd720pdy9hr35f1m23e7qhd02985s20e",
+          "name": "Comfy",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd74hrg0p6t5148g6erpsem8m185rhvy",
+          "name": "Jackson",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd70m4s2d2kmzcypzr1gh890rx85rk6x",
+          "name": "Riverside",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd71bqsqdzygrgkpd0c7cb110d85rdj5",
+          "name": "Weave Design",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7c1r8pww7dj5aj04b7vf85as85rb9m",
+          "name": "Jade",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd73wt45rjzb68gt0kshzkwpmd85rkz4",
+          "name": "Topaas",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7bkqnrrbagryk087n074as2h85s395",
+          "name": "Sisal Mayatex",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7dtjyx75tt2w25bex2ycfesh85skcd",
+          "name": "Traffic",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7a2fdhzjsev0dey89b1bd54985r5k5",
+          "name": "Sisal Dragongrass",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7dtz7v008y3b2mjzssj1s71185rd6b",
+          "name": "Woodford",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7e34y0fjkqr20semwhfqk5w185rw9d",
+          "name": "Hampton",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7fc9frdgmaaysdb5jhs4we3d85s7ww",
+          "name": "Nifty",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7f4by9szvy319x2jqgevj66585s5vc",
+          "name": "Cleveland",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd747e5pgg1er2jth8bj5908wx85rwj0",
+          "name": "Baltimore",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd75wpm5hdgna4n2gvjfn02aws85spy6",
+          "name": "Louisville",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd77kzj4c1jg20r4fx7jzc0a2x85stsv",
+          "name": "Nashville",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7brx0pdyzme0bmtqhj56apfd85r281",
+          "name": "Orlando",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd77a1n8h0sg22ahxp8ppyr26x85rtv9",
+          "name": "Newport",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7b6wey0qpfrvs6xhay1fb1xs85rhp6",
+          "name": "Dallas",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd700bn63h79j27fr16p8pxynn85s6kd",
+          "name": "Portland",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd79yk7r14ryh8tc34pjzwy75185sr1q",
+          "name": "Houston",
+          "supplier": "Ambiant"
+        }
+      ]
+    },
+    "activeProductsWithoutPriceRules": {
+      "count": 0,
+      "samples": []
+    },
+    "duplicateActiveProductsBySupplierArticleNumber": {
+      "duplicateProductCount": 0,
+      "groupCount": 0,
+      "productCount": 0,
+      "samples": []
+    },
+    "duplicateActiveProductsBySupplierEan": {
+      "duplicateProductCount": 25,
+      "groupCount": 25,
+      "productCount": 50,
+      "samples": [
+        {
+          "count": 2,
+          "key": "m975984addwx910vwn4vjxp43n85sbsy|8717003411802",
+          "products": [
+            {
+              "articleNumber": "6411182019",
+              "category": "PVC Dryback",
+              "ean": "8717003411802",
+              "id": "kd78r0zfamtx9g342rtn1ddmcs85szwa",
+              "name": "Floorlife YUP Leyton herringbone light oak",
+              "supplier": "Floorlife"
+            },
+            {
+              "articleNumber": "6411182119",
+              "category": "PVC Dryback",
+              "ean": "8717003411802",
+              "id": "kd70k1zqn5zp9ms4gszt6k3y6n85rhqg",
+              "name": "Floorlife YUP Leyton herringbone smoky",
+              "supplier": "Floorlife"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m975984addwx910vwn4vjxp43n85sbsy|8717003411826",
+          "products": [
+            {
+              "articleNumber": "6411182219",
+              "category": "PVC Dryback",
+              "ean": "8717003411826",
+              "id": "kd7epfyrc0es57yg36htcsjbyd85r6vd",
+              "name": "Floorlife YUP Leyton herringbone natural oak",
+              "supplier": "Floorlife"
+            },
+            {
+              "articleNumber": "6411182319",
+              "category": "PVC Dryback",
+              "ean": "8717003411826",
+              "id": "kd7fg5s77akmvejmvnjrav987d85s7mk",
+              "name": "Floorlife YUP Leyton herringbone dark oak",
+              "supplier": "Floorlife"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m975984addwx910vwn4vjxp43n85sbsy|8717003466970",
+          "products": [
+            {
+              "articleNumber": "6080101119",
+              "category": "PVC Dryback",
+              "ean": "8717003466970",
+              "id": "kd75d03rsy8m2ea1acm1zn3yk185s0kb",
+              "name": "Floorlife Yup XL Greenford warm beige",
+              "supplier": "Floorlife"
+            },
+            {
+              "articleNumber": "6070101119",
+              "category": "PVC Dryback",
+              "ean": "8717003466970",
+              "id": "kd78m3gd5m0jjsmv2psaess7xh85rymj",
+              "name": "Floorlife Greenford warm beige",
+              "supplier": "Floorlife"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m975984addwx910vwn4vjxp43n85sbsy|8717003438038",
+          "products": [
+            {
+              "articleNumber": "6620191119",
+              "category": "PVC Dryback",
+              "ean": "8717003438038",
+              "id": "kd73dtgweke6kr3zj855bpp5hn85r1kd",
+              "name": "Floorlife Greenwich warm oak",
+              "supplier": "Floorlife"
+            },
+            {
+              "articleNumber": "6620191219",
+              "category": "PVC Dryback",
+              "ean": "8717003438038",
+              "id": "kd7fy7awy7xt412tf9f1sc319585rhyx",
+              "name": "Floorlife Greenwich dark oak",
+              "supplier": "Floorlife"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m975984addwx910vwn4vjxp43n85sbsy|8717003411703",
+          "products": [
+            {
+              "articleNumber": "6096182419",
+              "category": "PVC Dryback",
+              "ean": "8717003411703",
+              "id": "kd72tjya9mhfkr98akwyj2zc7185sb9b",
+              "name": "Floorlife Leyton beige",
+              "supplier": "Floorlife"
+            },
+            {
+              "articleNumber": "6197282419",
+              "category": "PVC Click",
+              "ean": "8717003411703",
+              "id": "kd79r97yh485w8355p9n6ewr3x85sn4z",
+              "name": "Floorlife Leyton beige",
+              "supplier": "Floorlife"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m975984addwx910vwn4vjxp43n85sbsy|8717003411710",
+          "products": [
+            {
+              "articleNumber": "6096182519",
+              "category": "PVC Dryback",
+              "ean": "8717003411710",
+              "id": "kd72w17s620y5m41vq56bw3yed85s4bj",
+              "name": "Floorlife Leyton warm oak",
+              "supplier": "Floorlife"
+            },
+            {
+              "articleNumber": "6197282519",
+              "category": "PVC Click",
+              "ean": "8717003411710",
+              "id": "kd75jtydwggb2r4b2fyxwffpqx85s9ka",
+              "name": "Floorlife Leyton warm oak",
+              "supplier": "Floorlife"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m975984addwx910vwn4vjxp43n85sbsy|8717003412335",
+          "products": [
+            {
+              "articleNumber": "9085155719",
+              "category": "PVC Dryback",
+              "ean": "8717003412335",
+              "id": "kd7fz67qed6sch35xk9xy2sx0985r2gm",
+              "name": "Floorlife Parramatta dark oak",
+              "supplier": "Floorlife"
+            },
+            {
+              "articleNumber": "6155255619",
+              "category": "PVC Click",
+              "ean": "8717003412335",
+              "id": "kd75aafd0mtfgt0t4xvdfgjvnd85svy3",
+              "name": "Floorlife Parramatta light oak",
+              "supplier": "Floorlife"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m975984addwx910vwn4vjxp43n85sbsy|8717003411628",
+          "products": [
+            {
+              "articleNumber": "6012841019",
+              "category": "PVC Click",
+              "ean": "8717003411628",
+              "id": "kd717fjvcbakvtm4z0zf38eajn85sjpx",
+              "name": "Floorlife Newham dark oak",
+              "supplier": "Floorlife"
+            },
+            {
+              "articleNumber": "6012841119",
+              "category": "PVC Click",
+              "ean": "8717003411628",
+              "id": "kd7dgpmg53mpnctryvfbar3e9185rz5y",
+              "name": "Floorlife Newham beige",
+              "supplier": "Floorlife"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m97cp1tsczm06txaam61n125kh85r3qx|5414911180679",
+          "products": [
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911180679",
+              "id": "kd73039x1a9eephhy1wa2p3f9h85reck",
+              "name": "MOD ROOTS 0,55 EIR COUNTRY OAK 54991Q Country Oak 54991 RO54991SDP40849",
+              "supplier": "Roots",
+              "supplierCode": "400091960"
+            },
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911180679",
+              "id": "kd7eyqg247ys2jb784bp1nr4x985sg65",
+              "name": "MOD ROOTS 0,55 EIR COUNTRY OAK 54991Y Country Oak 54991 RO54991HB40849",
+              "supplier": "Roots",
+              "supplierCode": "400092501"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m97cp1tsczm06txaam61n125kh85r3qx|5414911211939",
+          "products": [
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911211939",
+              "id": "kd7d888bs5y7s154xktv7eyz6985sqgw",
+              "name": "MOD ROOTS 0,55 EIR GALTYMORE OAK 86215BE Galtymore Oak 86215 RO86215MP40995",
+              "supplier": "Roots",
+              "supplierCode": "400099290"
+            },
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911211939",
+              "id": "kd7e5jx5kxmdm3x789xtnethsh85sfcs",
+              "name": "MOD ROOTS 0,55 EIR GALTYMORE OAK 86215Y Galtymore Oak 86215 RO86215HB40995",
+              "supplier": "Roots",
+              "supplierCode": "400099402"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m97cp1tsczm06txaam61n125kh85r3qx|5414911208854",
+          "products": [
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911208854",
+              "id": "kd72t58v4tgthb2t16j31argz585sy4f",
+              "name": "MOD ROOTS 0,55 EIR GALTYMORE OAK 86221BE Galtymore Oak 86221 RO86221MP40990",
+              "supplier": "Roots",
+              "supplierCode": "400099245"
+            },
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911208854",
+              "id": "kd79bwca8c4ewm2skzvee5kftx85rqrr",
+              "name": "MOD ROOTS 0,55 EIR GALTYMORE OAK 86221Y Galtymore Oak 86221 RO86221HB40990",
+              "supplier": "Roots",
+              "supplierCode": "400099250"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m97cp1tsczm06txaam61n125kh85r3qx|5414911211915",
+          "products": [
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911211915",
+              "id": "kd7admcp7heey6rqzhrra92rjh85rqa6",
+              "name": "MOD ROOTS 0,55 EIR GALWAY OAK 87231BE Galway Oak 87231 RO87231MP40994",
+              "supplier": "Roots",
+              "supplierCode": "400099289"
+            },
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911211915",
+              "id": "kd7bq358yp4zqqe7vjqyrjcac985rkaq",
+              "name": "MOD ROOTS 0,55 EIR GALWAY OAK 87231Y Galway Oak 87231 RO87231HB40994",
+              "supplier": "Roots",
+              "supplierCode": "400099291"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m97cp1tsczm06txaam61n125kh85r3qx|5414911208793",
+          "products": [
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911208793",
+              "id": "kd7esqy24at27x09s6rzdhbbws85s7gv",
+              "name": "MOD ROOTS 0,55 EIR GALWAY OAK 87245BE Galway Oak 87245 RO87245MP40988",
+              "supplier": "Roots",
+              "supplierCode": "400099242"
+            },
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911208793",
+              "id": "kd72w75yyczrv9jfna72dx5v5985s26s",
+              "name": "MOD ROOTS 0,55 EIR GALWAY OAK 87245Y Galway Oak 87245 RO87245HB40988",
+              "supplier": "Roots",
+              "supplierCode": "400099247"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m97cp1tsczm06txaam61n125kh85r3qx|5414911208816",
+          "products": [
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911208816",
+              "id": "kd72qkd42bk5hhy96vtssftn8h85rc7j",
+              "name": "MOD ROOTS 0,55 EIR GALWAY OAK 87275BE Galway Oak 87275 RO87275MP40989",
+              "supplier": "Roots",
+              "supplierCode": "400099243"
+            },
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911208816",
+              "id": "kd75p1nh5d4qm277gwrv9j988h85r99g",
+              "name": "MOD ROOTS 0,55 EIR GALWAY OAK 87275Y Galway Oak 87275 RO87275HB40989",
+              "supplier": "Roots",
+              "supplierCode": "400099248"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m97cp1tsczm06txaam61n125kh85r3qx|5414911182246",
+          "products": [
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911182246",
+              "id": "kd76tjsgwyb5xr2yrkd48zqyz985svpa",
+              "name": "MOD ROOTS 0,55 EIR LAUREL OAK 51229BE Laurel Oak 51229 RO51229MP40643",
+              "supplier": "Roots",
+              "supplierCode": "400092558"
+            },
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911182246",
+              "id": "kd7fhjmmsfbqnzxeb8y0wr966n85r50q",
+              "name": "MOD ROOTS 0,55 EIR LAUREL OAK 51229Y Laurel Oak 51229 RO51229HB40643",
+              "supplier": "Roots",
+              "supplierCode": "400092508"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m97cp1tsczm06txaam61n125kh85r3qx|5414911182260",
+          "products": [
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911182260",
+              "id": "kd78n2bsg03k5670mvs25t0g7s85rghv",
+              "name": "MOD ROOTS 0,55 EIR LAUREL OAK 51282BE Laurel Oak 51282 RO51282MP40646",
+              "supplier": "Roots",
+              "supplierCode": "400092559"
+            },
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911182260",
+              "id": "kd72n244rwx3gfrdrp4sv42ndh85s303",
+              "name": "MOD ROOTS 0,55 EIR LAUREL OAK 51282Y Laurel Oak 51282 RO51282HB40646",
+              "supplier": "Roots",
+              "supplierCode": "400092509"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m97cp1tsczm06txaam61n125kh85r3qx|5401015039910",
+          "products": [
+            {
+              "category": "PVC Vloeren",
+              "ean": "5401015039910",
+              "id": "kd718ex9hmchsgszhp7j70xrt585s736",
+              "name": "MOD ROOTS 0,55 GALTYMORE OAK 86230BE Galtymore Oak 86230 RO86230MP41235",
+              "supplier": "Roots",
+              "supplierCode": "400109605"
+            },
+            {
+              "category": "PVC Vloeren",
+              "ean": "5401015039910",
+              "id": "kd72g2c36hkssrtapmrhjmnd2s85sg8a",
+              "name": "MOD ROOTS 0,55 GALTYMORE OAK 86230Y Galtymore Oak 86230 RO86230HB41235",
+              "supplier": "Roots",
+              "supplierCode": "400109627"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m97cp1tsczm06txaam61n125kh85r3qx|5401015039927",
+          "products": [
+            {
+              "category": "PVC Vloeren",
+              "ean": "5401015039927",
+              "id": "kd7fnfppa0fe95ymfe4drwh0y985rgvc",
+              "name": "MOD ROOTS 0,55 GALTYMORE OAK 86346BE Galtymore Oak 86346 RO86346MP41236",
+              "supplier": "Roots",
+              "supplierCode": "400109606"
+            },
+            {
+              "category": "PVC Vloeren",
+              "ean": "5401015039927",
+              "id": "kd72jk20npd2ans27gfex1apsh85r7jz",
+              "name": "MOD ROOTS 0,55 GALTYMORE OAK 86346Y Galtymore Oak 86346 RO86346HB41236",
+              "supplier": "Roots",
+              "supplierCode": "400109628"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m97cp1tsczm06txaam61n125kh85r3qx|5401015047274",
+          "products": [
+            {
+              "category": "PVC Vloeren",
+              "ean": "5401015047274",
+              "id": "kd72m4me3kaaswvn8vj8swsrfn85sgd7",
+              "name": "MOD ROOTS 0,55 GALTYMORE OAK 86871BE Galtymore Oak 86871 RO86871MP41252",
+              "supplier": "Roots",
+              "supplierCode": "400109860"
+            },
+            {
+              "category": "PVC Vloeren",
+              "ean": "5401015047274",
+              "id": "kd717m8ddgqw9nxn0s2mpm7z3x85rxej",
+              "name": "MOD ROOTS 0,55 GALTYMORE OAK 86871Y Galtymore Oak 86871 RO86871HB41252",
+              "supplier": "Roots",
+              "supplierCode": "400109626"
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "key": "m97cp1tsczm06txaam61n125kh85r3qx|5414911181867",
+          "products": [
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911181867",
+              "id": "kd73qapr23a8nqjsbevhe800e185sc2m",
+              "name": "MOD ROOTS 0,55 GALTYMORE OAK 86879BE Galtymore Oak 86879 RO86879MP41251",
+              "supplier": "Roots",
+              "supplierCode": "400109859"
+            },
+            {
+              "category": "PVC Vloeren",
+              "ean": "5414911181867",
+              "id": "kd75kvvwq35wqamkmja4z6yv2d85sx3z",
+              "name": "MOD ROOTS 0,55 GALTYMORE OAK 86879Y Galtymore Oak 86879 RO86879HB41251",
+              "supplier": "Roots",
+              "supplierCode": "400109625"
+            }
+          ]
+        }
+      ]
+    },
+    "duplicateActiveProductsBySupplierSupplierCode": {
+      "duplicateProductCount": 0,
+      "groupCount": 0,
+      "productCount": 0,
+      "samples": []
+    },
+    "duplicatePriceSourceKeys": {
+      "groupCount": 0,
+      "samples": []
+    },
+    "priceRulesWithAmountLteZero": {
+      "count": 0,
+      "samples": []
+    },
+    "priceRulesWithVatModeUnknown": {
+      "count": 12984,
+      "samples": [
+        {
+          "amount": 99.95,
+          "id": "k971j4cw197gvee0m2v1pcdf1585s4sw",
+          "priceType": "advice_retail",
+          "priceUnit": "m1",
+          "productId": "kd7cddr70d7dth2bq5bf3bx2px85sqg4",
+          "productName": "ADORABLE ZLB 62MV OYSTER Vitrage",
+          "sourceColumnIndex": 15,
+          "sourceColumnName": "Consumer Price",
+          "sourceFileName": "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+          "sourceKey": "b2cc301ca35e812c7100a7c7",
+          "sourceRowNumber": 2,
+          "sourceSheetName": "Collectie Compleet",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 99.95,
+          "id": "k97c3m3yzzbbvpkzk7rayaj7cn85s766",
+          "priceType": "advice_retail",
+          "priceUnit": "m1",
+          "productId": "kd738cdkvasjxmmwsjtvbrdyzx85sag4",
+          "productName": "ADORABLE ZLB 64MV SAND Vitrage",
+          "sourceColumnIndex": 15,
+          "sourceColumnName": "Consumer Price",
+          "sourceFileName": "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+          "sourceKey": "b7cba43af79d6be7dc426676",
+          "sourceRowNumber": 3,
+          "sourceSheetName": "Collectie Compleet",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 99.95,
+          "id": "k9700700vb5qmf67y0adhr7c3d85s5aa",
+          "priceType": "advice_retail",
+          "priceUnit": "m1",
+          "productId": "kd72e9y1mzgq4q24gksmdvg00185staf",
+          "productName": "ADORABLE ZLB 65MV FOSSIL Vitrage",
+          "sourceColumnIndex": 15,
+          "sourceColumnName": "Consumer Price",
+          "sourceFileName": "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+          "sourceKey": "220b9003f0975a2f52159b9c",
+          "sourceRowNumber": 4,
+          "sourceSheetName": "Collectie Compleet",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 99.95,
+          "id": "k97fey9z3cw162wqmzghw1fz7n85rck3",
+          "priceType": "advice_retail",
+          "priceUnit": "m1",
+          "productId": "kd71fbxbhz2b359djhj9a5ac7s85sy5x",
+          "productName": "ADORABLE ZLB 66MV TOUW Vitrage",
+          "sourceColumnIndex": 15,
+          "sourceColumnName": "Consumer Price",
+          "sourceFileName": "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+          "sourceKey": "92a0d5aa30cc127b43301b1f",
+          "sourceRowNumber": 5,
+          "sourceSheetName": "Collectie Compleet",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 99.95,
+          "id": "k977hmbfs853aa61vta6zmgx4185rbnd",
+          "priceType": "advice_retail",
+          "priceUnit": "m1",
+          "productId": "kd7ej8626ttn7vjzm9d4acp8sh85swhc",
+          "productName": "ADORABLE ZLB 67MV CARAMEL Vitrage",
+          "sourceColumnIndex": 15,
+          "sourceColumnName": "Consumer Price",
+          "sourceFileName": "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+          "sourceKey": "d9b10d6416ecbbc8ef7783a7",
+          "sourceRowNumber": 6,
+          "sourceSheetName": "Collectie Compleet",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 99.95,
+          "id": "k972ncjbq1w7686z1xyshc6f7s85rfqz",
+          "priceType": "advice_retail",
+          "priceUnit": "m1",
+          "productId": "kd75pdrkethd6dy27pzvvvsr2585r3zf",
+          "productName": "ADORABLE ZLB 68MV TAUPE Vitrage",
+          "sourceColumnIndex": 15,
+          "sourceColumnName": "Consumer Price",
+          "sourceFileName": "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+          "sourceKey": "0ca204326b94992d4334eb64",
+          "sourceRowNumber": 7,
+          "sourceSheetName": "Collectie Compleet",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 99.95,
+          "id": "k9707sjpkbrp42r781nh2j5h7d85sgmd",
+          "priceType": "advice_retail",
+          "priceUnit": "m1",
+          "productId": "kd77jz01aj425zdwdc40m5187n85re0h",
+          "productName": "ADORABLE ZLB 72MV ASH Vitrage",
+          "sourceColumnIndex": 15,
+          "sourceColumnName": "Consumer Price",
+          "sourceFileName": "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+          "sourceKey": "e0434877a6a8deb3374331d8",
+          "sourceRowNumber": 8,
+          "sourceSheetName": "Collectie Compleet",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 99.95,
+          "id": "k979had1hzw67erjdzxnmm1mrn85rek7",
+          "priceType": "advice_retail",
+          "priceUnit": "m1",
+          "productId": "kd77k47sjx410j6b5vsrmn9zw185se7j",
+          "productName": "ADORABLE ZLB 74MV MOUSE Vitrage",
+          "sourceColumnIndex": 15,
+          "sourceColumnName": "Consumer Price",
+          "sourceFileName": "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+          "sourceKey": "6698d7a1cf9af8a0b368c17b",
+          "sourceRowNumber": 9,
+          "sourceSheetName": "Collectie Compleet",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 99.95,
+          "id": "k97ajrp08m3htz7kmq6rfw2my185rs00",
+          "priceType": "advice_retail",
+          "priceUnit": "m1",
+          "productId": "kd728js9fk3pg2fty860nbf3p185r8tc",
+          "productName": "ADORABLE ZLB 75MV SHARK Vitrage",
+          "sourceColumnIndex": 15,
+          "sourceColumnName": "Consumer Price",
+          "sourceFileName": "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+          "sourceKey": "d04a01feedbf06c314745a8b",
+          "sourceRowNumber": 10,
+          "sourceSheetName": "Collectie Compleet",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 99.95,
+          "id": "k97a05jtdyx4seh9a9y9e1x8ss85sqhk",
+          "priceType": "advice_retail",
+          "priceUnit": "m1",
+          "productId": "kd751x518ewfycstbq4meah2an85svwr",
+          "productName": "ADORABLE ZLB 76MV TITANIU Vitrage",
+          "sourceColumnIndex": 15,
+          "sourceColumnName": "Consumer Price",
+          "sourceFileName": "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+          "sourceKey": "3e46757c7e0db36eeebd50b1",
+          "sourceRowNumber": 11,
+          "sourceSheetName": "Collectie Compleet",
+          "vatMode": "unknown"
+        }
+      ]
+    },
+    "priceRulesWithoutExistingProduct": {
+      "count": 0,
+      "samples": []
+    }
+  },
+  "prices": {
+    "byPriceListId": [
+      {
+        "count": 8205,
+        "id": "js76b5ydf6bzwgt4jm6bc32xk585rhzn",
+        "name": "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx - Collectie Compleet",
+        "sourceFileName": "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
+        "sourceSheetName": "Collectie Compleet"
+      },
+      {
+        "count": 988,
+        "id": "js72w2mxpwx2qcc7xvt6fnjnt585szp2",
+        "name": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls - henke-swifterbant-artikeloverzi",
+        "sourceFileName": "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
+        "sourceSheetName": "henke-swifterbant-artikeloverzi"
+      },
+      {
+        "count": 469,
+        "id": "js717y07xjd67cecxcygfpfa8n85rfsw",
+        "name": "Co-pro prijslijst Plinten 2025-07.xlsx - juli 2025",
+        "sourceFileName": "Co-pro prijslijst Plinten 2025-07.xlsx",
+        "sourceSheetName": "juli 2025"
+      },
+      {
+        "count": 426,
+        "id": "js7cxm98f3djcxrhjhv1vawb4s85spxz",
+        "name": "Prijslijst PVC 11-2025 click dryback apart.xlsx - Floorlife PVC Dryback",
+        "sourceFileName": "Prijslijst PVC 11-2025 click dryback apart.xlsx",
+        "sourceSheetName": "Floorlife PVC Dryback"
+      },
+      {
+        "count": 426,
+        "id": "js771hxn0z4qsq7abnjndxg4gd85r8t8",
+        "name": "PVC 11-2025 click dryback apart floorlife.xlsx - Floorlife PVC Dryback",
+        "sourceFileName": "PVC 11-2025 click dryback apart floorlife.xlsx",
+        "sourceSheetName": "Floorlife PVC Dryback"
+      },
+      {
+        "count": 420,
+        "id": "js7an3rc789rre4tvmpvv2y1qs85rmas",
+        "name": "Co-pro Entreematten 2025.xlsx - Ambiant Entreematten",
+        "sourceFileName": "Co-pro Entreematten 2025.xlsx",
+        "sourceSheetName": "Ambiant Entreematten"
+      },
+      {
+        "count": 360,
+        "id": "js75rc8bhs6kztsstey296qxdx85r7vw",
+        "name": "Prijslijst PVC 11-2025 click dryback apart.xlsx - Floorlife PVC SRC",
+        "sourceFileName": "Prijslijst PVC 11-2025 click dryback apart.xlsx",
+        "sourceSheetName": "Floorlife PVC SRC"
+      },
+      {
+        "count": 360,
+        "id": "js7fvbvc8r8eg7j5vmwxgqg10d85s6fr",
+        "name": "PVC 11-2025 click dryback apart floorlife.xlsx - Floorlife PVC SRC",
+        "sourceFileName": "PVC 11-2025 click dryback apart floorlife.xlsx",
+        "sourceSheetName": "Floorlife PVC SRC"
+      },
+      {
+        "count": 270,
+        "id": "js70e1ev9tgv2rdwf0ebn3q0kd85s2z5",
+        "name": "Prijslijst Ambiant Tapijt 2025-04.xlsx - Tapijt",
+        "sourceFileName": "Prijslijst Ambiant Tapijt 2025-04.xlsx",
+        "sourceSheetName": "Tapijt"
+      },
+      {
+        "count": 162,
+        "id": "js7ftwn5a6v1fe8w5xfje80ky585rw6c",
+        "name": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx - Blad1",
+        "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+        "sourceSheetName": "Blad1"
+      },
+      {
+        "count": 146,
+        "id": "js7dnnabe4yja4zc18he2wps2185sh3q",
+        "name": "Roots collectie NL 2026 incl. adviesverkoopprijs per pak vanaf 1.05.2026 - A.xlsx - ROOTS 2026 VANAF Q2",
+        "sourceFileName": "Roots collectie NL 2026 incl. adviesverkoopprijs per pak vanaf 1.05.2026 - A.xlsx",
+        "sourceSheetName": "ROOTS 2026 VANAF Q2"
+      },
+      {
+        "count": 138,
+        "id": "js7bh3c0nc754cq5sv886gh8f585ryyy",
+        "name": "Prijslijst Ambiant Vinyl 07-2024.xlsx - Vinyl",
+        "sourceFileName": "Prijslijst Ambiant Vinyl 07-2024.xlsx",
+        "sourceSheetName": "Vinyl"
+      },
+      {
+        "count": 108,
+        "id": "js7df61qymzzztak1gsdfq46ph85sm5q",
+        "name": "Prijslijst EVC 2025 click en dryback apart.xlsx - Drbyack",
+        "sourceFileName": "Prijslijst EVC 2025 click en dryback apart.xlsx",
+        "sourceSheetName": "Drbyack"
+      },
+      {
+        "count": 108,
+        "id": "js7b40wvfy6aqg4jfqkhess7t585sgjg",
+        "name": "PVC - palletcollectie op palletafname_2025 2025-06-11 07_31_31 (005).xlsx - Collectie overzicht",
+        "sourceFileName": "PVC - palletcollectie op palletafname_2025 2025-06-11 07_31_31 (005).xlsx",
+        "sourceSheetName": "Collectie overzicht"
+      },
+      {
+        "count": 78,
+        "id": "js70cgsjcaq3d7rz5ffr00xf0985rke2",
+        "name": "Prijslijst vtwonen pvc 11-2023 click en dryback apart.xlsx - Prijslijst - vtwonen PVC drybac",
+        "sourceFileName": "Prijslijst vtwonen pvc 11-2023 click en dryback apart.xlsx",
+        "sourceSheetName": "Prijslijst - vtwonen PVC drybac"
+      },
+      {
+        "count": 72,
+        "id": "js7495w0pavk0jvgxz2zy7gcx585r1dh",
+        "name": "Prijslijst Wandpanelen 2025-05.xlsx - Blad1",
+        "sourceFileName": "Prijslijst Wandpanelen 2025-05.xlsx",
+        "sourceSheetName": "Blad1"
+      },
+      {
+        "count": 69,
+        "id": "js7b59c1y221tm1kmr9k7jx29185r7aq",
+        "name": "Prijslijst Douchepanelen en tegels 2025-04.xlsx - Blad1",
+        "sourceFileName": "Prijslijst Douchepanelen en tegels 2025-04.xlsx",
+        "sourceSheetName": "Blad1"
+      },
+      {
+        "count": 60,
+        "id": "js75tperj9hq610krkr9evbsnx85rzdb",
+        "name": "Prijslijst EVC 2025 click en dryback apart.xlsx - Click",
+        "sourceFileName": "Prijslijst EVC 2025 click en dryback apart.xlsx",
+        "sourceSheetName": "Click"
+      },
+      {
+        "count": 57,
+        "id": "js7cwyfm3jty20rjmtxpzat1kn85stvh",
+        "name": "Prijslijst Traprenovatie Floorlife 2025.xlsx - Prijslijst",
+        "sourceFileName": "Prijslijst Traprenovatie Floorlife 2025.xlsx",
+        "sourceSheetName": "Prijslijst"
+      },
+      {
+        "count": 51,
+        "id": "js7d7bxkwas1fkrca86pf4cyf185se2c",
+        "name": "Prijslijst VT Wonen Karpetten 2024.xlsx - Blad1",
+        "sourceFileName": "Prijslijst VT Wonen Karpetten 2024.xlsx",
+        "sourceSheetName": "Blad1"
+      },
+      {
+        "count": 42,
+        "id": "js72z419a9pjmggnvd000h1tdn85sfpm",
+        "name": "Prijslijst vtwonen pvc 11-2023 click en dryback apart.xlsx - Prijslijst - vtwonen PVC click",
+        "sourceFileName": "Prijslijst vtwonen pvc 11-2023 click en dryback apart.xlsx",
+        "sourceSheetName": "Prijslijst - vtwonen PVC click"
+      }
+    ],
+    "byPriceType": {
+      "advice_retail": 10510,
+      "commission": 891,
+      "cut_length": 235,
+      "net_purchase": 59,
+      "package": 14,
+      "pallet": 840,
+      "purchase": 96,
+      "roll": 235,
+      "step": 15,
+      "trailer": 120
+    },
+    "bySourceFileName": {
+      "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx": 8205,
+      "Co-pro Entreematten 2025.xlsx": 420,
+      "Co-pro prijslijst Plinten 2025-07.xlsx": 469,
+      "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx": 162,
+      "PVC - palletcollectie op palletafname_2025 2025-06-11 07_31_31 (005).xlsx": 108,
+      "PVC 11-2025 click dryback apart floorlife.xlsx": 786,
+      "Prijslijst Ambiant Tapijt 2025-04.xlsx": 270,
+      "Prijslijst Ambiant Vinyl 07-2024.xlsx": 138,
+      "Prijslijst Douchepanelen en tegels 2025-04.xlsx": 69,
+      "Prijslijst EVC 2025 click en dryback apart.xlsx": 168,
+      "Prijslijst PVC 11-2025 click dryback apart.xlsx": 786,
+      "Prijslijst Traprenovatie Floorlife 2025.xlsx": 57,
+      "Prijslijst VT Wonen Karpetten 2024.xlsx": 51,
+      "Prijslijst Wandpanelen 2025-05.xlsx": 72,
+      "Prijslijst vtwonen pvc 11-2023 click en dryback apart.xlsx": 120,
+      "Roots collectie NL 2026 incl. adviesverkoopprijs per pak vanaf 1.05.2026 - A.xlsx": 146,
+      "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls": 988
+    },
+    "byUnit": {
+      "custom": 207,
+      "m1": 9709,
+      "m2": 2083,
+      "meter": 268,
+      "pack": 169,
+      "package": 93,
+      "pallet": 23,
+      "piece": 244,
+      "roll": 99,
+      "trailer": 120
+    },
+    "byVatMode": {
+      "inclusive": 31,
+      "unknown": 12984
+    },
+    "total": 13015
+  },
+  "products": {
+    "byCategoryId": [
+      {
+        "count": 5954,
+        "id": "j97ap94gmjjz7wjm7vky4kd2vx85rghp",
+        "name": "Gordijnen"
+      },
+      {
+        "count": 1032,
+        "id": "j976we34949xwv8ppepea1hnq985s303",
+        "name": "Tapijt"
+      },
+      {
+        "count": 176,
+        "id": "j97dr2vf3tecfkgr6mtt1sqzr985syp7",
+        "name": "PVC Dryback"
+      },
+      {
+        "count": 154,
+        "id": "j978ke21zrj8yqzeq52bg60ey585sp4t",
+        "name": "PVC Click"
+      },
+      {
+        "count": 111,
+        "id": "j971h2zjrgmkzhskpzrv58f8sx85sy92",
+        "name": "Entreematten"
+      },
+      {
+        "count": 85,
+        "id": "j978sjnpv9vhk6psec7m0gx4qx85sqfk",
+        "name": "PVC Vloeren"
+      },
+      {
+        "count": 67,
+        "id": "j972jbnnwb4tv0me3qgbq18nd985sf4j",
+        "name": "Plinten"
+      },
+      {
+        "count": 54,
+        "id": "j97ertfrf7n6tfmhhe7bvcykes85rjgb",
+        "name": "Palletcollectie PVC"
+      },
+      {
+        "count": 26,
+        "id": "j979x4qkk36a6krsemwz1252j585rxs0",
+        "name": "Karpetten"
+      },
+      {
+        "count": 24,
+        "id": "j9759k65t7kesnj1sby0wb02ad85s07v",
+        "name": "Wandpanelen"
+      },
+      {
+        "count": 23,
+        "id": "j974m4twt6tsjmcxtwvpx1e4kd85scpn",
+        "name": "Vinyl"
+      },
+      {
+        "count": 16,
+        "id": "j97bybbh5qbdnq9ghqt0xz0reh85stj0",
+        "name": "Egaline"
+      },
+      {
+        "count": 15,
+        "id": "j9758ndqn22tybgcgcs47ebvmh85smn9",
+        "name": "Douchepanelen"
+      },
+      {
+        "count": 15,
+        "id": "j973hrbjqpsvc1bjhk9zcba70x85s12q",
+        "name": "Traprenovatie"
+      },
+      {
+        "count": 9,
+        "id": "j97ee16bx8qqgrjczt0d4h6fjn85rycx",
+        "name": "Lijm"
+      },
+      {
+        "count": 8,
+        "id": "j975ms6hnj59jynw95eaxbtm8585sdyx",
+        "name": "Tegels"
+      },
+      {
+        "count": 6,
+        "id": "j975swsdp4gnv20ktvjrter82s85rwse",
+        "name": "Kit"
+      }
+    ],
+    "byProductKind": {
+      "adhesive": 31,
+      "carpet": 1032,
+      "click": 92,
+      "curtain_fabric": 5954,
+      "dryback": 176,
+      "mat": 111,
+      "other": 96,
+      "panel": 39,
+      "plinth": 67,
+      "rug": 26,
+      "src": 120,
+      "tile": 8,
+      "vinyl": 23
+    },
+    "bySupplierId": [
+      {
+        "count": 5954,
+        "id": "m9786bsa5e5h7v3bqvb7q1m37185st28",
+        "name": "Headlam"
+      },
+      {
+        "count": 988,
+        "id": "m9752ehqwtwwqb5d2a3mrgh06585s6ac",
+        "name": "Interfloor"
+      },
+      {
+        "count": 376,
+        "id": "m975984addwx910vwn4vjxp43n85sbsy",
+        "name": "Floorlife"
+      },
+      {
+        "count": 209,
+        "id": "m97cyfvjtwhbsa0y139f0ajty985snte",
+        "name": "Co-pro"
+      },
+      {
+        "count": 67,
+        "id": "m97f9pr6fq9fgnjtd8wr58ts3185s88w",
+        "name": "Ambiant"
+      },
+      {
+        "count": 66,
+        "id": "m976fqt106c8s06nbs2nf85rf185rswg",
+        "name": "vtwonen"
+      },
+      {
+        "count": 59,
+        "id": "m97cp1tsczm06txaam61n125kh85r3qx",
+        "name": "Roots"
+      },
+      {
+        "count": 56,
+        "id": "m97dg1v8asqkq9z3ztw54qyzrs85ryag",
+        "name": "EVC"
+      }
+    ],
+    "missingAllArticleSupplierCodeAndEan": {
+      "count": 69,
+      "samples": [
+        {
+          "category": "Tapijt",
+          "id": "kd79re4k7448manjqhx3mfgp5585s46p",
+          "name": "Sacramento",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd79r6vbq6pj8jhjr0wysaa6vx85rw0b",
+          "name": "Scottsdale",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd71fdh82jezqzxndhfnjd6jen85s2cg",
+          "name": "Lexington",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7e60rzsb3bqyyxvnysb19n4985s279",
+          "name": "Weave Tex",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd720pdy9hr35f1m23e7qhd02985s20e",
+          "name": "Comfy",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd74hrg0p6t5148g6erpsem8m185rhvy",
+          "name": "Jackson",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd70m4s2d2kmzcypzr1gh890rx85rk6x",
+          "name": "Riverside",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd71bqsqdzygrgkpd0c7cb110d85rdj5",
+          "name": "Weave Design",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7c1r8pww7dj5aj04b7vf85as85rb9m",
+          "name": "Jade",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd73wt45rjzb68gt0kshzkwpmd85rkz4",
+          "name": "Topaas",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7bkqnrrbagryk087n074as2h85s395",
+          "name": "Sisal Mayatex",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7dtjyx75tt2w25bex2ycfesh85skcd",
+          "name": "Traffic",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7a2fdhzjsev0dey89b1bd54985r5k5",
+          "name": "Sisal Dragongrass",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7dtz7v008y3b2mjzssj1s71185rd6b",
+          "name": "Woodford",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7e34y0fjkqr20semwhfqk5w185rw9d",
+          "name": "Hampton",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7fc9frdgmaaysdb5jhs4we3d85s7ww",
+          "name": "Nifty",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7f4by9szvy319x2jqgevj66585s5vc",
+          "name": "Cleveland",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd747e5pgg1er2jth8bj5908wx85rwj0",
+          "name": "Baltimore",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd75wpm5hdgna4n2gvjfn02aws85spy6",
+          "name": "Louisville",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd77kzj4c1jg20r4fx7jzc0a2x85stsv",
+          "name": "Nashville",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7brx0pdyzme0bmtqhj56apfd85r281",
+          "name": "Orlando",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd77a1n8h0sg22ahxp8ppyr26x85rtv9",
+          "name": "Newport",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd7b6wey0qpfrvs6xhay1fb1xs85rhp6",
+          "name": "Dallas",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd700bn63h79j27fr16p8pxynn85s6kd",
+          "name": "Portland",
+          "supplier": "Ambiant"
+        },
+        {
+          "category": "Tapijt",
+          "id": "kd79yk7r14ryh8tc34pjzwy75185sr1q",
+          "name": "Houston",
+          "supplier": "Ambiant"
+        }
+      ]
+    },
+    "missingAnyArticleSupplierCodeOrEan": {
+      "count": 7775,
+      "samples": [
+        {
+          "category": "Gordijnen",
+          "id": "kd7cddr70d7dth2bq5bf3bx2px85sqg4",
+          "name": "ADORABLE ZLB 62MV OYSTER Vitrage",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60228744"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd738cdkvasjxmmwsjtvbrdyzx85sag4",
+          "name": "ADORABLE ZLB 64MV SAND Vitrage",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60228752"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd72e9y1mzgq4q24gksmdvg00185staf",
+          "name": "ADORABLE ZLB 65MV FOSSIL Vitrage",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60228761"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd71fbxbhz2b359djhj9a5ac7s85sy5x",
+          "name": "ADORABLE ZLB 66MV TOUW Vitrage",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60228779"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd7ej8626ttn7vjzm9d4acp8sh85swhc",
+          "name": "ADORABLE ZLB 67MV CARAMEL Vitrage",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60228787"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd75pdrkethd6dy27pzvvvsr2585r3zf",
+          "name": "ADORABLE ZLB 68MV TAUPE Vitrage",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60228795"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd77jz01aj425zdwdc40m5187n85re0h",
+          "name": "ADORABLE ZLB 72MV ASH Vitrage",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60228809"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd77k47sjx410j6b5vsrmn9zw185se7j",
+          "name": "ADORABLE ZLB 74MV MOUSE Vitrage",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60228817"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd728js9fk3pg2fty860nbf3p185r8tc",
+          "name": "ADORABLE ZLB 75MV SHARK Vitrage",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60228825"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd751x518ewfycstbq4meah2an85svwr",
+          "name": "ADORABLE ZLB 76MV TITANIU Vitrage",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60228833"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd7dy4m5khgetnppr9ad7sb1cd85scj5",
+          "name": "ADORABLE ZLB 81MV GOLD Vitrage",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60228841"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd7e32d7gejjj9g6y5vchq0meh85sdmb",
+          "name": "ADORABLE ZLB 91MV MILKY Vitrage",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60228850"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd782qfsppmz4mmew5a1w13j3185rz8j",
+          "name": "ADVENTUROUS 300C ZLB 10 MV SPICEY Overgordijn",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60287368"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd7fbz1hz9hm3m98qadphzdjy585sawe",
+          "name": "ADVENTUROUS 300C ZLB 20 MV SAGE T Overgordijn",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60287376"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd73khqsjy37n6e5hs7zpmhe8x85r8cj",
+          "name": "ADVENTUROUS 300C ZLB 30 MV POWDER Overgordijn",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60287384"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd762b5963qqcj1s6ab8efdpvd85szq7",
+          "name": "ADVENTUROUS 300C ZLB 60 MV BEIGE Overgordijn",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60287392"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd7espcn80mz11tj6nf87h4htn85rr9m",
+          "name": "ADVENTUROUS 300C ZLB 61 MV CREAM Overgordijn",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60287406"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd7bztk6pr1r54ss9h986gz4ys85stbj",
+          "name": "ADVENTUROUS 300C ZLB 62 MV BUTTER Overgordijn",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60287414"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd742cd0fq952ccd1gz5f2nv7x85rap1",
+          "name": "ADVENTUROUS 300C ZLB 63 MV TAN Overgordijn",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60287422"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd7bvtf2jdv14q1jmypychjcah85ssq3",
+          "name": "ADVENTUROUS 300C ZLB 70 MV CLOUDY Overgordijn",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60287431"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd77etkbj08gyzzq7tz8tej33s85raze",
+          "name": "ADVENTUROUS 300C ZLB 71 MV STONE Overgordijn",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60287449"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd7dtwk6ew7qzbawyk8b2h99h585sh32",
+          "name": "ADVENTUROUS 300C ZLB 72 MV SAGE Overgordijn",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60287457"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd7e7jsn5gx9s9mhd81hzqynw585smns",
+          "name": "ADVENTUROUS 300C ZLB 73 MV NIGHT Overgordijn",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60287465"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd7161vq4cgspby7skqrhvs6dh85sfww",
+          "name": "ADVENTUROUS 300C ZLB 81 MV LATTE Overgordijn",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60287473"
+        },
+        {
+          "category": "Gordijnen",
+          "id": "kd7dq08sp1zdet7ejycx4xxrt185rsn6",
+          "name": "ADVENTUROUS 300C ZLB 82 MV OAT Overgordijn",
+          "supplier": "Headlam",
+          "supplierCode": "GPC60287481"
+        }
+      ]
+    },
+    "totalActive": 7775
+  },
+  "specificChecks": {
+    "coProLijmKitEgaline": {
+      "commissionPrices": 69,
+      "commissionSamples": [
+        {
+          "amount": 59.8438,
+          "id": "k975sknewgw1fvkw3cpbwd3wds85rb7b",
+          "priceType": "commission",
+          "priceUnit": "package",
+          "productId": "kd70wyq82g1k29dcgtjhaer70h85s907",
+          "productName": "Co-pro Universele Primer transparant",
+          "sourceColumnIndex": 9,
+          "sourceColumnName": "commisieprijs / per verpakking",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "b5e746169c616c844710cfc6",
+          "sourceRowNumber": 5,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 5.9844,
+          "id": "k976wce8kae84x1fncsb2hw9ws85s6n9",
+          "priceType": "commission",
+          "priceUnit": "piece",
+          "productId": "kd70wyq82g1k29dcgtjhaer70h85s907",
+          "productName": "Co-pro Universele Primer transparant",
+          "sourceColumnIndex": 10,
+          "sourceColumnName": "commisieprijs / per stuk, kilo, liter",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "e0554a76bea2cfeca84c14ea",
+          "sourceRowNumber": 5,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 60.9375,
+          "id": "k9701xam29k5ar8d0zxyawerzs85rhmb",
+          "priceType": "commission",
+          "priceUnit": "package",
+          "productId": "kd7794paa7rq3qy6d5bq7pb8z985rar0",
+          "productName": "Co-pro Primer Sand express P15",
+          "sourceColumnIndex": 9,
+          "sourceColumnName": "commisieprijs / per verpakking",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "aef666b353fee52c89d2162a",
+          "sourceRowNumber": 6,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 6.0938,
+          "id": "k97fmz3b9ekm64v20z2jn2h6ns85rwtv",
+          "priceType": "commission",
+          "priceUnit": "piece",
+          "productId": "kd7794paa7rq3qy6d5bq7pb8z985rar0",
+          "productName": "Co-pro Primer Sand express P15",
+          "sourceColumnIndex": 10,
+          "sourceColumnName": "commisieprijs / per stuk, kilo, liter",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "c12a5e5b40a9f732f1173973",
+          "sourceRowNumber": 6,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 93.4369,
+          "id": "k979ns2t3kta1204aamc0k0bms85rqtr",
+          "priceType": "commission",
+          "priceUnit": "package",
+          "productId": "kd7e6qdy27y2c3z8rndbzvgb8585sneh",
+          "productName": "Thomsit R755 2K epoxyprimer",
+          "sourceColumnIndex": 9,
+          "sourceColumnName": "commisieprijs / per verpakking",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "ff3b91f4c29639505bc52758",
+          "sourceRowNumber": 7,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 13.3481,
+          "id": "k97dvwrskrczq4g8kz19v476s985r1rt",
+          "priceType": "commission",
+          "priceUnit": "piece",
+          "productId": "kd7e6qdy27y2c3z8rndbzvgb8585sneh",
+          "productName": "Thomsit R755 2K epoxyprimer",
+          "sourceColumnIndex": 10,
+          "sourceColumnName": "commisieprijs / per stuk, kilo, liter",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "45b648a1a02833a6c67dc603",
+          "sourceRowNumber": 7,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 82.8125,
+          "id": "k97cdnrtmqrd04vzz62v47rn9x85sxcw",
+          "priceType": "commission",
+          "priceUnit": "package",
+          "productId": "kd70ammajxfc7y21yt6fvhxdr985r73p",
+          "productName": "Thomsit R790 vul- en voorstrijkmiddel",
+          "sourceColumnIndex": 9,
+          "sourceColumnName": "commisieprijs / per verpakking",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "55268cb2b89e97c80e114ed7",
+          "sourceRowNumber": 8,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 8.2812,
+          "id": "k971m0qhgh9521bve3vypryt0185snwg",
+          "priceType": "commission",
+          "priceUnit": "piece",
+          "productId": "kd70ammajxfc7y21yt6fvhxdr985r73p",
+          "productName": "Thomsit R790 vul- en voorstrijkmiddel",
+          "sourceColumnIndex": 10,
+          "sourceColumnName": "commisieprijs / per stuk, kilo, liter",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "50b0c41bb4dcb4f7e988451d",
+          "sourceRowNumber": 8,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 24.375,
+          "id": "k97fzcn5veg69k61nbc4ew5d1585rhff",
+          "priceType": "commission",
+          "priceUnit": "package",
+          "productId": "kd705azhqk5at75neycjgbyx2h85s3xx",
+          "productName": "Co-pro Universele Reparatiemortel (R)",
+          "sourceColumnIndex": 9,
+          "sourceColumnName": "commisieprijs / per verpakking",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "88545243e5c7346aeb116b16",
+          "sourceRowNumber": 11,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 0.975,
+          "id": "k9749mx4pt3vf4pfse6xdhep4s85s4yq",
+          "priceType": "commission",
+          "priceUnit": "piece",
+          "productId": "kd705azhqk5at75neycjgbyx2h85s3xx",
+          "productName": "Co-pro Universele Reparatiemortel (R)",
+          "sourceColumnIndex": 10,
+          "sourceColumnName": "commisieprijs / per stuk, kilo, liter",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "f5e6968b15a577b0cfd240fc",
+          "sourceRowNumber": 11,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 12.8125,
+          "id": "k97a14bsma3d6nv21p0ne86ej585rnga",
+          "priceType": "commission",
+          "priceUnit": "package",
+          "productId": "kd701d6bv8fcjm7gk29xrsbp6985radq",
+          "productName": "Co-pro Cementgebonden Egalisatiemiddel C30 fast dry",
+          "sourceColumnIndex": 9,
+          "sourceColumnName": "commisieprijs / per verpakking",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "75a60377b2e9f6a6b8451811",
+          "sourceRowNumber": 12,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 0.6406,
+          "id": "k97ab6bnwdpwp6z1he1fw69byx85s976",
+          "priceType": "commission",
+          "priceUnit": "piece",
+          "productId": "kd701d6bv8fcjm7gk29xrsbp6985radq",
+          "productName": "Co-pro Cementgebonden Egalisatiemiddel C30 fast dry",
+          "sourceColumnIndex": 10,
+          "sourceColumnName": "commisieprijs / per stuk, kilo, liter",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "5e0fc7b1b51479b4eef7f265",
+          "sourceRowNumber": 12,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 18.5938,
+          "id": "k976pzajb7qk30r5zjh4za161985s562",
+          "priceType": "commission",
+          "priceUnit": "package",
+          "productId": "kd7c2h35kcxws6pchbqdm7p02985rjfk",
+          "productName": "Co-pro Cementgebonden Egalisatiemiddel (C) 2022",
+          "sourceColumnIndex": 9,
+          "sourceColumnName": "commisieprijs / per verpakking",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "5182eec8dc4b20eaf8b3244e",
+          "sourceRowNumber": 13,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 0.7438,
+          "id": "k970yttzkgb8kbh3dnpbmnqj8s85s6j3",
+          "priceType": "commission",
+          "priceUnit": "piece",
+          "productId": "kd7c2h35kcxws6pchbqdm7p02985rjfk",
+          "productName": "Co-pro Cementgebonden Egalisatiemiddel (C) 2022",
+          "sourceColumnIndex": 10,
+          "sourceColumnName": "commisieprijs / per stuk, kilo, liter",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "f0c120f441f6ab48d4608586",
+          "sourceRowNumber": 13,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 22.6562,
+          "id": "k97b8dsn5q7ts93xm0bpk2vh5185sgcn",
+          "priceType": "commission",
+          "priceUnit": "package",
+          "productId": "kd7dby9s60gdas572q1f86afhh85s2zy",
+          "productName": "Co-pro Cementgebonden Egalisatiemiddel (C2) ultra level",
+          "sourceColumnIndex": 9,
+          "sourceColumnName": "commisieprijs / per verpakking",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "3da0aab2e9d6e75586210c07",
+          "sourceRowNumber": 14,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 0.9062,
+          "id": "k973j6ernpec5jyjnhhj113c7185sfan",
+          "priceType": "commission",
+          "priceUnit": "piece",
+          "productId": "kd7dby9s60gdas572q1f86afhh85s2zy",
+          "productName": "Co-pro Cementgebonden Egalisatiemiddel (C2) ultra level",
+          "sourceColumnIndex": 10,
+          "sourceColumnName": "commisieprijs / per stuk, kilo, liter",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "899008b6a9e9d88f4c0966c5",
+          "sourceRowNumber": 14,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 12.3441,
+          "id": "k975k16hmf8ek9yky4y608mhj985stp3",
+          "priceType": "commission",
+          "priceUnit": "package",
+          "productId": "kd7dcgk8qxnrh5c0w94dr780r185sfz0",
+          "productName": "Co-pro Anhydrietgebonden Egalisatiemiddel A30 fast dry",
+          "sourceColumnIndex": 9,
+          "sourceColumnName": "commisieprijs / per verpakking",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "d838f731a2083248febc0907",
+          "sourceRowNumber": 15,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 0.6172,
+          "id": "k976p3jk6t8zjjbcdnm2as9tm985r46j",
+          "priceType": "commission",
+          "priceUnit": "piece",
+          "productId": "kd7dcgk8qxnrh5c0w94dr780r185sfz0",
+          "productName": "Co-pro Anhydrietgebonden Egalisatiemiddel A30 fast dry",
+          "sourceColumnIndex": 10,
+          "sourceColumnName": "commisieprijs / per stuk, kilo, liter",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "df63f44277da099763445f8e",
+          "sourceRowNumber": 15,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 13.905,
+          "id": "k97dj80apam1nd3vtsnpqt6k2s85sdwj",
+          "priceType": "commission",
+          "priceUnit": "package",
+          "productId": "kd75hjpqzydzvsn7fg1r4gxstn85s16c",
+          "productName": "Co-pro Anhydrietgebonden Egalisatiemiddel (A1)",
+          "sourceColumnIndex": 9,
+          "sourceColumnName": "commisieprijs / per verpakking",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "d25e2c7ec678398b16e20bc1",
+          "sourceRowNumber": 16,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        },
+        {
+          "amount": 0.6952,
+          "id": "k977pv9d826fv1t7k5m3rdn99185s94d",
+          "priceType": "commission",
+          "priceUnit": "piece",
+          "productId": "kd75hjpqzydzvsn7fg1r4gxstn85s16c",
+          "productName": "Co-pro Anhydrietgebonden Egalisatiemiddel (A1)",
+          "sourceColumnIndex": 10,
+          "sourceColumnName": "commisieprijs / per stuk, kilo, liter",
+          "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
+          "sourceKey": "9ed00a70070ae09f555c283a",
+          "sourceRowNumber": 16,
+          "sourceSheetName": "Blad1",
+          "vatMode": "unknown"
+        }
+      ],
+      "prices": 162,
+      "sourceFileName": "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx"
+    },
+    "headlam": {
+      "activeProducts": 5954,
+      "sourcePrices": 8205,
+      "uniqueSupplierCodes": 5954
+    },
+    "interfloor": {
+      "activeProducts": 988,
+      "sourcePrices": 988,
+      "uniqueArticleNumbers": 988
+    },
+    "overlappingPvcFiles": {
+      "overlappingProducts": 260,
+      "sourceA": "Prijslijst PVC 11-2025 click dryback apart.xlsx",
+      "sourceAPrices": 786,
+      "sourceAProducts": 260,
+      "sourceB": "PVC 11-2025 click dryback apart floorlife.xlsx",
+      "sourceBPrices": 786,
+      "sourceBProducts": 260
+    },
+    "sectionRowsImportedAsProducts": [
+      {
+        "matches": [],
+        "sectionLabel": "Tegel decoren"
+      },
+      {
+        "matches": [],
+        "sectionLabel": "Bouclé"
+      },
+      {
+        "matches": [],
+        "sectionLabel": "Traprenovatie PVC Floorlife"
+      }
+    ]
+  },
+  "tenantSlug": "henke-wonen"
+}

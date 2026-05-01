@@ -1,0 +1,22 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import CatalogDataIssues from "../../../components/catalog/CatalogDataIssues";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Catalogus datakwaliteit" session={session}>
+  <PageHeader
+    eyebrow="Catalogus"
+    title="Datakwaliteit"
+    description="Beoordeel dubbele EAN-waarschuwingen zonder automatisch producten samen te voegen."
+  >
+    <a class="button secondary" href="/portal/catalogus">Catalogus</a>
+  </PageHeader>
+  <CatalogDataIssues client:load session={session} />
+</PortalLayout>

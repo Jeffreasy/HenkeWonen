@@ -1,0 +1,182 @@
+{
+  "generatedAt": "2026-04-30",
+  "scope": "docs folder audit before professionalization",
+  "files": {
+    "total": 72,
+    "byExtension": {
+      ".md": {
+        "count": 39,
+        "sizeKb": 324.3
+      },
+      ".json": {
+        "count": 13,
+        "sizeKb": 816.4
+      },
+      ".png": {
+        "count": 20,
+        "sizeKb": 894.5
+      }
+    },
+    "totalSizeKb": 2035.2
+  },
+  "clusters": {
+    "dataImport": {
+      "count": 23,
+      "sizeKb": 907.3,
+      "examples": [
+        "catalog-import-summary.md",
+        "import-production-audit-2026-04-29.md",
+        "data-audit.json"
+      ]
+    },
+    "designSystem": {
+      "count": 11,
+      "sizeKb": 92.3,
+      "examples": [
+        "ui-ux-design-system-audit-2026-04-30.md",
+        "design-system-phase-1-2026-04-30.md",
+        "design-system-phase-7-2026-04-30.md"
+      ]
+    },
+    "inmetingOfferte": {
+      "count": 9,
+      "sizeKb": 65.6,
+      "examples": [
+        "inmeetmodule-en-materiaalverlies-plan-2026-04-30.md",
+        "inmeetmodule-phase-4-offertebuilder-koppeling-2026-04-30.md",
+        "offertetemplates-page-audit-2026-04-30.md"
+      ]
+    },
+    "qaScreenshots": {
+      "count": 20,
+      "sizeKb": 894.5,
+      "examples": [
+        "docs/qa-screenshots/phase-6"
+      ]
+    },
+    "workflowDocs": {
+      "count": 6,
+      "sizeKb": 60.0,
+      "examples": [
+        "klant/henke-wonen-portal-workflow-handleiding-2026-04-30.md",
+        "klant/henke-wonen-portal-quickstart-2026-04-30.md",
+        "henke-wonen-portal-workflow-technical-map-2026-04-30.md"
+      ]
+    }
+  },
+  "primaryCurrentDocs": [
+    "klant/henke-wonen-portal-workflow-handleiding-2026-04-30.md",
+    "klant/henke-wonen-portal-quickstart-2026-04-30.md",
+    "catalog-import-summary.md",
+    "vat-mapping-production-readiness-2026-04-30.md",
+    "workflow-codebase-inventory-2026-04-30.md",
+    "henke-wonen-portal-workflow-technical-map-2026-04-30.md"
+  ],
+  "generatedOrArtifactDocs": [
+    "catalog-import-summary.md",
+    "catalog-import-summary.json",
+    "catalog-import-sample.md",
+    "data-audit.json",
+    "import-production-audit-2026-04-29.json",
+    "catalog-validation-2026-04-29.json",
+    "vat-mapping-current-state-2026-04-30.json",
+    "docs/qa-screenshots/**"
+  ],
+  "mainIssues": [
+    "No docs/README.md index",
+    "Flat root mixes customer docs, technical docs, audits, generated JSON and screenshots",
+    "Current and historical reports are adjacent without status labels",
+    "Large JSON artifacts live in docs root",
+    "Customer-facing and developer-facing documents are not separated",
+    "Some technical docs use mixed English/Dutch titles, which is acceptable only after target-audience separation"
+  ],
+  "recommendedTargetStructure": {
+    "docs/README.md": "central index",
+    "docs/klant": "customer-facing manuals and quickstart",
+    "docs/technisch": "current technical maps and module summaries",
+    "docs/release-readiness": "catalog import, vat mapping and data issues release status",
+    "docs/audits": "historical audits by area",
+    "docs/implementation": "phase reports and implementation logs",
+    "docs/generated": "machine generated report outputs",
+    "docs/artifacts": "screenshots and large evidence files",
+    "docs/archive": "older dated audit history"
+  },
+  "compatibilityRisks": [
+    {
+      "files": [
+        "catalog-import-summary.md",
+        "catalog-import-summary.json",
+        "catalog-import-sample.md"
+      ],
+      "risk": "tools/build_catalog_import.py writes these paths; do not move without script updates"
+    },
+    {
+      "files": [
+        "vat-mapping-decisions.json"
+      ],
+      "risk": "empty-looking file is an input/template for apply script; do not delete blindly"
+    }
+  ],
+  "recommendedPhases": [
+    {
+      "phase": 1,
+      "name": "Index and labels",
+      "risk": "low",
+      "actions": [
+        "Create docs/README.md",
+        "Group current files by audience/status without moving files"
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Customer docs separation",
+      "risk": "low-medium",
+      "actions": [
+        "Create docs/klant",
+        "Move or copy user manual and quickstart",
+        "Update README links"
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "Technical and implementation split",
+      "risk": "medium",
+      "actions": [
+        "Create docs/technisch and docs/implementation",
+        "Move phase reports into implementation folders",
+        "Create current module summaries"
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "Release readiness dossiers",
+      "risk": "medium",
+      "actions": [
+        "Create docs/release-readiness",
+        "Bundle VAT mapping and duplicate EAN docs",
+        "Keep catalog summary stable or update scripts"
+      ]
+    },
+    {
+      "phase": 5,
+      "name": "Generated artifacts cleanup",
+      "risk": "medium-high",
+      "actions": [
+        "Move large JSON files to generated/artifacts",
+        "Move screenshots to artifacts",
+        "Update scripts and references"
+      ]
+    },
+    {
+      "phase": 6,
+      "name": "Archive historical audit docs",
+      "risk": "medium",
+      "actions": [
+        "Create archive/2026-04-29",
+        "Move old dated audits",
+        "Preserve audit trail with index"
+      ]
+    }
+  ],
+  "recommendedNextStep": "Create docs/README.md first, without moving files."
+}

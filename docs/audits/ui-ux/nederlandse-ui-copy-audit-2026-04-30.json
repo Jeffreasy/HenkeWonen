@@ -1,0 +1,216 @@
+{
+  "date": "2026-04-30",
+  "filesScanned": {
+    "count": 98,
+    "paths": [
+      "src/pages/**/*.astro",
+      "src/components/**/*.tsx",
+      "src/lib/**/*.ts",
+      "tools/**/*.py",
+      "tools/**/*.mjs",
+      "docs/catalog-import-summary.md",
+      "docs/catalog-import-sample.md"
+    ]
+  },
+  "filesChanged": [
+    "src/lib/i18n/nl.ts",
+    "src/lib/i18n/statusLabels.ts",
+    "src/components/ui/StatusBadge.tsx",
+    "src/components/projects/ProjectStatusBadge.tsx",
+    "src/components/quotes/LineTypeBadge.tsx",
+    "src/components/projects/ProjectWorkflowRail.tsx",
+    "src/components/imports/ProductionReadiness.tsx",
+    "src/components/imports/ImportProfiles.tsx",
+    "src/components/imports/ImportPreview.tsx",
+    "src/components/catalog/CatalogDataIssues.tsx",
+    "src/components/catalog/ProductList.tsx",
+    "src/components/dashboard/DashboardShell.tsx",
+    "src/components/quotes/QuoteLineEditor.tsx",
+    "src/components/quotes/QuoteBuilder.tsx",
+    "src/components/quotes/WallpaperCalculator.tsx",
+    "src/components/customers/CustomerList.tsx",
+    "src/components/customers/CustomerDetail.tsx",
+    "src/components/projects/ProjectWorkspace.tsx",
+    "src/components/projects/ProjectDetail.tsx",
+    "src/components/settings/QuoteTemplatesSettings.tsx",
+    "src/components/layout/Sidebar.tsx",
+    "src/components/suppliers/SupplierWorkspace.tsx",
+    "src/components/settings/CategoriesSettings.tsx",
+    "src/components/settings/ServiceRulesSettings.tsx",
+    "src/pages/portal/index.astro",
+    "src/pages/portal/catalogus/data-issues.astro",
+    "src/pages/portal/catalogus/index.astro",
+    "src/pages/portal/imports/index.astro",
+    "src/pages/portal/imports/[batchId].astro",
+    "src/pages/portal/instellingen/categorieen.astro",
+    "src/pages/portal/instellingen/werkzaamheden.astro",
+    "src/pages/portal/instellingen/offertetemplates.astro",
+    "src/pages/portal/projecten/index.astro",
+    "tools/build_catalog_import.py",
+    "docs/catalog-import-summary.md",
+    "docs/catalog-import-summary.json",
+    "docs/catalog-import-sample.md",
+    "docs/nederlandse-ui-copy-audit-2026-04-30.md",
+    "docs/nederlandse-ui-copy-audit-2026-04-30.json"
+  ],
+  "englishTermsFound": [
+    "READY",
+    "BLOCKED",
+    "Loading",
+    "Error",
+    "No results",
+    "quote draft",
+    "quote line",
+    "paymentTerms",
+    "terms",
+    "preview rows",
+    "product rows",
+    "price rules",
+    "unknown VAT",
+    "allowUnknownVatMode",
+    "Duplicate EAN issues",
+    "needs review",
+    "source file"
+  ],
+  "termsMapped": {
+    "READY": "Gereed",
+    "BLOCKED": "Geblokkeerd",
+    "failed": "Mislukt",
+    "ready_to_import": "Klaar voor import",
+    "needs_mapping": "Mapping vereist",
+    "quote_draft": "Offerteconcept",
+    "quote line": "Offertepost",
+    "paymentTerms": "Betalingsafspraken",
+    "terms": "Voorwaarden",
+    "preview rows": "Voorvertoningsregels",
+    "product rows": "Productregels",
+    "price rules": "Prijsregels",
+    "unknown VAT": "Btw-modus onbekend",
+    "allowUnknownVatMode": "Onbekende btw-modus toestaan",
+    "Duplicate EAN issues": "Dubbele EAN-waarschuwingen",
+    "needs review": "Controle vereist",
+    "source file": "Bronbestand"
+  },
+  "helpersAdded": [
+    "nl",
+    "formatStatusLabel",
+    "formatProjectStatus",
+    "formatQuoteStatus",
+    "formatCustomerStatus",
+    "formatCustomerType",
+    "formatImportStatus",
+    "formatVatMode",
+    "formatLineType",
+    "formatIssueStatus",
+    "formatReviewDecision",
+    "formatRowKind",
+    "formatRowStatus",
+    "formatPriceType",
+    "formatUnit",
+    "formatRecommendation"
+  ],
+  "modulesUpdated": [
+    "dashboard",
+    "klanten",
+    "projecten",
+    "offertes",
+    "catalogus",
+    "imports",
+    "importprofielen",
+    "catalogus data issues",
+    "instellingen",
+    "leveranciers",
+    "generated catalogusrapporten"
+  ],
+  "remainingKnownTechnicalTerms": [
+    {
+      "term": "READY/BLOCKED",
+      "scope": "code-only type values in ProductionReadiness",
+      "visibleToUser": false
+    },
+    {
+      "term": "allowUnknownVatMode",
+      "scope": "API payload and local state variable",
+      "visibleToUser": false
+    },
+    {
+      "term": "paymentTerms/terms",
+      "scope": "TypeScript field names and Convex payloads",
+      "visibleToUser": false
+    },
+    {
+      "term": "machine-readable JSON keys",
+      "scope": "generated reports and scripts",
+      "visibleToUser": "developer/audit only"
+    },
+    {
+      "term": "supplier source column names",
+      "scope": "original Excel source data",
+      "visibleToUser": true,
+      "reason": "Bronkolomnamen blijven bewust origineel voor auditbaarheid."
+    }
+  ],
+  "verification": {
+    "npmRunCheck": {
+      "status": "ok",
+      "errors": 0,
+      "warnings": 0,
+      "hints": 0
+    },
+    "npmRunBuild": {
+      "status": "ok",
+      "warning": "Lokale Node.js 25 wordt door Vercel Serverless Functions niet ondersteund; Vercel gebruikt runtime 24."
+    },
+    "catalogPreview": {
+      "status": "ok",
+      "productRows": 10291,
+      "previewRows": 10691,
+      "priceRules": 13015,
+      "unknownVatModePriceRules": 12984,
+      "fullPreviewGenerated": false
+    },
+    "routeChecks": [
+      {
+        "route": "/portal",
+        "status": 200
+      },
+      {
+        "route": "/portal/klanten",
+        "status": 200
+      },
+      {
+        "route": "/portal/projecten",
+        "status": 200
+      },
+      {
+        "route": "/portal/offertes",
+        "status": 200
+      },
+      {
+        "route": "/portal/catalogus",
+        "status": 200
+      },
+      {
+        "route": "/portal/imports",
+        "status": 200
+      },
+      {
+        "route": "/portal/import-profielen",
+        "status": 200
+      },
+      {
+        "route": "/portal/catalogus/data-issues",
+        "status": 200
+      },
+      {
+        "route": "/portal/instellingen/offertetemplates",
+        "status": 200
+      }
+    ],
+    "businessLogicChanged": false,
+    "convexSchemaChanged": false,
+    "importArchitectureChanged": false,
+    "priceLogicChanged": false,
+    "authChanged": false
+  }
+}

@@ -1,0 +1,31 @@
+---
+import "../../styles/global.css";
+import Sidebar from "./Sidebar";
+import type { AppSession } from "../../lib/auth/session";
+
+type Props = {
+  title: string;
+  session: AppSession;
+};
+
+const { title, session } = Astro.props;
+const pathname = Astro.url.pathname;
+---
+
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} | Henke Wonen</title>
+  </head>
+  <body>
+    <div class="portal-frame">
+      <Sidebar client:load session={session} pathname={pathname} />
+      <main class="portal-main">
+        <div class="portal-content">
+          <slot />
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

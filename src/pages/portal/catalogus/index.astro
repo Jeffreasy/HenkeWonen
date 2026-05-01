@@ -1,0 +1,22 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import ProductList from "../../../components/catalog/ProductList";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Catalogus" session={session}>
+  <PageHeader
+    eyebrow="Productdata"
+    title="Catalogus"
+    description="Zoek in producten, leveranciers, categorieën, labels en prijsregels."
+  >
+    <a class="button secondary" href="/portal/catalogus/data-issues">Datakwaliteit</a>
+  </PageHeader>
+  <ProductList client:load session={session} />
+</PortalLayout>
