@@ -11,8 +11,21 @@ DATA/
 
 *.log
 *.err.log
+tmp/
+temp/
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
 __pycache__/
 *.py[cod]
+~$*.xlsx
+~$*.xls
+*.local.xlsx
+*.local.xls
+*.concept.pdf
+*.generated.pdf
+*.print.pdf
 
 .audit-production-*.json
 .catalog-import-*.json
