@@ -23,38 +23,38 @@ export const nl = {
     visible: "zichtbaar"
   },
   imports: {
-    productionReadiness: "Productiegereedheid",
-    productionImport: "Productie-import",
-    productionImportBlocked: "Productie-import geblokkeerd",
-    productionImportReady: "Productie-import gereed",
-    vatMapping: "Btw-mapping",
-    unresolvedVatMapping: "Ontbrekende btw-mapping",
+    productionReadiness: "Prijslijsten gereed?",
+    productionImport: "Prijslijsten verwerken",
+    productionImportBlocked: "Verwerken geblokkeerd",
+    productionImportReady: "Klaar om te verwerken",
+    vatMapping: "Btw-keuzes",
+    unresolvedVatMapping: "Ontbrekende btw-keuzes",
     duplicateEanWarning: "Dubbele EAN-waarschuwing",
-    previewRows: "Voorvertoningsregels",
+    previewRows: "Gecontroleerde regels",
     productRows: "Productregels",
-    auditRows: "Auditregels",
+    auditRows: "Controlemeldingen",
     priceRules: "Prijsregels",
-    sourceFiles: "Bronbestanden",
-    sourceFile: "Bronbestand",
-    importBatch: "Importbatch",
-    importBatches: "Importbatches",
-    rowKind: "Regeltype",
-    zeroPriceRows: "Nulprijsregels",
-    orphanPriceRules: "Losse prijsregels",
-    duplicateSourceKeys: "Dubbele bronsleutels",
-    allowUnknownVatMode: "Onbekende btw-modus toestaan",
-    unknownVatMode: "Btw-modus onbekend"
+    sourceFiles: "Prijslijstbestanden",
+    sourceFile: "Prijslijstbestand",
+    importBatch: "Prijslijstcontrole",
+    importBatches: "Prijslijsten",
+    rowKind: "Soort regel",
+    zeroPriceRows: "Regels met nulprijs",
+    orphanPriceRules: "Prijsregels zonder product",
+    duplicateSourceKeys: "Dubbele prijslijstregels",
+    allowUnknownVatMode: "Onbekende btw toestaan",
+    unknownVatMode: "Btw nog onbekend"
   },
   catalog: {
     catalog: "Catalogus",
     product: "Product",
     products: "Producten",
     supplier: "Leverancier",
-    category: "Categorie",
+    category: "Productgroep",
     productKind: "Productsoort",
     priceType: "Prijstype",
-    vatMode: "Btw-modus",
-    dataIssues: "Datakwaliteit",
+    vatMode: "Btw-keuze",
+    dataIssues: "Productcontrole",
     duplicateEanWarnings: "Dubbele EAN-waarschuwingen"
   },
   quotes: {
@@ -80,4 +80,3 @@ export const nl = {
     indicative: "Indicatief"
   }
 } as const;
-

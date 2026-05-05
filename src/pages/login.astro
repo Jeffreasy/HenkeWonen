@@ -1,5 +1,9 @@
 ---
 import "../styles/global.css";
+
+const authMode = import.meta.env.AUTH_MODE ?? import.meta.env.PUBLIC_AUTH_MODE ?? "laventecare";
+const loginUrl = import.meta.env.LAVENTECARE_LOGIN_URL;
+const isDevAuth = authMode === "dev";
 ---
 
 <html lang="nl">
@@ -13,11 +17,28 @@ import "../styles/global.css";
       <section class="panel" style="max-width: 520px">
         <p class="eyebrow">Henke Wonen</p>
         <h1 class="section-title">Login</h1>
-        <p class="muted">
-          De dev-auth adapter levert lokaal automatisch een sessie. Zet
-          PUBLIC_AUTH_MODE op laventecare zodra LaventeCare AuthSystem is aangesloten.
-        </p>
-        <a class="button primary" href="/portal">Naar portal</a>
+        {
+          isDevAuth ? (
+            <>
+              <p class="muted">
+                Lokale ontwikkelsessie actief. Deze automatische toegang is alleen bedoeld voor
+                ontwikkelwerk en staat buiten de ontwikkelomgeving uit.
+              </p>
+              <a class="button primary" href="/portal">Naar werkplek</a>
+            </>
+          ) : (
+            <>
+              <p class="muted">
+                Log in via LaventeCare om toegang te krijgen tot de Henke Wonen werkplek.
+              </p>
+              {loginUrl ? (
+                <a class="button primary" href={loginUrl}>Inloggen via LaventeCare</a>
+              ) : (
+                <p class="empty-state">Inloggen is nog niet gekoppeld. Neem contact op met de beheerder.</p>
+              )}
+            </>
+          )
+        }
       </section>
     </main>
   </body>

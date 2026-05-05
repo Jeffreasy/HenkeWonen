@@ -1,14 +1,20 @@
-import { Save } from "lucide-react";
+import { Archive, Pencil, RotateCcw, Save } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
+import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
-import { formatImportStatus, formatProductListStatus } from "../../lib/i18n/statusLabels";
+import {
+  formatImportStatus,
+  formatProductListStatus,
+  formatStatusLabel
+} from "../../lib/i18n/statusLabels";
 import type { PortalSupplier, ProductListStatus } from "../../lib/portalTypes";
 import type { SubmitEventLike } from "../../lib/events";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { Field } from "../ui/Field";
 import { FilterBar } from "../ui/FilterBar";
@@ -24,6 +30,8 @@ type SupplierWorkspaceProps = {
   session: AppSession;
 };
 
+type SupplierStatus = NonNullable<PortalSupplier["status"]>;
+
 const PRODUCT_LIST_STATUSES: ProductListStatus[] = [
   "unknown",
   "requested",
@@ -32,6 +40,7 @@ const PRODUCT_LIST_STATUSES: ProductListStatus[] = [
   "not_available",
   "manual_only"
 ];
+const SUPPLIER_STATUSES: SupplierStatus[] = ["active", "inactive", "archived"];
 
 function fromDateInputValue(value: string): number | undefined {
   if (!value) {
@@ -39,6 +48,14 @@ function fromDateInputValue(value: string): number | undefined {
   }
 
   return new Date(`${value}T12:00:00`).getTime();
+}
+
+function toDateInputValue(value?: number): string {
+  if (!value) {
+    return "";
+  }
+
+  return new Date(value).toISOString().slice(0, 10);
 }
 
 function dateText(value?: number) {
@@ -104,9 +121,26 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
   const [notes, setNotes] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProductListStatus | "all">("all");
+  const [supplierStatusFilter, setSupplierStatusFilter] = useState<SupplierStatus | "all">("active");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [savingSupplierId, setSavingSupplierId] = useState<string | null>(null);
+  const [editingSupplier, setEditingSupplier] = useState<PortalSupplier | null>(null);
+  const [supplierDraft, setSupplierDraft] = useState({
+    name: "",
+    contactName: "",
+    email: "",
+    phone: "",
+    productListStatus: "unknown" as ProductListStatus,
+    status: "active" as SupplierStatus,
+    lastContactDate: "",
+    expectedDate: "",
+    notes: ""
+  });
+  const [pendingSupplierStatus, setPendingSupplierStatus] = useState<{
+    supplier: PortalSupplier;
+    nextStatus: SupplierStatus;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -114,7 +148,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
       return;
     }
@@ -167,12 +201,14 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
     return suppliers.filter((supplier) => {
       const matchesStatus =
         statusFilter === "all" || supplier.productListStatus === statusFilter;
+      const matchesSupplierStatus =
+        supplierStatusFilter === "all" || (supplier.status ?? "active") === supplierStatusFilter;
       const matchesSearch =
         !normalizedSearch || supplierSearchText(supplier).includes(normalizedSearch);
 
-      return matchesStatus && matchesSearch;
+      return matchesStatus && matchesSupplierStatus && matchesSearch;
     });
-  }, [search, statusFilter, suppliers]);
+  }, [search, statusFilter, supplierStatusFilter, suppliers]);
 
   async function createSupplier(event: SubmitEventLike) {
     event.preventDefault();
@@ -185,7 +221,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
@@ -196,6 +232,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
     try {
       await client.mutation(api.portal.createSupplier, {
         tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
         name: name.trim(),
         contactName: contactName.trim() || undefined,
         email: email.trim() || undefined,
@@ -231,7 +268,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
@@ -242,14 +279,121 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
     try {
       await client.mutation(api.portal.updateSupplierProductListStatus, {
         tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
         supplierId: supplier.id,
         productListStatus: nextStatus
       });
-      setNotice(`Productlijststatus bijgewerkt voor ${supplier.name}.`);
+      setNotice(`Prijslijststatus bijgewerkt voor ${supplier.name}.`);
       await loadSuppliers();
     } catch (saveError) {
       console.error(saveError);
-      setError("Productlijststatus kon niet worden bijgewerkt.");
+      setError("Prijslijststatus kon niet worden bijgewerkt.");
+    } finally {
+      setSavingSupplierId(null);
+    }
+  }
+
+  function startEditSupplier(supplier: PortalSupplier) {
+    setEditingSupplier(supplier);
+    setSupplierDraft({
+      name: supplier.name,
+      contactName: supplier.contactName ?? "",
+      email: supplier.email ?? "",
+      phone: supplier.phone ?? "",
+      productListStatus: supplier.productListStatus,
+      status: supplier.status ?? "active",
+      lastContactDate: toDateInputValue(supplier.lastContactAt),
+      expectedDate: toDateInputValue(supplier.expectedAt),
+      notes: supplier.notes ?? ""
+    });
+  }
+
+  async function saveSupplier(event: SubmitEventLike) {
+    event.preventDefault();
+
+    if (!editingSupplier || !supplierDraft.name.trim()) {
+      return;
+    }
+
+    const client = createConvexHttpClient();
+
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return;
+    }
+
+    setSavingSupplierId(editingSupplier.id);
+    setError(null);
+    setNotice(null);
+
+    try {
+      await client.mutation(api.portal.updateSupplier, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        supplierId: editingSupplier.id,
+        name: supplierDraft.name.trim(),
+        contactName: supplierDraft.contactName.trim() || undefined,
+        email: supplierDraft.email.trim() || undefined,
+        phone: supplierDraft.phone.trim() || undefined,
+        notes: supplierDraft.notes.trim() || undefined,
+        productListStatus: supplierDraft.productListStatus,
+        lastContactAt: fromDateInputValue(supplierDraft.lastContactDate),
+        expectedAt: fromDateInputValue(supplierDraft.expectedDate),
+        status: supplierDraft.status
+      });
+      setNotice(`Leverancier ${supplierDraft.name.trim()} bijgewerkt.`);
+      setEditingSupplier(null);
+      await loadSuppliers();
+    } catch (saveError) {
+      console.error(saveError);
+      setError("Leverancier kon niet worden bijgewerkt.");
+    } finally {
+      setSavingSupplierId(null);
+    }
+  }
+
+  async function confirmSupplierStatus() {
+    if (!pendingSupplierStatus) {
+      return;
+    }
+
+    const { supplier, nextStatus } = pendingSupplierStatus;
+    const client = createConvexHttpClient();
+
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return;
+    }
+
+    setSavingSupplierId(supplier.id);
+    setError(null);
+    setNotice(null);
+
+    try {
+      await client.mutation(api.portal.updateSupplier, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        supplierId: supplier.id,
+        name: supplier.name,
+        contactName: supplier.contactName,
+        email: supplier.email,
+        phone: supplier.phone,
+        notes: supplier.notes,
+        productListStatus: supplier.productListStatus,
+        lastContactAt: supplier.lastContactAt,
+        expectedAt: supplier.expectedAt,
+        status: nextStatus
+      });
+      setNotice(
+        nextStatus === "archived"
+          ? `Leverancier ${supplier.name} gearchiveerd.`
+          : `Leverancier ${supplier.name} hersteld.`
+      );
+      setPendingSupplierStatus(null);
+      await loadSuppliers();
+    } catch (saveError) {
+      console.error(saveError);
+      setError("Leverancierstatus kon niet worden bijgewerkt.");
     } finally {
       setSavingSupplierId(null);
     }
@@ -264,13 +408,17 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
         render: (supplier) => (
           <div className="stack-sm">
             <strong>{supplier.name}</strong>
+            <StatusBadge
+              status={supplier.status ?? "active"}
+              label={formatStatusLabel(supplier.status ?? "active")}
+            />
             {supplier.notes ? <small className="muted">{supplier.notes}</small> : null}
           </div>
         )
       },
       {
         key: "status",
-        header: "Productlijststatus",
+        header: "Status prijslijst",
         render: (supplier) => (
           <StatusBadge
             status={supplier.productListStatus}
@@ -302,14 +450,14 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
       },
       {
         key: "links",
-        header: "Koppelingen",
+        header: "Gekoppelde gegevens",
         hideOnMobile: true,
         render: (supplier) => (
           <div className="stack-sm">
             <span>{supplier.activeProductCount ?? 0} producten</span>
             <small className="muted">
-              {supplier.importProfileCount ?? 0} importprofielen ·{" "}
-              {supplier.sourceFileCount ?? 0} bestanden
+              {supplier.importProfileCount ?? 0} btw-controles ·{" "}
+              {supplier.sourceFileCount ?? 0} prijslijstbestanden
             </small>
           </div>
         )
@@ -333,20 +481,20 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
               ) : null}
             </div>
           ) : (
-            <span className="muted">Nog geen bronbestand</span>
+            <span className="muted">Nog geen prijslijstbestand</span>
           );
         }
       },
       {
         key: "latest",
-        header: "Laatste import",
+        header: "Laatste verwerking",
         hideOnMobile: true,
         render: (supplier) => (
           <div className="stack-sm">
             <span>
               {supplier.latestImportStatus
                 ? formatImportStatus(supplier.latestImportStatus)
-                : "Geen import"}
+                : "Geen verwerking"}
             </span>
             <small className="muted">{dateText(supplier.latestImportAt)}</small>
           </div>
@@ -354,10 +502,10 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
       },
       {
         key: "action",
-        header: "Bijwerken",
+        header: "Prijslijst",
         render: (supplier) => (
           <Select
-            aria-label={`Productlijststatus bijwerken voor ${supplier.name}`}
+            aria-label={`Prijslijststatus bijwerken voor ${supplier.name}`}
             disabled={savingSupplierId === supplier.id}
             value={supplier.productListStatus}
             onChange={(event) =>
@@ -371,6 +519,42 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
             ))}
           </Select>
         )
+      },
+      {
+        key: "actions",
+        header: "Acties",
+        width: "190px",
+        render: (supplier) => (
+          <div className="toolbar">
+            <Button
+              leftIcon={<Pencil size={16} aria-hidden="true" />}
+              onClick={() => startEditSupplier(supplier)}
+              size="sm"
+              variant="secondary"
+            >
+              Bewerken
+            </Button>
+            {(supplier.status ?? "active") === "archived" ? (
+              <Button
+                leftIcon={<RotateCcw size={16} aria-hidden="true" />}
+                onClick={() => setPendingSupplierStatus({ supplier, nextStatus: "active" })}
+                size="sm"
+                variant="secondary"
+              >
+                Herstellen
+              </Button>
+            ) : (
+              <Button
+                leftIcon={<Archive size={16} aria-hidden="true" />}
+                onClick={() => setPendingSupplierStatus({ supplier, nextStatus: "archived" })}
+                size="sm"
+                variant="danger"
+              >
+                Archiveren
+              </Button>
+            )}
+          </div>
+        )
       }
     ],
     [savingSupplierId]
@@ -378,6 +562,26 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
 
   return (
     <div className="grid">
+      <ConfirmDialog
+        open={Boolean(pendingSupplierStatus)}
+        title={
+          pendingSupplierStatus?.nextStatus === "archived"
+            ? "Leverancier archiveren?"
+            : "Leverancier herstellen?"
+        }
+        description={
+          pendingSupplierStatus
+            ? pendingSupplierStatus.nextStatus === "archived"
+              ? `Je archiveert ${pendingSupplierStatus.supplier.name}. Producten, imports en historie blijven bewaard.`
+              : `Je herstelt ${pendingSupplierStatus.supplier.name} naar actief.`
+            : ""
+        }
+        confirmLabel={pendingSupplierStatus?.nextStatus === "archived" ? "Archiveren" : "Herstellen"}
+        tone={pendingSupplierStatus?.nextStatus === "archived" ? "danger" : "warning"}
+        isBusy={Boolean(savingSupplierId)}
+        onCancel={() => setPendingSupplierStatus(null)}
+        onConfirm={() => void confirmSupplierStatus()}
+      />
       <section className="grid dashboard-grid">
         <StatCard label="Totaal leveranciers" value={summary.total} tone="neutral" />
         <StatCard
@@ -395,7 +599,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
         <StatCard
           label="Catalogusproducten"
           value={summary.linkedProducts}
-          description={`${summary.sourceFiles} bronbestanden gekoppeld`}
+          description={`${summary.sourceFiles} prijslijstbestanden gekoppeld`}
           tone="info"
         />
       </section>
@@ -403,13 +607,166 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
       {notice ? <Alert variant="success" description={notice} /> : null}
       {error ? <Alert variant="danger" description={error} /> : null}
 
+      {editingSupplier ? (
+        <Card>
+          <form className="form-grid" onSubmit={saveSupplier}>
+            <SectionHeader
+              compact
+              title="Leverancier bewerken"
+              description="Beheer contactgegevens, opvolging en zichtbaarheid van deze leverancier."
+              actions={
+                <StatusBadge
+                  status={supplierDraft.status}
+                  label={formatStatusLabel(supplierDraft.status)}
+                />
+              }
+            />
+            <div className="grid two-column-even">
+              <Field htmlFor="supplier-edit-name" label="Naam" required>
+                <Input
+                  id="supplier-edit-name"
+                  required
+                  value={supplierDraft.name}
+                  onChange={(event) =>
+                    setSupplierDraft((current) => ({ ...current, name: event.target.value }))
+                  }
+                />
+              </Field>
+              <Field htmlFor="supplier-edit-status" label="Leverancierstatus">
+                <Select
+                  id="supplier-edit-status"
+                  value={supplierDraft.status}
+                  onChange={(event) =>
+                    setSupplierDraft((current) => ({
+                      ...current,
+                      status: event.target.value as SupplierStatus
+                    }))
+                  }
+                >
+                  {SUPPLIER_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {formatStatusLabel(status)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+            <div className="grid two-column-even">
+              <Field htmlFor="supplier-edit-contact" label="Contactpersoon">
+                <Input
+                  id="supplier-edit-contact"
+                  value={supplierDraft.contactName}
+                  onChange={(event) =>
+                    setSupplierDraft((current) => ({
+                      ...current,
+                      contactName: event.target.value
+                    }))
+                  }
+                />
+              </Field>
+              <Field htmlFor="supplier-edit-product-list-status" label="Status prijslijst">
+                <Select
+                  id="supplier-edit-product-list-status"
+                  value={supplierDraft.productListStatus}
+                  onChange={(event) =>
+                    setSupplierDraft((current) => ({
+                      ...current,
+                      productListStatus: event.target.value as ProductListStatus
+                    }))
+                  }
+                >
+                  {PRODUCT_LIST_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {formatProductListStatus(status)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+            <div className="grid two-column-even">
+              <Field htmlFor="supplier-edit-email" label="E-mailadres">
+                <Input
+                  id="supplier-edit-email"
+                  type="email"
+                  value={supplierDraft.email}
+                  onChange={(event) =>
+                    setSupplierDraft((current) => ({ ...current, email: event.target.value }))
+                  }
+                />
+              </Field>
+              <Field htmlFor="supplier-edit-phone" label="Telefoonnummer">
+                <Input
+                  id="supplier-edit-phone"
+                  type="tel"
+                  value={supplierDraft.phone}
+                  onChange={(event) =>
+                    setSupplierDraft((current) => ({ ...current, phone: event.target.value }))
+                  }
+                />
+              </Field>
+            </div>
+            <div className="grid two-column-even">
+              <Field htmlFor="supplier-edit-last-contact" label="Laatste contact">
+                <Input
+                  id="supplier-edit-last-contact"
+                  type="date"
+                  value={supplierDraft.lastContactDate}
+                  onChange={(event) =>
+                    setSupplierDraft((current) => ({
+                      ...current,
+                      lastContactDate: event.target.value
+                    }))
+                  }
+                />
+              </Field>
+              <Field htmlFor="supplier-edit-expected" label="Verwacht op">
+                <Input
+                  id="supplier-edit-expected"
+                  type="date"
+                  value={supplierDraft.expectedDate}
+                  onChange={(event) =>
+                    setSupplierDraft((current) => ({
+                      ...current,
+                      expectedDate: event.target.value
+                    }))
+                  }
+                />
+              </Field>
+            </div>
+            <Field htmlFor="supplier-edit-notes" label="Notities">
+              <Textarea
+                id="supplier-edit-notes"
+                rows={3}
+                value={supplierDraft.notes}
+                onChange={(event) =>
+                  setSupplierDraft((current) => ({ ...current, notes: event.target.value }))
+                }
+              />
+            </Field>
+            <div className="toolbar">
+              <Button
+                isLoading={savingSupplierId === editingSupplier.id}
+                leftIcon={<Save size={17} aria-hidden="true" />}
+                type="submit"
+                variant="primary"
+              >
+                Leverancier opslaan
+              </Button>
+              <Button variant="secondary" onClick={() => setEditingSupplier(null)}>
+                Annuleren
+              </Button>
+            </div>
+          </form>
+        </Card>
+      ) : null}
+
       <section className="grid two-column">
         <Card>
           <form className="form-grid" onSubmit={createSupplier}>
             <SectionHeader
               compact
               title="Leverancier toevoegen"
-              description="Leg contactgegevens en productlijststatus vast voor opvolging."
+              description="Leg contactgegevens en prijslijststatus vast voor opvolging."
             />
             <Field htmlFor="supplier-name" label="Naam" required>
               <Input
@@ -427,7 +784,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
                   onChange={(event) => setContactName(event.target.value)}
                 />
               </Field>
-              <Field htmlFor="supplier-status" label="Productlijststatus">
+              <Field htmlFor="supplier-status" label="Status prijslijst">
                 <Select
                   id="supplier-status"
                   value={productListStatus}
@@ -509,7 +866,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
               <span aria-hidden="true">✓</span>
               <div>
                 <strong>Ontvangen of download beschikbaar</strong>
-                <small>De productlijst kan worden verwerkt of is al gekoppeld aan imports.</small>
+                <small>De prijslijst kan worden verwerkt of is al gekoppeld aan de catalogus.</small>
               </div>
             </div>
             <div className="checklist-item checklist-item-warning">
@@ -534,7 +891,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
         <SectionHeader
           compact
           title="Leveranciersoverzicht"
-          description="Zoek, filter en volg productlijststatussen per leverancier."
+          description="Zoek, filter en volg prijslijsten per leverancier."
         />
         <FilterBar
           search={
@@ -546,20 +903,40 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
             />
           }
           filters={
-            <Field htmlFor="supplier-status-filter" label="Filter op productlijststatus">
-              <Select
-                id="supplier-status-filter"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as ProductListStatus | "all")}
-              >
-                <option value="all">Alle statussen</option>
-                {PRODUCT_LIST_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {formatProductListStatus(status)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            <>
+              <Field htmlFor="supplier-visibility-filter" label="Leverancierstatus">
+                <Select
+                  id="supplier-visibility-filter"
+                  value={supplierStatusFilter}
+                  onChange={(event) =>
+                    setSupplierStatusFilter(event.target.value as SupplierStatus | "all")
+                  }
+                >
+                  <option value="all">Alle leverancierstatussen</option>
+                  {SUPPLIER_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {formatStatusLabel(status)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field htmlFor="supplier-status-filter" label="Filter op prijslijststatus">
+                <Select
+                  id="supplier-status-filter"
+                  value={statusFilter}
+                  onChange={(event) =>
+                    setStatusFilter(event.target.value as ProductListStatus | "all")
+                  }
+                >
+                  <option value="all">Alle prijslijststatussen</option>
+                  {PRODUCT_LIST_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {formatProductListStatus(status)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </>
           }
         />
         <div style={{ marginTop: 16 }}>
@@ -594,8 +971,8 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
                 </div>
                 <div className="mobile-card-meta">
                   <span>{supplier.activeProductCount ?? 0} producten</span>
-                  <span>{supplier.importProfileCount ?? 0} importprofielen</span>
-                  <span>{supplier.sourceFileCount ?? 0} bronbestanden</span>
+                  <span>{supplier.importProfileCount ?? 0} btw-controles</span>
+                  <span>{supplier.sourceFileCount ?? 0} prijslijstbestanden</span>
                   <span>Verwacht: {dateText(supplier.expectedAt)}</span>
                 </div>
                 {(supplier.sourceFileNames ?? []).length > 0 ? (
@@ -618,7 +995,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
                 {supplier.notes ? <p className="muted">{supplier.notes}</p> : null}
                 <div className="mobile-card-actions">
                   <Select
-                    aria-label={`Productlijststatus bijwerken voor ${supplier.name}`}
+                    aria-label={`Prijslijststatus bijwerken voor ${supplier.name}`}
                     disabled={savingSupplierId === supplier.id}
                     value={supplier.productListStatus}
                     onChange={(event) =>

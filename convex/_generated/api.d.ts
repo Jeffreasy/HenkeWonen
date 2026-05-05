@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as authz from "../authz.js";
 import type * as catalog from "../catalog.js";
 import type * as catalogImport from "../catalogImport.js";
 import type * as catalogReview from "../catalogReview.js";
@@ -36,6 +37,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  authz: typeof authz;
   catalog: typeof catalog;
   catalogImport: typeof catalogImport;
   catalogReview: typeof catalogReview;

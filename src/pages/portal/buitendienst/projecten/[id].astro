@@ -1,0 +1,19 @@
+---
+import FieldProjectWorkspace from "../../../../components/field/FieldProjectWorkspace";
+import FieldLayout from "../../../../components/layout/FieldLayout.astro";
+
+const session = Astro.locals.session;
+const { id } = Astro.params;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+
+if (!id) {
+  return Astro.redirect("/portal/buitendienst");
+}
+---
+
+<FieldLayout title="Klantbezoek" session={session}>
+  <FieldProjectWorkspace client:load session={session} projectId={id} />
+</FieldLayout>

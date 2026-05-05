@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationActorValidator, requireMutationRole } from "./authz";
 
 const vatMode = v.union(v.literal("inclusive"), v.literal("exclusive"), v.literal("unknown"));
 const duplicateEanDecision = v.union(
@@ -305,6 +306,7 @@ export const vatMappingReview = query({
 export const updateProfileVatMode = mutation({
   args: {
     tenantSlug: v.string(),
+    actor: mutationActorValidator,
     profileId: v.string(),
     sourceColumnName: v.string(),
     sourceColumnIndex: v.number(),
@@ -312,7 +314,9 @@ export const updateProfileVatMode = mutation({
     updatedByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "admin"
+    ]);
     const profile: any = await ctx.db.get(args.profileId as any);
 
     if (!profile || profile.tenantId !== tenant._id) {
@@ -358,9 +362,9 @@ export const updateProfileVatMode = mutation({
       [args.sourceColumnName]: {
         sourceColumnIndex: args.sourceColumnIndex,
         vatMode: args.vatMode,
-        updatedByExternalUserId: args.updatedByExternalUserId,
+        updatedByExternalUserId: externalUserId,
         updatedAt: now,
-        reviewedByExternalUserId: args.updatedByExternalUserId,
+        reviewedByExternalUserId: externalUserId,
         reviewedAt: now,
         reviewStatus: "reviewed"
       }
@@ -371,7 +375,7 @@ export const updateProfileVatMode = mutation({
       vatModeByPriceColumn,
       mapping,
       vatModeReview,
-      vatModeUpdatedByExternalUserId: args.updatedByExternalUserId,
+      vatModeUpdatedByExternalUserId: externalUserId,
       vatModeUpdatedAt: now,
       updatedAt: now
     });
@@ -383,6 +387,7 @@ export const updateProfileVatMode = mutation({
 export const bulkUpdateProfileVatModes = mutation({
   args: {
     tenantSlug: v.string(),
+    actor: mutationActorValidator,
     profileId: v.string(),
     columns: v.array(
       v.object({
@@ -394,7 +399,9 @@ export const bulkUpdateProfileVatModes = mutation({
     updatedByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "admin"
+    ]);
     const profile: any = await ctx.db.get(args.profileId as any);
 
     if (!profile || profile.tenantId !== tenant._id) {
@@ -428,9 +435,9 @@ export const bulkUpdateProfileVatModes = mutation({
         ...(vatModeReview[column.sourceColumnName] ?? {}),
         sourceColumnIndex: column.sourceColumnIndex,
         vatMode: args.vatMode,
-        updatedByExternalUserId: args.updatedByExternalUserId,
+        updatedByExternalUserId: externalUserId,
         updatedAt: now,
-        reviewedByExternalUserId: args.updatedByExternalUserId,
+        reviewedByExternalUserId: externalUserId,
         reviewedAt: now,
         reviewStatus: "reviewed"
       };
@@ -441,7 +448,7 @@ export const bulkUpdateProfileVatModes = mutation({
       vatModeByPriceColumn,
       mapping: patched.mapping,
       vatModeReview,
-      vatModeUpdatedByExternalUserId: args.updatedByExternalUserId,
+      vatModeUpdatedByExternalUserId: externalUserId,
       vatModeUpdatedAt: now,
       updatedAt: now
     });
@@ -456,6 +463,7 @@ export const bulkUpdateProfileVatModes = mutation({
 export const markProfileVatColumnsReviewed = mutation({
   args: {
     tenantSlug: v.string(),
+    actor: mutationActorValidator,
     profileId: v.string(),
     columns: v.array(
       v.object({
@@ -466,7 +474,9 @@ export const markProfileVatColumnsReviewed = mutation({
     reviewedByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "admin"
+    ]);
     const profile: any = await ctx.db.get(args.profileId as any);
 
     if (!profile || profile.tenantId !== tenant._id) {
@@ -488,7 +498,7 @@ export const markProfileVatColumnsReviewed = mutation({
         ...(vatModeReview[column.sourceColumnName] ?? {}),
         sourceColumnIndex: column.sourceColumnIndex,
         vatMode: currentVatMode,
-        reviewedByExternalUserId: args.reviewedByExternalUserId,
+        reviewedByExternalUserId: externalUserId,
         reviewedAt: now,
         reviewStatus: "reviewed"
       };
@@ -496,7 +506,7 @@ export const markProfileVatColumnsReviewed = mutation({
 
     await ctx.db.patch(profile._id, {
       vatModeReview,
-      vatModeUpdatedByExternalUserId: args.reviewedByExternalUserId,
+      vatModeUpdatedByExternalUserId: externalUserId,
       vatModeUpdatedAt: now,
       updatedAt: now
     });
@@ -511,12 +521,15 @@ export const markProfileVatColumnsReviewed = mutation({
 export const setProfileAllowUnknownVatMode = mutation({
   args: {
     tenantSlug: v.string(),
+    actor: mutationActorValidator,
     profileId: v.string(),
     allowUnknownVatMode: v.boolean(),
     updatedByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "admin"
+    ]);
     const profile: any = await ctx.db.get(args.profileId as any);
 
     if (!profile || profile.tenantId !== tenant._id) {
@@ -526,7 +539,7 @@ export const setProfileAllowUnknownVatMode = mutation({
     const now = Date.now();
     await ctx.db.patch(profile._id, {
       allowUnknownVatMode: args.allowUnknownVatMode,
-      vatModeUpdatedByExternalUserId: args.updatedByExternalUserId,
+      vatModeUpdatedByExternalUserId: externalUserId,
       vatModeUpdatedAt: now,
       updatedAt: now
     });
@@ -651,13 +664,16 @@ export const duplicateEanReview = query({
 export const updateDuplicateEanIssueReview = mutation({
   args: {
     tenantSlug: v.string(),
+    actor: mutationActorValidator,
     issueId: v.string(),
     decision: duplicateEanDecision,
     notes: v.optional(v.string()),
     reviewedByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "admin"
+    ]);
     const issue: any = await ctx.db.get(args.issueId as any);
 
     if (!issue || issue.tenantId !== tenant._id || issue.issueType !== "duplicate_ean") {
@@ -678,7 +694,7 @@ export const updateDuplicateEanIssueReview = mutation({
       metadata: {
         ...(issue.metadata ?? {}),
         reviewDecision: args.decision,
-        reviewedByExternalUserId: args.reviewedByExternalUserId,
+        reviewedByExternalUserId: externalUserId,
         reviewedAt: now
       },
       updatedAt: now
@@ -690,10 +706,11 @@ export const updateDuplicateEanIssueReview = mutation({
 
 export const syncDuplicateEanIssues = mutation({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: mutationActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const [products, issues] = await Promise.all([
       ctx.db
         .query("products")

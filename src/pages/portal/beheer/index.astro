@@ -1,0 +1,78 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import { canManage } from "../../../lib/auth/session";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+
+if (!canManage(session.role)) {
+  return Astro.redirect("/portal");
+}
+
+const beheerLinks = [
+  {
+    title: "Prijslijsten controleren",
+    label: "Prijslijsten",
+    href: "/portal/imports",
+    description: "Bekijk aangeleverde leverancierbestanden en verwerk ze pas als alles klopt."
+  },
+  {
+    title: "Btw-keuzes per prijslijst",
+    label: "Btw controle",
+    href: "/portal/import-profielen",
+    description: "Leg vast of prijskolommen inclusief of exclusief btw zijn."
+  },
+  {
+    title: "Dubbele EAN controleren",
+    label: "Productcontrole",
+    href: "/portal/catalogus/data-issues",
+    description: "Bekijk producten met dezelfde EAN en leg de juiste beslissing vast."
+  },
+  {
+    title: "Leveranciers beheren",
+    label: "Leveranciers",
+    href: "/portal/leveranciers",
+    description: "Houd leveranciers, contactmomenten en aangeleverde prijslijsten bij."
+  },
+  {
+    title: "Werkzaamheden en prijzen",
+    label: "Werkzaamheden",
+    href: "/portal/instellingen/werkzaamheden",
+    description: "Beheer vaste werkzaamheden, toeslagen en standaardprijzen."
+  },
+  {
+    title: "Productgroepen",
+    label: "Indeling",
+    href: "/portal/instellingen/categorieen",
+    description: "Bekijk de indeling waarmee producten en werkzaamheden gegroepeerd worden."
+  },
+  {
+    title: "Offerteteksten",
+    label: "Offertes",
+    href: "/portal/instellingen/offertetemplates",
+    description: "Beheer standaardteksten, voorwaarden en betaalafspraken."
+  }
+];
+---
+
+<PortalLayout title="Beheer" session={session}>
+  <PageHeader
+    eyebrow="Beheer"
+    title="Instellingen en controles"
+    description="Alle beheerzaken staan hier bij elkaar, zodat de dagelijkse werkplek rustig blijft."
+  />
+
+  <section class="grid three-column" aria-label="Beheerkeuzes">
+    {beheerLinks.map((item) => (
+      <a class="card" href={item.href}>
+        <span class="badge accent">{item.label}</span>
+        <h2>{item.title}</h2>
+        <p class="muted">{item.description}</p>
+      </a>
+    ))}
+  </section>
+</PortalLayout>

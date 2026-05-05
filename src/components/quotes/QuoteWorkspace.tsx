@@ -1,7 +1,8 @@
 import { Save } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
-import type { AppSession } from "../../lib/auth/session";
+import { mutationActorFromSession } from "../../lib/auth/authzToken";
+import { canEditQuotes, type AppSession } from "../../lib/auth/session";
 import type { SubmitEventLike } from "../../lib/events";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatQuoteStatus } from "../../lib/i18n/statusLabels";
@@ -64,12 +65,13 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const canEditQuote = canEditQuotes(session.role);
 
   const loadWorkspace = useCallback(async () => {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
       return;
     }
@@ -110,12 +112,13 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
     const newQuoteId = await client.mutation(api.portal.createQuote, {
       tenantSlug: session.tenantId,
+      actor: mutationActorFromSession(session),
       projectId,
       title: title.trim(),
       createdByExternalUserId: session.userId
@@ -134,12 +137,13 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
     const lineId = await client.mutation(api.portal.addQuoteLine, {
       tenantSlug: session.tenantId,
+      actor: mutationActorFromSession(session),
       quoteId: selectedQuoteId,
       ...line
     });
@@ -151,13 +155,31 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
     await client.mutation(api.portal.deleteQuoteLine, {
       tenantSlug: session.tenantId,
+      actor: mutationActorFromSession(session),
       lineId
+    });
+    await loadWorkspace();
+  }
+
+  async function updateQuoteLine(lineId: string, line: QuoteLineFormValues) {
+    const client = createConvexHttpClient();
+
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return;
+    }
+
+    await client.mutation(api.portal.updateQuoteLine, {
+      tenantSlug: session.tenantId,
+      actor: mutationActorFromSession(session),
+      lineId,
+      ...line
     });
     await loadWorkspace();
   }
@@ -170,15 +192,37 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
     await client.mutation(api.portal.updateQuoteTerms, {
       tenantSlug: session.tenantId,
+      actor: mutationActorFromSession(session),
       quoteId: selectedQuoteId,
       terms,
       paymentTerms
+    });
+    await loadWorkspace();
+  }
+
+  async function updateQuoteStatus(status: QuoteStatus) {
+    if (!selectedQuoteId) {
+      return;
+    }
+
+    const client = createConvexHttpClient();
+
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return;
+    }
+
+    await client.mutation(api.portal.updateQuoteStatus, {
+      tenantSlug: session.tenantId,
+      actor: mutationActorFromSession(session),
+      quoteId: selectedQuoteId,
+      status
     });
     await loadWorkspace();
   }
@@ -277,51 +321,53 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
         />
       </section>
 
-      <section className="panel">
-        <SectionHeader
-          compact
-          title="Nieuwe offerte"
-          description="Start een offerte vanuit een bestaand project."
-        />
-        <form className="responsive-form-row" onSubmit={createQuote}>
-          <Field htmlFor="quote-project" label="Project" required>
-            <Select
-              id="quote-project"
-              value={projectId}
-              onChange={(event) => setProjectId(event.target.value)}
-              required
+      {canEditQuote ? (
+        <section className="panel">
+          <SectionHeader
+            compact
+            title="Nieuwe offerte"
+            description="Start een offerte vanuit een bestaand project."
+          />
+          <form className="responsive-form-row" onSubmit={createQuote}>
+            <Field htmlFor="quote-project" label="Project" required>
+              <Select
+                id="quote-project"
+                value={projectId}
+                onChange={(event) => setProjectId(event.target.value)}
+                required
+              >
+                {projects.map((project) => (
+                  <option value={project.id} key={project.id}>
+                    {project.title}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field htmlFor="quote-title" label="Offertenaam" required>
+              <Input
+                id="quote-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                required
+              />
+            </Field>
+            <Button
+              disabled={projects.length === 0}
+              leftIcon={<Save size={17} aria-hidden="true" />}
+              type="submit"
+              variant="primary"
             >
-              {projects.map((project) => (
-                <option value={project.id} key={project.id}>
-                  {project.title}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field htmlFor="quote-title" label="Offertenaam" required>
-            <Input
-              id="quote-title"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              required
-            />
-          </Field>
-          <Button
-            disabled={projects.length === 0}
-            leftIcon={<Save size={17} aria-hidden="true" />}
-            type="submit"
-            variant="primary"
-          >
-            Offerte opslaan
-          </Button>
-        </form>
-      </section>
+              Offerte starten
+            </Button>
+          </form>
+        </section>
+      ) : null}
 
       <section className="grid">
         <SectionHeader
           compact
           title="Offertes"
-          description="Selecteer een offerte om regels en totalen te beheren."
+          description="Selecteer een offerte om posten, voorwaarden en totaal te bekijken."
         />
         <FilterBar
           search={
@@ -364,10 +410,14 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
         <QuoteBuilder
           quote={selectedQuote}
           customer={selectedCustomer}
+          canEdit={canEditQuote}
+          session={session}
           project={selectedProject}
           quoteTemplates={templates}
           onAddLine={addQuoteLine}
           onDeleteLine={deleteQuoteLine}
+          onUpdateLine={updateQuoteLine}
+          onUpdateStatus={updateQuoteStatus}
           onMeasurementLinesImported={loadWorkspace}
           onUpdateTerms={updateQuoteTerms}
         />

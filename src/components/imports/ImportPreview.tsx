@@ -1,7 +1,8 @@
-import { CheckCircle2, FileSpreadsheet, Save, ShieldAlert } from "lucide-react";
+import { Archive, CheckCircle2, FileSpreadsheet, RotateCcw, Save, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
-import type { AppSession } from "../../lib/auth/session";
+import { mutationActorFromSession } from "../../lib/auth/authzToken";
+import { canManage, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import {
   formatImportStatus,
@@ -94,15 +95,20 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
   const [rowPage, setRowPage] = useState(1);
   const [allowUnknownVatMode, setAllowUnknownVatMode] = useState(false);
   const [pendingCommitBatch, setPendingCommitBatch] = useState<ProductImportBatch | null>(null);
+  const [pendingBatchStatus, setPendingBatchStatus] = useState<{
+    batch: ProductImportBatch;
+    nextStatus: ProductImportBatch["status"];
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canManageImports = canManage(session.role);
 
   const loadBatches = useCallback(async () => {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
       return;
     }
@@ -119,7 +125,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       setSelectedBatchId((current) => (batchId ?? current) || result[0]?.id || "");
     } catch (loadError) {
       console.error(loadError);
-      setError("Importbatches konden niet worden geladen.");
+      setError("Prijslijsten konden niet worden geladen.");
     } finally {
       setIsLoading(false);
     }
@@ -134,7 +140,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
@@ -149,7 +155,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       setAllowUnknownVatMode(result?.batch.allowUnknownVatMode ?? false);
     } catch (loadError) {
       console.error(loadError);
-      setError("Importdetails konden niet worden geladen.");
+      setError("De controle van deze prijslijst kon niet worden geladen.");
     }
   }, [selectedBatchId, session.tenantId]);
 
@@ -175,7 +181,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
@@ -185,6 +191,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     try {
       const newBatchId = await client.mutation(api.catalogImport.createPreviewBatch, {
         tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
         fileName,
         fileType: fileTypeFor(fileName),
         sourceFileName: fileName,
@@ -197,7 +204,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       await loadBatches();
     } catch (createError) {
       console.error(createError);
-      setError("Importbatch kon niet worden aangemaakt.");
+      setError("De prijslijstcontrole kon niet worden gestart.");
     } finally {
       setIsBusy(false);
     }
@@ -207,7 +214,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
@@ -217,6 +224,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     try {
       await client.mutation(api.catalogImport.savePreviewMapping, {
         tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
         batchId: batch.id,
         allowUnknownVatMode,
         mapping: {
@@ -229,7 +237,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       await loadDetail();
     } catch (mappingError) {
       console.error(mappingError);
-      setError("Btw-mapping kon niet worden opgeslagen.");
+      setError("De btw-keuze kon niet worden opgeslagen.");
     } finally {
       setIsBusy(false);
     }
@@ -239,7 +247,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
@@ -250,6 +258,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       for (let index = 0; index < 500; index += 1) {
         const result = await client.mutation(api.catalogImport.commitPreviewBatchChunk, {
           tenantSlug: session.tenantId,
+          actor: mutationActorFromSession(session),
           batchId: batch.id,
           allowUnknownVatMode,
           importedByExternalUserId: session.userId,
@@ -268,11 +277,60 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       setError(
         commitError instanceof Error
           ? commitError.message
-          : "Definitieve import kon niet worden uitgevoerd."
+          : "De prijslijst kon niet definitief worden verwerkt."
       );
     } finally {
       setIsBusy(false);
     }
+  }
+
+  async function updateBatchStatus() {
+    if (!pendingBatchStatus || !canManageImports) {
+      return;
+    }
+
+    const client = createConvexHttpClient();
+
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return;
+    }
+
+    setIsBusy(true);
+    setError(null);
+
+    try {
+      await client.mutation(api.imports.updateBatchStatusForPortal, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        batchId: pendingBatchStatus.batch.id,
+        status: pendingBatchStatus.nextStatus
+      });
+      setPendingBatchStatus(null);
+      await loadBatches();
+      await loadDetail();
+    } catch (statusError) {
+      console.error(statusError);
+      setError("De prijslijststatus kon niet worden bijgewerkt.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  function archiveActionFor(batch: ProductImportBatch) {
+    return batch.status === "archived"
+      ? {
+          label: "Herstellen",
+          nextStatus: batch.archivedFromStatus ?? ("uploaded" as ProductImportBatch["status"]),
+          icon: <RotateCcw size={16} aria-hidden="true" />,
+          variant: "secondary" as const
+        }
+      : {
+          label: "Archiveren",
+          nextStatus: "archived" as ProductImportBatch["status"],
+          icon: <Archive size={16} aria-hidden="true" />,
+          variant: "danger" as const
+        };
   }
 
   const selectedBatch =
@@ -365,7 +423,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     },
     {
       key: "previewRows",
-      header: "Voorvertoning",
+      header: "Gecontroleerde regels",
       align: "right",
       width: "110px",
       render: (batch) => numberText(batch.previewRows)
@@ -386,7 +444,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     },
     {
       key: "unknownVatModeRows",
-      header: "Btw-modus onbekend",
+      header: "Btw nog onbekend",
       align: "right",
       width: "130px",
       render: (batch) => (
@@ -402,11 +460,11 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       render: (batch) => (
         <>
           <Badge variant={batch.errorRows > 0 ? "danger" : "success"}>
-            fouten {numberText(batch.errorRows)}
+            fouten: {numberText(batch.errorRows)}
           </Badge>
           <div style={{ marginTop: 4 }}>
             <Badge variant={batch.warningRows > 0 ? "warning" : "neutral"}>
-              waarschuwingen {numberText(batch.warningRows)}
+              waarschuwingen: {numberText(batch.warningRows)}
             </Badge>
           </div>
           {batch.errorMessage ? <div className="muted">{batch.errorMessage}</div> : null}
@@ -416,21 +474,43 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     {
       key: "actions",
       header: "Actie",
-      width: "110px",
-      render: (batch) => <a href={`/portal/imports/${batch.id}`}>Bekijken</a>
+      width: "210px",
+      render: (batch) => {
+        const archiveAction = archiveActionFor(batch);
+
+        return (
+          <div className="toolbar">
+            <a className="button secondary" href={`/portal/imports/${batch.id}`}>
+              Bekijken
+            </a>
+            {canManageImports && batch.status !== "importing" ? (
+              <Button
+                leftIcon={archiveAction.icon}
+                onClick={() =>
+                  setPendingBatchStatus({ batch, nextStatus: archiveAction.nextStatus })
+                }
+                size="sm"
+                variant={archiveAction.variant}
+              >
+                {archiveAction.label}
+              </Button>
+            ) : null}
+          </div>
+        );
+      }
     }
   ];
 
   const rowColumns: Array<DataTableColumn<ProductImportRow>> = [
     {
       key: "rowNumber",
-      header: "Rij",
+      header: "Regel",
       width: "80px",
       render: (row) => row.rowNumber
     },
     {
       key: "kind",
-      header: "Regeltype",
+      header: "Soort regel",
       width: "120px",
       render: (row) => formatRowKind(row.rowKind)
     },
@@ -442,7 +522,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     },
     {
       key: "product",
-      header: "Product/sectie",
+      header: "Product of groep",
       render: (row) => {
         const normalized = row.normalized ?? {};
         const title =
@@ -455,7 +535,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
             <strong>{title}</strong>
             <div className="muted">{row.sourceSheetName ?? ""}</div>
             {row.importedProductId ? (
-              <div className="muted">gekoppeld product {row.importedProductId}</div>
+              <div className="muted">verwerkt als product</div>
             ) : null}
           </>
         );
@@ -463,7 +543,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     },
     {
       key: "warnings",
-      header: "Waarschuwingen/fouten",
+      header: "Meldingen",
       hideOnMobile: true,
       render: (row) => (
         <>
@@ -479,10 +559,10 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     <>
       <ConfirmDialog
         open={Boolean(pendingCommitBatch)}
-        title="Import definitief verwerken?"
+        title="Prijslijst definitief verwerken?"
         description={
           pendingCommitBatch
-            ? `Je verwerkt batch "${pendingCommitBatch.fileName}" naar producten en prijsregels. Controleer waarschuwingen voordat je doorgaat; fouten, dubbele bronsleutels en onbekende btw-modus zonder uitzondering blokkeren de import.`
+            ? `Je verwerkt "${pendingCommitBatch.fileName}" naar producten en verkoopprijzen. Controleer de meldingen voordat je doorgaat; fouten, dubbele prijslijstregels en ontbrekende btw-keuzes blokkeren dit.`
             : ""
         }
         confirmLabel="Definitief verwerken"
@@ -497,10 +577,32 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
           }
         }}
       />
+      <ConfirmDialog
+        open={Boolean(pendingBatchStatus)}
+        title={
+          pendingBatchStatus?.nextStatus === "archived"
+            ? "Prijslijst archiveren?"
+            : "Prijslijst herstellen?"
+        }
+        description={
+          pendingBatchStatus
+            ? pendingBatchStatus.nextStatus === "archived"
+              ? `Je archiveert "${pendingBatchStatus.batch.fileName}". De controle blijft bewaard, maar verdwijnt uit het dagelijkse overzicht.`
+              : `Je herstelt "${pendingBatchStatus.batch.fileName}" naar ${formatImportStatus(
+                  pendingBatchStatus.nextStatus
+                ).toLowerCase()}.`
+            : ""
+        }
+        confirmLabel={pendingBatchStatus?.nextStatus === "archived" ? "Archiveren" : "Herstellen"}
+        tone={pendingBatchStatus?.nextStatus === "archived" ? "danger" : "warning"}
+        isBusy={isBusy}
+        onCancel={() => setPendingBatchStatus(null)}
+        onConfirm={() => void updateBatchStatus()}
+      />
       <div className="grid two-column">
       <section className="grid">
         <form className="panel form-grid" onSubmit={createBatch}>
-          <p className="eyebrow">Nieuwe importbatch</p>
+          <p className="eyebrow">Nieuwe prijslijstcontrole</p>
           <Field label="Bestand" htmlFor="import-file">
             <Select id="import-file" value={fileName} onChange={(event) => setFileName(event.target.value)}>
               {sourceFiles.map((file) => (
@@ -524,7 +626,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
             disabled={isBusy}
             leftIcon={<FileSpreadsheet size={17} aria-hidden="true" />}
           >
-            Importbatch aanmaken
+            Controle starten
           </Button>
         </form>
 
@@ -532,9 +634,9 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
           <FilterBar
             search={
               <SearchInput
-                aria-label="Zoek importbatches"
+                aria-label="Zoek prijslijsten"
                 value={batchSearchQuery}
-                placeholder="Zoek op bestand, leverancier of profiel"
+                placeholder="Zoek op bestand, leverancier of controle"
                 onChange={setBatchSearchQuery}
               />
             }
@@ -553,10 +655,11 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                   <option value="importing">{formatImportStatus("importing")}</option>
                   <option value="imported">{formatImportStatus("imported")}</option>
                   <option value="failed">{formatImportStatus("failed")}</option>
+                  <option value="archived">{formatImportStatus("archived")}</option>
                 </Select>
               </Field>
             }
-            actions={<span className="muted">{numberText(filteredBatches.length)} importbatches</span>}
+            actions={<span className="muted">{numberText(filteredBatches.length)} prijslijsten</span>}
           />
         </section>
 
@@ -566,8 +669,8 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
           getRowKey={(batch) => batch.id}
           loading={isLoading}
           error={error}
-          emptyTitle="Geen importbatches gevonden"
-          emptyDescription="Pas filters aan of maak een nieuwe voorvertoningsbatch aan."
+          emptyTitle="Geen prijslijsten gevonden"
+          emptyDescription="Pas filters aan of start een nieuwe controle."
           density="compact"
           mobileMode="cards"
           renderMobileCard={(batch) => (
@@ -583,11 +686,11 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                 <StatusBadge status={batch.status} label={formatImportStatus(batch.status)} />
               </div>
               <div className="mobile-card-meta">
-                <Badge variant="neutral">Voorvertoning {numberText(batch.previewRows)}</Badge>
+                <Badge variant="neutral">Gecontroleerde regels {numberText(batch.previewRows)}</Badge>
                 <Badge variant="neutral">Productregels {numberText(batch.productRows)}</Badge>
                 <Badge variant="neutral">Prijsregels {numberText(batch.importedPrices)}</Badge>
                 <Badge variant={batch.unknownVatModeRows > 0 ? "warning" : "success"}>
-                  Btw-modus onbekend {numberText(batch.unknownVatModeRows)}
+                  Btw nog onbekend {numberText(batch.unknownVatModeRows)}
                 </Badge>
               </div>
               <div className="mobile-card-section">
@@ -605,17 +708,30 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                 <a className="button secondary" href={`/portal/imports/${batch.id}`}>
                   Bekijk details
                 </a>
+                {canManageImports && batch.status !== "importing" ? (
+                  <Button
+                    leftIcon={archiveActionFor(batch).icon}
+                    onClick={() => {
+                      const archiveAction = archiveActionFor(batch);
+                      setPendingBatchStatus({ batch, nextStatus: archiveAction.nextStatus });
+                    }}
+                    size="sm"
+                    variant={archiveActionFor(batch).variant}
+                  >
+                    {archiveActionFor(batch).label}
+                  </Button>
+                ) : null}
               </div>
             </>
           )}
-          ariaLabel="Importbatches"
+          ariaLabel="Prijslijsten"
         />
       </section>
 
       <section className="panel">
         {selectedBatch ? (
           <>
-            <p className="eyebrow">Voorvertoning en audit</p>
+            <p className="eyebrow">Controle en meldingen</p>
             <h2>{selectedBatch.fileName}</h2>
             <p className="muted">
               Aangemaakt {dateText(selectedBatch.createdAt)} · verwerkt{" "}
@@ -624,16 +740,39 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
             {selectedBatch.errorMessage ? (
               <Alert
                 variant="danger"
-                title="Importfout"
+                title="Verwerken mislukt"
                 description={selectedBatch.errorMessage}
               />
             ) : null}
+            {canManageImports && selectedBatch.status !== "importing" ? (
+              <div className="toolbar" style={{ margin: "12px 0 0" }}>
+                {(() => {
+                  const archiveAction = archiveActionFor(selectedBatch);
 
-            <div className="tabs" role="tablist" aria-label="Tabs voor batchdetail">
+                  return (
+                    <Button
+                      disabled={isBusy}
+                      leftIcon={archiveAction.icon}
+                      onClick={() =>
+                        setPendingBatchStatus({
+                          batch: selectedBatch,
+                          nextStatus: archiveAction.nextStatus
+                        })
+                      }
+                      variant={archiveAction.variant}
+                    >
+                      {archiveAction.label}
+                    </Button>
+                  );
+                })()}
+              </div>
+            ) : null}
+
+            <div className="tabs" role="tablist" aria-label="Tabs voor prijslijstcontrole">
               {[
                 { value: "summary", label: "Samenvatting" },
                 { value: "rows", label: "Regels" },
-                { value: "warnings", label: "Waarschuwingen/fouten" },
+                { value: "warnings", label: "Meldingen" },
                 { value: "reconciliation", label: "Controle" }
               ].map((tab) => (
                 <button
@@ -657,30 +796,30 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                     label="Producten verwerkt"
                     value={numberText(selectedBatch.importedProducts + selectedBatch.updatedProducts)}
                   />
-                  <StatCard label="Prijzen verwerkt" value={numberText(selectedBatch.importedPrices)} />
+                  <StatCard label="Prijsregels verwerkt" value={numberText(selectedBatch.importedPrices)} />
                 </div>
                 <div className="grid three-column" style={{ marginTop: 16 }}>
                   <StatCard
-                    label="Waarschuwingsregels"
+                    label="Regels met waarschuwing"
                     value={numberText(selectedBatch.warningRows)}
                     tone={selectedBatch.warningRows > 0 ? "warning" : "neutral"}
                   />
                   <StatCard
-                    label="Foutregels"
+                    label="Regels met fouten"
                     value={numberText(selectedBatch.errorRows)}
                     tone={selectedBatch.errorRows > 0 ? "danger" : "success"}
                   />
-                  <StatCard label="Genegeerde regels" value={numberText(selectedBatch.ignoredRows)} />
+                  <StatCard label="Overgeslagen regels" value={numberText(selectedBatch.ignoredRows)} />
                 </div>
                 <div className="toolbar" style={{ marginTop: 16 }}>
                   <div className="toolbar" style={{ gap: 8 }}>
                     <Checkbox
-                      aria-label="Sta onbekende btw-modus toe voor deze batch"
+                      aria-label="Sta ontbrekende btw-keuze toe voor deze prijslijst"
                       checked={allowUnknownVatMode}
                       onChange={(event) => setAllowUnknownVatMode(event.target.checked)}
                     />
                     <Badge variant={selectedBatch.unknownVatModeRows > 0 ? "warning" : "success"}>
-                      Btw-modus onbekend: {numberText(selectedBatch.unknownVatModeRows)}
+                      Btw nog onbekend: {numberText(selectedBatch.unknownVatModeRows)}
                     </Badge>
                   </div>
                   <Button
@@ -689,7 +828,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                     disabled={isBusy}
                     leftIcon={<Save size={17} aria-hidden="true" />}
                   >
-                    Btw-mapping opslaan
+                    Btw-keuze opslaan
                   </Button>
                   <Button
                     variant="primary"
@@ -709,8 +848,8 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                 {!canCommit ? (
                   <Alert
                     variant="warning"
-                    title="Import nog niet vrijgegeven"
-                    description="Definitieve import blijft geblokkeerd zolang er fouten, dubbele bronsleutels of onbekende btw-modus zonder uitzondering zijn."
+                    title="Nog niet klaar om te verwerken"
+                    description="Verwerken blijft geblokkeerd zolang er fouten, dubbele prijslijstregels of ontbrekende btw-keuzes zijn."
                     style={{ marginTop: 16 }}
                   />
                 ) : null}
@@ -723,13 +862,13 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                   <FilterBar
                     filters={
                       <>
-                        <Field label="Regeltype" htmlFor="import-row-kind-filter">
+                        <Field label="Soort regel" htmlFor="import-row-kind-filter">
                           <Select
                             id="import-row-kind-filter"
                             value={rowKindFilter}
                             onChange={(event) => setRowKindFilter(event.target.value as RowKindFilter)}
                           >
-                            <option value="all">Alle regeltypes</option>
+                            <option value="all">Alle soorten</option>
                             {rowKindOptions.map((kind) => (
                               <option value={kind} key={kind}>
                                 {formatRowKind(kind)}
@@ -753,7 +892,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                         </Field>
                       </>
                     }
-                    actions={<span className="muted">{numberText(filteredRows.length)} auditregels</span>}
+                    actions={<span className="muted">{numberText(filteredRows.length)} regels</span>}
                   />
                 </div>
                 <div style={{ marginTop: 16 }}>
@@ -761,10 +900,10 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                     rows={pagedRows}
                     columns={rowColumns}
                     getRowKey={(row) => row.id}
-                    emptyTitle="Geen importregels geladen"
-                    emptyDescription="Deze batch heeft geen auditregels voor de huidige filters."
+                    emptyTitle="Geen regels gevonden"
+                    emptyDescription="Deze prijslijst heeft geen regels voor de huidige filters."
                     density="compact"
-                    ariaLabel="Auditregels import"
+                    ariaLabel="Prijslijstregels"
                   />
                 </div>
                 {filteredRows.length > rowPageSize ? (
@@ -776,7 +915,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                       hasNextPage={safeRowPage < totalRowPages}
                       onPrevious={() => setRowPage((current) => Math.max(1, current - 1))}
                       onNext={() => setRowPage((current) => Math.min(totalRowPages, current + 1))}
-                      label="Paginatie importregels"
+                      label="Paginatie prijslijstregels"
                     />
                   </div>
                 ) : null}
@@ -790,7 +929,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                   <Alert
                     variant="success"
                     title="Geen waarschuwingen of fouten"
-                    description="Deze batch heeft geen waarschuwingsregels of foutregels in de huidige tellingen."
+                    description="Deze prijslijst heeft geen waarschuwingen of fouten in de huidige tellingen."
                     style={{ marginTop: 16 }}
                   />
                 ) : null}
@@ -806,15 +945,15 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                       value: numberText(selectedBatch.duplicateProductMatches)
                     },
                     {
-                      label: "Dubbele bronsleutels",
+                      label: "Dubbele prijslijstregels",
                       value: numberText(selectedBatch.duplicateSourceKeys),
                       description:
                         selectedBatch.duplicateSourceKeys > 0
-                          ? "Blokkeert definitieve import."
-                          : "Geen dubbele bronsleutels."
+                          ? "Blokkeert definitief verwerken."
+                          : "Geen dubbele prijslijstregels."
                     },
                     {
-                      label: "Nulprijsregels",
+                      label: "Regels met nulprijs",
                       value: numberText(selectedBatch.zeroPriceRows)
                     },
                     {
@@ -822,7 +961,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                       value: numberText(selectedBatch.productsWithoutSupplierCode)
                     },
                     {
-                      label: "Losse prijsregels",
+                      label: "Prijsregels zonder product",
                       value: numberText(selectedBatch.orphanPriceRules)
                     },
                     {
@@ -835,7 +974,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
             ) : null}
           </>
         ) : (
-          <div className="empty-state">Geen import geselecteerd.</div>
+          <div className="empty-state">Selecteer een prijslijst om de controle te bekijken.</div>
         )}
       </section>
       </div>

@@ -6,9 +6,9 @@ import { PageHeader } from "../../../components/ui/PageHeader";
 const session = Astro.locals.session;
 const projectId = Astro.params.id ?? "";
 const breadcrumbs = [
-  { label: "Portal", href: "/portal" },
-  { label: "Projecten", href: "/portal/projecten" },
-  { label: "Detail" }
+  { label: "Start", href: "/portal" },
+  { label: "Dossiers", href: "/portal/dossiers" },
+  { label: "Project" }
 ];
 
 if (!session) {
@@ -18,9 +18,9 @@ if (!session) {
 
 <PortalLayout title="Project" session={session}>
   <PageHeader
-    eyebrow="Project"
-    title="Projectopvolging"
-    description="Status, planning, notities en uitvoering binnen het projectdossier."
+    eyebrow="Projectdossier"
+    title="Projectwerkplek"
+    description="De centrale plek voor klantcontext, ruimtes, inmeting, offertevoorbereiding en opvolging."
     breadcrumbs={breadcrumbs}
   />
   <ProjectDetail client:load session={session} projectId={projectId} />

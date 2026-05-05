@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireSyncToken } from "./authz";
 
 export const getBySlug = query({
   args: {
@@ -16,9 +17,12 @@ export const getBySlug = query({
 export const ensureTenant = mutation({
   args: {
     slug: v.string(),
-    name: v.string()
+    name: v.string(),
+    syncToken: v.string()
   },
   handler: async (ctx, args) => {
+    await requireSyncToken(args.syncToken, args.slug);
+
     const now = Date.now();
     const existing = await ctx.db
       .query("tenants")

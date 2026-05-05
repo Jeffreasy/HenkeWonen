@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
+import { createToolMutationActor } from "./authz_actor.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const envPath = resolve(root, ".env.local");
@@ -125,6 +126,7 @@ function buildReport({ before, after, dryRun, applied, failed, skipped }) {
 }
 
 loadEnv(envPath);
+const actor = createToolMutationActor(tenantSlug);
 
 if (!existsSync(decisionPath)) {
   writeFileSync(
@@ -202,6 +204,7 @@ for (const decision of decisions) {
   if (decision.vatMode === "unknown") {
     await client.mutation(api.catalogReview.setProfileAllowUnknownVatMode, {
       tenantSlug,
+      actor,
       profileId: mapping.profileId,
       allowUnknownVatMode: true,
       updatedByExternalUserId: "vat-mapping-apply-script"
@@ -210,6 +213,7 @@ for (const decision of decisions) {
 
   await client.mutation(api.catalogReview.updateProfileVatMode, {
     tenantSlug,
+    actor,
     profileId: mapping.profileId,
     sourceColumnName: mapping.sourceColumnName,
     sourceColumnIndex: mapping.sourceColumnIndex,

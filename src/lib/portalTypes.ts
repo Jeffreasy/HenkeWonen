@@ -238,6 +238,7 @@ export type PortalSupplier = {
   email?: string;
   phone?: string;
   productListStatus: ProductListStatus;
+  status?: "active" | "inactive" | "archived";
   notes?: string;
   lastContactAt?: number;
   expectedAt?: number;
@@ -383,7 +384,18 @@ export type ProductImportBatch = {
     | "ready_to_import"
     | "importing"
     | "imported"
+    | "failed"
+    | "archived";
+  archivedFromStatus?:
+    | "uploaded"
+    | "analyzing"
+    | "needs_mapping"
+    | "ready_to_import"
+    | "importing"
+    | "imported"
     | "failed";
+  archivedAt?: number;
+  archivedByExternalUserId?: string;
   sourcePath?: string;
   fileHash?: string;
   profileName?: string;
@@ -583,6 +595,49 @@ export type QuoteTemplate = {
   defaultTerms: string[];
   paymentTerms?: string[];
   defaultLines: QuoteTemplateLine[];
+};
+
+export type FieldWorkspaceBucket = "today" | "measure" | "quote" | "followUp";
+
+export type FieldWorkspaceCard = {
+  id: string;
+  href: string;
+  bucket: FieldWorkspaceBucket;
+  nextAction: string;
+  visitAt?: number;
+  address?: string;
+  phone?: string;
+  email?: string;
+  updatedAt: number;
+  project: PortalProject;
+  customer: PortalCustomer | null;
+  latestQuote: Omit<PortalQuote, "lines"> | null;
+  measurement: {
+    id: string;
+    status: MeasurementStatus;
+    measurementDate?: number;
+    updatedAt: number;
+  } | null;
+};
+
+export type FieldServiceWorkspaceResult = {
+  today: FieldWorkspaceCard[];
+  measure: FieldWorkspaceCard[];
+  quote: FieldWorkspaceCard[];
+  followUp: FieldWorkspaceCard[];
+  counts: Record<FieldWorkspaceBucket, number>;
+};
+
+export type FieldProjectWorkspaceResult = {
+  project: PortalProject;
+  customer: PortalCustomer | null;
+  quotes: PortalQuote[];
+  templates: QuoteTemplate[];
+  visit: {
+    status: string;
+    visitAt?: number;
+    measurementStatus?: MeasurementStatus;
+  };
 };
 
 export type ImportProfile = {

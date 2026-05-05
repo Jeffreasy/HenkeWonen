@@ -12,9 +12,11 @@ if (!session) {
 
 <PortalLayout title="Klanten" session={session}>
   <PageHeader
-    eyebrow="CRM"
-    title="Klanten"
-    description="Klantgegevens, contactmomenten, afspraken en uitgeleende items centraal beheren."
-  />
+    eyebrow="Dossiers"
+    title="Klantdossiers"
+    description="Leg klantgegevens vast en open daarna het volledige dossier vanuit de centrale dossierzoeker."
+  >
+    <a class="button secondary" href="/portal/dossiers">Terug naar dossiers</a>
+  </PageHeader>
   <CustomerWorkspace client:load session={session} />
 </PortalLayout>

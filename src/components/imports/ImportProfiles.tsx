@@ -1,9 +1,11 @@
-import { CheckCheck, Filter, RefreshCw, ShieldAlert } from "lucide-react";
+import { Archive, CheckCheck, Filter, RefreshCw, RotateCcw, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
-import type { AppSession } from "../../lib/auth/session";
+import { mutationActorFromSession } from "../../lib/auth/authzToken";
+import { canManage, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import {
+  formatStatusLabel,
   formatPriceType,
   formatUnit,
   formatVatMode
@@ -16,6 +18,7 @@ import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { FilterBar } from "../ui/FilterBar";
 import { InlineHelp } from "../ui/InlineHelp";
+import { StatusBadge } from "../ui/StatusBadge";
 import { Select } from "../ui/Select";
 import { StatCard } from "../ui/StatCard";
 
@@ -58,6 +61,19 @@ type VatMappingReview = {
   rows: VatMappingReviewRow[];
 };
 
+type ImportProfileSummary = {
+  id: string;
+  supplierName: string;
+  name: string;
+  expectedFileExtension?: ".xlsx" | ".xls";
+  filePattern?: string;
+  sheetPattern?: string;
+  supportsXlsx: boolean;
+  supportsXls: boolean;
+  status: "active" | "inactive";
+  updatedAt: number;
+};
+
 type PendingConfirmation =
   | {
       type: "bulkVatMode";
@@ -76,8 +92,8 @@ const filters: Array<{ value: MappingFilter; label: string }> = [
   { value: "unresolved", label: "Te beoordelen" },
   { value: "inclusive", label: "Inclusief btw" },
   { value: "exclusive", label: "Exclusief btw" },
-  { value: "unknown", label: "Btw onbekend" },
-  { value: "allowUnknown", label: "Uitzondering" },
+  { value: "unknown", label: "Nog kiezen" },
+  { value: "allowUnknown", label: "Bewuste uitzondering" },
   { value: "all", label: "Alle" }
 ];
 
@@ -146,13 +162,19 @@ function formatConfidence(confidence: VatMappingReviewRow["confidence"]) {
 
 export default function ImportProfiles({ session }: ImportProfilesProps) {
   const [review, setReview] = useState<VatMappingReview | null>(null);
+  const [profiles, setProfiles] = useState<ImportProfileSummary[]>([]);
   const [filter, setFilter] = useState<MappingFilter>("unresolved");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [notice, setNotice] = useState<string | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [pendingProfileStatus, setPendingProfileStatus] = useState<{
+    profile: ImportProfileSummary;
+    nextStatus: ImportProfileSummary["status"];
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canManageProfiles = canManage(session.role);
 
   const visibleRows = useMemo(
     () => (review?.rows ?? []).filter((row) => filterRow(row, filter)),
@@ -196,7 +218,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
       return;
     }
@@ -205,14 +227,20 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     setError(null);
 
     try {
-      const result = (await client.query(api.catalogReview.vatMappingReview, {
-        tenantSlug: session.tenantId
-      })) as VatMappingReview;
+      const [result, profileResult] = await Promise.all([
+        client.query(api.catalogReview.vatMappingReview, {
+          tenantSlug: session.tenantId
+        }) as Promise<VatMappingReview>,
+        client.query(api.imports.listProfilesForPortal, {
+          tenantSlug: session.tenantId
+        }) as Promise<ImportProfileSummary[]>
+      ]);
 
       setReview(result);
+      setProfiles(profileResult);
     } catch (loadError) {
       console.error(loadError);
-      setError("Btw-mapping kon niet worden geladen.");
+      setError("Btw-keuzes konden niet worden geladen.");
     } finally {
       setIsLoading(false);
     }
@@ -242,7 +270,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
@@ -252,6 +280,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     try {
       await client.mutation(api.catalogReview.updateProfileVatMode, {
         tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
         profileId: row.profileId,
         sourceColumnName: row.sourceColumnName,
         sourceColumnIndex: row.sourceColumnIndex,
@@ -261,7 +290,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
       await loadReview();
     } catch (saveError) {
       console.error(saveError);
-      setError("Btw-mapping kon niet worden opgeslagen.");
+      setError("Btw-keuze kon niet worden opgeslagen.");
     } finally {
       setIsSaving(false);
     }
@@ -284,6 +313,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     try {
       await client.mutation(api.catalogReview.bulkUpdateProfileVatModes, {
         tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
         profileId,
         columns: selectedRows.map((row) => ({
           sourceColumnName: row.sourceColumnName,
@@ -299,7 +329,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
       await loadReview();
     } catch (saveError) {
       console.error(saveError);
-      setError("Btw-mapping in één keer aanpassen kon niet worden opgeslagen.");
+      setError("Btw-keuzes in één keer aanpassen kon niet worden opgeslagen.");
     } finally {
       setIsSaving(false);
     }
@@ -319,6 +349,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     try {
       await client.mutation(api.catalogReview.markProfileVatColumnsReviewed, {
         tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
         profileId: rows[0].profileId,
         columns: selectedRows.map((row) => ({
           sourceColumnName: row.sourceColumnName,
@@ -330,7 +361,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
       await loadReview();
     } catch (saveError) {
       console.error(saveError);
-      setError("Beoordelingsstatus kon niet worden opgeslagen.");
+      setError("De controle kon niet worden opgeslagen.");
     } finally {
       setIsSaving(false);
     }
@@ -340,7 +371,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
@@ -350,19 +381,57 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     try {
       await client.mutation(api.catalogReview.setProfileAllowUnknownVatMode, {
         tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
         profileId,
         allowUnknownVatMode,
         updatedByExternalUserId: session.userId
       });
       setNotice(
         allowUnknownVatMode
-          ? "Onbekende btw-modus is toegestaan voor dit profiel."
-          : "Onbekende btw-modus is niet meer toegestaan voor dit profiel."
+          ? "Onbekende btw-keuze is toegestaan voor deze prijslijstcontrole."
+          : "Onbekende btw-keuze is niet meer toegestaan voor deze prijslijstcontrole."
       );
       await loadReview();
     } catch (saveError) {
       console.error(saveError);
-      setError("Uitzondering voor profiel kon niet worden opgeslagen.");
+      setError("De uitzondering kon niet worden opgeslagen.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function updateProfileStatus() {
+    if (!pendingProfileStatus || !canManageProfiles) {
+      return;
+    }
+
+    const client = createConvexHttpClient();
+
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await client.mutation(api.imports.updateProfileStatusForPortal, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        profileId: pendingProfileStatus.profile.id,
+        status: pendingProfileStatus.nextStatus
+      });
+      setNotice(
+        pendingProfileStatus.nextStatus === "inactive"
+          ? "Importprofiel gearchiveerd."
+          : "Importprofiel hersteld."
+      );
+      setPendingProfileStatus(null);
+      await loadReview();
+    } catch (saveError) {
+      console.error(saveError);
+      setError("Importprofielstatus kon niet worden opgeslagen.");
     } finally {
       setIsSaving(false);
     }
@@ -419,20 +488,92 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
 
   const confirmTitle =
     pendingConfirmation?.type === "bulkVatMode"
-      ? "Btw-mapping voor meerdere kolommen aanpassen?"
-      : "Onbekende btw-modus toestaan?";
+      ? "Btw-keuze voor meerdere kolommen aanpassen?"
+      : "Onbekende btw-keuze toestaan?";
   const confirmDescription =
     pendingConfirmation?.type === "bulkVatMode"
       ? `Je past ${pendingConfirmation.rows.length} prijskolommen in ${pendingConfirmation.profileName} tegelijk aan naar ${formatVatMode(
           pendingConfirmation.vatMode
-        ).toLowerCase()}. Controleer of deze bedragen echt zo in de bron bedoeld zijn.`
+        ).toLowerCase()}. Controleer of deze bedragen echt zo in het leverancierbestand bedoeld zijn.`
       : pendingConfirmation
-        ? `Je staat een onbekende btw-modus toe voor ${pendingConfirmation.profileName}. Dit is een bewuste uitzondering en houdt een waarschuwing zichtbaar.`
+        ? `Je staat een onbekende btw-keuze toe voor ${pendingConfirmation.profileName}. Dit is een bewuste uitzondering en houdt een waarschuwing zichtbaar.`
         : "";
   const confirmLabel =
     pendingConfirmation?.type === "bulkVatMode"
       ? "Aanpassen bevestigen"
       : "Uitzondering toestaan";
+  const profileColumns: Array<DataTableColumn<ImportProfileSummary>> = [
+    {
+      key: "profile",
+      header: "Importprofiel",
+      priority: "primary",
+      render: (profile) => (
+        <div className="stack-sm">
+          <strong>{profile.name}</strong>
+          <small className="muted">{profile.supplierName}</small>
+        </div>
+      )
+    },
+    {
+      key: "pattern",
+      header: "Bestand",
+      render: (profile) => (
+        <div className="stack-sm">
+          <span>{profile.filePattern ?? "Geen bestandsfilter"}</span>
+          <small className="muted">{profile.sheetPattern ?? "Alle tabbladen"}</small>
+        </div>
+      )
+    },
+    {
+      key: "support",
+      header: "Ondersteuning",
+      width: "150px",
+      render: (profile) => (
+        <div className="toolbar">
+          {profile.supportsXlsx ? <Badge variant="neutral">xlsx</Badge> : null}
+          {profile.supportsXls ? <Badge variant="neutral">xls</Badge> : null}
+          {profile.expectedFileExtension ? (
+            <Badge variant="info">{profile.expectedFileExtension}</Badge>
+          ) : null}
+        </div>
+      )
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: "120px",
+      render: (profile) => (
+        <StatusBadge status={profile.status} label={formatStatusLabel(profile.status)} />
+      )
+    },
+    {
+      key: "actions",
+      header: "Acties",
+      width: "150px",
+      render: (profile) =>
+        canManageProfiles ? (
+          profile.status === "inactive" ? (
+            <Button
+              leftIcon={<RotateCcw size={16} aria-hidden="true" />}
+              onClick={() => setPendingProfileStatus({ profile, nextStatus: "active" })}
+              size="sm"
+              variant="secondary"
+            >
+              Herstellen
+            </Button>
+          ) : (
+            <Button
+              leftIcon={<Archive size={16} aria-hidden="true" />}
+              onClick={() => setPendingProfileStatus({ profile, nextStatus: "inactive" })}
+              size="sm"
+              variant="danger"
+            >
+              Archiveren
+            </Button>
+          )
+        ) : null
+    }
+  ];
 
   return (
     <div className="grid">
@@ -446,15 +587,35 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
         onCancel={() => setPendingConfirmation(null)}
         onConfirm={() => void confirmPendingAction()}
       />
+      <ConfirmDialog
+        open={Boolean(pendingProfileStatus)}
+        title={
+          pendingProfileStatus?.nextStatus === "inactive"
+            ? "Importprofiel archiveren?"
+            : "Importprofiel herstellen?"
+        }
+        description={
+          pendingProfileStatus
+            ? pendingProfileStatus.nextStatus === "inactive"
+              ? `Je archiveert ${pendingProfileStatus.profile.name}. Bestaande imports en controles blijven bewaard.`
+              : `Je herstelt ${pendingProfileStatus.profile.name} naar actief.`
+            : ""
+        }
+        confirmLabel={pendingProfileStatus?.nextStatus === "inactive" ? "Archiveren" : "Herstellen"}
+        tone={pendingProfileStatus?.nextStatus === "inactive" ? "danger" : "warning"}
+        isBusy={isSaving}
+        onCancel={() => setPendingProfileStatus(null)}
+        onConfirm={() => void updateProfileStatus()}
+      />
 
       <section className="panel">
         <div className="toolbar" style={{ justifyContent: "space-between" }}>
           <div className="toolbar">
-            <Badge>Importprofielen</Badge>
+            <Badge>Btw-keuzes</Badge>
             <span className="muted">
               {isLoading
                 ? "Bezig met laden..."
-                : `${numberText(review?.totalProfiles ?? 0)} profielen / ${numberText(
+                : `${numberText(review?.totalProfiles ?? 0)} controles / ${numberText(
                     review?.totalPriceColumns ?? 0
               )} prijskolommen`}
             </span>
@@ -470,7 +631,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
         {error ? (
           <Alert
             variant="danger"
-            title="Btw-mapping niet geladen"
+            title="Btw-keuzes niet geladen"
             description={error}
             style={{ marginTop: 16 }}
           />
@@ -488,7 +649,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
           <>
             <div className="grid three-column" style={{ marginTop: 16 }}>
               <StatCard
-                label="Btw-mappings te beoordelen"
+                label="Btw-keuzes te controleren"
                 value={numberText(summary.unresolved)}
                 tone={summary.unresolved > 0 ? "danger" : "success"}
               />
@@ -505,13 +666,13 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
             </div>
             <div className="grid three-column" style={{ marginTop: 16 }}>
               <StatCard
-                label="Uitzonderingen onbekende btw"
+                label="Bewuste uitzonderingen"
                 value={numberText(summary.allowUnknown)}
                 tone={summary.allowUnknown > 0 ? "warning" : "neutral"}
               />
               <StatCard label="Beoordeeld" value={numberText(summary.reviewed)} tone="info" />
               <StatCard
-                label="Totaal prijskolommen"
+                label="Prijskolommen totaal"
                 value={numberText(review.totalPriceColumns)}
                 tone="neutral"
               />
@@ -542,6 +703,31 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
             </div>
           </>
         ) : null}
+      </section>
+
+      <section className="panel">
+        <div className="toolbar" style={{ justifyContent: "space-between" }}>
+          <div>
+            <p className="eyebrow">Beheer</p>
+            <h2 style={{ margin: 0 }}>Importprofielen</h2>
+            <p className="muted" style={{ margin: "4px 0 0" }}>
+              Archiveren verbergt een profiel uit dagelijks gebruik, zonder importgeschiedenis te verwijderen.
+            </p>
+          </div>
+          <Badge>{profiles.length} profielen</Badge>
+        </div>
+        <div style={{ marginTop: 16 }}>
+          <DataTable
+            ariaLabel="Importprofielen"
+            columns={profileColumns}
+            density="compact"
+            emptyDescription="Er zijn nog geen importprofielen beschikbaar."
+            emptyTitle="Geen importprofielen"
+            getRowKey={(profile) => profile.id}
+            loading={isLoading}
+            rows={profiles}
+          />
+        </div>
       </section>
 
       {groupedProfiles.map((profile) => {
@@ -575,7 +761,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
           },
           {
             key: "profile",
-            header: "Profiel",
+            header: "Leverancierbestand",
             render: (row) => (
               <>
                 <strong>{row.profileName}</strong>
@@ -586,11 +772,11 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
           },
           {
             key: "source",
-            header: "Bronkolom",
+            header: "Kolom in bestand",
             render: (row) => (
               <>
                 <strong>{row.sourceColumnName}</strong>
-                <div className="muted">kolomindex {row.sourceColumnIndex}</div>
+                <div className="muted">kolom {row.sourceColumnIndex + 1}</div>
               </>
             )
           },
@@ -608,11 +794,11 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
           },
           {
             key: "current",
-            header: "Huidig",
+            header: "Btw-keuze",
             width: "150px",
             render: (row) => (
               <Select
-                aria-label={`Btw-modus voor ${row.sourceColumnName}`}
+                aria-label={`Btw-keuze voor ${row.sourceColumnName}`}
                 value={row.currentVatMode}
                 disabled={isSaving}
                 onChange={(event) => void updateVatMode(row, event.target.value as VatMode)}
@@ -625,7 +811,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
           },
           {
             key: "suggestion",
-            header: "Suggestie",
+            header: "Voorstel",
             width: "130px",
             render: (row) => (
               <>
@@ -638,7 +824,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
           },
           {
             key: "reason",
-            header: "Reden",
+            header: "Waarom",
             hideOnMobile: true,
             render: (row) => (
               <>
@@ -668,14 +854,16 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
           },
           {
             key: "updated",
-            header: "Bijgewerkt / beoordeeld",
+            header: "Laatste controle",
             hideOnMobile: true,
             render: (row) => (
               <>
                 <div>Bijgewerkt {dateText(row.updatedAt)}</div>
-                <div className="muted">{row.updatedByExternalUserId ?? "-"}</div>
-                <div>Beoordeeld {dateText(row.reviewedAt)}</div>
-                <div className="muted">{row.reviewedByExternalUserId ?? "-"}</div>
+                {row.reviewedAt ? (
+                  <div>Beoordeeld {dateText(row.reviewedAt)}</div>
+                ) : (
+                  <div className="muted">Nog niet beoordeeld</div>
+                )}
               </>
             )
           }
@@ -687,7 +875,9 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
               <div>
                 <strong>{profile.profileName}</strong>
                 <div className="muted">
-                  {profile.supplier} · {profile.category} · {profile.sourceFileNamePattern ?? "-"}
+                  {[profile.supplier, profile.category, profile.sourceFileNamePattern ? `Bestand: ${profile.sourceFileNamePattern}` : null]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </div>
                 <div className="toolbar" style={{ marginTop: 8 }}>
                   <Badge variant={profileUnresolved > 0 ? "danger" : "success"}>
@@ -699,15 +889,15 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
                   </Badge>
                   <Badge variant={profile.allowUnknownVatMode ? "warning" : "success"}>
                     {profile.allowUnknownVatMode
-                      ? "Onbekende btw-modus toegestaan"
-                      : "Onbekende btw-modus geblokkeerd"}
+                      ? "Onbekende btw toegestaan"
+                      : "Btw-keuze verplicht"}
                   </Badge>
                 </div>
               </div>
               <div className="toolbar">
                 <div className="toolbar" style={{ gap: 8 }}>
                   <Checkbox
-                    aria-label={`Sta onbekende btw-modus toe voor ${profile.profileName}`}
+                    aria-label={`Sta onbekende btw-keuze toe voor ${profile.profileName}`}
                     checked={profile.allowUnknownVatMode}
                     disabled={isSaving}
                     onChange={(event) =>
@@ -715,7 +905,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
                     }
                   />
                   <Badge variant={profile.allowUnknownVatMode ? "warning" : "success"}>
-                    Onbekende btw-modus
+                    Onbekende btw
                   </Badge>
                 </div>
                 <Button
@@ -756,8 +946,8 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
               columns={columns}
               getRowKey={rowKey}
               density="compact"
-              ariaLabel={`Btw-mapping voor ${profile.profileName}`}
-              emptyTitle="Geen prijskolommen in dit profiel"
+              ariaLabel={`Btw-keuzes voor ${profile.profileName}`}
+              emptyTitle="Geen prijskolommen in deze controle"
             />
           </section>
         );
@@ -765,7 +955,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
 
       {!isLoading && groupedProfiles.length === 0 ? (
         <section className="panel">
-          <div className="empty-state">Geen prijskolommen gevonden voor dit filter.</div>
+          <div className="empty-state">Geen prijskolommen gevonden voor deze keuze.</div>
         </section>
       ) : null}
     </div>

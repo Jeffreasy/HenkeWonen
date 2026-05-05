@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationActorValidator, requireMutationRole } from "./authz";
 
 function slugify(value: string): string {
   return value
@@ -29,19 +30,6 @@ function stringValue(value: unknown, fallback: string): string {
 
 function numberValue(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-async function getTenantId(ctx: any, tenantSlug: string) {
-  const tenant = await ctx.db
-    .query("tenants")
-    .withIndex("by_slug", (q: any) => q.eq("slug", tenantSlug))
-    .first();
-
-  if (!tenant) {
-    throw new Error(`Tenant not found: ${tenantSlug}`);
-  }
-
-  return tenant._id;
 }
 
 async function getTenant(ctx: any, tenantSlug: string) {
@@ -501,10 +489,12 @@ async function importNormalizedCatalogRow(ctx: any, tenantId: any, row: any, now
 export const importRows = mutation({
   args: {
     tenantSlug: v.string(),
+    actor: mutationActorValidator,
     rows: v.array(v.any())
   },
   handler: async (ctx, args) => {
-    const tenantId = await getTenantId(ctx, args.tenantSlug);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const tenantId = tenant._id;
     const now = Date.now();
     let insertedProducts = 0;
     let updatedProducts = 0;
@@ -690,6 +680,7 @@ function buildRowWarnings(row: any) {
 export const createPreviewBatch = mutation({
   args: {
     tenantSlug: v.string(),
+    actor: mutationActorValidator,
     fileName: v.string(),
     fileType: v.string(),
     sourceFileName: v.optional(v.string()),
@@ -701,7 +692,13 @@ export const createPreviewBatch = mutation({
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    const tenantId = await getTenantId(ctx, args.tenantSlug);
+    const { tenant, externalUserId } = await requireMutationRole(
+      ctx,
+      args.tenantSlug,
+      args.actor,
+      ["admin"]
+    );
+    const tenantId = tenant._id;
     const supplierId = args.supplierName
       ? await ensureSupplier(ctx, tenantId, args.supplierName)
       : undefined;
@@ -737,7 +734,7 @@ export const createPreviewBatch = mutation({
       duplicateSourceKeys: 0,
       allowUnknownVatMode: args.allowUnknownVatMode ?? false,
       reconciliation: {},
-      createdByExternalUserId: args.createdByExternalUserId,
+      createdByExternalUserId: externalUserId,
       createdAt: now,
       updatedAt: now
     });
@@ -747,11 +744,13 @@ export const createPreviewBatch = mutation({
 export const appendPreviewRows = mutation({
   args: {
     tenantSlug: v.string(),
+    actor: mutationActorValidator,
     batchId: v.string(),
     rows: v.array(v.any())
   },
   handler: async (ctx, args) => {
-    const tenantId = await getTenantId(ctx, args.tenantSlug);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const tenantId = tenant._id;
     const batch: any = await ctx.db.get(args.batchId as any);
 
     if (!batch || batch.tenantId !== tenantId) {
@@ -837,12 +836,14 @@ export const appendPreviewRows = mutation({
 export const savePreviewMapping = mutation({
   args: {
     tenantSlug: v.string(),
+    actor: mutationActorValidator,
     batchId: v.string(),
     mapping: v.any(),
     allowUnknownVatMode: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
-    const tenantId = await getTenantId(ctx, args.tenantSlug);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const tenantId = tenant._id;
     const batch: any = await ctx.db.get(args.batchId as any);
 
     if (!batch || batch.tenantId !== tenantId) {
@@ -866,11 +867,13 @@ export const savePreviewMapping = mutation({
 export const failPreviewBatch = mutation({
   args: {
     tenantSlug: v.string(),
+    actor: mutationActorValidator,
     batchId: v.string(),
     errorMessage: v.string()
   },
   handler: async (ctx, args) => {
-    const tenantId = await getTenantId(ctx, args.tenantSlug);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const tenantId = tenant._id;
     const batch: any = await ctx.db.get(args.batchId as any);
 
     if (!batch || batch.tenantId !== tenantId) {
@@ -897,13 +900,20 @@ export const failPreviewBatch = mutation({
 export const commitPreviewBatchChunk = mutation({
   args: {
     tenantSlug: v.string(),
+    actor: mutationActorValidator,
     batchId: v.string(),
     allowUnknownVatMode: v.optional(v.boolean()),
     importedByExternalUserId: v.optional(v.string()),
     limit: v.optional(v.number())
   },
   handler: async (ctx, args) => {
-    const tenantId = await getTenantId(ctx, args.tenantSlug);
+    const { tenant, externalUserId } = await requireMutationRole(
+      ctx,
+      args.tenantSlug,
+      args.actor,
+      ["admin"]
+    );
+    const tenantId = tenant._id;
     const batch: any = await ctx.db.get(args.batchId as any);
 
     if (!batch || batch.tenantId !== tenantId) {
@@ -948,7 +958,7 @@ export const commitPreviewBatchChunk = mutation({
         status: "imported" as const,
         importedAt: now,
         committedAt: now,
-        importedByExternalUserId: args.importedByExternalUserId,
+        importedByExternalUserId: externalUserId,
         reconciliation: {
           ...(batch.reconciliation ?? {}),
           importedAt: now,
@@ -1154,11 +1164,13 @@ export const getCatalogImportStats = query({
 export const resetCatalogChunk = mutation({
   args: {
     tenantSlug: v.string(),
+    actor: mutationActorValidator,
     confirm: v.literal("RESET_IMPORTED_CATALOG"),
     batchSize: v.optional(v.number())
   },
   handler: async (ctx, args) => {
-    const tenantId = await getTenantId(ctx, args.tenantSlug);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const tenantId = tenant._id;
     const batchSize = Math.min(Math.max(args.batchSize ?? 250, 25), 500);
     const resetOrder = [
       "productPrices",

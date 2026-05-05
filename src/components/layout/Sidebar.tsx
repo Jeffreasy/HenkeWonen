@@ -2,17 +2,13 @@ import {
   BriefcaseBusiness,
   FileText,
   Home,
-  Layers3,
   Menu,
   PackageSearch,
   Settings,
-  SlidersHorizontal,
-  Truck,
-  Upload,
-  Users,
   X
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { canManage } from "../../lib/auth/session";
 import type { AppSession } from "../../lib/auth/session";
 
 type SidebarProps = {
@@ -20,34 +16,60 @@ type SidebarProps = {
   pathname?: string;
 };
 
-const navGroups = [
+type NavMatch = {
+  path: string;
+  exact?: boolean;
+};
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof Home;
+  matches?: NavMatch[];
+  adminOnly?: boolean;
+};
+
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+};
+
+const navGroups: NavGroup[] = [
   {
-    label: "Overzicht",
-    items: [{ href: "/portal", label: "Overzicht", icon: Home }]
-  },
-  {
-    label: "Werkproces",
+    label: "Werkplek",
     items: [
-      { href: "/portal/klanten", label: "Klanten", icon: Users },
-      { href: "/portal/projecten", label: "Projecten", icon: BriefcaseBusiness },
-      { href: "/portal/offertes", label: "Offertes", icon: FileText }
-    ]
-  },
-  {
-    label: "Catalogus & imports",
-    items: [
-      { href: "/portal/catalogus", label: "Catalogus", icon: PackageSearch },
-      { href: "/portal/leveranciers", label: "Leveranciers", icon: Truck },
-      { href: "/portal/imports", label: "Imports", icon: Upload },
-      { href: "/portal/import-profielen", label: "Importprofielen", icon: SlidersHorizontal }
-    ]
-  },
-  {
-    label: "Instellingen",
-    items: [
-      { href: "/portal/instellingen/werkzaamheden", label: "Werkzaamheden", icon: Settings },
-      { href: "/portal/instellingen/categorieen", label: "Categorieën", icon: Layers3 },
-      { href: "/portal/instellingen/offertetemplates", label: "Offertesjablonen", icon: FileText }
+      { href: "/portal", label: "Start", icon: Home },
+      {
+        href: "/portal/dossiers",
+        label: "Dossiers",
+        icon: BriefcaseBusiness,
+        matches: [
+          { path: "/portal/dossiers" },
+          { path: "/portal/klanten" },
+          { path: "/portal/projecten" }
+        ]
+      },
+      { href: "/portal/offertes", label: "Offertes", icon: FileText },
+      {
+        href: "/portal/catalogus",
+        label: "Catalogus",
+        icon: PackageSearch,
+        matches: [{ path: "/portal/catalogus", exact: true }]
+      },
+      {
+        href: "/portal/beheer",
+        label: "Beheer",
+        icon: Settings,
+        adminOnly: true,
+        matches: [
+          { path: "/portal/beheer" },
+          { path: "/portal/leveranciers" },
+          { path: "/portal/imports" },
+          { path: "/portal/import-profielen" },
+          { path: "/portal/catalogus/data-issues" },
+          { path: "/portal/instellingen" }
+        ]
+      }
     ]
   }
 ];
@@ -64,12 +86,22 @@ function getCurrentPathname(pathname?: string) {
   return "/portal";
 }
 
-function isActivePath(currentPathname: string, href: string) {
-  if (href === "/portal") {
-    return currentPathname === href;
+function isActiveMatch(currentPathname: string, match: NavMatch) {
+  if (match.exact) {
+    return currentPathname === match.path;
   }
 
-  return currentPathname === href || currentPathname.startsWith(`${href}/`);
+  return currentPathname === match.path || currentPathname.startsWith(`${match.path}/`);
+}
+
+function isActivePath(currentPathname: string, item: NavItem) {
+  const matches = item.matches ?? [{ path: item.href }];
+
+  if (item.href === "/portal" && !item.matches) {
+    return currentPathname === item.href;
+  }
+
+  return matches.some((match) => isActiveMatch(currentPathname, match));
 }
 
 function roleLabel(role: AppSession["role"]) {
@@ -86,9 +118,15 @@ function roleLabel(role: AppSession["role"]) {
 export default function Sidebar({ session, pathname }: SidebarProps) {
   const currentPathname = getCurrentPathname(pathname);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const activeItem = navGroups
+  const visibleNavGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.adminOnly || canManage(session.role))
+    }))
+    .filter((group) => group.items.length > 0);
+  const activeItem = visibleNavGroups
     .flatMap((group) => group.items)
-    .find((item) => isActivePath(currentPathname, item.href));
+    .find((item) => isActivePath(currentPathname, item));
 
   useEffect(() => {
     setIsMenuOpen(false);
@@ -111,7 +149,7 @@ export default function Sidebar({ session, pathname }: SidebarProps) {
       <div className="sidebar-mobile-topbar">
         <div>
           <p className="brand-kicker">Henke Wonen</p>
-          <p className="mobile-active-route">{activeItem?.label ?? "Overzicht"}</p>
+          <p className="mobile-active-route">{activeItem?.label ?? "Start"}</p>
         </div>
         <button
           aria-controls="portal-mobile-navigation"
@@ -132,43 +170,41 @@ export default function Sidebar({ session, pathname }: SidebarProps) {
       >
         <div className="sidebar-desktop-brand">
           <p className="brand-kicker">Henke Wonen</p>
-          <h1 className="brand-title">Backoffice</h1>
+          <h1 className="brand-title">Werkplek</h1>
         </div>
 
-      <nav className="nav-list" aria-label="Navigatie">
-        {navGroups.map((group) => (
-          <div className="nav-group" key={group.label}>
-            <p className="nav-group-label">{group.label}</p>
-            <div className="nav-group-items">
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = isActivePath(currentPathname, item.href);
+        <nav className="nav-list" aria-label="Navigatie">
+          {visibleNavGroups.map((group) => (
+            <div className="nav-group" key={group.label}>
+              <p className="nav-group-label">{group.label}</p>
+              <div className="nav-group-items">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = isActivePath(currentPathname, item);
 
-                return (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    className={isActive ? "nav-link active" : "nav-link"}
-                    aria-current={
-                      currentPathname === item.href ? "page" : isActive ? "location" : undefined
-                    }
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Icon size={17} aria-hidden="true" />
-                    <span>{item.label}</span>
-                  </a>
-                );
-              })}
+                  return (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      className={isActive ? "nav-link active" : "nav-link"}
+                      aria-current={
+                        currentPathname === item.href ? "page" : isActive ? "location" : undefined
+                      }
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Icon size={17} aria-hidden="true" />
+                      <span>{item.label}</span>
+                    </a>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-      </nav>
+          ))}
+        </nav>
 
         <div className="session-card">
           <p>{session.name ?? session.email}</p>
-          <p className="role">
-            {roleLabel(session.role)} | {session.tenantId}
-          </p>
+          <p className="role">{roleLabel(session.role)}</p>
         </div>
       </div>
     </aside>

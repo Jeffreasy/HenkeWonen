@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationActorValidator, requireMutationRoleForTenantId } from "./authz";
 
 const lineType = v.union(
   v.literal("product"),
@@ -75,6 +76,7 @@ export const get = query({
 export const create = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     projectId: v.id("projects"),
     customerId: v.id("customers"),
     title: v.string(),
@@ -85,6 +87,12 @@ export const create = mutation({
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
+    const { externalUserId } = await requireMutationRoleForTenantId(
+      ctx,
+      args.tenantId,
+      args.actor,
+      ["user", "editor", "admin"]
+    );
     const project = await ctx.db.get(args.projectId);
     const customer = await ctx.db.get(args.customerId);
 
@@ -113,7 +121,7 @@ export const create = mutation({
       subtotalExVat: 0,
       vatTotal: 0,
       totalIncVat: 0,
-      createdByExternalUserId: args.createdByExternalUserId,
+      createdByExternalUserId: externalUserId,
       createdAt: now,
       updatedAt: now
     });
@@ -130,6 +138,7 @@ export const create = mutation({
 export const addLine = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     quoteId: v.id("quotes"),
     projectRoomId: v.optional(v.id("projectRooms")),
     productId: v.optional(v.id("products")),
@@ -146,10 +155,19 @@ export const addLine = mutation({
     metadata: v.optional(v.any())
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const quote = await ctx.db.get(args.quoteId);
 
     if (!quote || quote.tenantId !== args.tenantId) {
       throw new Error("Quote not found");
+    }
+
+    if (quote.status !== "draft") {
+      throw new Error("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
     }
 
     const totals =
@@ -195,9 +213,15 @@ export const addLine = mutation({
 export const recalculate = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     quoteId: v.id("quotes")
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     await recalculateQuote(ctx, args.tenantId, args.quoteId);
     return args.quoteId;
   }

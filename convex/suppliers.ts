@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationActorValidator, requireMutationRoleForTenantId } from "./authz";
 
 const productListStatus = v.union(
   v.literal("unknown"),
@@ -35,6 +36,7 @@ export const list = query({
 export const create = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     name: v.string(),
     contactName: v.optional(v.string()),
     email: v.optional(v.string()),
@@ -43,6 +45,7 @@ export const create = mutation({
     productListStatus: productListStatus
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
     const now = Date.now();
 
     return await ctx.db.insert("suppliers", {
@@ -62,10 +65,12 @@ export const create = mutation({
 export const updateProductListStatus = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     supplierId: v.id("suppliers"),
     productListStatus
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
     const supplier = await ctx.db.get(args.supplierId);
 
     if (!supplier || supplier.tenantId !== args.tenantId) {

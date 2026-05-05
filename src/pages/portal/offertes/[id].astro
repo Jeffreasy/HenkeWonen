@@ -6,9 +6,9 @@ import { PageHeader } from "../../../components/ui/PageHeader";
 const session = Astro.locals.session;
 const quoteId = Astro.params.id ?? "";
 const breadcrumbs = [
-  { label: "Portal", href: "/portal" },
+  { label: "Start", href: "/portal" },
   { label: "Offertes", href: "/portal/offertes" },
-  { label: "Detail" }
+  { label: "Offerte" }
 ];
 
 if (!session) {
@@ -19,8 +19,8 @@ if (!session) {
 <PortalLayout title="Offerte" session={session}>
   <PageHeader
     eyebrow="Offerte"
-    title="Offertebuilder"
-    description="Offerte samenstellen en regels beheren."
+    title="Offerte samenstellen"
+    description="Werk de offerte bij, controleer posten en bekijk de klantversie."
     breadcrumbs={breadcrumbs}
   />
   <QuoteWorkspace client:load session={session} quoteId={quoteId} />

@@ -29,14 +29,14 @@ const genericStatusLabels: Record<string, string> = {
   paid: "Betaald",
   overdue: "Te laat",
   failed: "Mislukt",
-  imported: "Geïmporteerd",
+  imported: "Verwerkt",
   uploaded: "Geüpload",
   mapped: "Gekoppeld",
-  previewed: "Voorvertoning gemaakt",
-  ready_to_import: "Klaar voor import",
-  importing: "Importeren",
-  analyzing: "Analyseren",
-  needs_mapping: "Mapping vereist",
+  previewed: "Gecontroleerd",
+  ready_to_import: "Klaar om te verwerken",
+  importing: "Verwerken",
+  analyzing: "Controleren",
+  needs_mapping: "Btw-keuze nodig",
   blocked: "Geblokkeerd",
   ready: "Gereed",
   warning: "Waarschuwing",
@@ -59,7 +59,7 @@ const genericStatusLabels: Record<string, string> = {
   per_roll: "per rol",
   per_side: "per zijde",
   per_staircase: "per trap",
-  "geen imports": "Geen imports"
+  "geen imports": "Geen prijslijsten"
 };
 
 const projectStatusLabels: Record<ProjectStatus, string> = {
@@ -100,23 +100,24 @@ const customerTypeLabels: Record<CustomerType, string> = {
 };
 
 const lineTypeLabels: Record<QuoteLineType, string> = {
-  product: "Productregel",
-  service: "Serviceregel",
-  labor: "Arbeidsregel",
-  material: "Materiaalregel",
+  product: "Product",
+  service: "Werkzaamheid",
+  labor: "Arbeid",
+  material: "Materiaal",
   discount: "Korting",
-  text: "Tekstregel",
-  manual: "Handmatige regel"
+  text: "Tekst",
+  manual: "Handmatig"
 };
 
 const importStatusLabels: Record<string, string> = {
   uploaded: "Geüpload",
-  analyzing: "Analyseren",
-  needs_mapping: "Mapping vereist",
-  ready_to_import: "Klaar voor import",
-  importing: "Importeren",
-  imported: "Geïmporteerd",
-  failed: "Mislukt"
+  analyzing: "Controleren",
+  needs_mapping: "Btw-keuze nodig",
+  ready_to_import: "Klaar om te verwerken",
+  importing: "Verwerken",
+  imported: "Verwerkt",
+  failed: "Mislukt",
+  archived: "Gearchiveerd"
 };
 
 const productListStatusLabels: Record<ProductListStatus, string> = {
@@ -130,26 +131,26 @@ const productListStatusLabels: Record<ProductListStatus, string> = {
 
 const rowKindLabels: Record<ProductImportRowKind, string> = {
   header: "Kopregel",
-  section: "Sectieregel",
+  section: "Groep",
   product: "Productregel",
   empty: "Lege regel",
   warning: "Waarschuwing",
   error: "Fout",
-  ignored: "Genegeerde regel"
+  ignored: "Overgeslagen regel"
 };
 
 const rowStatusLabels: Record<ProductImportRowStatus, string> = {
   valid: "Geldig",
   warning: "Waarschuwing",
   error: "Fout",
-  ignored: "Genegeerd",
-  imported: "Geïmporteerd"
+  ignored: "Overgeslagen",
+  imported: "Verwerkt"
 };
 
 const vatModeLabels: Record<VatMode, string> = {
   inclusive: "Inclusief btw",
   exclusive: "Exclusief btw",
-  unknown: "Btw-modus onbekend"
+  unknown: "Btw nog onbekend"
 };
 
 const priceTypeLabels: Record<ProductPriceType | string, string> = {
@@ -195,7 +196,7 @@ const issueStatusLabels: Record<string, string> = {
 const reviewDecisionLabels: Record<string, string> = {
   keep_separate: "Gescheiden houden",
   merge_later: "Later beoordelen voor samenvoegen",
-  source_error: "Bronfout",
+  source_error: "Fout in leverancierbestand",
   accepted_duplicate: "Bewust dubbel toegestaan",
   resolved: "Opgelost"
 };

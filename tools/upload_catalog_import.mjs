@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
+import { createToolMutationActor } from "./authz_actor.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const previewPath = resolve(root, "docs/catalog-import-preview.json");
@@ -52,6 +53,7 @@ if (!convexUrl) {
 const payload = JSON.parse(readFileSync(previewPath, "utf8"));
 const rows = payload.rows ?? [];
 const tenantSlug = payload.tenantSlug ?? "henke-wonen";
+const actor = createToolMutationActor(tenantSlug);
 const client = new ConvexHttpClient(convexUrl);
 const chunks = chunk(rows, 75);
 const totals = {
@@ -79,6 +81,7 @@ console.log(
 for (let index = 0; index < chunks.length; index += 1) {
   const result = await client.mutation(api.catalogImport.importRows, {
     tenantSlug,
+    actor,
     rows: chunks[index],
   });
 

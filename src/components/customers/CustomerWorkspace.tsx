@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../../convex/_generated/api";
-import type { AppSession } from "../../lib/auth/session";
+import { mutationActorFromSession } from "../../lib/auth/authzToken";
+import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { PortalCustomer } from "../../lib/portalTypes";
 import { Alert } from "../ui/Alert";
@@ -17,12 +18,13 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
   const [customers, setCustomers] = useState<PortalCustomer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const canCreateCustomers = canEditDossiers(session.role);
 
   const loadCustomers = useCallback(async () => {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
       return;
     }
@@ -52,12 +54,13 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
     await client.mutation(api.portal.createCustomer, {
       tenantSlug: session.tenantId,
+      actor: mutationActorFromSession(session),
       ...customer
     });
     await loadCustomers();
@@ -72,7 +75,7 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
       <section className="grid three-column">
         <StatCard label="Klanten" value={customers.length} tone="info" />
         <StatCard
-          label="Leads"
+          label="Nieuwe aanvragen"
           value={customers.filter((customer) => customer.status === "lead").length}
           tone="warning"
         />
@@ -84,7 +87,7 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
       </section>
 
       <div className="grid two-column">
-        <CustomerForm onCreate={createCustomer} />
+        {canCreateCustomers ? <CustomerForm onCreate={createCustomer} /> : null}
         <section className="grid">
           <SectionHeader
             compact

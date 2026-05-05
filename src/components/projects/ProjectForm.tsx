@@ -105,7 +105,7 @@ export default function ProjectForm({ customers, onCreate }: ProjectFormProps) {
         type="submit"
         variant="primary"
       >
-        {isSaving ? "Opslaan..." : "Project opslaan"}
+        {isSaving ? "Starten..." : "Project starten"}
       </Button>
     </form>
   );

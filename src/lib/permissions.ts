@@ -1,4 +1,9 @@
-import type { AppRole } from "./auth/session";
+import {
+  canEditCatalog as canEditCatalogForRole,
+  canEditQuotes as canEditQuotesForRole,
+  canViewFinancials as canViewFinancialsForRole,
+  type AppRole
+} from "./auth/session";
 
 export function requireRole(role: AppRole, allowedRoles: AppRole[]): void {
   if (!allowedRoles.includes(role)) {
@@ -7,13 +12,13 @@ export function requireRole(role: AppRole, allowedRoles: AppRole[]): void {
 }
 
 export function canEditCatalog(role: AppRole): boolean {
-  return role === "admin" || role === "editor";
+  return canEditCatalogForRole(role);
 }
 
 export function canEditQuote(role: AppRole): boolean {
-  return role === "admin" || role === "editor" || role === "user";
+  return canEditQuotesForRole(role);
 }
 
 export function canViewFinancials(role: AppRole): boolean {
-  return role === "admin" || role === "editor";
+  return canViewFinancialsForRole(role);
 }

@@ -62,7 +62,7 @@ export default function ProductionReadiness({ session }: ProductionReadinessProp
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
       return;
     }
@@ -78,7 +78,7 @@ export default function ProductionReadiness({ session }: ProductionReadinessProp
       setReadiness(result);
     } catch (loadError) {
       console.error(loadError);
-      setError("Productiegereedheid kon niet worden geladen.");
+      setError("De verwerkingscontrole kon niet worden geladen.");
     } finally {
       setIsLoading(false);
     }
@@ -96,14 +96,14 @@ export default function ProductionReadiness({ session }: ProductionReadinessProp
     <section className={isReady ? "panel release-panel-ready" : "panel release-panel"}>
       <div className="toolbar" style={{ justifyContent: "space-between" }}>
         <div>
-          <p className="eyebrow">Productiegereedheid</p>
+          <p className="eyebrow">Prijslijsten gereed?</p>
           <h2 style={{ margin: "4px 0 0" }}>
-            {isReady ? "Productie-import gereed" : "Productie-import geblokkeerd"}
+            {isReady ? "Prijslijsten mogen verwerkt worden" : "Eerst btw-keuzes afronden"}
           </h2>
           <p className="muted" style={{ margin: "6px 0 0" }}>
             {isReady
-              ? "Alle harde releaseblokkades zijn opgelost."
-              : "Productie-import is geblokkeerd totdat alle btw-mappings zijn opgelost."}
+              ? "Alle harde blokkades zijn opgelost."
+              : "Verwerken blijft geblokkeerd totdat alle btw-keuzes zijn afgerond."}
           </p>
         </div>
         <div className="toolbar">
@@ -132,7 +132,7 @@ export default function ProductionReadiness({ session }: ProductionReadinessProp
       {error ? (
         <Alert
           variant="danger"
-          title="Productiegereedheid niet geladen"
+          title="Verwerkingscontrole niet geladen"
           description={error}
           style={{ marginTop: 16 }}
         />
@@ -140,19 +140,19 @@ export default function ProductionReadiness({ session }: ProductionReadinessProp
 
       <div className="grid three-column" style={{ marginTop: 16 }}>
         <StatCard
-          label="Btw-mappings te beoordelen"
+          label="Btw-keuzes te controleren"
           value={numberText(unresolvedVatMappings)}
-          description={unresolvedVatMappings > 0 ? "Harde blokkade" : "Geen blokkade"}
+          description={unresolvedVatMappings > 0 ? "Eerst afronden" : "In orde"}
           tone={unresolvedVatMappings > 0 ? "danger" : "success"}
         />
         <StatCard
           label="Dubbele EAN-waarschuwingen"
           value={numberText(duplicateEanIssues)}
-          description={duplicateEanIssues > 0 ? "Waarschuwing, geen blokkade" : "Geen open waarschuwingen"}
+          description={duplicateEanIssues > 0 ? "Waarschuwing, verwerken kan door" : "Geen open waarschuwingen"}
           tone={duplicateEanIssues > 0 ? "warning" : "success"}
         />
         <StatCard
-          label="Laatste voorvertoningsregels"
+          label="Laatste controle: regels"
           value={numberText(readiness?.latestImportRun.previewRows ?? 0)}
           tone="info"
         />
@@ -160,15 +160,15 @@ export default function ProductionReadiness({ session }: ProductionReadinessProp
 
       <div className="grid three-column" style={{ marginTop: 16 }}>
         <StatCard
-          label="Laatste productregels"
+          label="Productregels"
           value={numberText(readiness?.latestImportRun.productRows ?? 0)}
         />
         <StatCard
-          label="Laatste prijsregels"
+          label="Prijsregels"
           value={numberText(readiness?.latestImportRun.priceRules ?? 0)}
         />
         <StatCard
-          label="Bronbestanden"
+          label="Prijslijstbestanden"
           value={numberText(readiness?.latestImportRun.sourceFiles ?? 0)}
           description={dateText(readiness?.latestImportRun.finishedAt)}
         />
@@ -177,17 +177,17 @@ export default function ProductionReadiness({ session }: ProductionReadinessProp
       <div className="grid two-column" style={{ marginTop: 16 }}>
         <div className="release-block">
           <Checklist
-            title="Wat blokkeert productie?"
+            title="Wat moet nog gebeuren?"
             items={[
               {
                 label:
                   unresolvedVatMappings > 0
-                    ? `${numberText(unresolvedVatMappings)} btw-mappings ontbreken`
-                    : "Alle btw-mappings zijn beoordeeld",
+                    ? `${numberText(unresolvedVatMappings)} btw-keuzes ontbreken`
+                    : "Alle btw-keuzes zijn gecontroleerd",
                 description:
                   unresolvedVatMappings > 0
                     ? "Zet iedere prijskolom expliciet op inclusief of exclusief btw."
-                    : "Productie-import voldoet aan de verplichte btw-controle.",
+                    : "De prijslijstcontrole voldoet aan de verplichte btw-controle.",
                 tone: unresolvedVatMappings > 0 ? "danger" : "success"
               },
               {
@@ -196,23 +196,23 @@ export default function ProductionReadiness({ session }: ProductionReadinessProp
                     ? `${numberText(duplicateEanIssues)} dubbele EAN-waarschuwingen open`
                     : "Geen open dubbele EAN-waarschuwingen",
                 description:
-                  "Dubbele EAN is datakwaliteitscontrole en blokkeert de import niet automatisch.",
+                  "Dubbele EAN hoort bij de productcontrole en houdt verwerken niet automatisch tegen.",
                 tone: duplicateEanIssues > 0 ? "warning" : "success"
               },
               {
-                label: isReady ? "Productie-import gereed" : "Productie-import geblokkeerd",
-                description: "Gereed mag alleen als er geen ontbrekende btw-mappings meer zijn.",
+                label: isReady ? "Prijslijsten klaar" : "Prijslijsten geblokkeerd",
+                description: "Verwerken mag alleen als er geen ontbrekende btw-keuzes meer zijn.",
                 tone: isReady ? "success" : "danger"
               }
             ]}
           />
         </div>
         <div className="release-block">
-          <p className="checklist-title">Laatste voorvertoning</p>
+          <p className="checklist-title">Laatste controle</p>
           <SummaryList
             items={[
               {
-                label: "Voorvertoningsregels",
+                label: "Gecontroleerde regels",
                 value: numberText(readiness?.latestImportRun.previewRows ?? 0)
               },
               {
@@ -224,7 +224,7 @@ export default function ProductionReadiness({ session }: ProductionReadinessProp
                 value: numberText(readiness?.latestImportRun.priceRules ?? 0)
               },
               {
-                label: "Bronbestanden",
+                label: "Prijslijstbestanden",
                 value: numberText(readiness?.latestImportRun.sourceFiles ?? 0),
                 description: dateText(readiness?.latestImportRun.finishedAt)
               }
@@ -235,18 +235,18 @@ export default function ProductionReadiness({ session }: ProductionReadinessProp
 
       <div className="toolbar" style={{ marginTop: 16 }}>
         <a className="button primary" href="/portal/import-profielen">
-          Btw-mapping beoordelen
+          Btw-keuzes controleren
         </a>
         <a className="button secondary" href="/portal/catalogus/data-issues">
-          Datakwaliteit bekijken
+          Productcontrole openen
         </a>
         <a className="button secondary" href="/portal/imports">
-          Importbatches bekijken
+          Prijslijsten bekijken
         </a>
       </div>
 
       <p className="muted" style={{ marginBottom: 0 }}>
-        Productie-import is pas gereed als alle btw-mappings inclusief of exclusief btw zijn.
+        Prijslijsten mogen pas definitief verwerkt worden als alle btw-keuzes inclusief of exclusief btw zijn.
         Dubbele EAN blijft zichtbaar als waarschuwing en wordt nooit automatisch samengevoegd.
       </p>
     </section>

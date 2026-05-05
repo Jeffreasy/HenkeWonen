@@ -1,12 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-
-const role = v.union(
-  v.literal("viewer"),
-  v.literal("user"),
-  v.literal("editor"),
-  v.literal("admin")
-);
+import { requireSyncToken, roleValidator, workspaceModeValidator } from "./authz";
 
 export const list = query({
   args: {
@@ -26,9 +20,19 @@ export const ensureUser = mutation({
     externalUserId: v.string(),
     email: v.string(),
     name: v.optional(v.string()),
-    role
+    role: roleValidator,
+    workspaceMode: v.optional(workspaceModeValidator),
+    syncToken: v.string()
   },
   handler: async (ctx, args) => {
+    const tenant = await ctx.db.get(args.tenantId);
+
+    if (!tenant) {
+      throw new Error("Tenant niet gevonden");
+    }
+
+    await requireSyncToken(args.syncToken, tenant.slug, args.externalUserId);
+
     const now = Date.now();
     const existing = await ctx.db
       .query("users")
@@ -44,6 +48,7 @@ export const ensureUser = mutation({
         email: args.email,
         name: args.name,
         role: args.role,
+        workspaceMode: args.workspaceMode ?? "general",
         updatedAt: now
       });
 
@@ -56,6 +61,7 @@ export const ensureUser = mutation({
       email: args.email,
       name: args.name,
       role: args.role,
+      workspaceMode: args.workspaceMode ?? "general",
       createdAt: now,
       updatedAt: now
     });

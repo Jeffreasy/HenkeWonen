@@ -14,7 +14,7 @@ const args = [
 
 const result = spawnSync("npx", args, {
   cwd: process.cwd(),
-  env: process.env,
+  env: { ...process.env, ALLOW_CONVEX_TOOLING: "true" },
   shell: true,
   stdio: "inherit"
 });

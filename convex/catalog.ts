@@ -1,5 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationActorValidator, requireMutationRole, requireMutationRoleForTenantId } from "./authz";
+import type { Doc, Id } from "./_generated/dataModel";
 
 const productStatus = v.union(
   v.literal("draft"),
@@ -7,6 +9,15 @@ const productStatus = v.union(
   v.literal("inactive"),
   v.literal("archived")
 );
+type ProductStatus = "draft" | "active" | "inactive" | "archived";
+
+function normalizedProductStatus(status?: ProductStatus): ProductStatus {
+  return status ?? "active";
+}
+
+function hasArg<T extends object>(args: T, key: keyof T): boolean {
+  return Object.prototype.hasOwnProperty.call(args, key);
+}
 
 const unit = v.union(
   v.literal("piece"),
@@ -119,7 +130,7 @@ export const listProducts = query({
         .collect();
     }
 
-    if (args.status) {
+    if (args.status && args.status !== "active") {
       return await ctx.db
         .query("products")
         .withIndex("by_status", (q) =>
@@ -128,10 +139,16 @@ export const listProducts = query({
         .collect();
     }
 
-    return await ctx.db
+    const products = await ctx.db
       .query("products")
       .withIndex("by_tenant", (q) => q.eq("tenantId", args.tenantId))
       .collect();
+
+    if (args.status === "active") {
+      return products.filter((product) => normalizedProductStatus(product.status) === "active");
+    }
+
+    return products;
   }
 });
 
@@ -154,7 +171,7 @@ export const getProductCount = query({
       .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
       .collect();
 
-    return products.filter((product) => product.status === "active").length;
+    return products.filter((product) => normalizedProductStatus(product.status) === "active").length;
   }
 });
 
@@ -163,6 +180,7 @@ export const listProductsForPortal = query({
     tenantSlug: v.string(),
     search: v.optional(v.string()),
     category: v.optional(v.string()),
+    status: v.optional(productStatus),
     limit: v.optional(v.number())
   },
   handler: async (ctx, args) => {
@@ -197,7 +215,10 @@ export const listProductsForPortal = query({
 
     const categoryById = new Map(categories.map((category) => [String(category._id), category]));
     const supplierById = new Map(suppliers.map((supplier) => [String(supplier._id), supplier]));
-    const activeProducts = products.filter((product) => product.status === "active");
+    const requestedStatus = args.status ?? "active";
+    const activeProducts = products.filter(
+      (product) => normalizedProductStatus(product.status) === requestedStatus
+    );
     const categoryCounts = new Map<string, number>();
     const categoryOrder = [
       "PVC Vloeren",
@@ -332,7 +353,7 @@ export const listProductsForPortal = query({
         bundleSize: product.bundleSize,
         priceExVat: preferredPrice?.amount ?? 0,
         vatRate: preferredPrice?.vatRate ?? 21,
-        status: product.status
+        status: normalizedProductStatus(product.status)
       });
     }
 
@@ -342,6 +363,51 @@ export const listProductsForPortal = query({
       limit,
       categories: categoryFilters
     };
+  }
+});
+
+export const updateProductForPortal = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    productId: v.string(),
+    name: v.string(),
+    articleNumber: v.optional(v.string()),
+    supplierCode: v.optional(v.string()),
+    commercialCode: v.optional(v.string()),
+    colorName: v.optional(v.string()),
+    supplierProductGroup: v.optional(v.string()),
+    packageContentM2: v.optional(v.number()),
+    piecesPerPackage: v.optional(v.number()),
+    status: productStatus
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const product = await ctx.db.get(args.productId as Id<"products">);
+
+    if (!product || product.tenantId !== tenant._id) {
+      throw new Error("Product not found");
+    }
+
+    const patch: Partial<Doc<"products">> = {
+      name: args.name,
+      status: args.status,
+      updatedAt: Date.now()
+    };
+
+    if (hasArg(args, "articleNumber")) patch.articleNumber = args.articleNumber;
+    if (hasArg(args, "supplierCode")) patch.supplierCode = args.supplierCode;
+    if (hasArg(args, "commercialCode")) patch.commercialCode = args.commercialCode;
+    if (hasArg(args, "colorName")) patch.colorName = args.colorName;
+    if (hasArg(args, "supplierProductGroup")) {
+      patch.supplierProductGroup = args.supplierProductGroup;
+    }
+    if (hasArg(args, "packageContentM2")) patch.packageContentM2 = args.packageContentM2;
+    if (hasArg(args, "piecesPerPackage")) patch.piecesPerPackage = args.piecesPerPackage;
+
+    await ctx.db.patch(product._id, patch);
+
+    return product._id;
   }
 });
 
@@ -370,6 +436,7 @@ export const listCollections = query({
 export const createProduct = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     categoryId: v.id("categories"),
     supplierId: v.optional(v.id("suppliers")),
     brandId: v.optional(v.id("brands")),
@@ -414,6 +481,7 @@ export const createProduct = mutation({
     attributes: v.optional(v.any())
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
     const category = await ctx.db.get(args.categoryId);
 
     if (!category || category.tenantId !== args.tenantId) {
@@ -513,6 +581,7 @@ export const createProduct = mutation({
 export const addPrice = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     productId: v.id("products"),
     priceListId: v.optional(v.id("priceLists")),
     sourceKey: v.optional(v.string()),
@@ -532,6 +601,7 @@ export const addPrice = mutation({
     sourceValue: v.optional(v.string())
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
     const product = await ctx.db.get(args.productId);
 
     if (!product || product.tenantId !== args.tenantId) {

@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationActorValidator, requireMutationRoleForTenantId } from "./authz";
 
 const workflowEventType = v.union(
   v.literal("customer_contact"),
@@ -36,6 +37,7 @@ export const listByProject = query({
 export const create = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     projectId: v.id("projects"),
     type: workflowEventType,
     title: v.string(),
@@ -44,6 +46,12 @@ export const create = mutation({
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
+    const { externalUserId } = await requireMutationRoleForTenantId(
+      ctx,
+      args.tenantId,
+      args.actor,
+      ["user", "editor", "admin"]
+    );
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
@@ -57,7 +65,7 @@ export const create = mutation({
       title: args.title,
       description: args.description,
       visibleToCustomer: args.visibleToCustomer,
-      createdByExternalUserId: args.createdByExternalUserId,
+      createdByExternalUserId: externalUserId,
       createdAt: Date.now()
     });
   }

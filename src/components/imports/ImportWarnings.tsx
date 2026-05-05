@@ -14,7 +14,7 @@ export default function ImportWarnings({ warnings }: ImportWarningsProps) {
       {warnings.map((warning) => (
         <div className="card" key={`${warning.rowNumber}-${warning.message}`}>
           <span className={warning.severity === "error" ? "badge danger" : "badge warning"}>
-            rij {warning.rowNumber}
+            regel {warning.rowNumber}
           </span>
           <p>{warning.message}</p>
         </div>

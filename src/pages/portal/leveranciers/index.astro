@@ -1,6 +1,7 @@
 ---
 import PortalLayout from "../../../components/layout/PortalLayout.astro";
 import SupplierWorkspace from "../../../components/suppliers/SupplierWorkspace";
+import { canManage } from "../../../lib/auth/session";
 import { PageHeader } from "../../../components/ui/PageHeader";
 
 const session = Astro.locals.session;
@@ -8,13 +9,17 @@ const session = Astro.locals.session;
 if (!session) {
   return Astro.redirect("/login");
 }
+
+if (!canManage(session.role)) {
+  return Astro.redirect("/portal");
+}
 ---
 
 <PortalLayout title="Leveranciers" session={session}>
   <PageHeader
     eyebrow="Inkoop"
     title="Leveranciers"
-    description="Volg productlijststatussen, contactmomenten en importkoppelingen per leverancier."
+    description="Volg contactgegevens, prijslijsten en opvolging per leverancier."
   />
   <SupplierWorkspace client:load session={session} />
 </PortalLayout>

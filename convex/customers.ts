@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationActorValidator, requireMutationRoleForTenantId } from "./authz";
 
 const customerStatus = v.union(
   v.literal("lead"),
@@ -51,6 +52,7 @@ export const get = query({
 export const create = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     type: v.union(v.literal("private"), v.literal("business")),
     displayName: v.string(),
     firstName: v.optional(v.string()),
@@ -66,6 +68,11 @@ export const create = mutation({
     notes: v.optional(v.string())
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const now = Date.now();
 
     return await ctx.db.insert("customers", {
@@ -93,10 +100,16 @@ export const create = mutation({
 export const updateStatus = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     customerId: v.id("customers"),
     status: customerStatus
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const customer = await ctx.db.get(args.customerId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
@@ -131,6 +144,7 @@ export const listContacts = query({
 export const createContact = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     customerId: v.id("customers"),
     type: v.union(
       v.literal("note"),
@@ -148,6 +162,12 @@ export const createContact = mutation({
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
+    const { externalUserId } = await requireMutationRoleForTenantId(
+      ctx,
+      args.tenantId,
+      args.actor,
+      ["user", "editor", "admin"]
+    );
     const customer = await ctx.db.get(args.customerId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
@@ -165,7 +185,7 @@ export const createContact = mutation({
       loanedItemName: args.loanedItemName,
       expectedReturnDate: args.expectedReturnDate,
       visibleToCustomer: args.visibleToCustomer,
-      createdByExternalUserId: args.createdByExternalUserId,
+      createdByExternalUserId: externalUserId,
       createdAt: now,
       updatedAt: now
     });
@@ -175,9 +195,15 @@ export const createContact = mutation({
 export const markLoanedItemReturned = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     contactId: v.id("customerContacts")
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const contact = await ctx.db.get(args.contactId);
 
     if (!contact || contact.tenantId !== args.tenantId) {

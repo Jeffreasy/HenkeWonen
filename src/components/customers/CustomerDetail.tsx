@@ -1,7 +1,8 @@
 import { Save } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
-import type { AppSession } from "../../lib/auth/session";
+import { mutationActorFromSession } from "../../lib/auth/authzToken";
+import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatCustomerStatus, formatProjectStatus } from "../../lib/i18n/statusLabels";
 import type {
@@ -13,6 +14,7 @@ import { NoteVisibilityBadge } from "../common/NoteVisibilityBadge";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { EmptyState } from "../ui/EmptyState";
 import { ErrorState } from "../ui/ErrorState";
@@ -24,6 +26,7 @@ import { Select } from "../ui/Select";
 import { StatCard } from "../ui/StatCard";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SummaryList } from "../ui/SummaryList";
+import { Textarea } from "../ui/Textarea";
 
 type CustomerDetailProps = {
   session: AppSession;
@@ -81,12 +84,26 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
   const [contactType, setContactType] =
     useState<PortalCustomerContact["type"]>("note");
   const [loanedItemName, setLoanedItemName] = useState("");
+  const [editingCustomer, setEditingCustomer] = useState(false);
+  const [customerDraft, setCustomerDraft] = useState({
+    displayName: "",
+    email: "",
+    phone: "",
+    street: "",
+    houseNumber: "",
+    postalCode: "",
+    city: "",
+    notes: ""
+  });
+  const [pendingCustomerStatus, setPendingCustomerStatus] =
+    useState<PortalCustomer["status"] | null>(null);
+  const canAddContact = canEditDossiers(session.role);
 
   const loadDetail = useCallback(async () => {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
       return;
     }
@@ -113,6 +130,87 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     void loadDetail();
   }, [loadDetail]);
 
+  useEffect(() => {
+    if (!detail?.customer) {
+      return;
+    }
+
+    setCustomerDraft({
+      displayName: detail.customer.displayName,
+      email: detail.customer.email ?? "",
+      phone: detail.customer.phone ?? "",
+      street: detail.customer.street ?? "",
+      houseNumber: detail.customer.houseNumber ?? "",
+      postalCode: detail.customer.postalCode ?? "",
+      city: detail.customer.city ?? "",
+      notes: detail.customer.notes ?? ""
+    });
+  }, [detail?.customer]);
+
+  async function saveCustomer(event: { preventDefault(): void }) {
+    event.preventDefault();
+
+    if (!detail?.customer || !customerDraft.displayName.trim()) {
+      return;
+    }
+
+    const client = createConvexHttpClient();
+
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return;
+    }
+
+    await client.mutation(api.portal.updateCustomer, {
+      tenantSlug: session.tenantId,
+      actor: mutationActorFromSession(session),
+      customerId,
+      type: detail.customer.type,
+      status: detail.customer.status,
+      displayName: customerDraft.displayName.trim(),
+      email: customerDraft.email.trim() || undefined,
+      phone: customerDraft.phone.trim() || undefined,
+      street: customerDraft.street.trim() || undefined,
+      houseNumber: customerDraft.houseNumber.trim() || undefined,
+      postalCode: customerDraft.postalCode.trim() || undefined,
+      city: customerDraft.city.trim() || undefined,
+      notes: customerDraft.notes.trim() || undefined
+    });
+    setEditingCustomer(false);
+    await loadDetail();
+  }
+
+  async function confirmCustomerStatus() {
+    if (!detail?.customer || !pendingCustomerStatus) {
+      return;
+    }
+
+    const client = createConvexHttpClient();
+
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return;
+    }
+
+    await client.mutation(api.portal.updateCustomer, {
+      tenantSlug: session.tenantId,
+      actor: mutationActorFromSession(session),
+      customerId,
+      type: detail.customer.type,
+      displayName: detail.customer.displayName,
+      email: detail.customer.email,
+      phone: detail.customer.phone,
+      street: detail.customer.street,
+      houseNumber: detail.customer.houseNumber,
+      postalCode: detail.customer.postalCode,
+      city: detail.customer.city,
+      notes: detail.customer.notes,
+      status: pendingCustomerStatus
+    });
+    setPendingCustomerStatus(null);
+    await loadDetail();
+  }
+
   async function addContact(event: { preventDefault(): void }) {
     event.preventDefault();
 
@@ -123,12 +221,13 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
     await client.mutation(api.portal.createCustomerContact, {
       tenantSlug: session.tenantId,
+      actor: mutationActorFromSession(session),
       customerId,
       type: contactType,
       title: contactTitle.trim(),
@@ -235,11 +334,28 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
 
   return (
     <div className="grid">
+      <ConfirmDialog
+        open={Boolean(pendingCustomerStatus)}
+        title={
+          pendingCustomerStatus === "archived"
+            ? "Klant archiveren?"
+            : "Klant herstellen?"
+        }
+        description={
+          pendingCustomerStatus === "archived"
+            ? "De klant blijft bewaard, maar verdwijnt uit de dagelijkse werkvoorraad."
+            : "De klant wordt weer actief zichtbaar in de werkvoorraad."
+        }
+        confirmLabel={pendingCustomerStatus === "archived" ? "Archiveren" : "Herstellen"}
+        tone={pendingCustomerStatus === "archived" ? "danger" : "warning"}
+        onCancel={() => setPendingCustomerStatus(null)}
+        onConfirm={() => void confirmCustomerStatus()}
+      />
       <section className="grid three-column">
         <StatCard label="Projecten" value={projects.length} tone="info" />
         <StatCard label="Contactmomenten" value={contacts.length} />
         <StatCard
-          label="Uitgeleend open"
+          label="Nog uitgeleend"
           value={openLoanedItems.length}
           tone={openLoanedItems.length > 0 ? "warning" : "success"}
         />
@@ -252,7 +368,23 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
             title={customer.displayName}
             description={customer.type === "business" ? "Zakelijke klant" : "Particuliere klant"}
             actions={
-              <StatusBadge status={customer.status} label={formatCustomerStatus(customer.status)} />
+              <div className="toolbar">
+                <StatusBadge status={customer.status} label={formatCustomerStatus(customer.status)} />
+                {canAddContact ? (
+                  <>
+                    <Button size="sm" variant="secondary" onClick={() => setEditingCustomer((current) => !current)}>
+                      Bewerken
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={customer.status === "archived" ? "secondary" : "danger"}
+                      onClick={() => setPendingCustomerStatus(customer.status === "archived" ? "active" : "archived")}
+                    >
+                      {customer.status === "archived" ? "Herstellen" : "Archiveren"}
+                    </Button>
+                  </>
+                ) : null}
+              </div>
             }
           />
           <SummaryList
@@ -272,7 +404,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
           />
           {customer.notes ? (
             <Card className="dossier-note" variant="muted">
-              <strong>Interne notities / afspraken</strong>
+              <strong>Notities en afspraken</strong>
               <p className="muted">{customer.notes}</p>
             </Card>
           ) : null}
@@ -296,61 +428,143 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         </section>
       </div>
 
-      <section className="panel">
-        <SectionHeader
-          compact
-          title="Contactmoment toevoegen"
-          description="Registreer afspraken, notities en uitgeleende stalen of boeken."
-        />
-        <form className="responsive-form-row" onSubmit={addContact}>
-          <Field htmlFor="contact-type" label="Type">
-            <Select
-              id="contact-type"
-              value={contactType}
-              onChange={(event) =>
-                setContactType(event.target.value as PortalCustomerContact["type"])
-              }
+      {canAddContact && editingCustomer ? (
+        <section className="panel">
+          <SectionHeader compact title="Klantgegevens aanpassen" description="Wijzig contactgegevens en notities voor dit klantdossier." />
+          <form className="form-grid" onSubmit={saveCustomer}>
+            <div className="grid two-column-even">
+              <Field htmlFor="edit-customer-name" label="Naam" required>
+                <Input
+                  id="edit-customer-name"
+                  value={customerDraft.displayName}
+                  onChange={(event) => setCustomerDraft((current) => ({ ...current, displayName: event.target.value }))}
+                  required
+                />
+              </Field>
+              <Field htmlFor="edit-customer-phone" label="Telefoon">
+                <Input
+                  id="edit-customer-phone"
+                  value={customerDraft.phone}
+                  onChange={(event) => setCustomerDraft((current) => ({ ...current, phone: event.target.value }))}
+                />
+              </Field>
+            </div>
+            <div className="grid two-column-even">
+              <Field htmlFor="edit-customer-email" label="E-mail">
+                <Input
+                  id="edit-customer-email"
+                  value={customerDraft.email}
+                  onChange={(event) => setCustomerDraft((current) => ({ ...current, email: event.target.value }))}
+                />
+              </Field>
+              <Field htmlFor="edit-customer-city" label="Plaats">
+                <Input
+                  id="edit-customer-city"
+                  value={customerDraft.city}
+                  onChange={(event) => setCustomerDraft((current) => ({ ...current, city: event.target.value }))}
+                />
+              </Field>
+            </div>
+            <div className="grid three-column">
+              <Field htmlFor="edit-customer-street" label="Straat">
+                <Input
+                  id="edit-customer-street"
+                  value={customerDraft.street}
+                  onChange={(event) => setCustomerDraft((current) => ({ ...current, street: event.target.value }))}
+                />
+              </Field>
+              <Field htmlFor="edit-customer-house-number" label="Huisnummer">
+                <Input
+                  id="edit-customer-house-number"
+                  value={customerDraft.houseNumber}
+                  onChange={(event) => setCustomerDraft((current) => ({ ...current, houseNumber: event.target.value }))}
+                />
+              </Field>
+              <Field htmlFor="edit-customer-postal-code" label="Postcode">
+                <Input
+                  id="edit-customer-postal-code"
+                  value={customerDraft.postalCode}
+                  onChange={(event) => setCustomerDraft((current) => ({ ...current, postalCode: event.target.value }))}
+                />
+              </Field>
+            </div>
+            <Field htmlFor="edit-customer-notes" label="Notities">
+              <Textarea
+                id="edit-customer-notes"
+                rows={4}
+                value={customerDraft.notes}
+                onChange={(event) => setCustomerDraft((current) => ({ ...current, notes: event.target.value }))}
+              />
+            </Field>
+            <div className="toolbar">
+              <Button leftIcon={<Save size={17} aria-hidden="true" />} type="submit" variant="primary">
+                Klantgegevens opslaan
+              </Button>
+              <Button variant="secondary" onClick={() => setEditingCustomer(false)}>
+                Annuleren
+              </Button>
+            </div>
+          </form>
+        </section>
+      ) : null}
+
+      {canAddContact ? (
+        <section className="panel">
+          <SectionHeader
+            compact
+            title="Contactmoment toevoegen"
+            description="Registreer afspraken, notities en uitgeleende stalen of boeken."
+          />
+          <form className="responsive-form-row" onSubmit={addContact}>
+            <Field htmlFor="contact-type" label="Type">
+              <Select
+                id="contact-type"
+                value={contactType}
+                onChange={(event) =>
+                  setContactType(event.target.value as PortalCustomerContact["type"])
+                }
+              >
+                <option value="note">Notitie</option>
+                <option value="call">Telefoon</option>
+                <option value="email">E-mail</option>
+                <option value="visit">Bezoek</option>
+                <option value="agreement">Afspraak</option>
+                <option value="loaned_item">Uitgeleend</option>
+              </Select>
+            </Field>
+            <Field htmlFor="contact-title" label="Korte omschrijving" required>
+              <Input
+                id="contact-title"
+                value={contactTitle}
+                onChange={(event) => setContactTitle(event.target.value)}
+                required
+              />
+            </Field>
+            <Field htmlFor="loaned-item" label="Uitgeleend item">
+              <Input
+                disabled={contactType !== "loaned_item"}
+                id="loaned-item"
+                value={loanedItemName}
+                onChange={(event) => setLoanedItemName(event.target.value)}
+              />
+            </Field>
+            <Button
+              leftIcon={<Save size={17} aria-hidden="true" />}
+              type="submit"
+              variant="primary"
             >
-              <option value="note">Notitie</option>
-              <option value="call">Telefoon</option>
-              <option value="email">E-mail</option>
-              <option value="visit">Bezoek</option>
-              <option value="agreement">Afspraak</option>
-              <option value="loaned_item">Uitgeleend</option>
-            </Select>
-          </Field>
-          <Field htmlFor="contact-title" label="Titel" required>
-            <Input
-              id="contact-title"
-              value={contactTitle}
-              onChange={(event) => setContactTitle(event.target.value)}
-              required
-            />
-          </Field>
-          <Field htmlFor="loaned-item" label="Uitgeleend item">
-            <Input
-              disabled={contactType !== "loaned_item"}
-              id="loaned-item"
-              value={loanedItemName}
-              onChange={(event) => setLoanedItemName(event.target.value)}
-            />
-          </Field>
-          <Button
-            leftIcon={<Save size={17} aria-hidden="true" />}
-            type="submit"
-            variant="primary"
-          >
-            Opslaan
-          </Button>
-        </form>
-      </section>
+              Contactmoment opslaan
+            </Button>
+          </form>
+        </section>
+      ) : null}
 
       <div className="grid two-column">
         <section className="panel">
           <SectionHeader
             compact
             title="Contactmomenten"
-            description="Interne dossierregels en klantcontacten."
+            description="Interne notities, afspraken en klantcontacten."
           />
           <DataTable
             ariaLabel="Contactmomenten"
@@ -381,7 +595,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
                   </div>
                   <SummaryList
                     items={[
-                      { id: "title", label: "Dossierregel", value: contact.title },
+                      { id: "title", label: "Contactmoment", value: contact.title },
                       { id: "expected", label: "Retour verwacht", value: dateText(contact.expectedReturnDate) },
                       { id: "returned", label: "Teruggebracht", value: dateText(contact.returnedAt) }
                     ]}

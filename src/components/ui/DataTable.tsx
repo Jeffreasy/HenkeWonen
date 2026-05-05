@@ -44,7 +44,7 @@ export function DataTable<T>({
   if (loading) {
     return (
       <div className="data-table-state">
-        <TableState state="loading" title="Gegevens laden" description="De tabel wordt opgehaald." />
+        <TableState state="loading" title="Overzicht laden" description="De gegevens worden opgehaald." />
       </div>
     );
   }
@@ -52,7 +52,7 @@ export function DataTable<T>({
   if (error) {
     return (
       <div className="data-table-state">
-        <TableState state="error" title="Tabel kon niet worden geladen" description={error} />
+        <TableState state="error" title="Overzicht kon niet worden geladen" description={error} />
       </div>
     );
   }

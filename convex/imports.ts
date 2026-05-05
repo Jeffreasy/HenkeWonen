@@ -1,5 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationActorValidator, requireMutationRoleForTenantId } from "./authz";
+import type { Id } from "./_generated/dataModel";
 
 const batchStatus = v.union(
   v.literal("uploaded"),
@@ -8,7 +10,8 @@ const batchStatus = v.union(
   v.literal("ready_to_import"),
   v.literal("importing"),
   v.literal("imported"),
-  v.literal("failed")
+  v.literal("failed"),
+  v.literal("archived")
 );
 
 const rowStatus = v.union(
@@ -79,6 +82,9 @@ function toPortalBatch(tenantSlug: string, batch: any, supplier?: any, profile?:
     fileName: batch.fileName,
     supplierName: supplier?.name ?? "Onbekend",
     status: batch.status,
+    archivedFromStatus: batch.archivedFromStatus,
+    archivedAt: batch.archivedAt,
+    archivedByExternalUserId: batch.archivedByExternalUserId,
     sourcePath: batch.sourcePath,
     fileHash: batch.fileHash,
     profileName: profile?.name,
@@ -165,6 +171,7 @@ export const getBatch = query({
 export const createBatch = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     priceListId: v.optional(v.id("priceLists")),
     supplierId: v.optional(v.id("suppliers")),
     importProfileId: v.optional(v.id("importProfiles")),
@@ -177,6 +184,12 @@ export const createBatch = mutation({
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
+    const { externalUserId } = await requireMutationRoleForTenantId(
+      ctx,
+      args.tenantId,
+      args.actor,
+      ["admin"]
+    );
     const now = Date.now();
 
     return await ctx.db.insert("productImportBatches", {
@@ -210,7 +223,7 @@ export const createBatch = mutation({
       duplicateSourceKeys: 0,
       allowUnknownVatMode: args.allowUnknownVatMode ?? false,
       reconciliation: {},
-      createdByExternalUserId: args.createdByExternalUserId,
+      createdByExternalUserId: externalUserId,
       createdAt: now,
       updatedAt: now
     });
@@ -220,6 +233,7 @@ export const createBatch = mutation({
 export const addPreviewRow = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     batchId: v.id("productImportBatches"),
     sourceFileName: v.optional(v.string()),
     sourceSheetName: v.optional(v.string()),
@@ -236,6 +250,7 @@ export const addPreviewRow = mutation({
     errors: v.array(v.string())
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
     const batch = await ctx.db.get(args.batchId);
 
     if (!batch || batch.tenantId !== args.tenantId) {
@@ -295,6 +310,7 @@ export const listProfiles = query({
 export const upsertProfile = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     supplierName: v.string(),
     supplierId: v.optional(v.id("suppliers")),
     categoryId: v.optional(v.id("categories")),
@@ -319,6 +335,7 @@ export const upsertProfile = mutation({
     notes: v.optional(v.string())
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
     const now = Date.now();
     const existing = await ctx.db
       .query("importProfiles")
@@ -472,6 +489,52 @@ export const getBatchForPortal = query({
   }
 });
 
+export const updateBatchStatusForPortal = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    batchId: v.string(),
+    status: batchStatus
+  },
+  handler: async (ctx, args) => {
+    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    const { externalUserId } = await requireMutationRoleForTenantId(ctx, tenant._id, args.actor, [
+      "admin"
+    ]);
+    const batch = await ctx.db.get(args.batchId as Id<"productImportBatches">);
+
+    if (!batch || batch.tenantId !== tenant._id) {
+      throw new Error("Import batch not found");
+    }
+
+    if (batch.status === "importing") {
+      throw new Error("Een prijslijst die nu verwerkt wordt kan niet worden aangepast.");
+    }
+
+    const now = Date.now();
+    const patch =
+      args.status === "archived"
+        ? {
+            status: args.status,
+            archivedFromStatus: batch.status === "archived" ? batch.archivedFromStatus : batch.status,
+            archivedAt: batch.archivedAt ?? now,
+            archivedByExternalUserId: batch.archivedByExternalUserId ?? externalUserId,
+            updatedAt: now
+          }
+        : {
+            status: args.status,
+            archivedFromStatus: undefined,
+            archivedAt: undefined,
+            archivedByExternalUserId: undefined,
+            updatedAt: now
+          };
+
+    await ctx.db.patch(batch._id, patch);
+
+    return batch._id;
+  }
+});
+
 export const listProfilesForPortal = query({
   args: {
     tenantSlug: v.string()
@@ -480,7 +543,7 @@ export const listProfilesForPortal = query({
     const tenant = await tenantBySlug(ctx, args.tenantSlug);
     const profiles = await ctx.db
       .query("importProfiles")
-      .withIndex("by_status", (q: any) => q.eq("tenantId", tenant._id).eq("status", "active"))
+      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
       .collect();
 
     return profiles
@@ -511,13 +574,40 @@ export const listProfilesForPortal = query({
   }
 });
 
+export const updateProfileStatusForPortal = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    profileId: v.string(),
+    status: v.union(v.literal("active"), v.literal("inactive"))
+  },
+  handler: async (ctx, args) => {
+    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    await requireMutationRoleForTenantId(ctx, tenant._id, args.actor, ["admin"]);
+    const profile = await ctx.db.get(args.profileId as Id<"importProfiles">);
+
+    if (!profile || profile.tenantId !== tenant._id) {
+      throw new Error("Import profile not found");
+    }
+
+    await ctx.db.patch(profile._id, {
+      status: args.status,
+      updatedAt: Date.now()
+    });
+
+    return profile._id;
+  }
+});
+
 export const saveMapping = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     batchId: v.id("productImportBatches"),
     mapping: v.any()
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
     const batch = await ctx.db.get(args.batchId);
 
     if (!batch || batch.tenantId !== args.tenantId) {

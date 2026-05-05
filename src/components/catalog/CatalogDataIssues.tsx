@@ -1,6 +1,7 @@
 import { RefreshCw, Save, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
+import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import {
@@ -92,8 +93,8 @@ const decisions: Array<{ value: DuplicateEanDecision; label: string; helpText: s
   },
   {
     value: "source_error",
-    label: "Bronfout",
-    helpText: "Waarschijnlijk fout in leverancierbestand of bronmapping."
+    label: "Fout in leverancierbestand",
+    helpText: "Waarschijnlijk fout in het aangeleverde bestand."
   },
   {
     value: "accepted_duplicate",
@@ -192,7 +193,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
       return;
     }
@@ -221,7 +222,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
       );
     } catch (loadError) {
       console.error(loadError);
-      setError("Datakwaliteitswaarschuwingen konden niet worden geladen.");
+      setError("Productwaarschuwingen konden niet worden geladen.");
     } finally {
       setIsLoading(false);
     }
@@ -235,7 +236,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
@@ -244,12 +245,13 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
 
     try {
       await client.mutation(api.catalogReview.syncDuplicateEanIssues, {
-        tenantSlug: session.tenantId
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session)
       });
       await loadReview();
     } catch (syncError) {
       console.error(syncError);
-      setError("Dubbele EAN-waarschuwingen konden niet worden gesynchroniseerd.");
+      setError("Dubbele EAN-waarschuwingen konden niet worden bijgewerkt.");
     } finally {
       setIsSaving(false);
     }
@@ -259,12 +261,12 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
     if (!issue.issueId) {
-      setError("Waarschuwing heeft geen beoordelings-id. Synchroniseer dubbele EAN-waarschuwingen opnieuw.");
+      setError("Deze waarschuwing mist een beoordeling. Werk de waarschuwingen opnieuw bij.");
       return;
     }
 
@@ -276,6 +278,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
     try {
       await client.mutation(api.catalogReview.updateDuplicateEanIssueReview, {
         tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
         issueId: issue.issueId,
         decision: draft?.decision ?? "keep_separate",
         notes: draft?.notes,
@@ -321,7 +324,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
             variant={statusVariant(issue.issueStatus)}
           />
           <div className="muted">Dubbele EAN</div>
-          <div className="muted">ernst {formatStatusLabel(issue.severity)}</div>
+          <div className="muted">ernst: {formatStatusLabel(issue.severity)}</div>
         </>
       )
     },
@@ -421,7 +424,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
               <Field
                 label="Interne beoordelingsnotitie"
                 htmlFor={`notes-${issue.issueId ?? issue.ean}`}
-                description="Alleen bedoeld voor interne datakwaliteitscontrole."
+                description="Alleen bedoeld voor interne productcontrole."
               >
                 <Textarea
                   id={`notes-${issue.issueId ?? issue.ean}`}
@@ -443,7 +446,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
               Beoordeling opslaan
             </Button>
             <div className="muted" style={{ marginTop: 8 }}>
-              beoordeeld {dateText(issue.reviewedAt)} · {issue.reviewedByExternalUserId ?? "-"}
+              {issue.reviewedAt ? `Beoordeeld ${dateText(issue.reviewedAt)}` : "Nog niet beoordeeld"}
             </div>
           </>
         );
@@ -480,7 +483,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
               onClick={() => void syncIssues()}
               disabled={isSaving}
             >
-              Waarschuwingen synchroniseren
+              Waarschuwingen bijwerken
             </Button>
           </div>
         </div>
@@ -493,14 +496,14 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
         {error ? (
           <Alert
             variant="danger"
-            title="Datakwaliteit niet geladen"
+            title="Productcontrole niet geladen"
             description={error}
             style={{ marginTop: 16 }}
           />
         ) : null}
         {isLoading ? (
           <div style={{ marginTop: 16 }}>
-            <LoadingState title="Dubbele EAN-waarschuwingen laden" description="Beoordeling ophalen." />
+            <LoadingState title="Dubbele EAN-waarschuwingen laden" description="Productcontrole ophalen." />
           </div>
         ) : null}
       </section>
@@ -530,7 +533,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
             <SearchInput
               aria-label="Zoek in dubbele EAN-waarschuwingen"
               value={searchQuery}
-              placeholder="Zoek op leverancier, EAN, product of bronbestand"
+              placeholder="Zoek op leverancier, EAN, product of leverancierbestand"
               onChange={setSearchQuery}
             />
           }
@@ -590,7 +593,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
         loading={isLoading}
         error={error}
         emptyTitle="Geen dubbele EAN-waarschuwingen gevonden"
-        emptyDescription="Pas filters aan of synchroniseer de waarschuwingen opnieuw."
+        emptyDescription="Pas filters aan of werk de waarschuwingen opnieuw bij."
         density="compact"
         mobileMode="cards"
         renderMobileCard={(issue) => {
@@ -667,7 +670,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
                 <Field
                   label="Interne beoordelingsnotitie"
                   htmlFor={`mobile-notes-${fieldId}`}
-                  description="Alleen bedoeld voor interne datakwaliteitscontrole."
+                  description="Alleen bedoeld voor interne productcontrole."
                 >
                   <Textarea
                     id={`mobile-notes-${fieldId}`}

@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
+import { createToolMutationActor } from "./authz_actor.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const previewPath = resolve(root, "docs/catalog-import-preview.json");
@@ -208,6 +209,7 @@ if (!allowUnknownVatMode && !noCommit && initialUnresolvedProfileMappings.length
 const payload = JSON.parse(readFileSync(previewPath, "utf8"));
 const rows = payload.rows ?? [];
 const tenantSlug = payload.tenantSlug ?? "henke-wonen";
+const actor = createToolMutationActor(tenantSlug);
 const vatReview =
   tenantSlug === defaultTenantSlug
     ? initialVatReview
@@ -281,6 +283,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
   try {
     batchId = await client.mutation(api.catalogImport.createPreviewBatch, {
       tenantSlug,
+      actor,
       fileName: sourceFileName,
       fileType: fileTypeFor(sourceFileName),
       sourceFileName,
@@ -295,6 +298,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
     for (const rowsChunk of chunk(sourceRows.map(toPreviewRow), 100)) {
       const appendResult = await client.mutation(api.catalogImport.appendPreviewRows, {
         tenantSlug,
+        actor,
         batchId,
         rows: rowsChunk,
       });
@@ -303,6 +307,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
 
     await client.mutation(api.catalogImport.savePreviewMapping, {
       tenantSlug,
+      actor,
       batchId,
       allowUnknownVatMode: batchAllowUnknownVatMode,
       mapping: {
@@ -326,6 +331,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
       while (true) {
         const commitResult = await client.mutation(api.catalogImport.commitPreviewBatchChunk, {
           tenantSlug,
+          actor,
           batchId,
           allowUnknownVatMode: batchAllowUnknownVatMode,
           importedByExternalUserId: "dev-catalog-import",
@@ -351,6 +357,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
     if (batchId) {
       await client.mutation(api.catalogImport.failPreviewBatch, {
         tenantSlug,
+        actor,
         batchId,
         errorMessage: error instanceof Error ? error.message : "Unknown batch import failure",
       });

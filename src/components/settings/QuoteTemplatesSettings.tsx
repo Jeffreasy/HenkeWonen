@@ -1,6 +1,7 @@
 import { Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
+import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatLineType, formatStatusLabel, formatUnit } from "../../lib/i18n/statusLabels";
@@ -60,7 +61,7 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
       return;
     }
@@ -92,7 +93,7 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
       } catch (loadError) {
         console.error(loadError);
         if (isActive) {
-          setError("Offertesjablonen konden niet worden geladen.");
+          setError("Offerteteksten konden niet worden geladen.");
         }
       } finally {
         if (isActive) {
@@ -117,7 +118,7 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
@@ -129,6 +130,7 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
     try {
       await client.mutation(api.portal.updateQuoteTemplateContent, {
         tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
         templateId: template.id,
         defaultTerms: splitLines(draft?.terms ?? ""),
         paymentTerms: splitLines(draft?.paymentTerms ?? "")
@@ -145,7 +147,7 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
   if (isLoading) {
     return (
       <LoadingState
-        title="Offertesjablonen laden..."
+        title="Offerteteksten laden..."
         description="De standaardregels, voorwaarden en betalingsafspraken worden opgehaald."
       />
     );
@@ -154,7 +156,7 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
   if (error && templates.length === 0) {
     return (
       <ErrorState
-        title="Offertesjablonen konden niet worden geladen"
+        title="Offerteteksten konden niet worden geladen"
         description={error}
       />
     );
@@ -163,8 +165,8 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
   if (templates.length === 0) {
     return (
       <EmptyState
-        title="Geen offertesjablonen"
-        description="Run de Henke Wonen seed om de standaard offerte woninginrichting aan te maken."
+        title="Geen offerteteksten"
+        description="Standaardteksten verschijnen hier zodra ze zijn toegevoegd."
       />
     );
   }
@@ -180,8 +182,8 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
       />
 
       <section className="grid quote-template-summary">
-        <StatCard label="Offertesjablonen" value={templates.length} description="Beschikbaar voor nieuwe offertes" />
-        <StatCard label="Sjabloonregels" value={lineCount} description="Laadbaar in de offertebuilder" />
+        <StatCard label="Offerteteksten" value={templates.length} description="Beschikbaar voor nieuwe offertes" />
+        <StatCard label="Standaardregels" value={lineCount} description="Te gebruiken bij offerte maken" />
         <StatCard
           label="Voorwaarden"
           value={templates.reduce((sum, template) => sum + template.defaultTerms.length, 0)}
@@ -199,7 +201,7 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
           <SectionHeader
             compact
             title={template.name}
-            description="Standaard offerteblokken, voorwaarden en betalingsafspraken uit Simone’s offertevoorbeeld."
+            description="Standaard offerteblokken, voorwaarden en betalingsafspraken voor nieuwe offertes."
             actions={
               <div className="quote-template-header-badges">
                 <Badge variant="accent">{formatStatusLabel(template.type)}</Badge>
@@ -222,7 +224,7 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
               </div>
             </Card>
             <Card variant="muted">
-              <h3>Regeltypes</h3>
+              <h3>Soorten posten</h3>
               <div className="quote-template-chip-list">
                 {Array.from(new Set(template.defaultLines.map((line) => line.lineType))).map(
                   (lineType) => (
@@ -273,7 +275,7 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
             })}
             {fallbackLines(template).length > 0 ? (
               <Card padding="sm">
-                <h3>Overige regels</h3>
+                <h3>Overige posten</h3>
                 <div className="quote-template-section-lines">
                   {fallbackLines(template).map((line) => (
                     <div className="quote-template-line" key={`${line.sortOrder}-${line.title}`}>

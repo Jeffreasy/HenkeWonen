@@ -1,4 +1,4 @@
-import { Printer } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileText, Printer } from "lucide-react";
 import type { MouseEvent } from "react";
 import type { QuoteDocumentModel } from "../../lib/quotes/quoteDocumentModel";
 import {
@@ -7,6 +7,7 @@ import {
   formatQuantity,
   formatVatRate
 } from "../../lib/quotes/quoteDocumentFormatting";
+import { formatStatusLabel } from "../../lib/i18n/statusLabels";
 import { Alert } from "../ui/Alert";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
@@ -28,6 +29,16 @@ function TextLines({ lines }: { lines: string[] }) {
         <li key={`${line}-${index}`}>{line}</li>
       ))}
     </ul>
+  );
+}
+
+function DescriptionText({ description }: { description: string }) {
+  return (
+    <span className="quote-document-line-description">
+      {description.split("\n").map((line, index) => (
+        <span key={`${line}-${index}`}>{line}</span>
+      ))}
+    </span>
   );
 }
 
@@ -64,37 +75,54 @@ function printConceptQuote(event: MouseEvent<HTMLButtonElement>) {
 }
 
 export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProps) {
+  const lineCount = model.sections.reduce((count, section) => count + section.lines.length, 0);
+  const reviewCount = model.sections.reduce(
+    (count, section) => count + section.lines.filter((line) => line.requiresManualReview).length,
+    0
+  );
   const hasManualReviewLines = model.sections.some((section) =>
     section.lines.some((line) => line.requiresManualReview)
   );
+  const reviewStatus = hasManualReviewLines
+    ? {
+        icon: <AlertTriangle size={18} aria-hidden="true" />,
+        title: "Controle nodig",
+        description: `${reviewCount} regel${reviewCount === 1 ? "" : "s"} vragen nog aandacht voor product, prijs of btw.`
+      }
+    : {
+        icon: <CheckCircle2 size={18} aria-hidden="true" />,
+        title: "Klaar om te bekijken",
+        description: "Er zijn geen open controlepunten in deze klantversie."
+      };
 
   return (
-    <article className="quote-document-preview" aria-label="Read-only offertepreview">
-      <div className="quote-document-preview-header">
-        <div>
-          <p className="eyebrow">Offertepreview</p>
-          <h2>{model.company.name}</h2>
+    <article className="quote-document-preview" aria-label="Klantversie offerte">
+      <section className="quote-document-control-panel no-print" aria-label="Klantversie controle">
+        <div className="quote-document-control-copy">
+          <span className={hasManualReviewLines ? "quote-document-control-icon warning" : "quote-document-control-icon success"}>
+            {reviewStatus.icon}
+          </span>
+          <div>
+            <p className="eyebrow">Klantversie</p>
+            <h2>{reviewStatus.title}</h2>
+            <p>{reviewStatus.description}</p>
+          </div>
         </div>
-        <div className="quote-document-preview-badges">
-          <Badge variant="warning">Concept preview</Badge>
-          <Badge variant="neutral">{model.quote.status}</Badge>
+        <div className="quote-document-actions no-print">
+          <Button
+            leftIcon={<Printer size={17} aria-hidden="true" />}
+            onClick={printConceptQuote}
+            variant="primary"
+          >
+            Klantversie printen
+          </Button>
         </div>
-      </div>
-
-      <div className="quote-document-actions no-print">
-        <Button
-          leftIcon={<Printer size={17} aria-hidden="true" />}
-          onClick={printConceptQuote}
-          variant="secondary"
-        >
-          Concept printen
-        </Button>
-      </div>
+      </section>
 
       <Alert
         variant="info"
-        title="Read-only preview"
-        description="Deze preview toont bestaande offertegegevens en past niets automatisch aan."
+        title="Alleen bekijken"
+        description="Deze klantversie toont de huidige offertegegevens en wijzigt niets."
       />
 
       {hasManualReviewLines ? (
@@ -104,6 +132,45 @@ export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProp
           description="Een of meer regels vragen handmatige controle. Controleer product, prijs en btw."
         />
       ) : null}
+
+      <section className="quote-document-cover print-page-break-avoid">
+        <div className="quote-document-cover-main">
+          <p className="eyebrow">Offerte</p>
+          <h2>Offerte voor {model.customer.name}</h2>
+          <p>{model.quote.subject}</p>
+          <div className="quote-document-preview-badges">
+            <Badge variant="warning">Concept</Badge>
+            <Badge variant="neutral">{formatStatusLabel(model.quote.status)}</Badge>
+          </div>
+        </div>
+        <div className="quote-document-total-card" aria-label="Totaal offerte">
+          <span>Totaal incl. btw</span>
+          <strong>{formatCurrencyEUR(model.totals.totalIncVat)}</strong>
+          <small>{model.quote.validUntil ? `Geldig tot ${formatDateNL(model.quote.validUntil)}` : "Geldigheid niet ingevuld"}</small>
+        </div>
+      </section>
+
+      <section className="quote-document-snapshot no-print" aria-label="Samenvatting klantversie">
+        <div>
+          <FileText size={18} aria-hidden="true" />
+          <span>Offertenummer</span>
+          <strong>{model.quote.quoteNumber}</strong>
+        </div>
+        <div>
+          <FileText size={18} aria-hidden="true" />
+          <span>Regels</span>
+          <strong>{lineCount}</strong>
+        </div>
+        <div className={hasManualReviewLines ? "needs-review" : "is-ready"}>
+          {hasManualReviewLines ? (
+            <AlertTriangle size={18} aria-hidden="true" />
+          ) : (
+            <CheckCircle2 size={18} aria-hidden="true" />
+          )}
+          <span>Controlepunten</span>
+          <strong>{reviewCount}</strong>
+        </div>
+      </section>
 
       <section className="quote-document-letterhead print-page-break-avoid">
         <div>
@@ -177,13 +244,17 @@ export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProp
                 </thead>
                 <tbody>
                   {section.lines.map((line, lineIndex) => (
-                    <tr key={`${section.key ?? sectionIndex}-${lineIndex}`}>
+                    <tr
+                      className={line.requiresManualReview ? "quote-document-line-needs-review" : undefined}
+                      key={`${section.key ?? sectionIndex}-${lineIndex}`}
+                    >
                       <td>{formatQuantity(line.quantity)}</td>
                       <td>{line.unit}</td>
                       <td>
-                        <span>{line.description}</span>
+                        <DescriptionText description={line.description} />
                         {line.requiresManualReview ? (
                           <small className="quote-document-review-warning">
+                            <AlertTriangle size={14} aria-hidden="true" />
                             Controleer product, prijs en btw.
                           </small>
                         ) : null}

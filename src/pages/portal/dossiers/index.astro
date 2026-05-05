@@ -1,0 +1,21 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import DossierWorkspace from "../../../components/dossiers/DossierWorkspace";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Dossiers" session={session}>
+  <PageHeader
+    eyebrow="Werkplek"
+    title="Dossiers"
+    description="Zoek klanten, projecten en offertes vanuit een plek en werk direct verder in het juiste dossier."
+  />
+
+  <DossierWorkspace client:load session={session} />
+</PortalLayout>

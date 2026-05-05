@@ -1,5 +1,6 @@
 import { mutation } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { requireConvexToolingEnabled } from "./authz";
 
 const tenantSlug = "henke-wonen";
 const nowUser = "demo-seed";
@@ -440,6 +441,7 @@ async function recalculateQuote(ctx: any, tenantId: Id<"tenants">, quoteId: Id<"
 export const run = mutation({
   args: {},
   handler: async (ctx) => {
+    requireConvexToolingEnabled("demoSeed.run");
     const timestamp = now();
     const tenantId = await ensureTenant(ctx);
 

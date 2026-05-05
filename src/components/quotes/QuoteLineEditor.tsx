@@ -31,6 +31,8 @@ type QuoteLineEditorProps = {
   sortOrder: number;
   templateLines?: QuoteTemplateLine[];
   onAdd: (line: QuoteLineFormValues) => Promise<string | void> | string | void;
+  mode?: "full" | "field";
+  surface?: "panel" | "plain";
 };
 
 const lineTypes: QuoteLineType[] = [
@@ -46,8 +48,11 @@ const lineTypes: QuoteLineType[] = [
 export default function QuoteLineEditor({
   sortOrder,
   templateLines = [],
-  onAdd
+  onAdd,
+  mode = "full",
+  surface = "panel"
 }: QuoteLineEditorProps) {
+  const isFieldMode = mode === "field";
   const [lineType, setLineType] = useState<QuoteLineType>("product");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -126,17 +131,21 @@ export default function QuoteLineEditor({
   }
 
   return (
-    <form className="panel form-grid" onSubmit={submit}>
+    <form className={surface === "panel" ? "panel form-grid" : "form-grid"} onSubmit={submit}>
       <SectionHeader
         compact
-        title="Regel toevoegen"
-        description="Producten, arbeid, materiaal, korting of tekstregel."
+        title={isFieldMode ? "Extra offertepost toevoegen" : "Offertepost toevoegen"}
+        description={
+          isFieldMode
+            ? "Gebruik dit voor extra posten die niet uit de inmeting komen."
+            : "Kies wat er op de offerte komt: product, werkzaamheid, materiaal, korting of tekst."
+        }
         actions={<LineTypeBadge lineType={lineType} />}
       />
       {templateLines.length > 0 ? (
         <Field
           htmlFor="template-line"
-          label="Sjabloonregel laden"
+          label="Standaardregel gebruiken"
           description="Kies een standaardregel uit het offertevoorbeeld en pas deze aan voordat je hem toevoegt."
         >
           <Select
@@ -144,7 +153,7 @@ export default function QuoteLineEditor({
             value={selectedTemplateKey}
             onChange={(event) => applyTemplateLine(event.target.value)}
           >
-            <option value="">Geen sjabloonregel</option>
+            <option value="">Geen standaardregel</option>
             {templateLines
               .slice()
               .sort((left, right) => left.sortOrder - right.sortOrder)
@@ -157,7 +166,7 @@ export default function QuoteLineEditor({
         </Field>
       ) : null}
       <div className="grid two-column-even">
-        <Field htmlFor="line-type" label="Regeltype">
+        <Field htmlFor="line-type" label="Soort post">
           <Select
             id="line-type"
             value={lineType}
@@ -241,24 +250,26 @@ export default function QuoteLineEditor({
             type="submit"
             variant="primary"
           >
-            {isSaving ? "Bezig met opslaan..." : "Regel toevoegen"}
+            {isSaving ? "Toevoegen..." : "Offertepost toevoegen"}
           </Button>
         </div>
       </div>
-      <details className="wallpaper-calculator-details">
-        <summary>Behangcalculator openen</summary>
-        <WallpaperCalculator
-          onUseResult={(result) => {
-            setLineType("product");
-            setTitle((current) => current || "Behang merk, kleur");
-            setDescription((current) =>
-              current || "Aantal rollen indicatief berekend met de behangcalculator."
-            );
-            setQuantity(String(result.rollsNeeded));
-            setUnit("roll");
-          }}
-        />
-      </details>
+      {!isFieldMode ? (
+        <details className="wallpaper-calculator-details">
+          <summary>Behangcalculator openen</summary>
+          <WallpaperCalculator
+            onUseResult={(result) => {
+              setLineType("product");
+              setTitle((current) => current || "Behang merk, kleur");
+              setDescription((current) =>
+                current || "Aantal rollen indicatief berekend met de behangcalculator."
+              );
+              setQuantity(String(result.rollsNeeded));
+              setUnit("roll");
+            }}
+          />
+        </details>
+      ) : null}
     </form>
   );
 }

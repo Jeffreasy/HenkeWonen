@@ -1,13 +1,19 @@
 const baseUrl = process.env.PORTAL_TEST_BASE_URL ?? "http://localhost:4321";
+const fieldForbiddenTerms = ["Catalogus", "Beheer", "Imports", "Leveranciers", "Btw controle"];
 
 const routes = [
   "/portal",
+  "/portal?full=1",
+  "/portal/buitendienst",
+  "/portal/buitendienst/projecten/kn7drc2c79vjw94h17z7e7e7f585tqra",
+  "/portal/dossiers",
   "/portal/klanten",
   "/portal/projecten",
   "/portal/projecten/kn7drc2c79vjw94h17z7e7e7f585tqra",
   "/portal/offertes",
   "/portal/offertes/kx7cwgd02r1qy4rph5d79abx5n85vd21",
   "/portal/catalogus",
+  "/portal/beheer",
   "/portal/leveranciers",
   "/portal/imports",
   "/portal/import-profielen",
@@ -134,6 +140,26 @@ function checkDutchTechnicalCopy(html, issues) {
   }
 }
 
+function checkFieldWorkspaceCopy(path, html, issues) {
+  if (!path.startsWith("/portal/buitendienst")) {
+    return;
+  }
+
+  const text = visibleText(html);
+
+  for (const term of fieldForbiddenTerms) {
+    if (text.includes(term)) {
+      issues.push(`ongewenste buitendienst-term zichtbaar: ${term}`);
+    }
+  }
+
+  for (const term of ["Vandaag", "Inmeten", "Conceptofferte", "Klantversie"]) {
+    if (!text.includes(term)) {
+      issues.push(`verwachte buitendienst-term ontbreekt: ${term}`);
+    }
+  }
+}
+
 async function checkRoute(path) {
   const response = await fetch(new URL(path, baseUrl));
   const html = await response.text();
@@ -162,6 +188,7 @@ async function checkRoute(path) {
   checkButtons(html, issues);
   checkFields(html, issues);
   checkDutchTechnicalCopy(html, issues);
+  checkFieldWorkspaceCopy(path, html, issues);
 
   return {
     route: path,

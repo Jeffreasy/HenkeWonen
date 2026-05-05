@@ -8,6 +8,8 @@ const role = v.union(
   v.literal("admin")
 );
 
+const workspaceMode = v.union(v.literal("general"), v.literal("field"));
+
 const statusActive = v.union(v.literal("active"), v.literal("inactive"));
 
 const unit = v.union(
@@ -125,6 +127,7 @@ export default defineSchema({
     email: v.string(),
     name: v.optional(v.string()),
     role,
+    workspaceMode: v.optional(workspaceMode),
     createdAt: v.number(),
     updatedAt: v.number()
   })
@@ -209,6 +212,7 @@ export default defineSchema({
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
     notes: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("active"), v.literal("inactive"), v.literal("archived"))),
     productListStatus: v.union(
       v.literal("unknown"),
       v.literal("requested"),
@@ -223,6 +227,7 @@ export default defineSchema({
     updatedAt: v.number()
   })
     .index("by_tenant", ["tenantId"])
+    .index("by_status", ["tenantId", "status"])
     .index("by_product_list_status", ["tenantId", "productListStatus"])
     .searchIndex("search_supplier", {
       searchField: "name",
@@ -438,8 +443,22 @@ export default defineSchema({
       v.literal("ready_to_import"),
       v.literal("importing"),
       v.literal("imported"),
-      v.literal("failed")
+      v.literal("failed"),
+      v.literal("archived")
     ),
+    archivedFromStatus: v.optional(
+      v.union(
+        v.literal("uploaded"),
+        v.literal("analyzing"),
+        v.literal("needs_mapping"),
+        v.literal("ready_to_import"),
+        v.literal("importing"),
+        v.literal("imported"),
+        v.literal("failed")
+      )
+    ),
+    archivedAt: v.optional(v.number()),
+    archivedByExternalUserId: v.optional(v.string()),
     totalRows: v.number(),
     previewRows: v.optional(v.number()),
     productRows: v.optional(v.number()),

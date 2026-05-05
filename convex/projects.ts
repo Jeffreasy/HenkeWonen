@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationActorValidator, requireMutationRoleForTenantId } from "./authz";
 
 const projectStatus = v.union(
   v.literal("lead"),
@@ -70,12 +71,19 @@ export const get = query({
 export const create = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     customerId: v.id("customers"),
     title: v.string(),
     description: v.optional(v.string()),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
+    const { externalUserId } = await requireMutationRoleForTenantId(
+      ctx,
+      args.tenantId,
+      args.actor,
+      ["user", "editor", "admin"]
+    );
     const customer = await ctx.db.get(args.customerId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
@@ -90,7 +98,7 @@ export const create = mutation({
       title: args.title,
       description: args.description,
       status: "lead",
-      createdByExternalUserId: args.createdByExternalUserId,
+      createdByExternalUserId: externalUserId,
       createdAt: now,
       updatedAt: now
     });
@@ -100,6 +108,7 @@ export const create = mutation({
 export const addRoom = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     projectId: v.id("projects"),
     name: v.string(),
     floor: v.optional(v.string()),
@@ -111,6 +120,11 @@ export const addRoom = mutation({
     notes: v.optional(v.string())
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
@@ -146,10 +160,16 @@ export const addRoom = mutation({
 export const updateStatus = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     projectId: v.id("projects"),
     status: projectStatus
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {

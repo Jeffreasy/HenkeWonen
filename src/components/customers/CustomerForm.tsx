@@ -65,7 +65,7 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
     <form className="panel form-grid" onSubmit={submit}>
       <SectionHeader
         compact
-        title="Nieuwe klant"
+        title="Klant of lead toevoegen"
         description="Leg snel een klant of lead vast vanuit winkelcontact."
       />
       <Field htmlFor="customer-type" label="Type">
@@ -117,7 +117,7 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
         type="submit"
         variant="primary"
       >
-        {isSaving ? "Opslaan..." : "Klant opslaan"}
+        {isSaving ? "Vastleggen..." : "Klant vastleggen"}
       </Button>
     </form>
   );

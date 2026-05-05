@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationActorValidator, requireMutationRoleForTenantId } from "./authz";
 
 const templateType = v.union(
   v.literal("default"),
@@ -65,6 +66,7 @@ export const list = query({
 export const upsert = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     name: v.string(),
     type: templateType,
     introText: v.optional(v.string()),
@@ -75,6 +77,7 @@ export const upsert = mutation({
     defaultLines: v.array(templateLine)
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
     const now = Date.now();
     const existing = await ctx.db
       .query("quoteTemplates")

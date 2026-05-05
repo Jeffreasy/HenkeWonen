@@ -1,4 +1,5 @@
 export type AppRole = "viewer" | "user" | "editor" | "admin";
+export type AppWorkspaceMode = "general" | "field";
 
 export type AppSession = {
   userId: string;
@@ -6,6 +7,8 @@ export type AppSession = {
   email: string;
   name?: string;
   role: AppRole;
+  workspaceMode: AppWorkspaceMode;
+  authzToken?: string;
 };
 
 export type AuthProvider = {
@@ -21,9 +24,29 @@ export function assertSession(session: AppSession | null): AppSession {
 }
 
 export function canWrite(role: AppRole): boolean {
-  return role === "admin" || role === "editor";
+  return role === "admin" || role === "editor" || role === "user";
 }
 
 export function canManage(role: AppRole): boolean {
   return role === "admin";
+}
+
+export function canEditDossiers(role: AppRole): boolean {
+  return canWrite(role);
+}
+
+export function canEditQuotes(role: AppRole): boolean {
+  return canWrite(role);
+}
+
+export function canEditCatalog(role: AppRole): boolean {
+  return role === "admin" || role === "editor";
+}
+
+export function canViewFinancials(role: AppRole): boolean {
+  return role === "admin" || role === "editor";
+}
+
+export function isFieldWorkspace(session: AppSession): boolean {
+  return session.workspaceMode === "field";
 }

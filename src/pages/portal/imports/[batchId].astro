@@ -1,26 +1,31 @@
 ---
 import PortalLayout from "../../../components/layout/PortalLayout.astro";
 import ImportPreview from "../../../components/imports/ImportPreview";
+import { canManage } from "../../../lib/auth/session";
 import { PageHeader } from "../../../components/ui/PageHeader";
 
 const session = Astro.locals.session;
 const batchId = Astro.params.batchId ?? "";
 const breadcrumbs = [
-  { label: "Portal", href: "/portal" },
-  { label: "Imports", href: "/portal/imports" },
-  { label: "Batchdetail" }
+  { label: "Start", href: "/portal" },
+  { label: "Prijslijsten", href: "/portal/imports" },
+  { label: "Controle" }
 ];
 
 if (!session) {
   return Astro.redirect("/login");
 }
+
+if (!canManage(session.role)) {
+  return Astro.redirect("/portal");
+}
 ---
 
-<PortalLayout title="Import" session={session}>
+<PortalLayout title="Prijslijstcontrole" session={session}>
   <PageHeader
-    eyebrow="Importvoorvertoning"
-    title="Batch"
-    description="Auditregels, waarschuwingen en voorvertoningsdetails voor deze importbatch."
+    eyebrow="Prijslijst"
+    title="Prijslijst controleren"
+    description="Bekijk meldingen en verwerkingsregels voor deze aangeleverde prijslijst."
     breadcrumbs={breadcrumbs}
   />
   <ImportPreview client:load session={session} batchId={batchId} />

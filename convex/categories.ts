@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationActorValidator, requireMutationRoleForTenantId } from "./authz";
 
 export const list = query({
   args: {
@@ -16,12 +17,14 @@ export const list = query({
 export const create = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     name: v.string(),
     slug: v.string(),
     parentCategoryId: v.optional(v.id("categories")),
     sortOrder: v.number()
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
     const now = Date.now();
     const existing = await ctx.db
       .query("categories")

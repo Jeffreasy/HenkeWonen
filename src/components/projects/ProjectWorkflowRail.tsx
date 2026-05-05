@@ -11,8 +11,8 @@ const workflowSteps: Array<{
   label: string;
   statuses: ProjectStatus[];
 }> = [
-  { label: "Lead", statuses: ["lead"] },
-  { label: "Offerteconcept", statuses: ["quote_draft"] },
+  { label: "Aanvraag", statuses: ["lead"] },
+  { label: "Offerte maken", statuses: ["quote_draft"] },
   { label: "Offerte verzonden", statuses: ["quote_sent"] },
   { label: "Offerte akkoord", statuses: ["quote_accepted"] },
   { label: "Inmeting", statuses: ["measurement_planned"] },
@@ -36,9 +36,9 @@ export default function ProjectWorkflowRail({ status }: ProjectWorkflowRailProps
   const isStopped = status === "cancelled" || status === "quote_rejected";
 
   return (
-    <div className="workflow-rail" aria-label="Werkproces project">
+    <div className="workflow-rail" aria-label="Projectstappen">
       <div className="workflow-rail-header">
-        <strong>Werkproces</strong>
+        <strong>Projectstappen</strong>
         <Badge variant={isStopped ? "danger" : "info"}>{formatProjectStatus(status)}</Badge>
       </div>
       <ol className="workflow-steps">

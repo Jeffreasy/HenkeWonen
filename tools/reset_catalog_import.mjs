@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
+import { createToolMutationActor } from "./authz_actor.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const envPath = resolve(root, ".env.local");
@@ -44,6 +45,7 @@ if (!convexUrl) {
 }
 
 const client = new ConvexHttpClient(convexUrl);
+const actor = createToolMutationActor(tenantSlug);
 
 console.log(JSON.stringify({ tenantSlug, convexUrl, action: "catalog reset" }, null, 2));
 console.log(
@@ -64,6 +66,7 @@ while (true) {
 
   const result = await client.mutation(api.catalogImport.resetCatalogChunk, {
     tenantSlug,
+    actor,
     confirm: "RESET_IMPORTED_CATALOG",
     batchSize: 500,
   });

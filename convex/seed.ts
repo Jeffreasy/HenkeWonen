@@ -1,4 +1,5 @@
 import { mutation } from "./_generated/server";
+import { requireConvexToolingEnabled } from "./authz";
 
 const categories = [
   "PVC Vloeren",
@@ -827,6 +828,7 @@ function slugify(value: string): string {
 export const run = mutation({
   args: {},
   handler: async (ctx) => {
+    requireConvexToolingEnabled("seed.run");
     const now = Date.now();
 
     const tenant =

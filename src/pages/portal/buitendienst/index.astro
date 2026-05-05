@@ -1,0 +1,14 @@
+---
+import FieldLayout from "../../../components/layout/FieldLayout.astro";
+import FieldServiceWorkspace from "../../../components/field/FieldServiceWorkspace";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<FieldLayout title="Buitendienst" session={session}>
+  <FieldServiceWorkspace client:load session={session} />
+</FieldLayout>

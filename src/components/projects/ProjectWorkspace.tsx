@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
-import type { AppSession } from "../../lib/auth/session";
+import { mutationActorFromSession } from "../../lib/auth/authzToken";
+import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatProjectStatus } from "../../lib/i18n/statusLabels";
 import type { PortalCustomer, PortalProject, ProjectStatus } from "../../lib/portalTypes";
@@ -48,12 +49,13 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const canCreateProjects = canEditDossiers(session.role);
 
   const loadProjects = useCallback(async () => {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
       return;
     }
@@ -85,12 +87,13 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
     await client.mutation(api.portal.createProject, {
       tenantSlug: session.tenantId,
+      actor: mutationActorFromSession(session),
       customerId: project.customerId,
       title: project.title,
       description: project.description,
@@ -164,16 +167,16 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
 
       <section className="grid three-column">
         <StatCard label="Projecten" value={projects.length} tone="info" />
-        <StatCard label="Actief" value={activeProjects.length} tone="warning" />
+        <StatCard label="Lopend" value={activeProjects.length} tone="warning" />
         <StatCard label="In offertefase" value={quoteProjects.length} />
       </section>
 
       <div className="grid two-column">
-        <ProjectForm customers={customers} onCreate={createProject} />
+        {canCreateProjects ? <ProjectForm customers={customers} onCreate={createProject} /> : null}
         <section className="grid">
           <SectionHeader
             compact
-            title="Projectopvolging"
+            title="Lopende projectdossiers"
             description="Scan status, klant en ruimtes zonder het projectdossier te openen."
           />
           <FilterBar

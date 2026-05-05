@@ -1,6 +1,7 @@
 ---
 import PortalLayout from "../../../components/layout/PortalLayout.astro";
 import QuoteTemplatesSettings from "../../../components/settings/QuoteTemplatesSettings";
+import { canManage } from "../../../lib/auth/session";
 import { PageHeader } from "../../../components/ui/PageHeader";
 
 const session = Astro.locals.session;
@@ -8,13 +9,17 @@ const session = Astro.locals.session;
 if (!session) {
   return Astro.redirect("/login");
 }
+
+if (!canManage(session.role)) {
+  return Astro.redirect("/portal");
+}
 ---
 
-<PortalLayout title="Offertesjablonen" session={session}>
+<PortalLayout title="Offerteteksten" session={session}>
   <PageHeader
-    eyebrow="Instellingen"
-    title="Offertesjablonen"
-    description="Beheer standaard offerteteksten, voorwaarden en sjabloonregels."
+    eyebrow="Beheer"
+    title="Offerteteksten"
+    description="Beheer standaardteksten, voorwaarden en betaalafspraken voor nieuwe offertes."
   >
     <a class="button secondary" href="/portal/instellingen/werkzaamheden">Werkzaamheden</a>
   </PageHeader>

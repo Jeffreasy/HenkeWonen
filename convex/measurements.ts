@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutationActorValidator, requireMutationRoleForTenantId } from "./authz";
 
 const measurementStatus = v.union(
   v.literal("draft"),
@@ -43,6 +44,10 @@ const quotePreparationStatus = v.union(
   v.literal("ready_for_quote"),
   v.literal("converted")
 );
+
+function hasArg<T extends object>(args: T, key: keyof T): boolean {
+  return Object.prototype.hasOwnProperty.call(args, key);
+}
 
 async function requireMeasurement(ctx: any, tenantId: any, measurementId: any) {
   const measurement = await ctx.db.get(measurementId);
@@ -187,6 +192,7 @@ export const listReadyForQuoteByProject = query({
 export const createForProject = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     projectId: v.id("projects"),
     customerId: v.id("customers"),
     measurementDate: v.optional(v.number()),
@@ -195,6 +201,12 @@ export const createForProject = mutation({
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
+    const { externalUserId } = await requireMutationRoleForTenantId(
+      ctx,
+      args.tenantId,
+      args.actor,
+      ["user", "editor", "admin"]
+    );
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
@@ -221,7 +233,7 @@ export const createForProject = mutation({
       measurementDate: args.measurementDate,
       measuredBy: args.measuredBy,
       notes: args.notes,
-      createdByExternalUserId: args.createdByExternalUserId,
+      createdByExternalUserId: externalUserId,
       createdAt: now,
       updatedAt: now
     });
@@ -231,6 +243,7 @@ export const createForProject = mutation({
 export const updateMeasurement = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     measurementId: v.id("measurements"),
     status: v.optional(measurementStatus),
     measurementDate: v.optional(v.number()),
@@ -238,6 +251,11 @@ export const updateMeasurement = mutation({
     notes: v.optional(v.string())
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     await requireMeasurement(ctx, args.tenantId, args.measurementId);
 
     const patch: Record<string, unknown> = {
@@ -248,15 +266,15 @@ export const updateMeasurement = mutation({
       patch.status = args.status;
     }
 
-    if (args.measurementDate !== undefined) {
+    if (hasArg(args, "measurementDate")) {
       patch.measurementDate = args.measurementDate;
     }
 
-    if (args.measuredBy !== undefined) {
+    if (hasArg(args, "measuredBy")) {
       patch.measuredBy = args.measuredBy;
     }
 
-    if (args.notes !== undefined) {
+    if (hasArg(args, "notes")) {
       patch.notes = args.notes;
     }
 
@@ -269,6 +287,7 @@ export const updateMeasurement = mutation({
 export const addMeasurementRoom = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     measurementId: v.id("measurements"),
     projectRoomId: v.optional(v.id("projectRooms")),
     name: v.string(),
@@ -282,6 +301,11 @@ export const addMeasurementRoom = mutation({
     sortOrder: v.optional(v.number())
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const measurement = await requireMeasurement(ctx, args.tenantId, args.measurementId);
 
     if (args.projectRoomId) {
@@ -323,9 +347,92 @@ export const addMeasurementRoom = mutation({
   }
 });
 
+export const updateMeasurementRoom = mutation({
+  args: {
+    tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
+    roomId: v.id("measurementRooms"),
+    name: v.string(),
+    floor: v.optional(v.string()),
+    widthM: v.optional(v.number()),
+    lengthM: v.optional(v.number()),
+    heightM: v.optional(v.number()),
+    areaM2: v.optional(v.number()),
+    perimeterM: v.optional(v.number()),
+    notes: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+    const room = await ctx.db.get(args.roomId);
+
+    if (!room || room.tenantId !== args.tenantId) {
+      throw new Error("Measurement room not found");
+    }
+
+    const measurement = await requireMeasurement(ctx, args.tenantId, room.measurementId);
+
+    const patch: Record<string, unknown> = {
+      name: args.name,
+      updatedAt: Date.now()
+    };
+
+    if (hasArg(args, "floor")) patch.floor = args.floor;
+    if (hasArg(args, "widthM")) patch.widthM = args.widthM;
+    if (hasArg(args, "lengthM")) patch.lengthM = args.lengthM;
+    if (hasArg(args, "heightM")) patch.heightM = args.heightM;
+    if (hasArg(args, "areaM2")) patch.areaM2 = args.areaM2;
+    if (hasArg(args, "perimeterM")) patch.perimeterM = args.perimeterM;
+    if (hasArg(args, "notes")) patch.notes = args.notes;
+
+    await ctx.db.patch(args.roomId, patch);
+    await ctx.db.patch(measurement._id, { updatedAt: Date.now() });
+
+    return args.roomId;
+  }
+});
+
+export const deleteMeasurementRoom = mutation({
+  args: {
+    tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
+    roomId: v.id("measurementRooms")
+  },
+  handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+    const room = await ctx.db.get(args.roomId);
+
+    if (!room || room.tenantId !== args.tenantId) {
+      throw new Error("Measurement room not found");
+    }
+
+    const line = await ctx.db
+      .query("measurementLines")
+      .withIndex("by_room", (q: any) => q.eq("tenantId", args.tenantId).eq("roomId", room._id))
+      .first();
+
+    if (line) {
+      throw new Error("Deze meetruimte bevat meetregels en kan niet veilig worden verwijderd.");
+    }
+
+    await ctx.db.delete(room._id);
+    await ctx.db.patch(room.measurementId, { updatedAt: Date.now() });
+
+    return room._id;
+  }
+});
+
 export const addMeasurementLine = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     measurementId: v.id("measurements"),
     roomId: v.optional(v.id("measurementRooms")),
     productGroup,
@@ -339,6 +446,11 @@ export const addMeasurementLine = mutation({
     quoteLineType
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     await requireMeasurement(ctx, args.tenantId, args.measurementId);
 
     if (args.roomId) {
@@ -378,14 +490,24 @@ export const addMeasurementLine = mutation({
 export const updateMeasurementLineStatus = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     lineId: v.id("measurementLines"),
     quotePreparationStatus
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const line = await ctx.db.get(args.lineId);
 
     if (!line || line.tenantId !== args.tenantId) {
       throw new Error("Measurement line not found");
+    }
+
+    if (args.quotePreparationStatus === "converted") {
+      throw new Error("Gebruik de verwerkingsactie om een meetregel aan een offerte te koppelen.");
     }
 
     await ctx.db.patch(args.lineId, {
@@ -397,14 +519,114 @@ export const updateMeasurementLineStatus = mutation({
   }
 });
 
+export const updateMeasurementLine = mutation({
+  args: {
+    tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
+    lineId: v.id("measurementLines"),
+    roomId: v.optional(v.id("measurementRooms")),
+    productGroup,
+    calculationType,
+    input: v.any(),
+    result: v.any(),
+    wastePercent: v.optional(v.number()),
+    quantity: v.number(),
+    unit: v.string(),
+    notes: v.optional(v.string()),
+    quoteLineType,
+    quotePreparationStatus: v.optional(quotePreparationStatus)
+  },
+  handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+    const line = await ctx.db.get(args.lineId);
+
+    if (!line || line.tenantId !== args.tenantId) {
+      throw new Error("Measurement line not found");
+    }
+
+    if (line.quotePreparationStatus === "converted") {
+      throw new Error("Verwerkte meetregels kunnen niet direct worden aangepast.");
+    }
+
+    if (args.roomId) {
+      const room = await ctx.db.get(args.roomId);
+
+      if (!room || room.tenantId !== args.tenantId || room.measurementId !== line.measurementId) {
+        throw new Error("Measurement room not found");
+      }
+    }
+
+    await ctx.db.patch(line._id, {
+      roomId: args.roomId,
+      productGroup: args.productGroup,
+      calculationType: args.calculationType,
+      input: args.input,
+      result: args.result,
+      wastePercent: args.wastePercent,
+      quantity: args.quantity,
+      unit: args.unit,
+      notes: args.notes,
+      quoteLineType: args.quoteLineType,
+      quotePreparationStatus: args.quotePreparationStatus ?? line.quotePreparationStatus,
+      updatedAt: Date.now()
+    });
+    await ctx.db.patch(line.measurementId, { updatedAt: Date.now() });
+
+    return line._id;
+  }
+});
+
+export const deleteMeasurementLine = mutation({
+  args: {
+    tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
+    lineId: v.id("measurementLines")
+  },
+  handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+    const line = await ctx.db.get(args.lineId);
+
+    if (!line || line.tenantId !== args.tenantId) {
+      throw new Error("Measurement line not found");
+    }
+
+    if (
+      line.quotePreparationStatus === "converted" ||
+      line.convertedQuoteId ||
+      line.convertedQuoteLineId
+    ) {
+      throw new Error("Verwerkte meetregels kunnen niet direct worden verwijderd.");
+    }
+
+    await ctx.db.delete(line._id);
+    await ctx.db.patch(line.measurementId, { updatedAt: Date.now() });
+
+    return line._id;
+  }
+});
+
 export const markMeasurementLineConverted = mutation({
   args: {
     tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
     lineId: v.id("measurementLines"),
     quoteId: v.id("quotes"),
     quoteLineId: v.id("quoteLines")
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const line = await ctx.db.get(args.lineId);
 
     if (!line || line.tenantId !== args.tenantId) {
@@ -460,9 +682,11 @@ export const listWasteProfiles = query({
 
 export const seedDefaultWasteProfiles = mutation({
   args: {
-    tenantId: v.id("tenants")
+    tenantId: v.id("tenants"),
+    actor: mutationActorValidator
   },
   handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
     const defaults = [
       {
         productGroup: "flooring",

@@ -12,9 +12,11 @@ if (!session) {
 
 <PortalLayout title="Projecten" session={session}>
   <PageHeader
-    eyebrow="Werkproces"
-    title="Projecten"
-    description="Volg aanvragen van offerte en inmeten tot bestellen, uitvoering en afronding."
-  />
+    eyebrow="Dossiers"
+    title="Projectdossiers"
+    description="Maak en beheer projecten als werkdossiers voor inmeting, offerte, uitvoering en opvolging."
+  >
+    <a class="button secondary" href="/portal/dossiers">Terug naar dossiers</a>
+  </PageHeader>
   <ProjectWorkspace client:load session={session} />
 </PortalLayout>

@@ -2,6 +2,8 @@ import { Ruler } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { mutationActorFromSession } from "../../lib/auth/authzToken";
+import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import {
   formatLineType,
@@ -30,9 +32,11 @@ type MeasurementLinePickerProps = {
   tenantSlug: string;
   quoteId: string;
   projectId: string;
+  session: AppSession;
   startSortOrder: number;
   onAddLine: (line: QuoteLineFormValues) => Promise<string | void> | string | void;
   onImported?: () => Promise<void> | void;
+  mode?: "full" | "field";
 };
 
 type ReadyMeasurement = {
@@ -96,7 +100,7 @@ function buildLineTitle(item: ReadyMeasurementLine) {
 function buildLineDescription(item: ReadyMeasurementLine) {
   const descriptionLines = [
     "Overgenomen uit inmeting.",
-    "Indicatieve berekening. Kies product, verkoopprijs en btw bewust voordat je de offerte verstuurt.",
+    "Richtprijs. Kies product, verkoopprijs en btw bewust voordat je de offerte verstuurt.",
     item.line.wastePercent !== undefined ? `Snijverlies: ${item.line.wastePercent}%.` : undefined,
     item.line.notes ? `Meetnotitie: ${item.line.notes}` : undefined
   ].filter(Boolean);
@@ -138,10 +142,13 @@ export default function MeasurementLinePicker({
   tenantSlug,
   quoteId,
   projectId,
+  session,
   startSortOrder,
   onAddLine,
-  onImported
+  onImported,
+  mode = "full"
 }: MeasurementLinePickerProps) {
+  const isFieldMode = mode === "field";
   const [tenantConvexId, setTenantConvexId] = useState<string | null>(null);
   const [readyLines, setReadyLines] = useState<ReadyMeasurementLine[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -156,7 +163,7 @@ export default function MeasurementLinePicker({
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
       return;
     }
@@ -180,7 +187,7 @@ export default function MeasurementLinePicker({
       );
     } catch (loadError) {
       console.error(loadError);
-      setError("Meetregels konden niet worden geladen.");
+      setError("Inmeetregels konden niet worden geladen.");
     } finally {
       setIsLoading(false);
     }
@@ -229,7 +236,7 @@ export default function MeasurementLinePicker({
       },
       {
         key: "calculation",
-        header: "Berekening",
+        header: "Manier van berekenen",
         render: (item) => formatMeasurementCalculationType(item.line.calculationType)
       },
       {
@@ -253,7 +260,7 @@ export default function MeasurementLinePicker({
       },
       {
         key: "type",
-        header: "Offerteposttype",
+        header: "Soort offertepost",
         hideOnMobile: true,
         render: (item) => formatLineType(item.line.quoteLineType)
       },
@@ -275,7 +282,7 @@ export default function MeasurementLinePicker({
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("De gegevensverbinding is niet geconfigureerd.");
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
     }
 
@@ -289,11 +296,12 @@ export default function MeasurementLinePicker({
         const quoteLineId = await onAddLine(quoteLine);
 
         if (!quoteLineId) {
-          throw new Error("Offerteregel is toegevoegd, maar het ID kon niet worden bevestigd.");
+          throw new Error("De offertepost is toegevoegd, maar de bevestiging kwam niet terug.");
         }
 
         await client.mutation(api.measurements.markMeasurementLineConverted, {
           tenantId: tenantConvexId as Id<"tenants">,
+          actor: mutationActorFromSession(session),
           lineId: item.line._id as Id<"measurementLines">,
           quoteId: quoteId as Id<"quotes">,
           quoteLineId: String(quoteLineId) as Id<"quoteLines">
@@ -302,12 +310,12 @@ export default function MeasurementLinePicker({
 
       setSelectedIds([]);
       setConfirmOpen(false);
-      setNotice("Meetregels toegevoegd aan de offerte.");
+      setNotice("Inmeetregels toegevoegd aan de offerte.");
       await loadReadyLines();
       await onImported?.();
     } catch (saveError) {
       console.error(saveError);
-      setError("Meetregels konden niet volledig aan de offerte worden toegevoegd.");
+      setError("Inmeetregels konden niet volledig aan de offerte worden toegevoegd.");
     } finally {
       setIsSaving(false);
     }
@@ -315,14 +323,14 @@ export default function MeasurementLinePicker({
 
   const summaryLabel =
     readyLines.length === 0
-      ? "Geen meetregels klaar voor offerte"
-      : `${readyLines.length} meetregel${readyLines.length === 1 ? "" : "s"} klaar voor offerte`;
+      ? "Geen inmeetregels klaar voor offerte"
+      : `${readyLines.length} inmeetregel${readyLines.length === 1 ? "" : "s"} klaar voor offerte`;
 
   return (
     <Card variant="info">
       <SectionHeader
         compact
-        title="Uit inmeting laden"
+        title={isFieldMode ? "Meetregels naar conceptofferte" : "Inmeting overnemen"}
         description={summaryLabel}
         actions={
           <Button
@@ -330,7 +338,13 @@ export default function MeasurementLinePicker({
             onClick={() => setIsOpen((current) => !current)}
             variant="secondary"
           >
-            {isOpen ? "Inmeting sluiten" : "Uit inmeting laden"}
+            {isOpen
+              ? isFieldMode
+                ? "Meetregels sluiten"
+                : "Inmeting sluiten"
+              : isFieldMode
+                ? "Meetregels kiezen"
+                : "Inmeting overnemen"}
           </Button>
         }
       />
@@ -343,23 +357,31 @@ export default function MeasurementLinePicker({
           <Alert
             variant="warning"
             title="Controleer de offerteposten"
-            description="Deze regels nemen alleen hoeveelheden en omschrijvingen over. Controleer prijs, product en btw voordat je de offerte verstuurt."
+            description={
+              isFieldMode
+                ? "Meetregels nemen hoeveelheden over. Vul daarna product en verkoopprijs bewust aan voordat je een klantversie gebruikt."
+                : "Deze regels nemen alleen hoeveelheden en omschrijvingen over. Controleer prijs, product en btw voordat je de offerte verstuurt."
+            }
           />
 
           {isLoading ? (
-            <LoadingState title="Meetregels laden" description="Meetregels klaar voor offerte ophalen." />
+            <LoadingState title="Inmeetregels laden" description="Klaargezette inmeetregels ophalen." />
           ) : readyLines.length === 0 ? (
             <EmptyState
-              title="Geen meetregels klaar voor offerte"
-              description="Zet in het projectdetail eerst een meetregel klaar voor offerte."
+              title="Geen inmeetregels klaar voor offerte"
+              description={
+                isFieldMode
+                  ? "Zet bij Stap 3 van Inmeten eerst een meetregel klaar voor de conceptofferte."
+                  : "Zet bij Inmeten eerst een regel klaar voor de offerte."
+              }
             />
           ) : (
             <>
               <DataTable
-                ariaLabel="Meetregels klaar voor offerte"
+                ariaLabel="Inmeetregels klaar voor offerte"
                 columns={columns}
                 density="compact"
-                emptyTitle="Geen meetregels klaar voor offerte"
+                emptyTitle="Geen inmeetregels klaar voor offerte"
                 getRowKey={(item) => item.line._id}
                 mobileMode="cards"
                 renderMobileCard={(item) => (
@@ -377,7 +399,7 @@ export default function MeasurementLinePicker({
                           );
                         }}
                       />
-                      <StatusBadge status="warning" label="Indicatieve berekening" />
+                      <StatusBadge status="warning" label="Richtprijs" />
                     </div>
                     <strong>{buildLineTitle(item)}</strong>
                     <p className="muted">
@@ -425,11 +447,11 @@ export default function MeasurementLinePicker({
 
       <ConfirmDialog
         open={confirmOpen}
-        title="Meetregels toevoegen aan offerte?"
+        title="Inmeetregels toevoegen aan offerte?"
         description={`Je voegt ${selectedLines.length} meetregel${
           selectedLines.length === 1 ? "" : "s"
         } toe als gewone offerteregel. Product, verkoopprijs en btw worden niet gekozen; vul die bewust aan voordat je de offerte verstuurt.`}
-        confirmLabel="Toevoegen bevestigen"
+        confirmLabel="Toevoegen aan offerte"
         isBusy={isSaving}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => void importSelectedLines()}
