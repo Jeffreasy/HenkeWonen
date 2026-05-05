@@ -1,7 +1,8 @@
 ---
 import "../styles/global.css";
+import { resolveAuthMode } from "../lib/auth/mode";
 
-const authMode = import.meta.env.AUTH_MODE ?? import.meta.env.PUBLIC_AUTH_MODE ?? "laventecare";
+const authMode = resolveAuthMode();
 const loginUrl = import.meta.env.LAVENTECARE_LOGIN_URL;
 const isDevAuth = authMode === "dev";
 ---
