@@ -1,17 +1,18 @@
 {
   "tenantSlug": "henke-wonen",
-  "productRows": 10291,
-  "previewRows": 10691,
-  "priceRules": 13015,
+  "productRows": 11117,
+  "previewRows": 14201,
+  "priceRules": 13841,
   "unknownVatModePriceRules": 12984,
   "unknownVatModeRows": 10291,
   "sourceFiles": {
-    "count": 21,
-    "withProductRows": 17
+    "count": 23,
+    "withProductRows": 19
   },
   "categories": {
     "Gordijnen": 8205,
     "Tapijt": 1033,
+    "Verlichting": 826,
     "PVC Dryback": 320,
     "PVC Click": 274,
     "Entreematten": 111,
@@ -31,6 +32,8 @@
   "sourceFileName": {
     "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx": 8205,
     "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls": 988,
+    "D-Inkoopprijslijst ZTAHL 2026 - NL.xlsx": 413,
+    "Verkoopprijslijst ZTAHL 2026 - NL.xlsx": 413,
     "Prijslijst PVC 11-2025 click dryback apart.xlsx": 262,
     "PVC 11-2025 click dryback apart floorlife.xlsx": 262,
     "Co-pro Entreematten 2025.xlsx": 111,
@@ -48,18 +51,19 @@
     "Prijslijst Traprenovatie Floorlife 2025.xlsx": 15
   },
   "rowKinds": {
-    "product": 10291,
-    "empty": 257,
-    "section": 94,
-    "ignored": 28,
-    "header": 21
+    "product": 11117,
+    "empty": 1803,
+    "ignored": 899,
+    "section": 357,
+    "header": 25
   },
   "statuses": {
     "warning": 10291,
-    "ignored": 400
+    "ignored": 3084,
+    "valid": 826
   },
   "warnings": {
-    "count": 10319,
+    "count": 11190,
     "errors": 0,
     "duplicateOrSkippedExactCopies": [
       "DATA\\Leveranciers\\HenkeWonen\\prijslijsten Floorlife\\Prijslijst EVC 2025 click en dryback apart.xlsx is een exacte kopie van DATA\\Leveranciers\\HenkeWonen\\Prijslijst EVC 2025 click en dryback apart.xlsx en is overgeslagen.",

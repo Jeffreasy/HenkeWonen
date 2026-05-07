@@ -5,15 +5,21 @@ De grote rij-preview wordt standaard niet gegenereerd. Gebruik `npm run catalog:
 
 ## Samenvatting
 
-- Productregels: 10291
-- Voorvertonings-/auditregels: 10691
-- Prijsregels: 13015
+- Productregels: 11117
+- Voorvertonings-/auditregels: 14201
+- Prijsregels: 13841
 - Prijsregels met onbekende btw-modus: 12984
 - Rijen met waarschuwing over onbekende btw-modus: 10291
-- Bronbestanden totaal: 21
-- Bronbestanden met productregels: 17
+- Bronbestanden totaal: 23
+- Bronbestanden met productregels: 19
 - Rijen zonder bruikbare prijs: 10
 - Ontbrekende btw-mappings: niet beschikbaar in lokale Excel-voorvertoning
+
+## ZTAHL btw-bron
+
+- De btw-bevestiging voor ZTAHL komt uit de Excel print-header, niet uit een cel.
+- `Verkoopprijslijst ZTAHL 2026 - NL.xlsx`: `ZTAHL verkoopprijslijst incl. BTW - 2026`.
+- `D-Inkoopprijslijst ZTAHL 2026 - NL.xlsx`: `ZTAHL inkooppprijslijst excl. BTW - 2026`.
 
 ## Per categorie
 
@@ -21,6 +27,7 @@ De grote rij-preview wordt standaard niet gegenereerd. Gebruik `npm run catalog:
 | --- | ---: |
 | Gordijnen | 8205 |
 | Tapijt | 1033 |
+| Verlichting | 826 |
 | PVC Dryback | 320 |
 | PVC Click | 274 |
 | Entreematten | 111 |
@@ -43,6 +50,8 @@ De grote rij-preview wordt standaard niet gegenereerd. Gebruik `npm run catalog:
 | --- | ---: |
 | `Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx` | 8205 |
 | `henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls` | 988 |
+| `D-Inkoopprijslijst ZTAHL 2026 - NL.xlsx` | 413 |
+| `Verkoopprijslijst ZTAHL 2026 - NL.xlsx` | 413 |
 | `Prijslijst PVC 11-2025 click dryback apart.xlsx` | 262 |
 | `PVC 11-2025 click dryback apart floorlife.xlsx` | 262 |
 | `Co-pro Entreematten 2025.xlsx` | 111 |
@@ -63,18 +72,19 @@ De grote rij-preview wordt standaard niet gegenereerd. Gebruik `npm run catalog:
 
 | Regeltype | Rijen |
 | --- | ---: |
-| Productregel | 10291 |
-| Lege regel | 257 |
-| Sectieregel | 94 |
-| Genegeerde regel | 28 |
-| Kopregel | 21 |
+| Productregel | 11117 |
+| Lege regel | 1803 |
+| Genegeerde regel | 899 |
+| Sectieregel | 357 |
+| Kopregel | 25 |
 
 ## Statussen
 
 | Status | Rijen |
 | --- | ---: |
 | Waarschuwing | 10291 |
-| Genegeerd | 400 |
+| Genegeerd | 3084 |
+| Geldig | 826 |
 
 ## Dubbele/overgeslagen exacte kopieën
 

@@ -243,6 +243,7 @@ export const listProductsForPortal = query({
       "Roedes/Railsen",
       "Karpetten",
       "Horren",
+      "Verlichting",
       "Winkelvoorraad",
       "Overig"
     ];

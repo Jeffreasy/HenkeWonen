@@ -610,11 +610,13 @@ function summarizePreviewRows(rows: any[]) {
       productsWithoutSupplierCode += 1;
     }
 
-    for (const sourceKey of priceSourceKeys(row)) {
-      if (seenSourceKeys.has(sourceKey)) {
-        duplicateSourceKeys += 1;
-      } else {
-        seenSourceKeys.add(sourceKey);
+    if (kind === "product" && row.status !== "ignored" && row.status !== "error" && errors.length === 0) {
+      for (const sourceKey of priceSourceKeys(row)) {
+        if (seenSourceKeys.has(sourceKey)) {
+          duplicateSourceKeys += 1;
+        } else {
+          seenSourceKeys.add(sourceKey);
+        }
       }
     }
   }
@@ -1157,6 +1159,85 @@ export const getCatalogImportStats = query({
       productCollections: productCollections.length,
       categories: categoryCounts,
       suppliers: supplierCounts
+    };
+  }
+});
+
+export const getSupplierCatalogStats = query({
+  args: {
+    tenantSlug: v.string(),
+    supplierName: v.string()
+  },
+  handler: async (ctx, args) => {
+    const tenant = await getTenant(ctx, args.tenantSlug);
+
+    if (!tenant) {
+      return {
+        tenantSlug: args.tenantSlug,
+        supplierName: args.supplierName,
+        exists: false,
+        activeProducts: 0,
+        productPrices: 0,
+        unknownVatModePriceRules: 0,
+        categories: {},
+        priceTypes: {},
+        vatModes: {},
+        sourceFileName: {}
+      };
+    }
+
+    const [products, productPrices, categories, suppliers] = await Promise.all([
+      collectByTenant(ctx, "products", tenant._id),
+      collectByTenant(ctx, "productPrices", tenant._id),
+      collectByTenant(ctx, "categories", tenant._id),
+      collectByTenant(ctx, "suppliers", tenant._id)
+    ]);
+    const supplier = suppliers.find((item: any) => item.name === args.supplierName);
+    const categoryById = new Map(categories.map((category: any) => [String(category._id), category.name]));
+    const supplierProductIds = new Set(
+      products
+        .filter((product: any) => product.status === "active" && String(product.supplierId) === String(supplier?._id))
+        .map((product: any) => String(product._id))
+    );
+    const supplierProducts = products.filter((product: any) => supplierProductIds.has(String(product._id)));
+    const supplierPrices = productPrices.filter((price: any) =>
+      supplierProductIds.has(String(price.productId))
+    );
+    const categoryCounts: Record<string, number> = {};
+    const priceTypeCounts: Record<string, number> = {};
+    const vatModeCounts: Record<string, number> = {};
+    const sourceFileCounts: Record<string, number> = {};
+
+    for (const product of supplierProducts) {
+      const categoryName = String(categoryById.get(String(product.categoryId)) ?? "Onbekend");
+      categoryCounts[categoryName] = (categoryCounts[categoryName] ?? 0) + 1;
+    }
+
+    for (const price of supplierPrices) {
+      const priceType = String(price.priceType ?? "unknown");
+      const vatMode = String(price.vatMode ?? "unknown");
+      const sourceFileName = String(price.sourceFileName ?? "Onbekend bestand");
+      priceTypeCounts[priceType] = (priceTypeCounts[priceType] ?? 0) + 1;
+      vatModeCounts[vatMode] = (vatModeCounts[vatMode] ?? 0) + 1;
+      sourceFileCounts[sourceFileName] = (sourceFileCounts[sourceFileName] ?? 0) + 1;
+    }
+
+    return {
+      tenantSlug: tenant.slug,
+      supplierName: args.supplierName,
+      exists: Boolean(supplier),
+      supplierId: supplier ? String(supplier._id) : undefined,
+      products: supplierProducts.length,
+      activeProducts: supplierProducts.length,
+      uniqueArticleNumbers: new Set(
+        supplierProducts.map((product: any) => optionalString(product.articleNumber)).filter(Boolean)
+      ).size,
+      productPrices: supplierPrices.length,
+      unknownVatModePriceRules: supplierPrices.filter((price: any) => price.vatMode === "unknown").length,
+      categories: categoryCounts,
+      priceTypes: priceTypeCounts,
+      vatModes: vatModeCounts,
+      sourceFileName: sourceFileCounts
     };
   }
 });

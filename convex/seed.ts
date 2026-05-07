@@ -24,6 +24,7 @@ const categories = [
   "Roedes/Railsen",
   "Karpetten",
   "Horren",
+  "Verlichting",
   "Winkelvoorraad",
   "Overig"
 ];
@@ -36,7 +37,8 @@ const suppliers = [
   "EVC",
   "Floorlife",
   "vtwonen",
-  "Roots"
+  "Roots",
+  "ZTAHL"
 ];
 
 const requestedSuppliers = [
@@ -464,6 +466,74 @@ const quoteTemplateLines = [
 ] as const;
 
 const importProfiles = [
+  {
+    supplierName: "ZTAHL",
+    name: "ZTAHL verkoopprijslijst 2026",
+    filePattern: "*Verkoopprijslijst ZTAHL 2026*.xlsx",
+    sheetPattern: "*",
+    supportsXlsx: true,
+    supportsXls: false,
+    mapping: {
+      category: "verlichting",
+      productKind: "other",
+      codeColumns: ["Artikelnummer", "EAN code"],
+      sectionRows: true,
+      nameColumns: ["Model", "Uitvoering", "Omschrijving"],
+      priceColumns: [
+        { header: "Prijs", priceType: "advice_retail", priceUnit: "piece", vatMode: "inclusive" }
+      ],
+      attributeColumns: [
+        "Afmeting (incl. kap)",
+        "Uitvoering",
+        "Fitting/lamp",
+        "Diameter/ Hoogte",
+        "Merk",
+        "Fitting",
+        "Kelvin/ kleur",
+        "Lumen",
+        "Wattage",
+        "Watt",
+        "Dimbaar",
+        "levensduur"
+      ]
+    },
+    notes:
+      "ZTAHL armaturen en lichtbronnen. Excel print-header vermeldt letterlijk: ZTAHL verkoopprijslijst incl. BTW - 2026. Prijzen komen uit gecachte Excel-formules met externe verwijzingen."
+  },
+  {
+    supplierName: "ZTAHL",
+    name: "ZTAHL inkoopprijslijst 2026",
+    filePattern: "*Inkoopprijslijst ZTAHL 2026*.xlsx",
+    sheetPattern: "*",
+    supportsXlsx: true,
+    supportsXls: false,
+    mapping: {
+      category: "verlichting",
+      productKind: "other",
+      codeColumns: ["Artikelnummer", "EAN code"],
+      sectionRows: true,
+      nameColumns: ["Model", "Uitvoering", "Omschrijving"],
+      priceColumns: [
+        { header: "Prijs", priceType: "purchase", priceUnit: "piece", vatMode: "exclusive" }
+      ],
+      attributeColumns: [
+        "Afmeting (incl. kap)",
+        "Uitvoering",
+        "Fitting/lamp",
+        "Diameter/ Hoogte",
+        "Merk",
+        "Fitting",
+        "Kelvin/ kleur",
+        "Lumen",
+        "Wattage",
+        "Watt",
+        "Dimbaar",
+        "levensduur"
+      ]
+    },
+    notes:
+      "ZTAHL inkoopprijzen. Excel print-header vermeldt letterlijk: ZTAHL inkooppprijslijst excl. BTW - 2026. Prijzen komen uit gecachte Excel-formules met externe verwijzingen."
+  },
   {
     supplierName: "Interfloor",
     name: "Interfloor legacy artikeloverzicht",

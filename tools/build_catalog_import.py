@@ -64,6 +64,7 @@ DISPLAY_CATEGORIES = {
     "roedes-railsen": "Roedes/Railsen",
     "karpetten": "Karpetten",
     "horren": "Horren",
+    "verlichting": "Verlichting",
     "overig": "Overig",
 }
 
@@ -119,6 +120,16 @@ ATTRIBUTE_HEADERS = {
     "verpakking",
     "inhoud",
     "aantal kleuren",
+    "diameter/ hoogte",
+    "dimbaar",
+    "fitting",
+    "fitting/lamp",
+    "kelvin/ kleur",
+    "levensduur",
+    "lumen",
+    "merk",
+    "watt",
+    "wattage",
 }
 
 
@@ -296,8 +307,116 @@ def has_text(*values: str | None) -> str | None:
     return " ".join(parts) if parts else None
 
 
+def is_ztahl(path: Path) -> bool:
+    return "ztahl" in path.name.lower()
+
+
+def is_ztahl_light_source_sheet(sheet_name: str) -> bool:
+    return sheet_name.lower() == "lichtbronnenlijst"
+
+
+def is_ztahl_skip_code(value: str | None) -> bool:
+    text = (value or "").strip().lower()
+    return (
+        not text
+        or text == "artikelnummer"
+        or text.startswith("stap")
+        or text.startswith("let op")
+    )
+
+
+def ztahl_article_code(headers: list[str], values: list[Any]) -> str | None:
+    return get_text(headers, values, ["Artikelnummer", "Art.nr."]) or (
+        code_string(values[0]) if values else None
+    )
+
+
+def ztahl_import_article_code(headers: list[str], values: list[Any]) -> str | None:
+    code = ztahl_article_code(headers, values)
+    return code.lower() if code else None
+
+
+def first_price_amount(headers: list[str], values: list[Any]) -> float | None:
+    for index, header in enumerate(headers):
+        if index < len(values) and is_price_header(header):
+            amount = number_value(values[index])
+            if amount is not None and amount > 0:
+                return amount
+    return None
+
+
+def prepare_ztahl_headers(sheet_name: str, headers: list[str]) -> list[str]:
+    if is_ztahl_light_source_sheet(sheet_name):
+        return headers
+    if len(headers) >= 8:
+        return headers
+    return [*headers, "EAN code"]
+
+
+def ztahl_headers_for(ws, sheet_name: str) -> tuple[int | None, list[str]]:
+    if is_ztahl_light_source_sheet(sheet_name):
+        return headers_for(ws)
+
+    max_col = min(ws.max_column or 1, 80)
+    max_scan_row = min(ws.max_row or 0, 150)
+    for row_number in range(1, max_scan_row + 1):
+        header_values = next(sheet_rows(ws, row_number, row_number, max_col), [])
+        headers = [clean_text(value).replace("\n", " ") for value in header_values]
+        while headers and not headers[-1]:
+            headers.pop()
+        header_keys = {key(header) for header in headers if header}
+        if key(headers[0] if headers else "") == "artikelnummer" and {"prijs", "model"}.issubset(header_keys):
+            return row_number, prepare_ztahl_headers(sheet_name, headers)
+
+    header_row, headers = headers_for(ws)
+    return header_row, prepare_ztahl_headers(sheet_name, headers) if headers else headers
+
+
+def ztahl_light_source_codes(workbook) -> set[str]:
+    if "Lichtbronnenlijst" not in workbook.sheetnames:
+        return set()
+
+    ws = workbook["Lichtbronnenlijst"]
+    header_row, headers = headers_for(ws)
+    if not header_row or not headers:
+        return set()
+
+    codes: set[str] = set()
+    max_col = len(headers)
+    for values in sheet_rows(ws, header_row + 1, ws.max_row, max_col):
+        row = list(values)
+        code = ztahl_article_code(headers, row)
+        if is_ztahl_skip_code(code) or first_price_amount(headers, row) is None:
+            continue
+        codes.add(code.lower())
+
+    return codes
+
+
+def ztahl_duplicate_price_key(row: dict[str, Any]) -> tuple[Any, ...] | None:
+    prices = row.get("prices")
+    if not isinstance(prices, list) or not prices:
+        return None
+
+    price = prices[0]
+    article_number = code_string(row.get("articleNumber"))
+    if not article_number:
+        return None
+
+    return (
+        row.get("sourceFileName"),
+        article_number.lower(),
+        price.get("priceType"),
+        price.get("priceUnit"),
+        price.get("amount"),
+        price.get("vatMode"),
+    )
+
+
 def supplier_for(path: Path) -> str:
     name = path.name.lower()
+    if "ztahl" in name:
+        return "ZTAHL"
     if "headlam" in name:
         return "Headlam"
     if "interfloor" in name:
@@ -318,6 +437,8 @@ def supplier_for(path: Path) -> str:
 def category_slug_for(path: Path, sheet_name: str, section_label: str | None, product_name: str) -> str:
     source = f"{path.name} {sheet_name}".lower()
     text = f"{source} {section_label or ''} {product_name}".lower()
+    if is_ztahl(path):
+        return "verlichting"
     if "lijm" in source and "kit" in source and "egaline" in source:
         product_text = product_name.lower()
         if any(
@@ -449,6 +570,19 @@ def commercial_names(headers: list[str], values: list[Any]) -> list[dict[str, st
 
 def product_name_for(headers: list[str], values: list[Any], path: Path, sheet_name: str) -> str | None:
     supplier = supplier_for(path)
+    if supplier == "ZTAHL":
+        article_number = ztahl_article_code(headers, values)
+        if is_ztahl_skip_code(article_number) or first_price_amount(headers, values) is None:
+            return None
+        if is_ztahl_light_source_sheet(sheet_name):
+            return has_text(
+                get_text(headers, values, ["Merk"]),
+                get_text(headers, values, ["Omschrijving"]),
+            ) or get_text(headers, values, ["Omschrijving"])
+        return has_text(
+            get_text(headers, values, ["Model"]),
+            get_text(headers, values, ["Uitvoering"]),
+        ) or get_text(headers, values, ["Model"])
     if "entreematten" in path.name.lower():
         return code_string(values[1]) if len(values) > 1 else None
     if supplier == "Headlam":
@@ -568,9 +702,69 @@ def price_unit_for(header: str, category_slug: str) -> str:
         return "pack"
     if category_slug == "gordijnen" and "consumer" in lower:
         return "m1"
+    if category_slug == "verlichting":
+        return "piece"
     if category_slug in {"karpetten", "douchepanelen", "wandpanelen"}:
         return "piece"
     return unit
+
+
+def price_type_for(header: str, source_path: Path) -> str:
+    if is_ztahl(source_path):
+        lower = source_path.name.lower()
+        if "inkoop" in lower:
+            return "purchase"
+        if "verkoop" in lower:
+            return "advice_retail"
+    return infer_price_type(header)
+
+
+def vat_mode_for(header: str, source_path: Path) -> str:
+    if is_ztahl(source_path):
+        lower = source_path.name.lower()
+        if "inkoop" in lower:
+            return "exclusive"
+        if "verkoop" in lower:
+            return "inclusive"
+    return infer_vat_mode(header)
+
+
+def source_key_for_price(
+    row: dict[str, Any],
+    source_path: Path,
+    row_number: int,
+    column_index: int,
+    header: str,
+    price_type: str,
+    price_unit: str,
+    amount: float,
+    vat_mode: str,
+) -> str:
+    if is_ztahl(source_path):
+        return stable_hash(
+            [
+                row["importKey"],
+                row.get("fileHash") or row["sourcePath"],
+                price_type,
+                price_unit,
+                round(amount, 4),
+                vat_mode,
+                header,
+            ]
+        )
+
+    return stable_hash(
+        [
+            row["importKey"],
+            row.get("fileHash") or row["sourcePath"],
+            row["sourceSheetName"],
+            row_number,
+            column_index,
+            header,
+            price_type,
+            price_unit,
+        ]
+    )
 
 
 def prices_for(
@@ -586,19 +780,19 @@ def prices_for(
         amount = number_value(values[index])
         if amount is None or amount <= 0:
             continue
-        price_type = infer_price_type(header)
+        price_type = price_type_for(header, source_path)
         price_unit = price_unit_for(header, row["categorySlug"])
-        source_key = stable_hash(
-            [
-                row["importKey"],
-                row.get("fileHash") or row["sourcePath"],
-                row["sourceSheetName"],
-                row["sourceRowNumber"],
-                index,
-                header,
-                price_type,
-                price_unit,
-            ]
+        vat_mode = vat_mode_for(header, source_path)
+        source_key = source_key_for_price(
+            row,
+            source_path,
+            row["sourceRowNumber"],
+            index,
+            header,
+            price_type,
+            price_unit,
+            amount,
+            vat_mode,
         )
         prices.append(
             {
@@ -607,7 +801,7 @@ def prices_for(
                 "priceUnit": price_unit,
                 "amount": round(amount, 4),
                 "vatRate": 21,
-                "vatMode": infer_vat_mode(header),
+                "vatMode": vat_mode,
                 "validFrom": valid_from_for(source_path, header) or row.get("validFrom"),
                 "currency": "EUR",
                 "sourceColumnName": header,
@@ -643,10 +837,22 @@ def build_row(
     supplier_code = get_text(headers, values, ["Supplier Code", "SAP codes floors"])
     commercial_code = get_text(headers, values, ["Commercial Code"])
     ean = get_text(headers, values, ["EAN", "EAN code", "EAN-code", "EAN Code"])
-    color = get_text(headers, values, ["Kleur", "Kleurindicatie", "Kleurnummer", "Design", "Decor name"])
+    color = get_text(
+        headers,
+        values,
+        ["Kleur", "Kleurindicatie", "Kleurnummer", "Design", "Decor name", "Uitvoering", "Kelvin/ kleur"],
+    )
     supplier_group = get_text(headers, values, ["Artikelgroep", "Soort"])
-    if "entreematten" in source_path.name.lower():
+    if is_ztahl(source_path):
+        article_number = ztahl_import_article_code(headers, values)
+        if is_ztahl_light_source_sheet(sheet_name):
+            collection_name = "Lichtbronnen"
+        else:
+            collection_name = section_label
+        brand_name = get_text(headers, values, ["Merk"]) or supplier_name
+    elif "entreematten" in source_path.name.lower():
         collection_name = section_label
+        brand_name = supplier_name
     else:
         collection_name = (
             get_text(headers, values, ["Quality"])
@@ -654,7 +860,7 @@ def build_row(
             or get_text(headers, values, ["Material Description"])
             or section_label
         )
-    brand_name = get_text(headers, values, ["Company"]) or supplier_name
+        brand_name = get_text(headers, values, ["Company"]) or supplier_name
     source_rel = str(source_path.relative_to(ROOT))
     import_identity = article_number or supplier_code or commercial_code or ean or product_name
     import_key = stable_hash([supplier_name, category_name, import_identity])
@@ -738,9 +944,12 @@ def parse_workbook(source_path: Path) -> tuple[list[dict[str, Any]], list[dict[s
     warnings: list[str] = []
     workbook = load_workbook(analysis_path, read_only=True, data_only=True)
     try:
+        is_ztahl_file = is_ztahl(source_path)
+        light_source_codes = ztahl_light_source_codes(workbook) if is_ztahl_file else set()
+        seen_ztahl_price_keys: set[tuple[Any, ...]] = set()
         for sheet_name in workbook.sheetnames:
             ws = workbook[sheet_name]
-            header_row, headers = headers_for(ws)
+            header_row, headers = ztahl_headers_for(ws, sheet_name) if is_ztahl_file else headers_for(ws)
             if not header_row or not headers:
                 continue
             max_col = len(headers)
@@ -849,8 +1058,53 @@ def parse_workbook(source_path: Path) -> tuple[list[dict[str, Any]], list[dict[s
                                     normalized,
                                     ["Productregel zonder bruikbare prijs is overgeslagen."],
                                 )
-                            )
+                        )
                         continue
+                    if is_ztahl_file:
+                        article_code = code_string(normalized.get("articleNumber"))
+                        if (
+                            article_code
+                            and not is_ztahl_light_source_sheet(sheet_name)
+                            and article_code.lower() in light_source_codes
+                        ):
+                            preview_rows.append(
+                                preview_row(
+                                    source_path,
+                                    analysis_path,
+                                    sheet_name,
+                                    row_number,
+                                    "ignored",
+                                    headers,
+                                    values,
+                                    section_label,
+                                    normalized,
+                                    [
+                                        "ZTAHL lichtbron staat ook in Lichtbronnenlijst en is daar leidend; assortimentverwijzing overgeslagen."
+                                    ],
+                                )
+                            )
+                            continue
+                        duplicate_key = ztahl_duplicate_price_key(normalized)
+                        if duplicate_key and duplicate_key in seen_ztahl_price_keys:
+                            preview_rows.append(
+                                preview_row(
+                                    source_path,
+                                    analysis_path,
+                                    sheet_name,
+                                    row_number,
+                                    "ignored",
+                                    headers,
+                                    values,
+                                    section_label,
+                                    normalized,
+                                    [
+                                        "Exacte ZTAHL prijsregel eerder gezien; dubbele assortimentvermelding overgeslagen."
+                                    ],
+                                )
+                            )
+                            continue
+                        if duplicate_key:
+                            seen_ztahl_price_keys.add(duplicate_key)
                     row_warnings = []
                     if any(price.get("vatMode") == "unknown" for price in normalized.get("prices", [])):
                         row_warnings.append("Btw-modus onbekend voor een of meer prijskolommen.")
@@ -965,6 +1219,12 @@ def build_markdown(summary: dict[str, Any]) -> str:
         f"- Bronbestanden met productregels: {summary['sourceFiles']['withProductRows']}",
         f"- Rijen zonder bruikbare prijs: {summary['warnings']['zeroOrNoPriceRows']}",
         f"- Ontbrekende btw-mappings: {summary['vatMapping']['unresolvedVatMappings'] if summary['vatMapping']['unresolvedVatMappings'] is not None else 'niet beschikbaar in lokale Excel-voorvertoning'}",
+        "",
+        "## ZTAHL btw-bron",
+        "",
+        "- De btw-bevestiging voor ZTAHL komt uit de Excel print-header, niet uit een cel.",
+        "- `Verkoopprijslijst ZTAHL 2026 - NL.xlsx`: `ZTAHL verkoopprijslijst incl. BTW - 2026`.",
+        "- `D-Inkoopprijslijst ZTAHL 2026 - NL.xlsx`: `ZTAHL inkooppprijslijst excl. BTW - 2026`.",
         "",
         "## Per categorie",
         "",
