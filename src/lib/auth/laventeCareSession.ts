@@ -48,7 +48,15 @@ function asWorkspaceMode(value: unknown): AppWorkspaceMode | undefined {
     : undefined;
 }
 
-function sessionFromPayload(payload: UnknownRecord, fallbackTenantId?: string): AppSession | null {
+type SessionTenantOptions = {
+  fallbackTenantId?: string;
+  forceTenantId?: string;
+};
+
+function sessionFromPayload(
+  payload: UnknownRecord,
+  { fallbackTenantId, forceTenantId }: SessionTenantOptions = {}
+): AppSession | null {
   const user = asRecord(payload.user);
   const tenant = asRecord(payload.tenant);
   const userId =
@@ -59,13 +67,15 @@ function sessionFromPayload(payload: UnknownRecord, fallbackTenantId?: string): 
     asString(user.externalUserId);
   const email = asString(payload.email) ?? asString(user.email);
   const tenantId =
+    forceTenantId ??
     asString(payload.tenantSlug) ??
     asString(payload.tenantId) ??
     asString(tenant.slug) ??
     asString(tenant.id) ??
     fallbackTenantId;
   const role = asRole(payload.role ?? user.role);
-  const workspaceMode = asWorkspaceMode(payload.workspaceMode ?? user.workspaceMode) ?? "general";
+  const workspaceModeFromAuth = asWorkspaceMode(payload.workspaceMode ?? user.workspaceMode);
+  const workspaceMode = workspaceModeFromAuth ?? "general";
 
   if (!userId || !email || !tenantId || !role) {
     return null;
@@ -77,7 +87,8 @@ function sessionFromPayload(payload: UnknownRecord, fallbackTenantId?: string): 
     email,
     name: asString(payload.name) ?? asString(user.name),
     role,
-    workspaceMode
+    workspaceMode,
+    workspaceModeFromAuth: Boolean(workspaceModeFromAuth)
   };
 }
 
@@ -152,13 +163,21 @@ async function verifyJwt(token: string, secret: string) {
 export async function getSessionFromMeEndpoint(
   request: Request,
   meUrl: string,
-  fallbackTenantId?: string
+  fallbackTenantId?: string,
+  tenantHeaderId?: string,
+  forceTenantId?: string
 ) {
+  const headers: HeadersInit = {
+    accept: "application/json",
+    cookie: request.headers.get("cookie") ?? ""
+  };
+
+  if (tenantHeaderId) {
+    headers["X-Tenant-ID"] = tenantHeaderId;
+  }
+
   const response = await fetch(meUrl, {
-    headers: {
-      accept: "application/json",
-      cookie: request.headers.get("cookie") ?? ""
-    }
+    headers
   });
 
   if (response.status === 401 || response.status === 403) {
@@ -169,15 +188,24 @@ export async function getSessionFromMeEndpoint(
     throw new Error(`LaventeCare AuthSystem gaf HTTP ${response.status}.`);
   }
 
-  return sessionFromPayload((await response.json()) as UnknownRecord, fallbackTenantId);
+  return sessionFromPayload((await response.json()) as UnknownRecord, {
+    fallbackTenantId,
+    forceTenantId
+  });
 }
 
 export async function getSessionFromJwt(
   token: string,
   secret: string,
-  fallbackTenantId?: string
+  fallbackTenantId?: string,
+  forceTenantId?: string
 ) {
   const payload = await verifyJwt(token, secret);
 
-  return payload ? sessionFromPayload(payload, fallbackTenantId) : null;
+  return payload
+    ? sessionFromPayload(payload, {
+        fallbackTenantId,
+        forceTenantId
+      })
+    : null;
 }

@@ -48,7 +48,7 @@ export const ensureUser = mutation({
         email: args.email,
         name: args.name,
         role: args.role,
-        workspaceMode: args.workspaceMode ?? "general",
+        ...(args.workspaceMode ? { workspaceMode: args.workspaceMode } : {}),
         updatedAt: now
       });
 

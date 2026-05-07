@@ -4,11 +4,17 @@ import {
   getSessionFromMeEndpoint,
   parseCookies
 } from "./laventeCareSession";
+import {
+  henkeTenantSlug,
+  laventeCareAuthMeUrl,
+  laventeCareTenantId
+} from "./laventeCareConfig";
 
-const sessionCookieName = import.meta.env.LAVENTECARE_SESSION_COOKIE ?? "laventecare_session";
-const authMeUrl = import.meta.env.LAVENTECARE_AUTH_ME_URL;
+const sessionCookieName = import.meta.env.LAVENTECARE_SESSION_COOKIE ?? "access_token";
+const authMeUrl = laventeCareAuthMeUrl();
 const jwtSecret = import.meta.env.LAVENTECARE_JWT_SECRET;
-const fallbackTenantId = import.meta.env.LAVENTECARE_TENANT_SLUG ?? "henke-wonen";
+const appTenantSlug = henkeTenantSlug();
+const authTenantId = laventeCareTenantId();
 
 function bearerToken(request: Request) {
   const authorization = request.headers.get("authorization") ?? "";
@@ -24,20 +30,26 @@ export const laventeCareAuthProvider: AuthProvider = {
   async getSession(request: Request): Promise<AppSession | null> {
     const cookieHeader = request.headers.get("cookie") ?? "";
     const cookies = parseCookies(cookieHeader);
-    const token = cookies[sessionCookieName] ?? bearerToken(request);
+    const token = cookies[sessionCookieName] ?? cookies.access_token ?? bearerToken(request);
 
-    if (!token && !authMeUrl) {
+    if (!token) {
       return null;
     }
 
-    if (authMeUrl) {
-      return await getSessionFromMeEndpoint(request, authMeUrl, fallbackTenantId);
+    if (authMeUrl && authTenantId) {
+      return await getSessionFromMeEndpoint(
+        request,
+        authMeUrl,
+        appTenantSlug,
+        authTenantId,
+        appTenantSlug
+      );
     }
 
     if (!token || !jwtSecret) {
       return null;
     }
 
-    return await getSessionFromJwt(token, jwtSecret, fallbackTenantId);
+    return await getSessionFromJwt(token, jwtSecret, appTenantSlug, appTenantSlug);
   }
 };

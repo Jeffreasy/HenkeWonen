@@ -1,11 +1,16 @@
 ---
 import "../styles/global.css";
 import { resolveAuthMode } from "../lib/auth/mode";
+import {
+  hasLaventeCareApiConnection,
+  laventeCareLoginUrl
+} from "../lib/auth/laventeCareConfig";
 
 const authMode = resolveAuthMode();
-const loginUrl = import.meta.env.LAVENTECARE_LOGIN_URL;
+const loginUrl = laventeCareLoginUrl();
 const isDevAuth = authMode === "dev";
-const hasLaventeCareConnection = Boolean(loginUrl);
+const hasLaventeCareApi = hasLaventeCareApiConnection();
+const hasLaventeCareConnection = hasLaventeCareApi || Boolean(loginUrl);
 ---
 
 <html lang="nl">
@@ -51,7 +56,45 @@ const hasLaventeCareConnection = Boolean(loginUrl);
               </p>
               <a class="button primary" href="/portal">Naar werkplek</a>
             </>
-          ) : hasLaventeCareConnection ? (
+          ) : hasLaventeCareApi ? (
+            <>
+              <p class="login-intro">
+                Log veilig in met je LaventeCare-account. Je sessie blijft beveiligd in de Henke
+                Wonen omgeving.
+              </p>
+              <form class="login-form" data-login-form>
+                <label class="login-field" for="email">
+                  <span>E-mailadres</span>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autocomplete="username"
+                    required
+                    placeholder="naam@bedrijf.nl"
+                  />
+                </label>
+                <label class="login-field" for="password">
+                  <span>Wachtwoord</span>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+                  />
+                </label>
+                <p class="login-form-message" data-login-message hidden></p>
+                <button class="button primary login-action-button" type="submit">
+                  Inloggen
+                </button>
+              </form>
+              <p class="login-footnote">
+                De login loopt via LaventeCare AuthSystem. Daarna wordt je Henke Wonen werkplek
+                automatisch voorbereid.
+              </p>
+            </>
+          ) : hasLaventeCareConnection && loginUrl ? (
             <>
               <p class="login-intro">
                 Log veilig in via LaventeCare om toegang te krijgen tot de Henke Wonen werkplek.
@@ -99,6 +142,81 @@ const hasLaventeCareConnection = Boolean(loginUrl);
     </main>
   </body>
 </html>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>("[data-login-form]");
+  const message = document.querySelector<HTMLElement>("[data-login-message]");
+
+  function showLoginMessage(text: string, kind: "error" | "info" = "error") {
+    if (!message) {
+      return;
+    }
+
+    message.hidden = false;
+    message.textContent = text;
+    message.dataset.kind = kind;
+  }
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const submitButton = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const formData = new FormData(form);
+    const email = String(formData.get("email") ?? "");
+    const password = String(formData.get("password") ?? "");
+
+    if (message) {
+      message.hidden = true;
+      message.textContent = "";
+    }
+
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = "Inloggen...";
+    }
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify({ email, password })
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+        mfa_required?: boolean;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? payload.message ?? "Inloggen is niet gelukt.");
+      }
+
+      if (payload.mfa_required) {
+        showLoginMessage(
+          "Deze account vraagt om extra verificatie. Rond MFA af via LaventeCare of vraag beheer om hulp.",
+          "info"
+        );
+        return;
+      }
+
+      window.location.assign("/portal");
+    } catch (error) {
+      showLoginMessage(
+        error instanceof Error
+          ? error.message
+          : "Inloggen is niet gelukt. Controleer je gegevens en probeer opnieuw."
+      );
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = "Inloggen";
+      }
+    }
+  });
+</script>
 
 <style>
   .login-shell {
@@ -264,6 +382,57 @@ const hasLaventeCareConnection = Boolean(loginUrl);
     padding-inline: var(--space-5);
   }
 
+  .login-form {
+    display: grid;
+    gap: var(--space-3);
+    width: min(100%, 380px);
+    max-width: 100%;
+  }
+
+  .login-field {
+    display: grid;
+    gap: var(--space-2);
+    color: var(--ink);
+    font-size: var(--text-sm);
+    font-weight: 850;
+  }
+
+  .login-field input {
+    min-height: 44px;
+    width: 100%;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    color: var(--ink);
+    font: inherit;
+    font-weight: 650;
+    padding: 0 var(--space-3);
+  }
+
+  .login-field input:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(185, 120, 43, 0.18);
+    outline: none;
+  }
+
+  .login-form-message {
+    margin: 0;
+    border: 1px solid rgba(153, 27, 27, 0.18);
+    border-radius: var(--radius-md);
+    background: var(--danger-bg);
+    color: var(--danger);
+    padding: var(--space-3);
+    font-size: var(--text-sm);
+    font-weight: 750;
+    line-height: var(--line-normal);
+  }
+
+  .login-form-message[data-kind="info"] {
+    border-color: rgba(154, 101, 7, 0.24);
+    background: var(--warning-bg);
+    color: #7c4a03;
+  }
+
   .login-notice {
     display: grid;
     gap: var(--space-2);
@@ -373,6 +542,10 @@ const hasLaventeCareConnection = Boolean(loginUrl);
 
     .login-action-button,
     .login-disabled-action {
+      width: 100%;
+    }
+
+    .login-form {
       width: 100%;
     }
   }

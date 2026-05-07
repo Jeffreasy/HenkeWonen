@@ -8,6 +8,7 @@ export type AppSession = {
   name?: string;
   role: AppRole;
   workspaceMode: AppWorkspaceMode;
+  workspaceModeFromAuth?: boolean;
   authzToken?: string;
 };
 

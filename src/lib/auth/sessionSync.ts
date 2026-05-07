@@ -25,7 +25,7 @@ export async function syncSessionToConvex(session: AppSession) {
     email: session.email,
     name: session.name,
     role: session.role,
-    workspaceMode: session.workspaceMode,
+    workspaceMode: session.workspaceModeFromAuth ? session.workspaceMode : undefined,
     syncToken
   });
 }
