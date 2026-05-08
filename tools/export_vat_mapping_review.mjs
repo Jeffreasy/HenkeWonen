@@ -1,32 +1,25 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
+import {
+  loadCatalogToolEnv,
+  optionValue,
+  requireCatalogToolTarget,
+  targetSummary
+} from "./catalog_tooling_env.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const envPath = resolve(root, ".env.local");
-const tenantSlug = process.argv[2] ?? "henke-wonen";
-const dateStamp = "2026-04-30";
+const toolEnv = loadCatalogToolEnv({ root, argv: process.argv.slice(2) });
+const tenantSlug = toolEnv.tenantSlug;
+const dateStamp = optionValue(toolEnv.args, "--date-stamp") ?? new Date().toISOString().slice(0, 10);
+const outputDir = resolve(root, "docs/release-readiness/vat-mapping");
 
-function loadEnv(path) {
-  try {
-    const raw = readFileSync(path, "utf8");
-    for (const line of raw.split(/\r?\n/)) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) {
-        continue;
-      }
-
-      const [key, ...rest] = trimmed.split("=");
-      if (key && rest.length > 0 && !process.env[key]) {
-        process.env[key] = rest.join("=");
-      }
-    }
-  } catch {
-    // Environment can also be provided by the shell.
-  }
-}
+requireCatalogToolTarget(toolEnv, {
+  operation: "btw-mapping export",
+  mutates: false
+});
 
 function normalizeText(value) {
   return String(value ?? "").toLowerCase();
@@ -151,7 +144,7 @@ function buildCurrentStateMarkdown(review, readiness, rows) {
   const highConfidence = rows.filter((row) => row.canAutoApply);
   const humanRows = rows.filter((row) => row.isUnresolved && !row.canAutoApply);
   const lines = [
-    "# Btw-mapping huidige stand - 2026-04-30",
+    `# Btw-mapping huidige stand - ${dateStamp}`,
     "",
     "Deze export toont de actuele btw-mapping review uit Convex. Alleen kolommen met expliciete `incl. btw` of `excl. btw` in de bronkolom krijgen high-confidence automatische besluitvorming.",
     "",
@@ -235,7 +228,7 @@ function buildCurrentStateMarkdown(review, readiness, rows) {
     "",
     humanRows.length === 0
       ? "Er zijn geen open menselijke beslissingen meer."
-      : `${humanRows.length} mappings blijven open voor menselijke beslissing. Zie ook \`docs/vat-mapping-human-decision-table-${dateStamp}.md\`.`,
+      : `${humanRows.length} mappings blijven open voor menselijke beslissing. Zie ook \`docs/release-readiness/vat-mapping/vat-mapping-human-decision-table-${dateStamp}.md\`.`,
     ""
   ];
 
@@ -245,7 +238,7 @@ function buildCurrentStateMarkdown(review, readiness, rows) {
 function buildHumanDecisionMarkdown(rows) {
   const humanRows = rows.filter((row) => row.isUnresolved && !row.canAutoApply);
   const lines = [
-    "# Btw-mapping menselijke beslistabel - 2026-04-30",
+    `# Btw-mapping menselijke beslistabel - ${dateStamp}`,
     "",
     "Vul per open mapping de kolom `Beslissing` met `inclusive`, `exclusive` of `terugvragen aan leverancier`. Gebruik deze tabel niet voor stille bulkbeslissingen.",
     "",
@@ -282,20 +275,14 @@ function buildHumanDecisionMarkdown(rows) {
   return lines.join("\n");
 }
 
-loadEnv(envPath);
-
-const convexUrl = process.env.PUBLIC_CONVEX_URL;
-
-if (!convexUrl) {
-  throw new Error("PUBLIC_CONVEX_URL ontbreekt. Controleer .env.local.");
-}
-
+const convexUrl = toolEnv.convexUrl;
 const client = new ConvexHttpClient(convexUrl);
 const review = await client.query(api.catalogReview.vatMappingReview, { tenantSlug });
 const readiness = await client.query(api.catalogReview.productionReadiness, { tenantSlug });
 const rows = enrichRows(review.rows);
 const currentState = {
   tenantSlug,
+  target: targetSummary(toolEnv),
   exportedAt: new Date().toISOString(),
   summary: {
     totalProfiles: review.totalProfiles,
@@ -311,18 +298,19 @@ const currentState = {
   rows
 };
 
+mkdirSync(outputDir, { recursive: true });
 writeFileSync(
-  resolve(root, `docs/vat-mapping-current-state-${dateStamp}.json`),
+  resolve(outputDir, `vat-mapping-current-state-${dateStamp}.json`),
   `${JSON.stringify(currentState, null, 2)}\n`,
   "utf8"
 );
 writeFileSync(
-  resolve(root, `docs/vat-mapping-current-state-${dateStamp}.md`),
+  resolve(outputDir, `vat-mapping-current-state-${dateStamp}.md`),
   buildCurrentStateMarkdown(review, readiness, rows),
   "utf8"
 );
 writeFileSync(
-  resolve(root, `docs/vat-mapping-human-decision-table-${dateStamp}.md`),
+  resolve(outputDir, `vat-mapping-human-decision-table-${dateStamp}.md`),
   buildHumanDecisionMarkdown(rows),
   "utf8"
 );
@@ -332,10 +320,11 @@ console.log(
     {
       tenantSlug,
       convexUrl,
+      ...targetSummary(toolEnv),
       ...currentState.summary,
-      currentState: `docs/vat-mapping-current-state-${dateStamp}.md`,
-      currentStateJson: `docs/vat-mapping-current-state-${dateStamp}.json`,
-      humanDecisionTable: `docs/vat-mapping-human-decision-table-${dateStamp}.md`
+      currentState: `docs/release-readiness/vat-mapping/vat-mapping-current-state-${dateStamp}.md`,
+      currentStateJson: `docs/release-readiness/vat-mapping/vat-mapping-current-state-${dateStamp}.json`,
+      humanDecisionTable: `docs/release-readiness/vat-mapping/vat-mapping-human-decision-table-${dateStamp}.md`
     },
     null,
     2

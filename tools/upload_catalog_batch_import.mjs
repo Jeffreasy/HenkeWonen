@@ -4,32 +4,27 @@ import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
 import { createToolMutationActor } from "./authz_actor.mjs";
+import {
+  hasFlag,
+  loadCatalogToolEnv,
+  requireCatalogToolTarget,
+  targetSummary
+} from "./catalog_tooling_env.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const previewPath = resolve(root, "docs/catalog-import-preview.json");
-const envPath = resolve(root, ".env.local");
-const args = new Set(process.argv.slice(2));
-const allowUnknownVatMode = args.has("--allow-unknown-vat");
-const noCommit = args.has("--no-commit");
+const toolEnv = loadCatalogToolEnv({ root, argv: process.argv.slice(2) });
+const allowUnknownVatMode = hasFlag(toolEnv.args, "--allow-unknown-vat");
+const noCommit = hasFlag(toolEnv.args, "--no-commit");
 
-function loadEnv(path) {
-  try {
-    const raw = readFileSync(path, "utf8");
-    for (const line of raw.split(/\r?\n/)) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) {
-        continue;
-      }
-
-      const [key, ...rest] = trimmed.split("=");
-      if (key && rest.length > 0 && !process.env[key]) {
-        process.env[key] = rest.join("=");
-      }
-    }
-  } catch {
-    // Environment can also be provided by the shell.
-  }
-}
+requireCatalogToolTarget(toolEnv, {
+  operation: "catalogus batch-import",
+  mutates: true,
+  requireAuthzSecret: toolEnv.target === "production",
+  productionConfirmFlag: "--confirm-production-catalog-import",
+  allowUnknownVatMode,
+  disallowProductionAllowUnknown: true
+});
 
 function chunk(array, size) {
   const chunks = [];
@@ -173,16 +168,9 @@ function applyProfileVatMappingsToRow(row, profile) {
   };
 }
 
-loadEnv(envPath);
-
-const convexUrl = process.env.PUBLIC_CONVEX_URL;
-
-if (!convexUrl) {
-  throw new Error("PUBLIC_CONVEX_URL is missing. Check .env.local.");
-}
-
+const convexUrl = toolEnv.convexUrl;
 const client = new ConvexHttpClient(convexUrl);
-const defaultTenantSlug = "henke-wonen";
+const defaultTenantSlug = toolEnv.tenantSlug;
 const initialVatReview = await client.query(api.catalogReview.vatMappingReview, {
   tenantSlug: defaultTenantSlug,
 });
@@ -208,7 +196,14 @@ if (!allowUnknownVatMode && !noCommit && initialUnresolvedProfileMappings.length
 
 const payload = JSON.parse(readFileSync(previewPath, "utf8"));
 const rows = payload.rows ?? [];
-const tenantSlug = payload.tenantSlug ?? "henke-wonen";
+const tenantSlug = payload.tenantSlug ?? toolEnv.tenantSlug;
+
+if (tenantSlug !== toolEnv.tenantSlug) {
+  throw new Error(
+    `Preview tenantSlug=${tenantSlug} komt niet overeen met gekozen tenant=${toolEnv.tenantSlug}.`
+  );
+}
+
 const actor = createToolMutationActor(tenantSlug);
 const vatReview =
   tenantSlug === defaultTenantSlug
@@ -245,6 +240,7 @@ const blockedUnknownVatRows = unknownVatRows.filter((row) => {
   return !(profile?.allowUnknownVatMode ?? false);
 });
 const result = {
+  ...targetSummary(toolEnv),
   tenantSlug,
   convexUrl,
   sourceFiles: groups.size,

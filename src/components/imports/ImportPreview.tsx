@@ -1,4 +1,12 @@
-import { Archive, CheckCircle2, FileSpreadsheet, RotateCcw, Save, ShieldAlert } from "lucide-react";
+import {
+  Archive,
+  CheckCircle2,
+  FileSpreadsheet,
+  Filter,
+  RotateCcw,
+  Save,
+  ShieldAlert
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -12,7 +20,7 @@ import {
 import type { ProductImportBatch, ProductImportRow } from "../../lib/portalTypes";
 import type { SubmitEventLike } from "../../lib/events";
 import { Alert } from "../ui/Alert";
-import { Badge } from "../ui/Badge";
+import { Badge, type BadgeVariant } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Checkbox } from "../ui/Checkbox";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
@@ -22,7 +30,6 @@ import { FilterBar } from "../ui/FilterBar";
 import { Pagination } from "../ui/Pagination";
 import { SearchInput } from "../ui/SearchInput";
 import { Select } from "../ui/Select";
-import { StatCard } from "../ui/StatCard";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SummaryList } from "../ui/SummaryList";
 import ImportWarnings from "./ImportWarnings";
@@ -41,6 +48,15 @@ type BatchStatusFilter = "all" | ProductImportBatch["status"];
 type DetailTab = "summary" | "rows" | "warnings" | "reconciliation";
 type RowKindFilter = "all" | ProductImportRow["rowKind"];
 type RowStatusFilter = "all" | ProductImportRow["status"];
+
+const batchStatusFilters: Array<{ value: BatchStatusFilter; label: string }> = [
+  { value: "failed", label: "Aandacht nodig" },
+  { value: "ready_to_import", label: "Klaar voor verwerking" },
+  { value: "needs_mapping", label: "Btw-keuze nodig" },
+  { value: "imported", label: "Verwerkt" },
+  { value: "archived", label: "Gearchiveerd" },
+  { value: "all", label: "Alle" }
+];
 
 const sourceFiles = [
   "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
@@ -81,6 +97,115 @@ function dateText(value?: number) {
   }).format(new Date(value));
 }
 
+function normalizedText(value?: string) {
+  return (value ?? "").toLocaleLowerCase("nl-NL");
+}
+
+function batchMatchesSearch(batch: ProductImportBatch, searchQuery: string) {
+  if (!searchQuery) {
+    return true;
+  }
+
+  return [
+    batch.fileName,
+    batch.supplierName,
+    batch.profileName,
+    batch.status,
+    formatImportStatus(batch.status),
+    batch.errorMessage
+  ].some((value) => normalizedText(value).includes(searchQuery));
+}
+
+function batchStatusVariant(batch: ProductImportBatch): BadgeVariant {
+  if (batch.status === "failed") {
+    return "danger";
+  }
+
+  if (batch.status === "needs_mapping") {
+    return "warning";
+  }
+
+  if (batch.status === "ready_to_import" || batch.status === "imported") {
+    return "success";
+  }
+
+  if (batch.unknownVatModeRows > 0) {
+    return "warning";
+  }
+
+  if (batch.status === "importing" || batch.status === "analyzing") {
+    return "info";
+  }
+
+  return "neutral";
+}
+
+function lifecycleText(batch: ProductImportBatch) {
+  if (batch.status === "archived") {
+    return batch.archivedAt ? `gearchiveerd ${dateText(batch.archivedAt)}` : "gearchiveerd";
+  }
+
+  if (batch.failedAt) {
+    return `mislukt ${dateText(batch.failedAt)}`;
+  }
+
+  if (batch.committedAt) {
+    return `verwerkt ${dateText(batch.committedAt)}`;
+  }
+
+  return `aangemaakt ${dateText(batch.createdAt)}`;
+}
+
+function batchBlockers(batch: ProductImportBatch, allowUnknownVatMode: boolean) {
+  const blockers: string[] = [];
+
+  if (batch.totalRows <= 0) {
+    blockers.push("geen regels gevonden");
+  }
+
+  if (batch.errorRows > 0) {
+    blockers.push(`${numberText(batch.errorRows)} foutregels`);
+  }
+
+  if (batch.duplicateSourceKeys > 0) {
+    blockers.push(`${numberText(batch.duplicateSourceKeys)} dubbele prijslijstregels`);
+  }
+
+  if (batch.unknownVatModeRows > 0 && !allowUnknownVatMode) {
+    blockers.push(`${numberText(batch.unknownVatModeRows)} ontbrekende btw-keuzes`);
+  }
+
+  return blockers;
+}
+
+function countBatchesForFilter(batches: ProductImportBatch[], filter: BatchStatusFilter) {
+  if (filter === "all") {
+    return batches.length;
+  }
+
+  return batches.filter((batch) => batch.status === filter).length;
+}
+
+function sortBatches(left: ProductImportBatch, right: ProductImportBatch) {
+  const order: Record<ProductImportBatch["status"], number> = {
+    failed: 0,
+    needs_mapping: 1,
+    ready_to_import: 2,
+    uploaded: 3,
+    analyzing: 4,
+    importing: 5,
+    imported: 6,
+    archived: 7
+  };
+  const statusDifference = order[left.status] - order[right.status];
+
+  if (statusDifference !== 0) {
+    return statusDifference;
+  }
+
+  return (right.updatedAt ?? right.createdAt) - (left.updatedAt ?? left.createdAt);
+}
+
 export default function ImportPreview({ session, batchId }: ImportPreviewProps) {
   const [batches, setBatches] = useState<ProductImportBatch[]>([]);
   const [detail, setDetail] = useState<BatchDetail | null>(null);
@@ -103,6 +228,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canManageImports = canManage(session.role);
+  const batchSearch = batchSearchQuery.trim().toLocaleLowerCase("nl-NL");
 
   const loadBatches = useCallback(async () => {
     const client = createConvexHttpClient();
@@ -320,7 +446,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
   function archiveActionFor(batch: ProductImportBatch) {
     return batch.status === "archived"
       ? {
-          label: "Herstellen",
+          label: "Terugzetten",
           nextStatus: batch.archivedFromStatus ?? ("uploaded" as ProductImportBatch["status"]),
           icon: <RotateCcw size={16} aria-hidden="true" />,
           variant: "secondary" as const
@@ -350,32 +476,52 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
   const totalRowPages = Math.max(1, Math.ceil(filteredRows.length / rowPageSize));
   const safeRowPage = Math.min(rowPage, totalRowPages);
   const pagedRows = filteredRows.slice((safeRowPage - 1) * rowPageSize, safeRowPage * rowPageSize);
+  const searchedBatches = useMemo(
+    () => batches.filter((batch) => batchMatchesSearch(batch, batchSearch)),
+    [batchSearch, batches]
+  );
+  const batchCounts = useMemo(
+    () =>
+      batchStatusFilters.reduce(
+        (counts, item) => ({
+          ...counts,
+          [item.value]: countBatchesForFilter(searchedBatches, item.value)
+        }),
+        {} as Record<BatchStatusFilter, number>
+      ),
+    [searchedBatches]
+  );
   const filteredBatches = useMemo(() => {
-    const normalizedQuery = batchSearchQuery.trim().toLowerCase();
-
-    return batches.filter((batch) => {
-      const matchesStatus = batchStatusFilter === "all" || batch.status === batchStatusFilter;
-      const haystack = [
-        batch.fileName,
-        batch.supplierName,
-        batch.profileName,
-        batch.status,
-        batch.errorMessage
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      const matchesSearch = !normalizedQuery || haystack.includes(normalizedQuery);
-
-      return matchesStatus && matchesSearch;
-    });
-  }, [batchSearchQuery, batchStatusFilter, batches]);
+    return searchedBatches
+      .filter((batch) => batchStatusFilter === "all" || batch.status === batchStatusFilter)
+      .sort(sortBatches);
+  }, [batchStatusFilter, searchedBatches]);
+  const batchSummary = useMemo(
+    () => ({
+      total: batches.length,
+      imported: batches.filter((batch) => batch.status === "imported").length,
+      failed: batches.filter((batch) => batch.status === "failed").length,
+      archived: batches.filter((batch) => batch.status === "archived").length,
+      ready: batches.filter((batch) => batch.status === "ready_to_import").length,
+      needsMapping: batches.filter((batch) => batch.status === "needs_mapping").length,
+      products: batches.reduce((total, batch) => total + batch.productRows, 0),
+      priceRules: batches.reduce((total, batch) => total + batch.importedPrices, 0),
+      warningRows: batches.reduce((total, batch) => total + batch.warningRows, 0),
+      errorRows: batches.reduce((total, batch) => total + batch.errorRows, 0)
+    }),
+    [batches]
+  );
+  const nextAttentionBatch =
+    batches
+      .filter((batch) => batch.status === "failed" || batch.status === "needs_mapping")
+      .sort(sortBatches)[0] ?? null;
   const canCommit = selectedBatch
     ? selectedBatch.totalRows > 0 &&
       selectedBatch.errorRows === 0 &&
       selectedBatch.duplicateSourceKeys === 0 &&
       (selectedBatch.unknownVatModeRows === 0 || allowUnknownVatMode)
     : false;
+  const selectedBlockers = selectedBatch ? batchBlockers(selectedBatch, allowUnknownVatMode) : [];
 
   const rowKindOptions = useMemo(
     () => [...new Set(rows.map((row) => row.rowKind))].sort(),
@@ -390,8 +536,9 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     {
       key: "source",
       header: "Bestand",
+      priority: "primary",
       render: (batch) => (
-        <>
+        <div className="import-file-cell">
           <a
             className="button ghost"
             href={`/portal/imports/${batch.id}`}
@@ -399,76 +546,58 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
           >
             {batch.fileName}
           </a>
-          <div className="muted">{batch.supplierName}</div>
-          {batch.profileName ? <div className="muted">{batch.profileName}</div> : null}
-        </>
+          <small className="muted">{batch.supplierName}</small>
+          {batch.profileName ? <small className="muted">{batch.profileName}</small> : null}
+        </div>
       )
     },
     {
       key: "status",
       header: "Status",
+      width: "180px",
+      render: (batch) => (
+        <div className="stack-sm">
+          <StatusBadge
+            status={batch.status}
+            label={formatImportStatus(batch.status)}
+            variant={batchStatusVariant(batch)}
+          />
+          <small className="muted">{lifecycleText(batch)}</small>
+        </div>
+      )
+    },
+    {
+      key: "counts",
+      header: "Tellingen",
       width: "170px",
       render: (batch) => (
-        <>
-          <StatusBadge status={batch.status} label={formatImportStatus(batch.status)} />
-          <div className="muted">
-            {batch.failedAt
-              ? `mislukt ${dateText(batch.failedAt)}`
-              : batch.committedAt
-                ? `verwerkt ${dateText(batch.committedAt)}`
-                : `aangemaakt ${dateText(batch.createdAt)}`}
-          </div>
-        </>
+        <div className="import-count-stack">
+          <span>{numberText(batch.previewRows)} gecontroleerde regels</span>
+          <span>{numberText(batch.productRows)} productregels</span>
+          <span>{numberText(batch.importedPrices)} prijsregels</span>
+        </div>
       )
     },
     {
-      key: "previewRows",
-      header: "Gecontroleerde regels",
-      align: "right",
-      width: "110px",
-      render: (batch) => numberText(batch.previewRows)
-    },
-    {
-      key: "productRows",
-      header: "Producten",
-      align: "right",
-      width: "120px",
-      render: (batch) => numberText(batch.productRows)
-    },
-    {
-      key: "importedPrices",
-      header: "Prijsregels",
-      align: "right",
-      width: "110px",
-      render: (batch) => numberText(batch.importedPrices)
-    },
-    {
-      key: "unknownVatModeRows",
-      header: "Btw nog onbekend",
-      align: "right",
-      width: "130px",
+      key: "signals",
+      header: "Controle",
+      width: "190px",
       render: (batch) => (
-        <Badge variant={batch.unknownVatModeRows > 0 ? "warning" : "success"}>
-          {numberText(batch.unknownVatModeRows)}
-        </Badge>
-      )
-    },
-    {
-      key: "issues",
-      header: "Meldingen",
-      width: "130px",
-      render: (batch) => (
-        <>
-          <Badge variant={batch.errorRows > 0 ? "danger" : "success"}>
-            fouten: {numberText(batch.errorRows)}
+        <div className="import-signal-stack">
+          <Badge variant={batch.errorRows > 0 || batch.status === "failed" ? "danger" : "success"}>
+            Fouten {numberText(batch.errorRows)}
           </Badge>
-          <div style={{ marginTop: 4 }}>
-            <Badge variant={batch.warningRows > 0 ? "warning" : "neutral"}>
-              waarschuwingen: {numberText(batch.warningRows)}
-            </Badge>
-          </div>
-          {batch.errorMessage ? <div className="muted">{batch.errorMessage}</div> : null}
-        </>
+          <Badge variant={batch.warningRows > 0 ? "warning" : "neutral"}>
+            Waarschuwingen {numberText(batch.warningRows)}
+          </Badge>
+          <Badge variant={batch.duplicateSourceKeys > 0 ? "danger" : "success"}>
+            Dubbele regels {numberText(batch.duplicateSourceKeys)}
+          </Badge>
+          <Badge variant={batch.unknownVatModeRows > 0 ? "warning" : "success"}>
+            Btw onbekend {numberText(batch.unknownVatModeRows)}
+          </Badge>
+          {batch.errorMessage ? <small className="muted">{batch.errorMessage}</small> : null}
+        </div>
       )
     },
     {
@@ -582,7 +711,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
         title={
           pendingBatchStatus?.nextStatus === "archived"
             ? "Prijslijst archiveren?"
-            : "Prijslijst herstellen?"
+            : "Prijslijstcontrole terugzetten?"
         }
         description={
           pendingBatchStatus
@@ -593,150 +722,271 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                 ).toLowerCase()}.`
             : ""
         }
-        confirmLabel={pendingBatchStatus?.nextStatus === "archived" ? "Archiveren" : "Herstellen"}
+        confirmLabel={pendingBatchStatus?.nextStatus === "archived" ? "Archiveren" : "Terugzetten"}
         tone={pendingBatchStatus?.nextStatus === "archived" ? "danger" : "warning"}
         isBusy={isBusy}
         onCancel={() => setPendingBatchStatus(null)}
         onConfirm={() => void updateBatchStatus()}
       />
-      <div className="grid two-column">
-      <section className="grid">
-        <form className="panel form-grid" onSubmit={createBatch}>
-          <p className="eyebrow">Nieuwe prijslijstcontrole</p>
-          <Field label="Bestand" htmlFor="import-file">
-            <Select id="import-file" value={fileName} onChange={(event) => setFileName(event.target.value)}>
-              {sourceFiles.map((file) => (
-                <option value={file} key={file}>
-                  {file}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <div className="field">
-            <label htmlFor="import-supplier">Leverancier</label>
-            <input
-              id="import-supplier"
-              value={supplierName}
-              onChange={(event) => setSupplierName(event.target.value)}
-            />
+      <div className="grid">
+        <section
+          className={
+            batchSummary.failed > 0 || batchSummary.needsMapping > 0
+              ? "panel import-workbench import-workbench-attention"
+              : "panel import-workbench"
+          }
+        >
+          <div className="toolbar import-workbench-titlebar">
+            <div>
+              <p className="eyebrow">Prijslijstwerkbank</p>
+              <h2 className="import-workbench-title">
+                {isLoading
+                  ? "Prijslijsten laden"
+                  : batchSummary.failed > 0 || batchSummary.needsMapping > 0
+                    ? `${numberText(batchSummary.failed + batchSummary.needsMapping)} controles vragen aandacht`
+                    : "Prijslijstcontroles zijn bijgewerkt"}
+              </h2>
+              <p className="muted import-workbench-copy">
+                Start controles, bekijk meldingen en verwerk pas definitief als de poort vrij is.
+              </p>
+            </div>
+            <div className="toolbar">
+              <Badge
+                variant={
+                  isLoading
+                    ? "neutral"
+                    : batchSummary.failed > 0
+                      ? "danger"
+                      : batchSummary.needsMapping > 0
+                        ? "warning"
+                        : "success"
+                }
+                icon={
+                  isLoading ? (
+                    <FileSpreadsheet size={14} aria-hidden="true" />
+                  ) : batchSummary.failed > 0 || batchSummary.needsMapping > 0 ? (
+                    <ShieldAlert size={14} aria-hidden="true" />
+                  ) : (
+                    <CheckCircle2 size={14} aria-hidden="true" />
+                  )
+                }
+              >
+                {isLoading
+                  ? "Laden"
+                  : batchSummary.failed > 0
+                    ? "Mislukte controles"
+                    : batchSummary.needsMapping > 0
+                      ? "Btw-keuze nodig"
+                      : "Overzicht gereed"}
+              </Badge>
+            </div>
           </div>
-          <Button
-            variant="primary"
-            type="submit"
-            disabled={isBusy}
-            leftIcon={<FileSpreadsheet size={17} aria-hidden="true" />}
-          >
-            Controle starten
-          </Button>
-        </form>
 
-        <section className="panel">
-          <FilterBar
-            search={
-              <SearchInput
-                aria-label="Zoek prijslijsten"
-                value={batchSearchQuery}
-                placeholder="Zoek op bestand, leverancier of controle"
-                onChange={setBatchSearchQuery}
-              />
-            }
-            filters={
-              <Field label="Status" htmlFor="batch-status-filter">
-                <Select
-                  id="batch-status-filter"
-                  value={batchStatusFilter}
-                  onChange={(event) => setBatchStatusFilter(event.target.value as BatchStatusFilter)}
-                >
-                  <option value="all">Alle statussen</option>
-                  <option value="uploaded">{formatImportStatus("uploaded")}</option>
-                  <option value="analyzing">{formatImportStatus("analyzing")}</option>
-                  <option value="needs_mapping">{formatImportStatus("needs_mapping")}</option>
-                  <option value="ready_to_import">{formatImportStatus("ready_to_import")}</option>
-                  <option value="importing">{formatImportStatus("importing")}</option>
-                  <option value="imported">{formatImportStatus("imported")}</option>
-                  <option value="failed">{formatImportStatus("failed")}</option>
-                  <option value="archived">{formatImportStatus("archived")}</option>
-                </Select>
-              </Field>
-            }
-            actions={<span className="muted">{numberText(filteredBatches.length)} prijslijsten</span>}
-          />
+          <div className="import-overview-layout">
+            <div className="import-focus-block">
+              <p className="eyebrow">Nu eerst</p>
+              <strong>
+                {nextAttentionBatch
+                  ? `${nextAttentionBatch.supplierName} · ${nextAttentionBatch.fileName}`
+                  : selectedBatch
+                    ? selectedBatch.fileName
+                    : "Geen open blokkades"}
+              </strong>
+              <p className="muted">
+                {nextAttentionBatch
+                  ? nextAttentionBatch.status === "failed"
+                    ? "Deze controle is mislukt. Bekijk de melding voordat je opnieuw verwerkt."
+                    : "Deze controle heeft nog een btw-keuze of mapping nodig."
+                  : "Gebruik de lijst hieronder voor detailcontrole of om een nieuwe prijslijstcontrole te starten."}
+              </p>
+            </div>
+            <div className="import-focus-block">
+              <p className="eyebrow">Catalogusvolume</p>
+              <strong>{numberText(batchSummary.products)} productregels</strong>
+              <p className="muted">
+                {numberText(batchSummary.priceRules)} prijsregels over {numberText(batchSummary.total)} controles.
+              </p>
+            </div>
+          </div>
+
+          <div className="import-summary-strip" aria-label="Samenvatting prijslijsten">
+            <div className="import-summary-item import-summary-danger">
+              <span>Aandacht nodig</span>
+              <strong>{numberText(batchSummary.failed + batchSummary.needsMapping)}</strong>
+            </div>
+            <div className="import-summary-item import-summary-success">
+              <span>Verwerkt</span>
+              <strong>{numberText(batchSummary.imported)}</strong>
+            </div>
+            <div className="import-summary-item import-summary-info">
+              <span>Klaar</span>
+              <strong>{numberText(batchSummary.ready)}</strong>
+            </div>
+            <div className="import-summary-item import-summary-warning">
+              <span>Waarschuwingen</span>
+              <strong>{numberText(batchSummary.warningRows)}</strong>
+            </div>
+            <div className="import-summary-item">
+              <span>Zichtbaar</span>
+              <strong>{numberText(filteredBatches.length)}</strong>
+            </div>
+          </div>
         </section>
 
-        <DataTable
-          rows={filteredBatches}
-          columns={batchColumns}
-          getRowKey={(batch) => batch.id}
-          loading={isLoading}
-          error={error}
-          emptyTitle="Geen prijslijsten gevonden"
-          emptyDescription="Pas filters aan of start een nieuwe controle."
-          density="compact"
-          mobileMode="cards"
-          renderMobileCard={(batch) => (
-            <>
-              <div className="mobile-card-header">
-                <div className="mobile-card-title">
-                  <a href={`/portal/imports/${batch.id}`} onClick={() => setSelectedBatchId(batch.id)}>
-                    <strong>{batch.fileName}</strong>
-                  </a>
-                  <span className="muted">{batch.supplierName}</span>
-                  {batch.profileName ? <span className="muted">{batch.profileName}</span> : null}
-                </div>
-                <StatusBadge status={batch.status} label={formatImportStatus(batch.status)} />
+        <div className="import-layout">
+          <section className="panel import-list-panel">
+            <form className="import-start-form" onSubmit={createBatch}>
+              <div>
+                <p className="eyebrow">Nieuwe controle</p>
+                <h2>Prijslijstcontrole starten</h2>
+                <p className="muted">
+                  Start eerst een veilige preview. Definitief verwerken gebeurt pas vanuit de detailcontrole.
+                </p>
               </div>
-              <div className="mobile-card-meta">
-                <Badge variant="neutral">Gecontroleerde regels {numberText(batch.previewRows)}</Badge>
-                <Badge variant="neutral">Productregels {numberText(batch.productRows)}</Badge>
-                <Badge variant="neutral">Prijsregels {numberText(batch.importedPrices)}</Badge>
-                <Badge variant={batch.unknownVatModeRows > 0 ? "warning" : "success"}>
-                  Btw nog onbekend {numberText(batch.unknownVatModeRows)}
-                </Badge>
+              <Field label="Bestand" htmlFor="import-file">
+                <Select id="import-file" value={fileName} onChange={(event) => setFileName(event.target.value)}>
+                  {sourceFiles.map((file) => (
+                    <option value={file} key={file}>
+                      {file}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <div className="field">
+                <label htmlFor="import-supplier">Leverancier</label>
+                <input
+                  id="import-supplier"
+                  value={supplierName}
+                  onChange={(event) => setSupplierName(event.target.value)}
+                />
               </div>
-              <div className="mobile-card-section">
-                <p className="mobile-card-section-label">Datum</p>
-                <span className="muted">
-                  {batch.failedAt
-                    ? `mislukt ${dateText(batch.failedAt)}`
-                    : batch.committedAt
-                      ? `verwerkt ${dateText(batch.committedAt)}`
-                      : `aangemaakt ${dateText(batch.createdAt)}`}
-                </span>
-                {batch.errorMessage ? <span className="muted">{batch.errorMessage}</span> : null}
-              </div>
-              <div className="mobile-card-actions">
-                <a className="button secondary" href={`/portal/imports/${batch.id}`}>
-                  Bekijk details
-                </a>
-                {canManageImports && batch.status !== "importing" ? (
-                  <Button
-                    leftIcon={archiveActionFor(batch).icon}
-                    onClick={() => {
-                      const archiveAction = archiveActionFor(batch);
-                      setPendingBatchStatus({ batch, nextStatus: archiveAction.nextStatus });
-                    }}
-                    size="sm"
-                    variant={archiveActionFor(batch).variant}
-                  >
-                    {archiveActionFor(batch).label}
-                  </Button>
-                ) : null}
-              </div>
-            </>
-          )}
-          ariaLabel="Prijslijsten"
-        />
-      </section>
+              <Button
+                variant="primary"
+                type="submit"
+                disabled={isBusy}
+                leftIcon={<FileSpreadsheet size={17} aria-hidden="true" />}
+              >
+                Preview starten
+              </Button>
+            </form>
 
-      <section className="panel">
-        {selectedBatch ? (
-          <>
-            <p className="eyebrow">Controle en meldingen</p>
-            <h2>{selectedBatch.fileName}</h2>
-            <p className="muted">
-              Aangemaakt {dateText(selectedBatch.createdAt)} · verwerkt{" "}
-              {dateText(selectedBatch.committedAt)} · mislukt {dateText(selectedBatch.failedAt)}
-            </p>
+            <div className="import-list-filters">
+              <FilterBar
+                search={
+                  <SearchInput
+                    aria-label="Zoek prijslijsten"
+                    value={batchSearchQuery}
+                    placeholder="Zoek bestand, leverancier, profiel of melding"
+                    onChange={setBatchSearchQuery}
+                  />
+                }
+                filters={
+                  <>
+                    <Badge icon={<Filter size={14} aria-hidden="true" />}>Weergave</Badge>
+                    <div className="tabs import-tabs">
+                      {batchStatusFilters.map((item) => (
+                        <button
+                          className={batchStatusFilter === item.value ? "tab active" : "tab"}
+                          key={item.value}
+                          type="button"
+                          aria-pressed={batchStatusFilter === item.value}
+                          onClick={() => setBatchStatusFilter(item.value)}
+                        >
+                          <span>{item.label}</span>
+                          <span className="vat-tab-count">{numberText(batchCounts[item.value] ?? 0)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                }
+                actions={<span className="muted">{numberText(filteredBatches.length)} prijslijsten</span>}
+              />
+            </div>
+
+            <DataTable
+              rows={filteredBatches}
+              columns={batchColumns}
+              getRowKey={(batch) => batch.id}
+              loading={isLoading}
+              error={error}
+              emptyTitle="Geen prijslijsten gevonden"
+              emptyDescription="Pas filters aan of start een nieuwe controle."
+              density="compact"
+              mobileMode="cards"
+              renderMobileCard={(batch) => (
+                <>
+                  <div className="mobile-card-header">
+                    <div className="mobile-card-title">
+                      <a href={`/portal/imports/${batch.id}`} onClick={() => setSelectedBatchId(batch.id)}>
+                        <strong>{batch.fileName}</strong>
+                      </a>
+                      <span className="muted">{batch.supplierName}</span>
+                      {batch.profileName ? <span className="muted">{batch.profileName}</span> : null}
+                    </div>
+                    <StatusBadge
+                      status={batch.status}
+                      label={formatImportStatus(batch.status)}
+                      variant={batchStatusVariant(batch)}
+                    />
+                  </div>
+                  <div className="mobile-card-meta">
+                    <Badge variant="neutral">Regels {numberText(batch.previewRows)}</Badge>
+                    <Badge variant="neutral">Producten {numberText(batch.productRows)}</Badge>
+                    <Badge variant="neutral">Prijsregels {numberText(batch.importedPrices)}</Badge>
+                    <Badge variant={batch.duplicateSourceKeys > 0 ? "danger" : "success"}>
+                      Dubbele regels {numberText(batch.duplicateSourceKeys)}
+                    </Badge>
+                    <Badge variant={batch.unknownVatModeRows > 0 ? "warning" : "success"}>
+                      Btw onbekend {numberText(batch.unknownVatModeRows)}
+                    </Badge>
+                  </div>
+                  <div className="mobile-card-section">
+                    <p className="mobile-card-section-label">Statusmoment</p>
+                    <span className="muted">{lifecycleText(batch)}</span>
+                    {batch.errorMessage ? <span className="muted">{batch.errorMessage}</span> : null}
+                  </div>
+                  <div className="mobile-card-actions">
+                    <a className="button secondary" href={`/portal/imports/${batch.id}`}>
+                      Bekijk details
+                    </a>
+                    {canManageImports && batch.status !== "importing" ? (
+                      <Button
+                        leftIcon={archiveActionFor(batch).icon}
+                        onClick={() => {
+                          const archiveAction = archiveActionFor(batch);
+                          setPendingBatchStatus({ batch, nextStatus: archiveAction.nextStatus });
+                        }}
+                        size="sm"
+                        variant={archiveActionFor(batch).variant}
+                      >
+                        {archiveActionFor(batch).label}
+                      </Button>
+                    ) : null}
+                  </div>
+                </>
+              )}
+              ariaLabel="Prijslijsten"
+            />
+          </section>
+
+          <section className="panel import-detail-panel">
+            {selectedBatch ? (
+              <>
+                <div className="import-detail-header">
+                  <div>
+                    <p className="eyebrow">Geselecteerde controle</p>
+                    <h2>{selectedBatch.fileName}</h2>
+                    <p className="muted">
+                      {selectedBatch.supplierName}
+                      {selectedBatch.profileName ? ` · ${selectedBatch.profileName}` : ""} · {lifecycleText(selectedBatch)}
+                    </p>
+                  </div>
+                  <StatusBadge
+                    status={selectedBatch.status}
+                    label={formatImportStatus(selectedBatch.status)}
+                    variant={batchStatusVariant(selectedBatch)}
+                  />
+                </div>
             {selectedBatch.errorMessage ? (
               <Alert
                 variant="danger"
@@ -745,7 +995,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
               />
             ) : null}
             {canManageImports && selectedBatch.status !== "importing" ? (
-              <div className="toolbar" style={{ margin: "12px 0 0" }}>
+              <div className="toolbar import-detail-actions">
                 {(() => {
                   const archiveAction = archiveActionFor(selectedBatch);
 
@@ -768,11 +1018,11 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
               </div>
             ) : null}
 
-            <div className="tabs" role="tablist" aria-label="Tabs voor prijslijstcontrole">
+            <div className="tabs import-detail-tabs" role="tablist" aria-label="Tabs voor prijslijstcontrole">
               {[
                 { value: "summary", label: "Samenvatting" },
-                { value: "rows", label: "Regels" },
-                { value: "warnings", label: "Meldingen" },
+                { value: "rows", label: `Regels ${numberText(rows.length)}` },
+                { value: "warnings", label: `Meldingen ${numberText(selectedBatch.warnings.length)}` },
                 { value: "reconciliation", label: "Controle" }
               ].map((tab) => (
                 <button
@@ -790,66 +1040,89 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
 
             {detailTab === "summary" ? (
               <>
-                <div className="grid three-column" style={{ marginTop: 16 }}>
-                  <StatCard label="Productregels" value={numberText(selectedBatch.productRows)} />
-                  <StatCard
-                    label="Producten verwerkt"
-                    value={numberText(selectedBatch.importedProducts + selectedBatch.updatedProducts)}
-                  />
-                  <StatCard label="Prijsregels verwerkt" value={numberText(selectedBatch.importedPrices)} />
-                </div>
-                <div className="grid three-column" style={{ marginTop: 16 }}>
-                  <StatCard
-                    label="Regels met waarschuwing"
-                    value={numberText(selectedBatch.warningRows)}
-                    tone={selectedBatch.warningRows > 0 ? "warning" : "neutral"}
-                  />
-                  <StatCard
-                    label="Regels met fouten"
-                    value={numberText(selectedBatch.errorRows)}
-                    tone={selectedBatch.errorRows > 0 ? "danger" : "success"}
-                  />
-                  <StatCard label="Overgeslagen regels" value={numberText(selectedBatch.ignoredRows)} />
-                </div>
-                <div className="toolbar" style={{ marginTop: 16 }}>
-                  <div className="toolbar" style={{ gap: 8 }}>
-                    <Checkbox
-                      aria-label="Sta ontbrekende btw-keuze toe voor deze prijslijst"
-                      checked={allowUnknownVatMode}
-                      onChange={(event) => setAllowUnknownVatMode(event.target.checked)}
-                    />
-                    <Badge variant={selectedBatch.unknownVatModeRows > 0 ? "warning" : "success"}>
-                      Btw nog onbekend: {numberText(selectedBatch.unknownVatModeRows)}
-                    </Badge>
+                <div className="import-detail-summary">
+                  <div className="import-summary-item">
+                    <span>Productregels</span>
+                    <strong>{numberText(selectedBatch.productRows)}</strong>
                   </div>
-                  <Button
-                    variant="secondary"
-                    onClick={() => void saveMapping(selectedBatch)}
-                    disabled={isBusy}
-                    leftIcon={<Save size={17} aria-hidden="true" />}
-                  >
-                    Btw-keuze opslaan
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={() => setPendingCommitBatch(selectedBatch)}
-                    disabled={isBusy || !canCommit}
-                    leftIcon={
-                      canCommit ? (
-                        <CheckCircle2 size={17} aria-hidden="true" />
-                      ) : (
-                        <ShieldAlert size={17} aria-hidden="true" />
-                      )
-                    }
-                  >
-                    Definitief verwerken
-                  </Button>
+                  <div className="import-summary-item import-summary-success">
+                    <span>Producten verwerkt</span>
+                    <strong>{numberText(selectedBatch.importedProducts + selectedBatch.updatedProducts)}</strong>
+                  </div>
+                  <div className="import-summary-item import-summary-info">
+                    <span>Prijsregels</span>
+                    <strong>{numberText(selectedBatch.importedPrices)}</strong>
+                  </div>
+                  <div className="import-summary-item import-summary-warning">
+                    <span>Waarschuwingen</span>
+                    <strong>{numberText(selectedBatch.warningRows)}</strong>
+                  </div>
+                  <div className="import-summary-item import-summary-danger">
+                    <span>Fouten</span>
+                    <strong>{numberText(selectedBatch.errorRows)}</strong>
+                  </div>
+                  <div className="import-summary-item">
+                    <span>Overgeslagen</span>
+                    <strong>{numberText(selectedBatch.ignoredRows)}</strong>
+                  </div>
+                </div>
+                <div className={canCommit ? "import-gate import-gate-ready" : "import-gate import-gate-blocked"}>
+                  <div>
+                    <p className="eyebrow">Verwerkingspoort</p>
+                    <h3>{canCommit ? "Klaar voor definitieve verwerking" : "Nog niet definitief verwerken"}</h3>
+                    <p className="muted">
+                      {canCommit
+                        ? "Er zijn geen blokkerende fouten voor deze controle."
+                        : selectedBlockers.length > 0
+                          ? selectedBlockers.join(", ")
+                          : "Controleer de meldingen voordat je verwerkt."}
+                    </p>
+                  </div>
+                  <div className="import-gate-actions">
+                    <label className="vat-exception-toggle import-vat-toggle">
+                      <Checkbox
+                        aria-label="Sta ontbrekende btw-keuze toe voor deze prijslijst"
+                        checked={allowUnknownVatMode}
+                        onChange={(event) => setAllowUnknownVatMode(event.target.checked)}
+                      />
+                      <span>Onbekende btw toestaan</span>
+                    </label>
+                    <Badge variant={selectedBatch.unknownVatModeRows > 0 ? "warning" : "success"}>
+                      Btw onbekend {numberText(selectedBatch.unknownVatModeRows)}
+                    </Badge>
+                    <Button
+                      variant="secondary"
+                      onClick={() => void saveMapping(selectedBatch)}
+                      disabled={isBusy}
+                      leftIcon={<Save size={17} aria-hidden="true" />}
+                    >
+                      Btw-instelling bewaren
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={() => setPendingCommitBatch(selectedBatch)}
+                      disabled={isBusy || !canCommit}
+                      leftIcon={
+                        canCommit ? (
+                          <CheckCircle2 size={17} aria-hidden="true" />
+                        ) : (
+                          <ShieldAlert size={17} aria-hidden="true" />
+                        )
+                      }
+                    >
+                      Definitief verwerken
+                    </Button>
+                  </div>
                 </div>
                 {!canCommit ? (
                   <Alert
                     variant="warning"
                     title="Nog niet klaar om te verwerken"
-                    description="Verwerken blijft geblokkeerd zolang er fouten, dubbele prijslijstregels of ontbrekende btw-keuzes zijn."
+                    description={
+                      selectedBlockers.length > 0
+                        ? `Los eerst op: ${selectedBlockers.join(", ")}.`
+                        : "Verwerken blijft geblokkeerd zolang er fouten, dubbele prijslijstregels of ontbrekende btw-keuzes zijn."
+                    }
                     style={{ marginTop: 16 }}
                   />
                 ) : null}
@@ -977,6 +1250,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
           <div className="empty-state">Selecteer een prijslijst om de controle te bekijken.</div>
         )}
       </section>
+      </div>
       </div>
     </>
   );

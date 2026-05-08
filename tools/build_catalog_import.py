@@ -243,6 +243,32 @@ def code_string(value: Any) -> str | None:
     return text or None
 
 
+def numeric_article_number_string(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        if isinstance(value, float) and math.isnan(value):
+            return None
+        return str(int(float(value)))
+
+    text = clean_text(value)
+    if not text:
+        return None
+    normalized = text.replace(" ", "").replace(",", ".")
+    if re.fullmatch(r"\d+(?:\.\d+)?", normalized):
+        return str(int(float(normalized)))
+    return text
+
+
+def article_number_for(headers: list[str], values: list[Any], source_path: Path) -> str | None:
+    value = get_value(headers, values, ["Artikelnummer", "Art.nr."])
+    if source_path.name.lower() == "prijslijst traprenovatie floorlife 2025.xlsx":
+        return numeric_article_number_string(value)
+    return code_string(value)
+
+
 def number_value(value: Any) -> float | None:
     if value is None:
         return None
@@ -831,7 +857,7 @@ def build_row(
     category_name = DISPLAY_CATEGORIES.get(category_slug, "Overig")
     product_kind = product_kind_for(category_slug, source_path, sheet_name, product_name)
     aliases = commercial_names(headers, values)
-    article_number = get_text(headers, values, ["Artikelnummer", "Art.nr."])
+    article_number = article_number_for(headers, values, source_path)
     if "entreematten" in source_path.name.lower() and not article_number:
         article_number = code_string(values[0]) if values else None
     supplier_code = get_text(headers, values, ["Supplier Code", "SAP codes floors"])
@@ -1341,16 +1367,55 @@ def write_full_preview(rows: list[dict[str, Any]], preview_rows: list[dict[str, 
             )
 
 
+def cli_options(argv: list[str]) -> dict[str, Any]:
+    options: dict[str, Any] = {
+        "fullPreview": os.environ.get("CATALOG_PREVIEW_FULL") == "1",
+        "noWrite": False,
+        "sourceFilters": [],
+    }
+    index = 0
+    while index < len(argv):
+        arg = argv[index]
+        if arg == "--full":
+            options["fullPreview"] = True
+        elif arg == "--no-write":
+            options["noWrite"] = True
+        elif arg == "--source":
+            index += 1
+            if index >= len(argv):
+                raise SystemExit("--source requires a file-name or relative-path filter")
+            options["sourceFilters"].append(argv[index].lower())
+        elif arg.startswith("--source="):
+            options["sourceFilters"].append(arg.split("=", 1)[1].lower())
+        index += 1
+    return options
+
+
+def matches_source_filter(path: Path, filters: list[str]) -> bool:
+    if not filters:
+        return True
+    rel = str(path.relative_to(ROOT)).replace("\\", "/").lower()
+    name = path.name.lower()
+    return any(filter_value in name or filter_value in rel for filter_value in filters)
+
+
 def main() -> None:
-    OUT_DIR.mkdir(exist_ok=True)
-    full_preview = "--full" in sys.argv[1:] or os.environ.get("CATALOG_PREVIEW_FULL") == "1"
+    options = cli_options(sys.argv[1:])
+    full_preview = options["fullPreview"]
+    no_write = options["noWrite"]
+    source_filters = options["sourceFilters"]
+    if not no_write:
+        OUT_DIR.mkdir(exist_ok=True)
     source_files = sorted(
         path
         for path in DATA_DIR.rglob("*")
         if path.is_file()
         and path.suffix.lower() in {".xlsx", ".xls"}
         and path.name != "Henke Wonen Jeffrey.xlsx"
+        and matches_source_filter(path, source_filters)
     )
+    if not source_files:
+        raise SystemExit("No source files matched the catalog preview filters.")
     rows: list[dict[str, Any]] = []
     preview_rows: list[dict[str, Any]] = []
     warnings: list[str] = []
@@ -1369,17 +1434,20 @@ def main() -> None:
         warnings.extend(parsed_warnings)
 
     summary = summarize(rows, preview_rows, warnings, len(source_files))
-    SUMMARY_JSON_OUT.write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    SUMMARY_OUT.write_text(build_markdown(summary), encoding="utf-8")
-    SAMPLE_OUT.write_text(build_sample(rows, preview_rows), encoding="utf-8")
-    if full_preview:
-        write_full_preview(rows, preview_rows)
+    if not no_write:
+        SUMMARY_JSON_OUT.write_text(
+            json.dumps(summary, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        SUMMARY_OUT.write_text(build_markdown(summary), encoding="utf-8")
+        SAMPLE_OUT.write_text(build_sample(rows, preview_rows), encoding="utf-8")
+        if full_preview:
+            write_full_preview(rows, preview_rows)
     print(
         json.dumps(
             {
+                "sourceFilter": source_filters or None,
+                "writeOutputs": not no_write,
                 "sourceFiles": summary["sourceFiles"]["count"],
                 "rows": summary["productRows"],
                 "previewRows": summary["previewRows"],
@@ -1387,10 +1455,10 @@ def main() -> None:
                 "unknownVatModePriceRules": summary["unknownVatModePriceRules"],
                 "categories": summary["categories"],
                 "warnings": warnings[:20],
-                "summary": str(SUMMARY_OUT.relative_to(ROOT)),
-                "summaryJson": str(SUMMARY_JSON_OUT.relative_to(ROOT)),
-                "sample": str(SAMPLE_OUT.relative_to(ROOT)),
-                "fullPreview": str(FULL_ROWS_OUT.relative_to(ROOT)) if full_preview else None,
+                "summary": str(SUMMARY_OUT.relative_to(ROOT)) if not no_write else None,
+                "summaryJson": str(SUMMARY_JSON_OUT.relative_to(ROOT)) if not no_write else None,
+                "sample": str(SAMPLE_OUT.relative_to(ROOT)) if not no_write else None,
+                "fullPreview": str(FULL_ROWS_OUT.relative_to(ROOT)) if full_preview and not no_write else None,
             },
             ensure_ascii=False,
             indent=2,

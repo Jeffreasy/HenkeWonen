@@ -1,13 +1,11 @@
-import { RefreshCw, Save, ShieldAlert } from "lucide-react";
+import { CheckCircle2, Filter, RefreshCw, Save, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import {
-  formatIssueStatus,
   formatRecommendation,
-  formatStatusLabel
 } from "../../lib/i18n/statusLabels";
 import { Alert } from "../ui/Alert";
 import { Badge, type BadgeVariant } from "../ui/Badge";
@@ -18,7 +16,6 @@ import { FilterBar } from "../ui/FilterBar";
 import { LoadingState } from "../ui/LoadingState";
 import { SearchInput } from "../ui/SearchInput";
 import { Select } from "../ui/Select";
-import { StatCard } from "../ui/StatCard";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Textarea } from "../ui/Textarea";
 
@@ -80,6 +77,14 @@ type IssueDraft = {
 type IssueStatusFilter = "all" | DuplicateEanIssue["issueStatus"];
 type RecommendationFilter = "all" | string;
 
+const statusFilters: Array<{ value: IssueStatusFilter; label: string }> = [
+  { value: "open", label: "Te beoordelen" },
+  { value: "reviewed", label: "Beoordeeld" },
+  { value: "accepted", label: "Bewust toegestaan" },
+  { value: "resolved", label: "Opgelost" },
+  { value: "all", label: "Alle" }
+];
+
 const decisions: Array<{ value: DuplicateEanDecision; label: string; helpText: string }> = [
   {
     value: "keep_separate",
@@ -135,6 +140,90 @@ function statusVariant(status: DuplicateEanIssue["issueStatus"]): BadgeVariant {
   return "danger";
 }
 
+function recommendationVariant(recommendation: string): BadgeVariant {
+  if (recommendation === "keep_separate" || recommendation === "accepted_duplicate") {
+    return "info";
+  }
+
+  if (recommendation === "resolved") {
+    return "success";
+  }
+
+  return "warning";
+}
+
+function formatDuplicateEanStatus(status: DuplicateEanIssue["issueStatus"]) {
+  if (status === "open") {
+    return "Te beoordelen";
+  }
+
+  if (status === "accepted") {
+    return "Bewust toegestaan";
+  }
+
+  if (status === "reviewed") {
+    return "Beoordeeld";
+  }
+
+  return "Opgelost";
+}
+
+function formatSeverity(severity: DuplicateEanIssue["severity"]) {
+  if (severity === "error") {
+    return "Fout";
+  }
+
+  if (severity === "warning") {
+    return "Waarschuwing";
+  }
+
+  return "Informatie";
+}
+
+function normalizedText(value?: string) {
+  return (value ?? "").toLocaleLowerCase("nl-NL");
+}
+
+function issueMatchesSearch(issue: DuplicateEanIssue, searchQuery: string) {
+  if (!searchQuery) {
+    return true;
+  }
+
+  return [
+    issue.supplier,
+    issue.ean,
+    issue.reason,
+    issue.recommendation,
+    formatRecommendation(issue.recommendation),
+    formatDuplicateEanStatus(issue.issueStatus),
+    ...issue.productNames,
+    ...issue.articleNumbers,
+    ...issue.supplierCodes,
+    ...issue.sourceFileNames,
+    ...issue.sourceSheetNames
+  ].some((value) => normalizedText(value).includes(searchQuery));
+}
+
+function statusSortValue(status: DuplicateEanIssue["issueStatus"]) {
+  if (status === "open") {
+    return 0;
+  }
+
+  if (status === "reviewed") {
+    return 1;
+  }
+
+  if (status === "accepted") {
+    return 2;
+  }
+
+  return 3;
+}
+
+function uniqueCount(values: string[]) {
+  return new Set(values.filter(Boolean)).size;
+}
+
 export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
   const [review, setReview] = useState<DuplicateEanReview | null>(null);
   const [drafts, setDrafts] = useState<Record<string, IssueDraft>>({});
@@ -145,49 +234,92 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const orderedGroups = useMemo(
+    () =>
+      [...(review?.groups ?? [])].sort((left, right) => {
+        const statusDifference = statusSortValue(left.issueStatus) - statusSortValue(right.issueStatus);
+
+        if (statusDifference !== 0) {
+          return statusDifference;
+        }
+
+        if (left.supplier !== right.supplier) {
+          return left.supplier.localeCompare(right.supplier, "nl-NL");
+        }
+
+        return left.ean.localeCompare(right.ean, "nl-NL");
+      }),
+    [review?.groups]
+  );
 
   const supplierOptions = useMemo(
-    () => [...new Set((review?.groups ?? []).map((issue) => issue.supplier))].sort(),
-    [review?.groups]
+    () => [...new Set(orderedGroups.map((issue) => issue.supplier))].sort(),
+    [orderedGroups]
   );
   const recommendationOptions = useMemo(
-    () => [...new Set((review?.groups ?? []).map((issue) => issue.recommendation))].sort(),
-    [review?.groups]
+    () => [...new Set(orderedGroups.map((issue) => issue.recommendation))].sort(),
+    [orderedGroups]
   );
   const summary = useMemo(() => {
-    const groups = review?.groups ?? [];
-
     return {
-      open: groups.filter((issue) => issue.issueStatus === "open").length,
-      reviewed: groups.filter((issue) => issue.issueStatus === "reviewed").length,
-      accepted: groups.filter((issue) => issue.issueStatus === "accepted").length,
-      resolved: groups.filter((issue) => issue.issueStatus === "resolved").length
+      total: orderedGroups.length,
+      open: orderedGroups.filter((issue) => issue.issueStatus === "open").length,
+      reviewed: orderedGroups.filter((issue) => issue.issueStatus === "reviewed").length,
+      accepted: orderedGroups.filter((issue) => issue.issueStatus === "accepted").length,
+      resolved: orderedGroups.filter((issue) => issue.issueStatus === "resolved").length,
+      missingIssueRecords: orderedGroups.filter((issue) => !issue.issueId).length
     };
-  }, [review?.groups]);
+  }, [orderedGroups]);
 
-  const filteredGroups = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
+  const groupsMatchingFiltersExceptStatus = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLocaleLowerCase("nl-NL");
 
-    return (review?.groups ?? []).filter((issue) => {
-      const matchesStatus = statusFilter === "all" || issue.issueStatus === statusFilter;
+    return orderedGroups.filter((issue) => {
       const matchesSupplier = supplierFilter === "all" || issue.supplier === supplierFilter;
       const matchesRecommendation =
         recommendationFilter === "all" || issue.recommendation === recommendationFilter;
-      const haystack = [
-        issue.supplier,
-        issue.ean,
-        ...issue.productNames,
-        ...issue.articleNumbers,
-        ...issue.supplierCodes,
-        ...issue.sourceFileNames
-      ]
-        .join(" ")
-        .toLowerCase();
-      const matchesSearch = !normalizedQuery || haystack.includes(normalizedQuery);
+      const matchesSearch = issueMatchesSearch(issue, normalizedQuery);
 
-      return matchesStatus && matchesSupplier && matchesRecommendation && matchesSearch;
+      return matchesSupplier && matchesRecommendation && matchesSearch;
     });
-  }, [recommendationFilter, review?.groups, searchQuery, statusFilter, supplierFilter]);
+  }, [orderedGroups, recommendationFilter, searchQuery, supplierFilter]);
+
+  const statusCounts = useMemo(
+    () =>
+      statusFilters.reduce(
+        (counts, item) => ({
+          ...counts,
+          [item.value]:
+            item.value === "all"
+              ? groupsMatchingFiltersExceptStatus.length
+              : groupsMatchingFiltersExceptStatus.filter((issue) => issue.issueStatus === item.value)
+                  .length
+        }),
+        {} as Record<IssueStatusFilter, number>
+      ),
+    [groupsMatchingFiltersExceptStatus]
+  );
+
+  const filteredGroups = useMemo(
+    () =>
+      groupsMatchingFiltersExceptStatus.filter(
+        (issue) => statusFilter === "all" || issue.issueStatus === statusFilter
+      ),
+    [groupsMatchingFiltersExceptStatus, statusFilter]
+  );
+
+  const visibleProductCount = useMemo(
+    () => filteredGroups.reduce((total, issue) => total + issue.products.length, 0),
+    [filteredGroups]
+  );
+  const visibleSourceFileCount = useMemo(
+    () => uniqueCount(filteredGroups.flatMap((issue) => issue.sourceFileNames)),
+    [filteredGroups]
+  );
+  const nextOpenIssue = orderedGroups.find((issue) => issue.issueStatus === "open");
+  const hasOpenIssues = Boolean(review && summary.open > 0);
 
   const loadReview = useCallback(async () => {
     const client = createConvexHttpClient();
@@ -200,6 +332,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
 
     setIsLoading(true);
     setError(null);
+    setNotice(null);
 
     try {
       const result = (await client.query(api.catalogReview.duplicateEanReview, {
@@ -242,6 +375,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
 
     setIsSaving(true);
     setError(null);
+    setNotice(null);
 
     try {
       await client.mutation(api.catalogReview.syncDuplicateEanIssues, {
@@ -249,6 +383,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
         actor: mutationActorFromSession(session)
       });
       await loadReview();
+      setNotice("Dubbele EAN-waarschuwingen zijn bijgewerkt.");
     } catch (syncError) {
       console.error(syncError);
       setError("Dubbele EAN-waarschuwingen konden niet worden bijgewerkt.");
@@ -274,6 +409,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
 
     setIsSaving(true);
     setError(null);
+    setNotice(null);
 
     try {
       await client.mutation(api.catalogReview.updateDuplicateEanIssueReview, {
@@ -285,6 +421,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
         reviewedByExternalUserId: session.userId
       });
       await loadReview();
+      setNotice(`Beoordeling voor EAN ${issue.ean} is opgeslagen.`);
     } catch (saveError) {
       console.error(saveError);
       setError("Beoordeling kon niet worden opgeslagen.");
@@ -314,29 +451,33 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
   const columns: Array<DataTableColumn<DuplicateEanIssue>> = [
     {
       key: "issue",
-      header: "Waarschuwing",
-      width: "150px",
+      header: "Signaal",
+      width: "180px",
       render: (issue) => (
-        <>
+        <div className="issue-signal-cell">
           <StatusBadge
             status={issue.issueStatus}
-            label={formatIssueStatus(issue.issueStatus)}
+            label={formatDuplicateEanStatus(issue.issueStatus)}
             variant={statusVariant(issue.issueStatus)}
           />
-          <div className="muted">Dubbele EAN</div>
-          <div className="muted">ernst: {formatStatusLabel(issue.severity)}</div>
-        </>
+          <Badge variant="warning">Dubbele EAN</Badge>
+          {!issue.issueId ? <Badge variant="neutral">Nog bijwerken</Badge> : null}
+          <div className="issue-ean-code">{issue.ean}</div>
+          <small className="muted">Ernst: {formatSeverity(issue.severity)}</small>
+        </div>
       )
     },
     {
       key: "supplier",
-      header: "Leverancier / EAN",
-      width: "180px",
+      header: "Leverancier",
+      width: "150px",
       render: (issue) => (
-        <>
+        <div className="stack-sm">
           <strong>{issue.supplier}</strong>
-          <div className="muted">{issue.ean}</div>
-        </>
+          <small className="muted">
+            {numberText(issue.products.length)} producten in deze groep
+          </small>
+        </div>
       )
     },
     {
@@ -347,11 +488,11 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
           <div className="product-compare-grid">
             {issue.products.slice(0, 2).map((product) => (
               <div className="product-compare-item" key={product.productId}>
-              <strong>{product.productName}</strong>
-              <div className="muted">
-                artikel {product.articleNumber ?? "-"} · leverancierscode {product.supplierCode ?? "-"}
-              </div>
-              <div className="muted">prijzen {numberText(product.priceCount)}</div>
+                <strong>{product.productName}</strong>
+                <div className="muted">
+                  artikel {product.articleNumber ?? "-"} · leverancierscode {product.supplierCode ?? "-"}
+                </div>
+                <div className="muted">prijzen {numberText(product.priceCount)}</div>
               </div>
             ))}
           </div>
@@ -368,23 +509,25 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
       header: "Bronnen",
       hideOnMobile: true,
       render: (issue) => (
-        <>
+        <div className="issue-source-list">
           <div>{issue.sourceFileNames.join(", ") || "-"}</div>
-          <div className="muted">{issue.sourceSheetNames.join(", ") || "-"}</div>
-          <div className="muted">Artikelnummers: {issue.articleNumbers.join(", ") || "-"}</div>
-          <div className="muted">Leverancierscodes: {issue.supplierCodes.join(", ") || "-"}</div>
-        </>
+          <small className="muted">Tabblad: {issue.sourceSheetNames.join(", ") || "-"}</small>
+          <small className="muted">Artikelnummers: {issue.articleNumbers.join(", ") || "-"}</small>
+          <small className="muted">Leverancierscodes: {issue.supplierCodes.join(", ") || "-"}</small>
+        </div>
       )
     },
     {
       key: "recommendation",
-      header: "Advies",
-      width: "190px",
+      header: "Controleadvies",
+      width: "210px",
       render: (issue) => (
-        <>
-          <Badge variant="warning">{formatRecommendation(issue.recommendation)}</Badge>
-          <div className="muted">{issue.reason}</div>
-        </>
+        <div className="stack-sm">
+          <Badge variant={recommendationVariant(issue.recommendation)}>
+            {formatRecommendation(issue.recommendation)}
+          </Badge>
+          <small className="muted">{issue.reason}</small>
+        </div>
       )
     },
     {
@@ -397,7 +540,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
         return (
           <>
             <Field
-              label="Beslissing"
+              label="Zakelijke beslissing"
               htmlFor={`decision-${issue.issueId ?? issue.ean}`}
               description={decisionHelpText(issue.issueId, issue.reviewDecision)}
             >
@@ -443,10 +586,14 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
               style={{ marginTop: 10 }}
               leftIcon={<Save size={17} aria-hidden="true" />}
             >
-              Beoordeling opslaan
+              Beoordeling bewaren
             </Button>
             <div className="muted" style={{ marginTop: 8 }}>
-              {issue.reviewedAt ? `Beoordeeld ${dateText(issue.reviewedAt)}` : "Nog niet beoordeeld"}
+              {!issue.issueId
+                ? "Werk waarschuwingen bij voordat je deze groep kunt beoordelen."
+                : issue.reviewedAt
+                  ? `Beoordeeld ${dateText(issue.reviewedAt)}`
+                  : "Nog niet beoordeeld"}
             </div>
           </>
         );
@@ -456,21 +603,44 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
 
   return (
     <div className="grid">
-      <section className="panel">
-        <div className="toolbar" style={{ justifyContent: "space-between" }}>
+      <section
+        className={
+          hasOpenIssues ? "panel issue-workbench issue-workbench-attention" : "panel issue-workbench"
+        }
+      >
+        <div className="toolbar issue-workbench-titlebar">
           <div>
-            <Badge variant="warning" icon={<ShieldAlert size={14} aria-hidden="true" />}>
-              Dubbele EAN-waarschuwingen
-            </Badge>
-            <h2 style={{ margin: "8px 0 0" }}>
-              {numberText(review?.duplicateGroupCount ?? 0)} leverancier+EAN-groepen
+            <p className="eyebrow">Productcontrole</p>
+            <h2 className="issue-workbench-title">
+              {isLoading
+                ? "Dubbele EAN-signalen laden"
+                : hasOpenIssues
+                  ? `${numberText(summary.open)} EAN-groepen vragen beoordeling`
+                  : "Alle EAN-signalen zijn beoordeeld"}
             </h2>
-            <p className="muted">
-              {numberText(review?.duplicateProductCount ?? 0)} producten met een EAN-waarschuwing.
-              EAN is alleen ondersteunend; er wordt niets automatisch samengevoegd.
+            <p className="muted issue-workbench-copy">
+              EAN is een controlesignaal. Producten worden nooit automatisch samengevoegd.
             </p>
           </div>
           <div className="toolbar">
+            <Badge
+              variant={isLoading || !review ? "neutral" : hasOpenIssues ? "warning" : "success"}
+              icon={
+                isLoading || !review ? (
+                  <RefreshCw size={14} aria-hidden="true" />
+                ) : hasOpenIssues ? (
+                  <ShieldAlert size={14} aria-hidden="true" />
+                ) : (
+                  <CheckCircle2 size={14} aria-hidden="true" />
+                )
+              }
+            >
+              {isLoading || !review
+                ? "Laden"
+                : hasOpenIssues
+                  ? "Controle nodig"
+                  : "Productcontrole gereed"}
+            </Badge>
             <Button
               leftIcon={<RefreshCw size={17} aria-hidden="true" />}
               variant="secondary"
@@ -480,17 +650,18 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
             </Button>
             <Button
               variant="secondary"
+              leftIcon={<RefreshCw size={17} aria-hidden="true" />}
               onClick={() => void syncIssues()}
               disabled={isSaving}
             >
-              Waarschuwingen bijwerken
+              Signalen bijwerken
             </Button>
           </div>
         </div>
         <Alert
           variant="warning"
-          title="Niet automatisch samenvoegen"
-          description="EAN is een ondersteunend signaal. Producten blijven gescheiden tot er een expliciete zakelijke beslissing is."
+          title="Geen automatische samenvoeging"
+          description="Deze controle helpt dubbele EAN's beoordelen. De catalogus blijft veilig: producten blijven gescheiden tot er expliciet een zakelijke beslissing is vastgelegd."
           style={{ marginTop: 16 }}
         />
         {error ? (
@@ -501,57 +672,107 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
             style={{ marginTop: 16 }}
           />
         ) : null}
+        {notice ? (
+          <Alert
+            variant="success"
+            title="Wijziging opgeslagen"
+            description={notice}
+            style={{ marginTop: 16 }}
+          />
+        ) : null}
         {isLoading ? (
           <div style={{ marginTop: 16 }}>
             <LoadingState title="Dubbele EAN-waarschuwingen laden" description="Productcontrole ophalen." />
           </div>
         ) : null}
-      </section>
 
-      <div className="grid three-column">
-        <StatCard label="Open waarschuwingen" value={numberText(summary.open)} tone="warning" />
-        <StatCard label="Beoordeeld" value={numberText(summary.reviewed)} tone="info" />
-        <StatCard label="Bewust dubbel toegestaan" value={numberText(summary.accepted)} tone="success" />
-      </div>
-      <div className="grid three-column">
-        <StatCard label="Opgelost" value={numberText(summary.resolved)} tone="success" />
-        <StatCard
-          label="Producten met waarschuwing"
-          value={numberText(review?.duplicateProductCount ?? 0)}
-          tone="warning"
-        />
-        <StatCard
-          label="Zichtbaar"
-          value={numberText(filteredGroups.length)}
-          tone="neutral"
-        />
-      </div>
+        {review && !isLoading ? (
+          <>
+            <div className="issue-overview-layout">
+              <div className="issue-focus-block">
+                <p className="eyebrow">Nu eerst</p>
+                <strong>
+                  {nextOpenIssue
+                    ? `${nextOpenIssue.supplier} · EAN ${nextOpenIssue.ean}`
+                    : "Geen open EAN-signalen"}
+                </strong>
+                <p className="muted">
+                  {nextOpenIssue
+                    ? `${numberText(nextOpenIssue.products.length)} producten delen deze EAN. Leg vast of dit bewust gescheiden blijft, later beoordeeld wordt of opgelost is.`
+                    : "De open productcontrole is afgerond. Bewaarde beslissingen blijven zichtbaar."}
+                </p>
+              </div>
+              <div className="issue-focus-block">
+                <p className="eyebrow">Scope</p>
+                <strong>{numberText(review.duplicateProductCount)} producten met signaal</strong>
+                <p className="muted">
+                  {numberText(review.duplicateGroupCount)} leverancier+EAN-groepen uit{" "}
+                  {numberText(supplierOptions.length)} leveranciers.
+                </p>
+              </div>
+            </div>
 
-      <section className="panel">
-        <FilterBar
-          search={
-            <SearchInput
-              aria-label="Zoek in dubbele EAN-waarschuwingen"
-              value={searchQuery}
-              placeholder="Zoek op leverancier, EAN, product of leverancierbestand"
-              onChange={setSearchQuery}
-            />
-          }
-          filters={
+            <div className="issue-summary-strip" aria-label="Samenvatting productcontrole">
+              <div className="issue-summary-item issue-summary-warning">
+                <span>Te beoordelen</span>
+                <strong>{numberText(summary.open)}</strong>
+              </div>
+              <div className="issue-summary-item issue-summary-info">
+                <span>Beoordeeld</span>
+                <strong>{numberText(summary.reviewed)}</strong>
+              </div>
+              <div className="issue-summary-item issue-summary-success">
+                <span>Bewust toegestaan</span>
+                <strong>{numberText(summary.accepted)}</strong>
+              </div>
+              <div className="issue-summary-item issue-summary-success">
+                <span>Opgelost</span>
+                <strong>{numberText(summary.resolved)}</strong>
+              </div>
+              <div className="issue-summary-item">
+                <span>Zichtbaar</span>
+                <strong>{numberText(filteredGroups.length)}</strong>
+              </div>
+            </div>
+
+            <div className="issue-signal-row">
+              <Badge variant="neutral">{numberText(visibleProductCount)} zichtbare producten</Badge>
+              <Badge variant="neutral">{numberText(visibleSourceFileCount)} bronbestanden</Badge>
+              {summary.missingIssueRecords > 0 ? (
+                <Badge variant="warning">
+                  {numberText(summary.missingIssueRecords)} signaal nog bij te werken
+                </Badge>
+              ) : (
+                <Badge variant="success">Alle signalen opgeslagen</Badge>
+              )}
+            </div>
+
+            <FilterBar
+              search={
+                <SearchInput
+                  aria-label="Zoek in dubbele EAN-waarschuwingen"
+                  value={searchQuery}
+                  placeholder="Zoek leverancier, EAN, product, artikelnummer of bestand"
+                  onChange={setSearchQuery}
+                />
+              }
+              filters={
             <>
-              <Field label="Status" htmlFor="issue-status-filter">
-                <Select
-                  id="issue-status-filter"
-                  value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value as IssueStatusFilter)}
-                >
-                  <option value="open">Open</option>
-                  <option value="reviewed">Beoordeeld</option>
-                  <option value="accepted">Geaccepteerd</option>
-                  <option value="resolved">Opgelost</option>
-                  <option value="all">Alle</option>
-                </Select>
-              </Field>
+              <Badge icon={<Filter size={14} aria-hidden="true" />}>Weergave</Badge>
+              <div className="tabs issue-tabs">
+                {statusFilters.map((item) => (
+                  <button
+                    className={statusFilter === item.value ? "tab active" : "tab"}
+                    key={item.value}
+                    type="button"
+                    aria-pressed={statusFilter === item.value}
+                    onClick={() => setStatusFilter(item.value)}
+                  >
+                    <span>{item.label}</span>
+                    <span className="vat-tab-count">{numberText(statusCounts[item.value] ?? 0)}</span>
+                  </button>
+                ))}
+              </div>
               <Field label="Leverancier" htmlFor="issue-supplier-filter">
                 <Select
                   id="issue-supplier-filter"
@@ -575,28 +796,38 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
                   <option value="all">Alle adviezen</option>
                   {recommendationOptions.map((recommendation) => (
                     <option value={recommendation} key={recommendation}>
-                      {recommendation}
+                      {formatRecommendation(recommendation)}
                     </option>
                   ))}
                 </Select>
               </Field>
             </>
-          }
-          actions={<span className="muted">{numberText(filteredGroups.length)} zichtbaar</span>}
-        />
+              }
+              actions={<span className="muted">{numberText(filteredGroups.length)} zichtbare groepen</span>}
+            />
+          </>
+        ) : null}
       </section>
 
-      <DataTable
-        rows={filteredGroups}
-        columns={columns}
-        getRowKey={(issue) => `${issue.supplier}-${issue.ean}`}
-        loading={isLoading}
-        error={error}
-        emptyTitle="Geen dubbele EAN-waarschuwingen gevonden"
-        emptyDescription="Pas filters aan of werk de waarschuwingen opnieuw bij."
-        density="compact"
-        mobileMode="cards"
-        renderMobileCard={(issue) => {
+      <section className="panel issue-table-panel">
+        <div className="toolbar issue-table-heading">
+          <div>
+            <p className="eyebrow">EAN-groepen</p>
+            <h2>Te beoordelen productgroepen</h2>
+          </div>
+          <Badge>{numberText(filteredGroups.length)} groepen</Badge>
+        </div>
+        <DataTable
+          rows={filteredGroups}
+          columns={columns}
+          getRowKey={(issue) => `${issue.supplier}-${issue.ean}`}
+          loading={isLoading}
+          error={error}
+          emptyTitle="Geen dubbele EAN-waarschuwingen gevonden"
+          emptyDescription="Pas filters aan of werk de waarschuwingen opnieuw bij."
+          density="compact"
+          mobileMode="cards"
+          renderMobileCard={(issue) => {
           const draft = issue.issueId ? drafts[issue.issueId] : undefined;
           const fieldId = issue.issueId ?? `${issue.supplier}-${issue.ean}`;
 
@@ -609,14 +840,17 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
                 </div>
                 <StatusBadge
                   status={issue.issueStatus}
-                  label={formatIssueStatus(issue.issueStatus)}
+                  label={formatDuplicateEanStatus(issue.issueStatus)}
                   variant={statusVariant(issue.issueStatus)}
                 />
               </div>
               <div className="mobile-card-meta">
                 <Badge variant="warning">Dubbele EAN</Badge>
-                <Badge variant="neutral">{formatRecommendation(issue.recommendation)}</Badge>
+                <Badge variant={recommendationVariant(issue.recommendation)}>
+                  {formatRecommendation(issue.recommendation)}
+                </Badge>
                 <Badge variant="neutral">{numberText(issue.products.length)} producten</Badge>
+                {!issue.issueId ? <Badge variant="neutral">Nog bijwerken</Badge> : null}
               </div>
               <div className="mobile-card-section">
                 <p className="mobile-card-section-label">Productvergelijking</p>
@@ -644,7 +878,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
               </div>
               <div className="mobile-card-section">
                 <Field
-                  label="Beslissing"
+                  label="Zakelijke beslissing"
                   htmlFor={`mobile-decision-${fieldId}`}
                   description={decisionHelpText(issue.issueId, issue.reviewDecision)}
                 >
@@ -689,14 +923,15 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
                   onClick={() => void saveIssue(issue)}
                   leftIcon={<Save size={17} aria-hidden="true" />}
                 >
-                  Beoordeling opslaan
+                  Beoordeling bewaren
                 </Button>
               </div>
             </>
           );
-        }}
-        ariaLabel="Dubbele EAN-waarschuwingen"
-      />
+          }}
+          ariaLabel="Dubbele EAN-waarschuwingen"
+        />
+      </section>
     </div>
   );
 }

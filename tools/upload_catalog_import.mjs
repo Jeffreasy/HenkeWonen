@@ -4,34 +4,34 @@ import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
 import { createToolMutationActor } from "./authz_actor.mjs";
+import {
+  hasFlag,
+  loadCatalogToolEnv,
+  requireCatalogToolTarget,
+  targetSummary
+} from "./catalog_tooling_env.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const previewPath = resolve(root, "docs/catalog-import-preview.json");
-const envPath = resolve(root, ".env.local");
-const args = new Set(process.argv.slice(2));
+const toolEnv = loadCatalogToolEnv({ root, argv: process.argv.slice(2) });
 
-if (!args.has("--legacy-direct-confirm")) {
+if (!hasFlag(toolEnv.args, "--legacy-direct-confirm")) {
   throw new Error(
     "Legacy direct catalog import is disabled. Use npm run catalog:import or npm run catalog:import:dev so every import creates productImportBatches and productImportRows."
   );
 }
 
-function loadEnv(path) {
-  try {
-    const raw = readFileSync(path, "utf8");
-    for (const line of raw.split(/\r?\n/)) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) {
-        continue;
-      }
-      const [key, ...rest] = trimmed.split("=");
-      if (key && rest.length > 0 && !process.env[key]) {
-        process.env[key] = rest.join("=");
-      }
-    }
-  } catch {
-    // Environment can also be provided by the shell.
-  }
+requireCatalogToolTarget(toolEnv, {
+  operation: "legacy direct catalogusimport",
+  mutates: true,
+  requireAuthzSecret: toolEnv.target === "production",
+  productionConfirmFlag: "--confirm-production-legacy-direct-import"
+});
+
+if (toolEnv.target === "production") {
+  throw new Error(
+    "Legacy direct catalogusimport is uitgeschakeld voor production. Gebruik catalog:import zodat batches, auditrijen en btw-guardrails meelopen."
+  );
 }
 
 function chunk(array, size) {
@@ -42,17 +42,17 @@ function chunk(array, size) {
   return chunks;
 }
 
-loadEnv(envPath);
-
-const convexUrl = process.env.PUBLIC_CONVEX_URL;
-
-if (!convexUrl) {
-  throw new Error("PUBLIC_CONVEX_URL is missing. Check .env.local.");
-}
-
+const convexUrl = toolEnv.convexUrl;
 const payload = JSON.parse(readFileSync(previewPath, "utf8"));
 const rows = payload.rows ?? [];
-const tenantSlug = payload.tenantSlug ?? "henke-wonen";
+const tenantSlug = payload.tenantSlug ?? toolEnv.tenantSlug;
+
+if (tenantSlug !== toolEnv.tenantSlug) {
+  throw new Error(
+    `Preview tenantSlug=${tenantSlug} komt niet overeen met gekozen tenant=${toolEnv.tenantSlug}.`
+  );
+}
+
 const actor = createToolMutationActor(tenantSlug);
 const client = new ConvexHttpClient(convexUrl);
 const chunks = chunk(rows, 75);
@@ -68,6 +68,7 @@ const totals = {
 console.log(
   JSON.stringify(
     {
+      ...targetSummary(toolEnv),
       tenantSlug,
       convexUrl,
       rows: rows.length,

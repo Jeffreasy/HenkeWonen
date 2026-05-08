@@ -120,6 +120,11 @@ const importStatusLabels: Record<string, string> = {
   archived: "Gearchiveerd"
 };
 
+const importProfileStatusLabels: Record<string, string> = {
+  active: "Actuele route",
+  inactive: "Gearchiveerd profiel"
+};
+
 const productListStatusLabels: Record<ProductListStatus, string> = {
   unknown: "Onbekend",
   requested: "Opgevraagd",
@@ -205,6 +210,7 @@ const recommendationLabels: Record<string, string> = {
   merge: "Mogelijk samenvoegen",
   keep_separate: "Gescheiden houden",
   needs_human_review: "Controle vereist",
+  "needs human review": "Controle vereist",
   needs_review: "Controle vereist",
   accepted_duplicate: "Bewust dubbel toegestaan"
 };
@@ -268,6 +274,10 @@ export function formatCustomerType(type: string): string {
 
 export function formatImportStatus(status: string): string {
   return importStatusLabels[status] ?? formatStatusLabel(status);
+}
+
+export function formatImportProfileStatus(status: string): string {
+  return importProfileStatusLabels[status] ?? formatStatusLabel(status);
 }
 
 export function formatProductListStatus(status: string): string {

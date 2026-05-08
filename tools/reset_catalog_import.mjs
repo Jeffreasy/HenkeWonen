@@ -1,15 +1,19 @@
-import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
 import { createToolMutationActor } from "./authz_actor.mjs";
+import {
+  hasFlag,
+  loadCatalogToolEnv,
+  requireCatalogToolTarget,
+  targetSummary
+} from "./catalog_tooling_env.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const envPath = resolve(root, ".env.local");
-const args = process.argv.slice(2);
-const confirmReset = args.includes("--confirm-reset-imported-catalog");
-const tenantSlug = args.find((arg) => !arg.startsWith("--")) ?? "henke-wonen";
+const toolEnv = loadCatalogToolEnv({ root, argv: process.argv.slice(2) });
+const confirmReset = hasFlag(toolEnv.args, "--confirm-reset-imported-catalog");
+const tenantSlug = toolEnv.tenantSlug;
 
 if (!confirmReset) {
   throw new Error(
@@ -17,37 +21,18 @@ if (!confirmReset) {
   );
 }
 
-function loadEnv(path) {
-  try {
-    const raw = readFileSync(path, "utf8");
-    for (const line of raw.split(/\r?\n/)) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) {
-        continue;
-      }
+requireCatalogToolTarget(toolEnv, {
+  operation: "catalogus reset",
+  mutates: true,
+  requireAuthzSecret: toolEnv.target === "production",
+  productionConfirmFlag: "--confirm-production-reset"
+});
 
-      const [key, ...rest] = trimmed.split("=");
-      if (key && rest.length > 0 && !process.env[key]) {
-        process.env[key] = rest.join("=");
-      }
-    }
-  } catch {
-    // Environment can also be provided by the shell.
-  }
-}
-
-loadEnv(envPath);
-
-const convexUrl = process.env.PUBLIC_CONVEX_URL;
-
-if (!convexUrl) {
-  throw new Error("PUBLIC_CONVEX_URL is missing. Check .env.local.");
-}
-
+const convexUrl = toolEnv.convexUrl;
 const client = new ConvexHttpClient(convexUrl);
 const actor = createToolMutationActor(tenantSlug);
 
-console.log(JSON.stringify({ tenantSlug, convexUrl, action: "catalog reset" }, null, 2));
+console.log(JSON.stringify({ ...targetSummary(toolEnv), action: "catalog reset" }, null, 2));
 console.log(
   JSON.stringify(
     {

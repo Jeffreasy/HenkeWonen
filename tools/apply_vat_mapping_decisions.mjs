@@ -1,36 +1,43 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
 import { createToolMutationActor } from "./authz_actor.mjs";
+import {
+  loadCatalogToolEnv,
+  optionValue,
+  requireCatalogToolTarget,
+  targetSummary
+} from "./catalog_tooling_env.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const envPath = resolve(root, ".env.local");
-const decisionPath = resolve(root, "docs/vat-mapping-decisions.json");
-const resultPath = resolve(root, "docs/vat-mapping-apply-result-2026-04-30.md");
-const tenantSlug = "henke-wonen";
-const args = new Set(process.argv.slice(2));
-const shouldApply = args.has("--apply");
+const toolEnv = loadCatalogToolEnv({ root, argv: process.argv.slice(2) });
+const shouldApply = toolEnv.args.flags.has("--apply");
+const dateStamp = optionValue(toolEnv.args, "--date-stamp") ?? new Date().toISOString().slice(0, 10);
+const defaultDecisionPath = resolve(
+  root,
+  "docs/release-readiness/vat-mapping/vat-mapping-decisions.json"
+);
+const legacyDecisionPath = resolve(root, "docs/vat-mapping-decisions.json");
+const decisionPath = resolve(
+  root,
+  optionValue(toolEnv.args, "--decisions-file") ??
+    (existsSync(defaultDecisionPath) ? defaultDecisionPath : legacyDecisionPath)
+);
+const resultPath = resolve(
+  root,
+  optionValue(toolEnv.args, "--result-file") ??
+    `docs/release-readiness/vat-mapping/vat-mapping-apply-result-${dateStamp}.md`
+);
+const tenantSlug = toolEnv.tenantSlug;
 
-function loadEnv(path) {
-  try {
-    const raw = readFileSync(path, "utf8");
-    for (const line of raw.split(/\r?\n/)) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) {
-        continue;
-      }
-
-      const [key, ...rest] = trimmed.split("=");
-      if (key && rest.length > 0 && !process.env[key]) {
-        process.env[key] = rest.join("=");
-      }
-    }
-  } catch {
-    // Environment can also be provided by the shell.
-  }
-}
+requireCatalogToolTarget(toolEnv, {
+  operation: "btw-mapping apply",
+  mutates: shouldApply,
+  requireAuthzSecret: shouldApply && toolEnv.target === "production",
+  productionConfirmFlag: "--confirm-production-vat-apply"
+});
 
 function tableRow(values) {
   return `| ${values.map((value) => String(value ?? "-").replaceAll("|", "\\|")).join(" | ")} |`;
@@ -77,7 +84,7 @@ function findMapping(rows, decision) {
 
 function buildReport({ before, after, dryRun, applied, failed, skipped }) {
   const lines = [
-    "# Btw-mapping apply-resultaat - 2026-04-30",
+    `# Btw-mapping apply-resultaat - ${dateStamp}`,
     "",
     dryRun
       ? "Dit was een dry-run. Er zijn geen wijzigingen opgeslagen."
@@ -86,6 +93,9 @@ function buildReport({ before, after, dryRun, applied, failed, skipped }) {
     "## Samenvatting",
     "",
     `- Dry-run: ${dryRun ? "ja" : "nee"}`,
+    `- Target: ${toolEnv.target}`,
+    `- Convex URL: ${toolEnv.convexUrl}`,
+    `- Beslisbestand: ${decisionPath}`,
     `- Beslissingen toegepast: ${applied.length}`,
     `- Beslissingen overgeslagen: ${skipped.length}`,
     `- Beslissingen mislukt: ${failed.length}`,
@@ -125,10 +135,10 @@ function buildReport({ before, after, dryRun, applied, failed, skipped }) {
   return lines.join("\n");
 }
 
-loadEnv(envPath);
 const actor = createToolMutationActor(tenantSlug);
 
 if (!existsSync(decisionPath)) {
+  mkdirSync(dirname(decisionPath), { recursive: true });
   writeFileSync(
     decisionPath,
     "[]\n",
@@ -137,7 +147,8 @@ if (!existsSync(decisionPath)) {
   console.log(
     JSON.stringify(
       {
-        createdTemplate: "docs/vat-mapping-decisions.json",
+        createdTemplate: "docs/release-readiness/vat-mapping/vat-mapping-decisions.json",
+        path: decisionPath,
         message: "Vul dit bestand met expliciete beslissingen en draai het script opnieuw. Het bestand is bewust leeg aangemaakt zodat een dry-run niet per ongeluk faalt op voorbeeldwaarden."
       },
       null,
@@ -147,16 +158,12 @@ if (!existsSync(decisionPath)) {
   process.exit(0);
 }
 
-const convexUrl = process.env.PUBLIC_CONVEX_URL;
-
-if (!convexUrl) {
-  throw new Error("PUBLIC_CONVEX_URL ontbreekt. Controleer .env.local.");
-}
+const convexUrl = toolEnv.convexUrl;
 
 const decisions = JSON.parse(readFileSync(decisionPath, "utf8"));
 
 if (!Array.isArray(decisions)) {
-  throw new Error("docs/vat-mapping-decisions.json moet een array bevatten.");
+  throw new Error(`${decisionPath} moet een array bevatten.`);
 }
 
 const client = new ConvexHttpClient(convexUrl);
@@ -235,6 +242,7 @@ const after = shouldApply
   ? await client.query(api.catalogReview.vatMappingReview, { tenantSlug })
   : null;
 
+mkdirSync(dirname(resultPath), { recursive: true });
 writeFileSync(
   resultPath,
   buildReport({
@@ -252,13 +260,15 @@ console.log(
   JSON.stringify(
     {
       dryRun: !shouldApply,
+      ...targetSummary(toolEnv),
       decisionCount: decisions.length,
       applied: applied.length,
       skipped: skipped.length,
       failed: failed.length,
       unresolvedBefore: before.unresolvedColumns,
       unresolvedAfter: after?.unresolvedColumns ?? before.unresolvedColumns,
-      result: "docs/vat-mapping-apply-result-2026-04-30.md"
+      decisionPath,
+      result: resultPath
     },
     null,
     2
