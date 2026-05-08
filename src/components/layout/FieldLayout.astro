@@ -1,6 +1,7 @@
 ---
 import "../../styles/global.css";
 import FieldNavigation from "./FieldNavigation";
+import { ShellLoadingController } from "./ShellLoadingController";
 import type { AppSession } from "../../lib/auth/session";
 
 type Props = {
@@ -26,6 +27,7 @@ const pathname = Astro.url.pathname;
           <slot />
         </div>
       </main>
+      <ShellLoadingController client:load />
     </div>
   </body>
 </html>

@@ -74,6 +74,92 @@ function rewriteSetCookie(cookie: string, request: Request) {
   return rewritten.join("; ");
 }
 
+function expireCookie(name: string, request: Request) {
+  const isSecureRequest = new URL(request.url).protocol === "https:";
+  const isProduction = import.meta.env.PROD;
+  const attributes = ["Path=/", "HttpOnly", "SameSite=Lax", "Max-Age=0"];
+
+  if (isProduction || isSecureRequest) {
+    attributes.push("Secure");
+  }
+
+  return `${name}=; ${attributes.join("; ")}`;
+}
+
+function logoutCookieNames(request: Request) {
+  const names = new Set([
+    "access_token",
+    "refresh_token",
+    import.meta.env.LAVENTECARE_SESSION_COOKIE ?? "access_token"
+  ]);
+  const cookieHeader = request.headers.get("cookie") ?? "";
+
+  for (const cookie of cookieHeader.split(";")) {
+    const [name] = cookie.trim().split("=");
+
+    if (name) {
+      names.add(name);
+    }
+  }
+
+  return Array.from(names);
+}
+
+async function logout(context: Parameters<APIRoute>[0]) {
+  const response = new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: {
+      "cache-control": "no-store",
+      "content-type": "application/json"
+    }
+  });
+
+  for (const cookieName of logoutCookieNames(context.request)) {
+    response.headers.append("set-cookie", expireCookie(cookieName, context.request));
+  }
+
+  const tenantId = laventeCareTenantId();
+
+  if (!tenantId) {
+    return response;
+  }
+
+  try {
+    const upstreamUrl = new URL(`${laventeCareApiBaseUrl()}/auth/logout`);
+    const requestUrl = new URL(context.request.url);
+    const cookie = context.request.headers.get("cookie");
+    const authorization = context.request.headers.get("authorization");
+    const headers: HeadersInit = {
+      accept: context.request.headers.get("accept") ?? "application/json",
+      "X-Tenant-ID": tenantId
+    };
+
+    upstreamUrl.search = requestUrl.search;
+
+    if (cookie) {
+      headers.cookie = cookie;
+    }
+
+    if (authorization) {
+      headers.authorization = authorization;
+    }
+
+    const upstream = await fetch(upstreamUrl, {
+      method: context.request.method.toUpperCase(),
+      headers,
+      redirect: "manual"
+    });
+
+    for (const cookieHeader of upstreamSetCookies(upstream.headers)) {
+      response.headers.append("set-cookie", rewriteSetCookie(cookieHeader, context.request));
+    }
+  } catch (logoutError) {
+    console.warn("Upstream logout niet bereikbaar; lokale sessie is wel gewist.", logoutError);
+  }
+
+  return response;
+}
+
 function sanitizeJson(path: string, contentType: string, body: ArrayBuffer) {
   if (path !== "login" || !contentType.toLowerCase().includes("application/json")) {
     return body;
@@ -104,6 +190,10 @@ async function proxyAuth(context: Parameters<APIRoute>[0]) {
         "content-type": "application/json"
       }
     });
+  }
+
+  if (path === "logout") {
+    return await logout(context);
   }
 
   if (!tenantId) {
@@ -167,17 +257,6 @@ async function proxyAuth(context: Parameters<APIRoute>[0]) {
 
   for (const cookieHeader of upstreamSetCookies(upstream.headers)) {
     response.headers.append("set-cookie", rewriteSetCookie(cookieHeader, context.request));
-  }
-
-  if (path === "logout") {
-    response.headers.append(
-      "set-cookie",
-      "access_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
-    );
-    response.headers.append(
-      "set-cookie",
-      "refresh_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
-    );
   }
 
   return response;

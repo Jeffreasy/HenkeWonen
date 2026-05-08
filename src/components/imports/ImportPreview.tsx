@@ -226,6 +226,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
+  const [isCreatingBatch, setIsCreatingBatch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canManageImports = canManage(session.role);
   const batchSearch = batchSearchQuery.trim().toLocaleLowerCase("nl-NL");
@@ -312,6 +313,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     }
 
     setIsBusy(true);
+    setIsCreatingBatch(true);
     setError(null);
 
     try {
@@ -333,6 +335,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       setError("De prijslijstcontrole kon niet worden gestart.");
     } finally {
       setIsBusy(false);
+      setIsCreatingBatch(false);
     }
   }
 
@@ -507,6 +510,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       products: batches.reduce((total, batch) => total + batch.productRows, 0),
       priceRules: batches.reduce((total, batch) => total + batch.importedPrices, 0),
       warningRows: batches.reduce((total, batch) => total + batch.warningRows, 0),
+      unknownVatModeRows: batches.reduce((total, batch) => total + batch.unknownVatModeRows, 0),
       errorRows: batches.reduce((total, batch) => total + batch.errorRows, 0)
     }),
     [batches]
@@ -588,7 +592,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
             Fouten {numberText(batch.errorRows)}
           </Badge>
           <Badge variant={batch.warningRows > 0 ? "warning" : "neutral"}>
-            Waarschuwingen {numberText(batch.warningRows)}
+            Rijmeldingen {numberText(batch.warningRows)}
           </Badge>
           <Badge variant={batch.duplicateSourceKeys > 0 ? "danger" : "success"}>
             Dubbele regels {numberText(batch.duplicateSourceKeys)}
@@ -608,7 +612,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
         const archiveAction = archiveActionFor(batch);
 
         return (
-          <div className="toolbar">
+          <div className="toolbar import-row-actions">
             <a className="button secondary" href={`/portal/imports/${batch.id}`}>
               Bekijken
             </a>
@@ -823,8 +827,13 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
               <strong>{numberText(batchSummary.ready)}</strong>
             </div>
             <div className="import-summary-item import-summary-warning">
-              <span>Waarschuwingen</span>
+              <span>Rijmeldingen</span>
               <strong>{numberText(batchSummary.warningRows)}</strong>
+              <small>
+                {batchSummary.unknownVatModeRows > 0
+                  ? "Vooral btw-modus onbekend"
+                  : "Geen btw-meldingen"}
+              </small>
             </div>
             <div className="import-summary-item">
               <span>Zichtbaar</span>
@@ -833,16 +842,20 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
           </div>
         </section>
 
-        <div className="import-layout">
-          <section className="panel import-list-panel">
-            <form className="import-start-form" onSubmit={createBatch}>
-              <div>
-                <p className="eyebrow">Nieuwe controle</p>
-                <h2>Prijslijstcontrole starten</h2>
-                <p className="muted">
-                  Start eerst een veilige preview. Definitief verwerken gebeurt pas vanuit de detailcontrole.
-                </p>
-              </div>
+        <section className="panel import-start-panel">
+          <form
+            className="import-start-form"
+            onSubmit={createBatch}
+            aria-label="Nieuwe prijslijstcontrole"
+          >
+            <div className="import-start-copy">
+              <p className="eyebrow">Nieuwe controle</p>
+              <h2>Prijslijstcontrole starten</h2>
+              <p className="muted">
+                Start eerst een veilige preview. Definitief verwerken gebeurt pas vanuit de detailcontrole.
+              </p>
+            </div>
+            <div className="import-start-controls">
               <Field label="Bestand" htmlFor="import-file">
                 <Select id="import-file" value={fileName} onChange={(event) => setFileName(event.target.value)}>
                   {sourceFiles.map((file) => (
@@ -852,24 +865,32 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                   ))}
                 </Select>
               </Field>
-              <div className="field">
-                <label htmlFor="import-supplier">Leverancier</label>
+              <Field label="Leverancier" htmlFor="import-supplier">
                 <input
+                  className="ui-control"
                   id="import-supplier"
                   value={supplierName}
                   onChange={(event) => setSupplierName(event.target.value)}
                 />
+              </Field>
+              <div className="import-start-action">
+                <Button
+                  className="import-start-submit"
+                  variant="primary"
+                  type="submit"
+                  disabled={isBusy}
+                  isLoading={isCreatingBatch}
+                  leftIcon={<FileSpreadsheet size={17} aria-hidden="true" />}
+                >
+                  {isCreatingBatch ? "Preview voorbereiden" : "Preview starten"}
+                </Button>
               </div>
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={isBusy}
-                leftIcon={<FileSpreadsheet size={17} aria-hidden="true" />}
-              >
-                Preview starten
-              </Button>
-            </form>
+            </div>
+          </form>
+        </section>
 
+        <div className="import-layout">
+          <section className="panel import-list-panel">
             <div className="import-list-filters">
               <FilterBar
                 search={
@@ -881,8 +902,11 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                   />
                 }
                 filters={
-                  <>
-                    <Badge icon={<Filter size={14} aria-hidden="true" />}>Weergave</Badge>
+                  <div className="import-filter-group">
+                    <span className="import-filter-label">
+                      <Filter size={14} aria-hidden="true" />
+                      Weergave
+                    </span>
                     <div className="tabs import-tabs">
                       {batchStatusFilters.map((item) => (
                         <button
@@ -897,7 +921,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                         </button>
                       ))}
                     </div>
-                  </>
+                  </div>
                 }
                 actions={<span className="muted">{numberText(filteredBatches.length)} prijslijsten</span>}
               />
@@ -1022,7 +1046,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
               {[
                 { value: "summary", label: "Samenvatting" },
                 { value: "rows", label: `Regels ${numberText(rows.length)}` },
-                { value: "warnings", label: `Meldingen ${numberText(selectedBatch.warnings.length)}` },
+                { value: "warnings", label: `Meldingen ${numberText(selectedBatch.warningRows + selectedBatch.errorRows)}` },
                 { value: "reconciliation", label: "Controle" }
               ].map((tab) => (
                 <button
@@ -1054,8 +1078,13 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                     <strong>{numberText(selectedBatch.importedPrices)}</strong>
                   </div>
                   <div className="import-summary-item import-summary-warning">
-                    <span>Waarschuwingen</span>
+                    <span>Rijmeldingen</span>
                     <strong>{numberText(selectedBatch.warningRows)}</strong>
+                    <small>
+                      {selectedBatch.unknownVatModeRows > 0
+                        ? `${numberText(selectedBatch.unknownVatModeRows)} btw onbekend`
+                        : "Geen btw-meldingen"}
+                    </small>
                   </div>
                   <div className="import-summary-item import-summary-danger">
                     <span>Fouten</span>
@@ -1197,7 +1226,18 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
 
             {detailTab === "warnings" ? (
               <div style={{ marginTop: 16 }}>
-                <ImportWarnings warnings={selectedBatch.warnings} />
+                {selectedBatch.warningRows > 0 || selectedBatch.errorRows > 0 ? (
+                  <Alert
+                    variant={selectedBatch.errorRows > 0 ? "danger" : "warning"}
+                    title="Rijmeldingen in deze prijslijst"
+                    description={
+                      selectedBatch.unknownVatModeRows > 0
+                        ? `${numberText(selectedBatch.warningRows)} productregels hebben een melding. In deze import komt dat vooral door btw-modus onbekend; de prijslijst kan verwerkt zijn wanneer onbekende btw bewust is toegestaan.`
+                        : `${numberText(selectedBatch.warningRows)} productregels hebben een importmelding. Open de tab Regels en filter op status Waarschuwing voor de exacte regels.`
+                    }
+                  />
+                ) : null}
+                {selectedBatch.warnings.length > 0 ? <ImportWarnings warnings={selectedBatch.warnings} /> : null}
                 {selectedBatch.warningRows === 0 && selectedBatch.errorRows === 0 ? (
                   <Alert
                     variant="success"

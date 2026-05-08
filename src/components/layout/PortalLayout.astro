@@ -1,6 +1,8 @@
 ---
 import "../../styles/global.css";
 import Sidebar from "./Sidebar";
+import PortalTopbar from "./PortalTopbar";
+import { ShellLoadingController } from "./ShellLoadingController";
 import type { AppSession } from "../../lib/auth/session";
 
 type Props = {
@@ -21,11 +23,13 @@ const pathname = Astro.url.pathname;
   <body>
     <div class="portal-frame">
       <Sidebar client:load session={session} pathname={pathname} />
+      <PortalTopbar client:load session={session} pathname={pathname} />
       <main class="portal-main">
         <div class="portal-content">
           <slot />
         </div>
       </main>
+      <ShellLoadingController client:load />
     </div>
   </body>
 </html>

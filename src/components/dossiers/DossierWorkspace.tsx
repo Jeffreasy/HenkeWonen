@@ -69,14 +69,22 @@ const emptyWorkspace: DossierWorkspaceResult = {
 };
 
 const typeOptions: Array<{ value: DossierType; label: string }> = [
-  { value: "all", label: "Alles" },
   { value: "customer", label: "Klanten" },
+  { value: "all", label: "Alles" },
   { value: "project", label: "Projecten" },
   { value: "quote", label: "Offertes" }
 ];
 
+const defaultDossierTypeFilter: DossierType = "customer";
+const dossierTypePreferenceKey = "henke-wonen:dossier-type-filter";
+const dossierTypes = new Set<DossierType>(typeOptions.map((option) => option.value));
+
 function joinParts(parts: Array<string | number | undefined | null>) {
   return parts.filter(Boolean).join(" - ");
+}
+
+function isDossierType(value: string | null): value is DossierType {
+  return value !== null && dossierTypes.has(value as DossierType);
 }
 
 export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
@@ -84,8 +92,21 @@ export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<DossierType>("all");
+  const [typeFilter, setTypeFilter] = useState<DossierType>(defaultDossierTypeFilter);
   const canCreateDossiers = canEditDossiers(session.role);
+
+  useEffect(() => {
+    const storedTypeFilter = window.localStorage.getItem(dossierTypePreferenceKey);
+
+    if (isDossierType(storedTypeFilter)) {
+      setTypeFilter(storedTypeFilter);
+    }
+  }, []);
+
+  function handleTypeFilter(nextTypeFilter: DossierType) {
+    setTypeFilter(nextTypeFilter);
+    window.localStorage.setItem(dossierTypePreferenceKey, nextTypeFilter);
+  }
 
   useEffect(() => {
     let isActive = true;
@@ -307,7 +328,7 @@ export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
         <StatCard label="Open offertes" value={openQuotes.length} tone="success" />
       </section>
 
-      <section className="panel">
+      <section className="panel dossier-search-panel">
         <SectionHeader
           compact
           title="Zoeken in alle dossiers"
@@ -327,7 +348,7 @@ export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
               <Select
                 id="dossier-type-filter"
                 value={typeFilter}
-                onChange={(event) => setTypeFilter(event.target.value as DossierType)}
+                onChange={(event) => handleTypeFilter(event.target.value as DossierType)}
               >
                 {typeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
