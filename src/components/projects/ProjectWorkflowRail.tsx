@@ -12,10 +12,10 @@ const workflowSteps: Array<{
   statuses: ProjectStatus[];
 }> = [
   { label: "Aanvraag", statuses: ["lead"] },
+  { label: "Inmeten", statuses: ["measurement_planned"] },
   { label: "Offerte maken", statuses: ["quote_draft"] },
   { label: "Offerte verzonden", statuses: ["quote_sent"] },
   { label: "Offerte akkoord", statuses: ["quote_accepted"] },
-  { label: "Inmeting", statuses: ["measurement_planned"] },
   { label: "Bestellen", statuses: ["ordering"] },
   { label: "Uitvoering", statuses: ["execution_planned", "in_progress"] },
   { label: "Factuur", statuses: ["invoiced"] },

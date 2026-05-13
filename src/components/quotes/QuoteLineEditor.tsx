@@ -1,12 +1,18 @@
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "../../../convex/_generated/api";
+import type { AppSession } from "../../lib/auth/session";
+import { createConvexHttpClient } from "../../lib/convex/client";
 import type { SubmitEventLike } from "../../lib/events";
 import { formatLineType } from "../../lib/i18n/statusLabels";
-import type { QuoteLineType, QuoteTemplateLine } from "../../lib/portalTypes";
+import { formatEuro } from "../../lib/money";
+import type { PortalProduct, PortalRoom, QuoteLineType, QuoteTemplateLine } from "../../lib/portalTypes";
 import { polishQuoteTemplateText } from "../../lib/quoteTemplateCopy";
+import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
+import { SearchInput } from "../ui/SearchInput";
 import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
 import { Textarea } from "../ui/Textarea";
@@ -15,6 +21,7 @@ import WallpaperCalculator from "./WallpaperCalculator";
 
 export type QuoteLineFormValues = {
   projectRoomId?: string;
+  productId?: string;
   lineType: QuoteLineType;
   title: string;
   description?: string;
@@ -30,6 +37,8 @@ export type QuoteLineFormValues = {
 type QuoteLineEditorProps = {
   sortOrder: number;
   templateLines?: QuoteTemplateLine[];
+  session: AppSession;
+  projectRooms?: PortalRoom[];
   onAdd: (line: QuoteLineFormValues) => Promise<string | void> | string | void;
   mode?: "full" | "field";
   surface?: "panel" | "plain";
@@ -48,6 +57,8 @@ const lineTypes: QuoteLineType[] = [
 export default function QuoteLineEditor({
   sortOrder,
   templateLines = [],
+  session,
+  projectRooms = [],
   onAdd,
   mode = "full",
   surface = "panel"
@@ -63,7 +74,93 @@ export default function QuoteLineEditor({
   const [discountExVat, setDiscountExVat] = useState("");
   const [selectedTemplateKey, setSelectedTemplateKey] = useState("");
   const [selectedTemplateLine, setSelectedTemplateLine] = useState<QuoteTemplateLine | null>(null);
+  const [projectRoomId, setProjectRoomId] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  const [products, setProducts] = useState<PortalProduct[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState("");
+  const [productError, setProductError] = useState<string | null>(null);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const selectedProduct = useMemo(
+    () => products.find((product) => product.id === selectedProductId) ?? null,
+    [products, selectedProductId]
+  );
+
+  useEffect(() => {
+    if (lineType !== "product") {
+      setProducts([]);
+      setSelectedProductId("");
+      setProductError(null);
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadProducts() {
+      const client = createConvexHttpClient();
+
+      if (!client) {
+        setProductError("Kan de catalogus nu niet bereiken.");
+        return;
+      }
+
+      setIsLoadingProducts(true);
+      setProductError(null);
+
+      try {
+        const result = (await client.query(api.catalog.listProductsForPortal, {
+          tenantSlug: session.tenantId,
+          search: productSearch || undefined,
+          status: "active",
+          limit: 60
+        })) as { items: PortalProduct[] };
+
+        if (isActive) {
+          setProducts(result.items ?? []);
+        }
+      } catch (loadError) {
+        console.error(loadError);
+        if (isActive) {
+          setProducts([]);
+          setProductError("Catalogusproducten konden niet worden opgehaald.");
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingProducts(false);
+        }
+      }
+    }
+
+    void loadProducts();
+
+    return () => {
+      isActive = false;
+    };
+  }, [lineType, productSearch, session.tenantId]);
+
+  function applyProduct(productId: string) {
+    setSelectedProductId(productId);
+    const product = products.find((item) => item.id === productId);
+
+    if (!product) {
+      return;
+    }
+
+    setTitle(product.displayName ?? product.name);
+    setUnit(product.unit);
+    setUnitPriceExVat(String(product.priceExVat));
+    setVatRate(String(product.vatRate));
+    setDescription((current) =>
+      current ||
+      [
+        product.displaySupplierName ?? product.supplier,
+        product.category,
+        product.colorName
+      ]
+        .filter(Boolean)
+        .join(" - ")
+    );
+  }
 
   function applyTemplateLine(templateKey: string) {
     setSelectedTemplateKey(templateKey);
@@ -78,6 +175,9 @@ export default function QuoteLineEditor({
 
     setSelectedTemplateLine(templateLine);
     setLineType(templateLine.lineType);
+    if (templateLine.lineType !== "product") {
+      setSelectedProductId("");
+    }
     setTitle(polishQuoteTemplateText(templateLine.title));
     setDescription(templateLine.description ? polishQuoteTemplateText(templateLine.description) : "");
     setQuantity(String(templateLine.defaultQuantity ?? 1));
@@ -88,6 +188,11 @@ export default function QuoteLineEditor({
 
   async function submit(event: SubmitEventLike) {
     event.preventDefault();
+
+    if (lineType === "product" && !selectedProduct) {
+      setProductError("Kies eerst een zichtbaar catalogusproduct voor deze productregel.");
+      return;
+    }
 
     if (!title.trim()) {
       return;
@@ -103,10 +208,31 @@ export default function QuoteLineEditor({
           }).filter(([, value]) => value !== undefined)
         )
       : undefined;
+    const productMetadata = selectedProduct
+      ? {
+          source: "catalog",
+          productId: selectedProduct.id,
+          displayName: selectedProduct.displayName ?? selectedProduct.name,
+          supplier: selectedProduct.displaySupplierName ?? selectedProduct.supplier,
+          category: selectedProduct.category,
+          articleNumber: selectedProduct.articleNumber,
+          supplierCode: selectedProduct.supplierCode,
+          commercialCode: selectedProduct.commercialCode
+        }
+      : undefined;
+    const metadata =
+      templateMetadata || productMetadata
+        ? {
+            ...(templateMetadata ?? {}),
+            ...(productMetadata ?? {})
+          }
+        : undefined;
 
     setIsSaving(true);
     try {
       await onAdd({
+        projectRoomId: projectRoomId || undefined,
+        productId: selectedProduct?.id,
         lineType,
         title: title.trim(),
         description: description.trim() || undefined,
@@ -116,7 +242,7 @@ export default function QuoteLineEditor({
         vatRate: lineType === "text" ? 0 : Number(vatRate) || 0,
         discountExVat: Number(discountExVat) || undefined,
         sortOrder,
-        metadata: templateMetadata
+        metadata
       });
       setTitle("");
       setDescription("");
@@ -125,6 +251,8 @@ export default function QuoteLineEditor({
       setDiscountExVat("");
       setSelectedTemplateKey("");
       setSelectedTemplateLine(null);
+      setSelectedProductId("");
+      setProjectRoomId("");
     } finally {
       setIsSaving(false);
     }
@@ -182,12 +310,66 @@ export default function QuoteLineEditor({
         <Field htmlFor="line-title" label="Omschrijving" required>
           <Input
             id="line-title"
+            readOnly={lineType === "product"}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             required
           />
         </Field>
       </div>
+      {projectRooms.length > 0 ? (
+        <Field
+          htmlFor="line-room"
+          label="Ruimte"
+          description="Koppel hetzelfde product gerust aan meerdere ruimtes met eigen aantallen."
+        >
+          <Select
+            id="line-room"
+            value={projectRoomId}
+            onChange={(event) => setProjectRoomId(event.target.value)}
+          >
+            <option value="">Geen specifieke ruimte</option>
+            {projectRooms.map((room) => (
+              <option value={room.id} key={room.id}>
+                {room.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      ) : null}
+      {lineType === "product" ? (
+        <section className="quote-product-picker">
+          <SectionHeader
+            compact
+            title="Catalogusproduct"
+            description="Pilotkeuze uit zichtbare catalogusproducten; PVC Click blijft hier verborgen."
+          />
+          <SearchInput
+            aria-label="Catalogusproduct zoeken"
+            placeholder="Zoek product, Moduleo, kleur, artikelnummer of leverancier"
+            value={productSearch}
+            onChange={setProductSearch}
+          />
+          <Field htmlFor="catalog-product" label="Product kiezen" required>
+            <Select
+              id="catalog-product"
+              required
+              value={selectedProductId}
+              onChange={(event) => applyProduct(event.target.value)}
+            >
+              <option value="">
+                {isLoadingProducts ? "Catalogus laden..." : "Kies een zichtbaar product"}
+              </option>
+              {products.map((product) => (
+                <option value={product.id} key={product.id}>
+                  {(product.displayName ?? product.name)} - {product.displaySupplierName ?? product.supplier} - {formatEuro(product.priceExVat)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {productError ? <Alert variant="warning" description={productError} /> : null}
+        </section>
+      ) : null}
       <Field htmlFor="line-description" label="Beschrijving">
         <Textarea
           id="line-description"

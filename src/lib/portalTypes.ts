@@ -185,6 +185,7 @@ export type PortalQuoteLine = {
   id: string;
   quoteId: string;
   projectRoomId?: string;
+  productId?: string;
   lineType: QuoteLineType;
   title: string;
   description?: string;
@@ -208,6 +209,7 @@ export type PortalQuote = {
   quoteNumber: string;
   title: string;
   status: QuoteStatus;
+  sentAt?: number;
   validUntil?: number;
   introText?: string;
   closingText?: string;
@@ -339,6 +341,7 @@ export type PortalProduct = {
   tenantId: string;
   category: string;
   supplier: string;
+  displaySupplierName: string;
   brand?: string;
   collection?: string;
   articleNumber?: string;
@@ -346,6 +349,7 @@ export type PortalProduct = {
   commercialCode?: string;
   supplierProductGroup?: string;
   name: string;
+  displayName: string;
   colorName?: string;
   productKind?: ProductKind;
   commercialNames?: CommercialName[];
@@ -363,6 +367,7 @@ export type PortalProduct = {
   bundleSize?: number;
   priceExVat: number;
   vatRate: number;
+  pilotHiddenReason?: string;
   status: "draft" | "active" | "inactive" | "archived";
 };
 
@@ -562,6 +567,37 @@ export type PortalWorkflowEvent = {
   createdAt: number;
 };
 
+export type ProjectTaskType =
+  | "quote_follow_up"
+  | "confirmation_payment"
+  | "execution_call"
+  | "invoice_payment";
+
+export type ProjectTaskStatus = "open" | "done" | "dismissed";
+
+export type ProjectTaskPriority = {
+  level: "red" | "orange" | "green";
+  label: "Rood" | "Oranje" | "Groen";
+  tone: "danger" | "warning" | "success";
+  rank: number;
+};
+
+export type PortalProjectTask = {
+  id: string;
+  tenantId: string;
+  projectId: string;
+  quoteId?: string;
+  type: ProjectTaskType;
+  title: string;
+  dueAt: number;
+  status: ProjectTaskStatus;
+  priority: ProjectTaskPriority;
+  completedAt?: number;
+  dismissedAt?: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type QuoteTemplateSection = {
   key: string;
   title: string;
@@ -612,6 +648,7 @@ export type FieldWorkspaceCard = {
   project: PortalProject;
   customer: PortalCustomer | null;
   latestQuote: Omit<PortalQuote, "lines"> | null;
+  tasks: PortalProjectTask[];
   measurement: {
     id: string;
     status: MeasurementStatus;
@@ -633,6 +670,7 @@ export type FieldProjectWorkspaceResult = {
   customer: PortalCustomer | null;
   quotes: PortalQuote[];
   templates: QuoteTemplate[];
+  tasks: PortalProjectTask[];
   visit: {
     status: string;
     visitAt?: number;

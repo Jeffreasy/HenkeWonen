@@ -110,6 +110,19 @@ const quotePreparationStatus = v.union(
   v.literal("converted")
 );
 
+const projectTaskType = v.union(
+  v.literal("quote_follow_up"),
+  v.literal("confirmation_payment"),
+  v.literal("execution_call"),
+  v.literal("invoice_payment")
+);
+
+const projectTaskStatus = v.union(
+  v.literal("open"),
+  v.literal("done"),
+  v.literal("dismissed")
+);
+
 export default defineSchema({
   tenants: defineTable({
     slug: v.string(),
@@ -704,6 +717,7 @@ export default defineSchema({
       v.literal("expired"),
       v.literal("cancelled")
     ),
+    sentAt: v.optional(v.number()),
     validUntil: v.optional(v.number()),
     introText: v.optional(v.string()),
     closingText: v.optional(v.string()),
@@ -831,6 +845,25 @@ export default defineSchema({
   })
     .index("by_project", ["tenantId", "projectId"])
     .index("by_type", ["tenantId", "type"]),
+
+  projectTasks: defineTable({
+    tenantId: v.id("tenants"),
+    projectId: v.id("projects"),
+    quoteId: v.optional(v.id("quotes")),
+    type: projectTaskType,
+    title: v.string(),
+    dueAt: v.number(),
+    status: projectTaskStatus,
+    completedAt: v.optional(v.number()),
+    dismissedAt: v.optional(v.number()),
+    createdByExternalUserId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number()
+  })
+    .index("by_project", ["tenantId", "projectId"])
+    .index("by_quote", ["tenantId", "quoteId"])
+    .index("by_status", ["tenantId", "status"])
+    .index("by_due_date", ["tenantId", "dueAt"]),
 
   importProfiles: defineTable({
     tenantId: v.id("tenants"),

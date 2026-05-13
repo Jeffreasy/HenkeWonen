@@ -6,6 +6,7 @@ type ConfirmDialogProps = {
   open: boolean;
   title: string;
   description: ReactNode;
+  children?: ReactNode;
   confirmLabel: string;
   cancelLabel?: string;
   tone?: "warning" | "danger";
@@ -18,6 +19,7 @@ export function ConfirmDialog({
   open,
   title,
   description,
+  children,
   confirmLabel,
   cancelLabel = "Annuleren",
   tone = "warning",
@@ -48,6 +50,7 @@ export function ConfirmDialog({
   return (
     <div className="confirm-dialog" role="dialog" aria-modal="true" aria-label={title}>
       <Alert variant={tone} title={title} description={description} />
+      {children ? <div className="confirm-dialog-body">{children}</div> : null}
       <div className="confirm-dialog-actions">
         <Button variant="secondary" disabled={isBusy} onClick={onCancel}>
           {cancelLabel}

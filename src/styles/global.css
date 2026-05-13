@@ -1116,6 +1116,7 @@ textarea {
 .field-visit-header,
 .field-work-card,
 .field-section,
+.field-intake-panel,
 .field-measurement-section,
 .field-quote-section {
   max-width: 100%;
@@ -1155,6 +1156,12 @@ textarea {
   align-self: end;
   display: grid;
   gap: var(--space-2);
+}
+
+.field-hero-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
 }
 
 .field-priority-summary {
@@ -1216,11 +1223,42 @@ textarea {
 }
 
 .field-section,
+.field-intake-panel,
 .field-measurement-section,
 .field-quote-section {
   display: grid;
   gap: var(--space-4);
   padding: var(--space-5);
+}
+
+.field-intake-panel {
+  border-left-width: 5px;
+  border-left-color: #15803d;
+  background:
+    linear-gradient(180deg, rgba(240, 253, 244, 0.78), rgba(255, 255, 255, 0.96)),
+    var(--surface-raised);
+}
+
+.field-intake-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.field-intake-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-top: 1px solid rgba(35, 52, 35, 0.12);
+  padding-top: var(--space-3);
+}
+
+.field-intake-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 
 .field-card-list {
@@ -2625,6 +2663,20 @@ select.ui-control {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-2);
+}
+
+.confirm-dialog-body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.quote-product-picker {
+  display: grid;
+  gap: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  padding: var(--space-4);
 }
 
 .summary-list {
@@ -4551,6 +4603,7 @@ select.ui-control {
   .field-hero-panel,
   .field-visit-header,
   .field-section,
+  .field-intake-panel,
   .field-measurement-section,
   .field-quote-section {
     padding: var(--space-4);
@@ -4570,12 +4623,16 @@ select.ui-control {
   }
 
   .field-card-actions,
-  .field-visit-actions {
+  .field-visit-actions,
+  .field-hero-actions,
+  .field-intake-actions {
     justify-content: flex-start;
   }
 
   .field-card-actions .ui-button,
-  .field-visit-actions .ui-button {
+  .field-visit-actions .ui-button,
+  .field-hero-actions .ui-button,
+  .field-intake-actions .ui-button {
     flex: 1 1 140px;
   }
 

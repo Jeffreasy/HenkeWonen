@@ -10,6 +10,7 @@ import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatStatusLabel, formatUnit } from "../../lib/i18n/statusLabels";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
+import { Checkbox } from "../ui/Checkbox";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { Field } from "../ui/Field";
@@ -65,6 +66,7 @@ export default function ProductList({ session }: ProductListProps) {
   const [categories, setCategories] = useState<CatalogResult["categories"]>([]);
   const [limit, setLimit] = useState(300);
   const [total, setTotal] = useState(0);
+  const [includePilotHidden, setIncludePilotHidden] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -108,6 +110,7 @@ export default function ProductList({ session }: ProductListProps) {
           search: query || undefined,
           category: category === "Alle" ? undefined : category,
           status: statusFilter,
+          includePilotHidden: canManageProducts && includePilotHidden,
           limit
         })) as CatalogResult;
 
@@ -136,7 +139,16 @@ export default function ProductList({ session }: ProductListProps) {
     return () => {
       isActive = false;
     };
-  }, [category, limit, query, reloadKey, session.tenantId, statusFilter]);
+  }, [
+    canManageProducts,
+    category,
+    includePilotHidden,
+    limit,
+    query,
+    reloadKey,
+    session.tenantId,
+    statusFilter
+  ]);
 
   function handleSearch(nextQuery: string) {
     setQuery(nextQuery);
@@ -258,7 +270,7 @@ export default function ProductList({ session }: ProductListProps) {
       header: "Product",
       render: (product) => (
         <>
-          <strong>{product.name}</strong>
+          <strong>{product.displayName ?? product.name}</strong>
           <div className="muted">
             {[
               product.articleNumber,
@@ -269,6 +281,9 @@ export default function ProductList({ session }: ProductListProps) {
               .filter(Boolean)
               .join(" · ") || "-"}
           </div>
+          {product.displayName && product.displayName !== product.name ? (
+            <small className="muted">Bron: {product.name}</small>
+          ) : null}
         </>
       )
     },
@@ -282,7 +297,14 @@ export default function ProductList({ session }: ProductListProps) {
       key: "supplier",
       header: "Leverancier",
       width: "140px",
-      render: (product) => product.supplier
+      render: (product) => (
+        <div className="stack-sm">
+          <span>{product.displaySupplierName ?? product.supplier}</span>
+          {product.displaySupplierName && product.displaySupplierName !== product.supplier ? (
+            <small className="muted">Bron: {product.supplier}</small>
+          ) : null}
+        </div>
+      )
     },
     {
       key: "labels",
@@ -319,7 +341,12 @@ export default function ProductList({ session }: ProductListProps) {
       header: "Status",
       width: "120px",
       render: (product) => (
-        <StatusBadge status={product.status} label={formatStatusLabel(product.status)} />
+        <div className="stack-sm">
+          <StatusBadge status={product.status} label={formatStatusLabel(product.status)} />
+          {product.pilotHiddenReason ? (
+            <Badge variant="warning">{product.pilotHiddenReason}</Badge>
+          ) : null}
+        </div>
       )
     },
     {
@@ -373,8 +400,8 @@ export default function ProductList({ session }: ProductListProps) {
         description={
           pendingProductStatus
             ? pendingProductStatus.nextStatus === "archived"
-              ? `Je archiveert "${pendingProductStatus.product.name}". Het product verdwijnt uit de actieve catalogus, maar historische data blijft bewaard.`
-              : `Je herstelt "${pendingProductStatus.product.name}" naar de actieve catalogus.`
+              ? `Je archiveert "${pendingProductStatus.product.displayName ?? pendingProductStatus.product.name}". Het product verdwijnt uit de actieve catalogus, maar historische data blijft bewaard.`
+              : `Je herstelt "${pendingProductStatus.product.displayName ?? pendingProductStatus.product.name}" naar de actieve catalogus.`
             : ""
         }
         confirmLabel={pendingProductStatus?.nextStatus === "archived" ? "Archiveren" : "Herstellen"}
@@ -424,6 +451,17 @@ export default function ProductList({ session }: ProductListProps) {
                   ))}
                 </Select>
               </Field>
+              {canManageProducts ? (
+                <Checkbox
+                  checked={includePilotHidden}
+                  label="Verborgen pilotproducten tonen"
+                  description="Alleen voor importcontrole en beheer."
+                  onChange={(event) => {
+                    setIncludePilotHidden(event.target.checked);
+                    setLimit(300);
+                  }}
+                />
+              ) : null}
             </>
           }
         />

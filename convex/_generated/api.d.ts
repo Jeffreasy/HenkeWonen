@@ -19,6 +19,7 @@ import type * as demoSeed from "../demoSeed.js";
 import type * as importProductionAudit from "../importProductionAudit.js";
 import type * as imports from "../imports.js";
 import type * as measurements from "../measurements.js";
+import type * as pilotCatalog from "../pilotCatalog.js";
 import type * as portal from "../portal.js";
 import type * as projectWorkflowEvents from "../projectWorkflowEvents.js";
 import type * as projects from "../projects.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   importProductionAudit: typeof importProductionAudit;
   imports: typeof imports;
   measurements: typeof measurements;
+  pilotCatalog: typeof pilotCatalog;
   portal: typeof portal;
   projectWorkflowEvents: typeof projectWorkflowEvents;
   projects: typeof projects;

@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutationActorValidator, requireMutationRole } from "./authz";
+import { pilotHiddenReason } from "./pilotCatalog";
 
 const customerType = v.union(v.literal("private"), v.literal("business"));
 const customerStatus = v.union(
@@ -85,6 +86,12 @@ const workflowEventType = v.union(
   v.literal("closed")
 );
 
+const projectTaskStatus = v.union(
+  v.literal("open"),
+  v.literal("done"),
+  v.literal("dismissed")
+);
+
 const productListStatus = v.union(
   v.literal("unknown"),
   v.literal("requested"),
@@ -96,6 +103,34 @@ const productListStatus = v.union(
 
 function hasArg<T extends object>(args: T, key: keyof T): boolean {
   return Object.prototype.hasOwnProperty.call(args, key);
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function addCalendarDays(timestamp: number, days: number) {
+  const date = new Date(timestamp);
+  date.setDate(date.getDate() + days);
+  return date.getTime();
+}
+
+function invoicePaymentTermDays(customer?: Doc<"customers"> | null) {
+  return customer?.type === "business" ? 21 : 8;
+}
+
+function taskPriority(dueAt: number, now = Date.now()) {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  const daysUntilDue = Math.floor((dueAt - today.getTime()) / DAY_MS);
+
+  if (daysUntilDue <= 1) {
+    return { level: "red" as const, label: "Rood" as const, tone: "danger" as const, rank: 0 };
+  }
+
+  if (daysUntilDue <= 7) {
+    return { level: "orange" as const, label: "Oranje" as const, tone: "warning" as const, rank: 1 };
+  }
+
+  return { level: "green" as const, label: "Groen" as const, tone: "success" as const, rank: 2 };
 }
 
 async function getTenant(ctx: any, tenantSlug: string): Promise<Doc<"tenants"> | null> {
@@ -269,11 +304,32 @@ function toWorkflowEvent(tenantSlug: string, event: Doc<"projectWorkflowEvents">
   };
 }
 
+function toProjectTask(tenantSlug: string, task: Doc<"projectTasks">) {
+  const priority = taskPriority(task.dueAt);
+
+  return {
+    id: String(task._id),
+    tenantId: tenantSlug,
+    projectId: String(task.projectId),
+    quoteId: task.quoteId ? String(task.quoteId) : undefined,
+    type: task.type,
+    title: task.title,
+    dueAt: task.dueAt,
+    status: task.status,
+    priority,
+    completedAt: task.completedAt,
+    dismissedAt: task.dismissedAt,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt
+  };
+}
+
 function toQuoteLine(line: Doc<"quoteLines">) {
   return {
     id: String(line._id),
     quoteId: String(line.quoteId),
     projectRoomId: line.projectRoomId ? String(line.projectRoomId) : undefined,
+    productId: line.productId ? String(line.productId) : undefined,
     lineType: line.lineType,
     title: line.title,
     description: line.description,
@@ -304,6 +360,7 @@ async function toQuote(ctx: any, tenantSlug: string, quote: Doc<"quotes">) {
     quoteNumber: quote.quoteNumber,
     title: quote.title,
     status: quote.status,
+    sentAt: quote.sentAt,
     validUntil: quote.validUntil,
     introText: quote.introText,
     closingText: quote.closingText,
@@ -330,6 +387,8 @@ function toQuoteSummary(tenantSlug: string, quote: Doc<"quotes">) {
     quoteNumber: quote.quoteNumber,
     title: quote.title,
     status: quote.status,
+    sentAt: quote.sentAt,
+    validUntil: quote.validUntil,
     subtotalExVat: quote.subtotalExVat,
     vatTotal: quote.vatTotal,
     totalIncVat: quote.totalIncVat,
@@ -396,12 +455,33 @@ function isDueTodayOrEarlier(timestamp: number | undefined, now: number) {
   return timestamp <= todayEnd.getTime();
 }
 
+function sortProjectTasks(tasks: Doc<"projectTasks">[]) {
+  return tasks.slice().sort((left, right) => {
+    if (left.status === right.status) {
+      return left.dueAt - right.dueAt || right.updatedAt - left.updatedAt;
+    }
+
+    return left.status === "open" ? -1 : 1;
+  });
+}
+
 function fieldBucket(
   project: Doc<"projects">,
   quote: Doc<"quotes"> | undefined,
   measurement: Doc<"measurements"> | undefined,
-  now: number
+  now: number,
+  tasks: Doc<"projectTasks">[] = []
 ) {
+  const firstOpenTask = sortProjectTasks(tasks).find((task) => task.status === "open");
+
+  if (isDueTodayOrEarlier(firstOpenTask?.dueAt, now)) {
+    return "today";
+  }
+
+  if (firstOpenTask) {
+    return "followUp";
+  }
+
   if (isDueTodayOrEarlier(fieldVisitTimestamp(project, measurement), now)) {
     return "today";
   }
@@ -511,6 +591,110 @@ async function addProjectEvent(
   });
 }
 
+async function upsertProjectTask(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  projectId: Id<"projects">,
+  type: Doc<"projectTasks">["type"],
+  title: string,
+  dueAt: number,
+  externalUserId?: string,
+  quoteId?: Id<"quotes">
+) {
+  const existing = (
+    await ctx.db
+      .query("projectTasks")
+      .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
+      .collect()
+  ).find(
+    (task: Doc<"projectTasks">) =>
+      task.status === "open" &&
+      task.type === type &&
+      String(task.quoteId ?? "") === String(quoteId ?? "")
+  );
+  const now = Date.now();
+
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      title,
+      dueAt,
+      updatedAt: now
+    });
+    return existing._id;
+  }
+
+  return await ctx.db.insert("projectTasks", {
+    tenantId,
+    projectId,
+    quoteId,
+    type,
+    title,
+    dueAt,
+    status: "open",
+    createdByExternalUserId: externalUserId,
+    createdAt: now,
+    updatedAt: now
+  });
+}
+
+async function closeOpenProjectTasks(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  projectId: Id<"projects">,
+  type: Doc<"projectTasks">["type"],
+  status: "done" | "dismissed",
+  quoteId?: Id<"quotes">
+) {
+  const tasks = await ctx.db
+    .query("projectTasks")
+    .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
+    .collect();
+  const now = Date.now();
+
+  await Promise.all(
+    tasks
+      .filter(
+        (task: Doc<"projectTasks">) =>
+          task.status === "open" &&
+          task.type === type &&
+          (quoteId === undefined || String(task.quoteId ?? "") === String(quoteId))
+      )
+      .map((task: Doc<"projectTasks">) =>
+        ctx.db.patch(task._id, {
+          status,
+          completedAt: status === "done" ? now : task.completedAt,
+          dismissedAt: status === "dismissed" ? now : task.dismissedAt,
+          updatedAt: now
+        })
+      )
+  );
+}
+
+async function validateQuoteLineProduct(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  productId?: string
+) {
+  if (!productId) {
+    return undefined;
+  }
+
+  const product = await ctx.db.get(productId as Id<"products">);
+
+  if (!product || product.tenantId !== tenantId) {
+    throw new Error("Product not found");
+  }
+
+  const category = product.categoryId ? await ctx.db.get(product.categoryId) : null;
+  const hiddenReason = pilotHiddenReason(product, category?.name);
+
+  if (hiddenReason) {
+    throw new Error(hiddenReason);
+  }
+
+  return product._id;
+}
+
 export const dashboard = query({
   args: {
     tenantSlug: v.string()
@@ -529,7 +713,7 @@ export const dashboard = query({
       };
     }
 
-    const [customers, projects, quotes] = await Promise.all([
+    const [customers, projects, quotes, projectTasks] = await Promise.all([
       ctx.db
         .query("customers")
         .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
@@ -541,6 +725,10 @@ export const dashboard = query({
       ctx.db
         .query("quotes")
         .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+        .collect(),
+      ctx.db
+        .query("projectTasks")
+        .withIndex("by_status", (q: any) => q.eq("tenantId", tenant._id).eq("status", "open"))
         .collect()
     ]);
     const customerById = new Map(
@@ -557,7 +745,23 @@ export const dashboard = query({
         project.status
       )
     );
+    const taskWorkItems = projectTasks.map((task: Doc<"projectTasks">) => {
+      const project = projectById.get(String(task.projectId));
+      const priority = taskPriority(task.dueAt);
+
+      return {
+        id: `project-task-${task._id}`,
+        title: task.title,
+        description: `${project?.title ?? "Dossier"} - deadline ${new Intl.DateTimeFormat("nl-NL").format(new Date(task.dueAt))}`,
+        href: `/portal/projecten/${task.projectId}`,
+        label: priority.label,
+        tone: priority.tone,
+        updatedAt: task.dueAt,
+        priorityRank: priority.rank
+      };
+    });
     const workItems = [
+      ...taskWorkItems,
       ...projects
         .filter((project: Doc<"projects">) => project.status === "lead")
         .map((project: Doc<"projects">) => ({
@@ -567,7 +771,8 @@ export const dashboard = query({
           href: `/portal/projecten/${project._id}`,
           label: "Aanvraag",
           tone: "warning",
-          updatedAt: project.updatedAt
+          updatedAt: project.updatedAt,
+          priorityRank: 1
         })),
       ...quotes
         .filter((quote: Doc<"quotes">) => quote.status === "draft")
@@ -581,7 +786,8 @@ export const dashboard = query({
             href: `/portal/offertes/${quote._id}`,
             label: "Concept",
             tone: "warning",
-            updatedAt: quote.updatedAt
+            updatedAt: quote.updatedAt,
+            priorityRank: 1
           };
         }),
       ...quotes
@@ -596,7 +802,8 @@ export const dashboard = query({
             href: `/portal/offertes/${quote._id}`,
             label: "Verzonden",
             tone: "info",
-            updatedAt: quote.updatedAt
+            updatedAt: quote.updatedAt,
+            priorityRank: 2
           };
         }),
       ...projects
@@ -610,7 +817,8 @@ export const dashboard = query({
           href: `/portal/projecten/${project._id}`,
           label: "Inmeting",
           tone: "info",
-          updatedAt: project.updatedAt
+          updatedAt: project.updatedAt,
+          priorityRank: 2
         })),
       ...projects
         .filter((project: Doc<"projects">) =>
@@ -623,9 +831,10 @@ export const dashboard = query({
           href: `/portal/projecten/${project._id}`,
           label: "Uitvoering",
           tone: "success",
-          updatedAt: project.updatedAt
+          updatedAt: project.updatedAt,
+          priorityRank: 2
         }))
-    ].sort((left, right) => right.updatedAt - left.updatedAt);
+    ].sort((left, right) => left.priorityRank - right.priorityRank || left.updatedAt - right.updatedAt);
 
     const visibleProjects = await Promise.all(
       projects
@@ -681,6 +890,9 @@ export const createCustomer = mutation({
     displayName: v.string(),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
+    street: v.optional(v.string()),
+    houseNumber: v.optional(v.string()),
+    postalCode: v.optional(v.string()),
     city: v.optional(v.string()),
     notes: v.optional(v.string())
   },
@@ -698,6 +910,9 @@ export const createCustomer = mutation({
       displayName: args.displayName,
       email: args.email,
       phone: args.phone,
+      street: args.street,
+      houseNumber: args.houseNumber,
+      postalCode: args.postalCode,
       city: args.city,
       country: "Nederland",
       notes: args.notes,
@@ -910,7 +1125,7 @@ export const fieldServiceWorkspace = query({
   },
   handler: async (ctx, args) => {
     const tenant = await requireTenant(ctx, args.tenantSlug);
-    const [customers, projects, quotes, measurements] = await Promise.all([
+    const [customers, projects, quotes, measurements, projectTasks] = await Promise.all([
       ctx.db
         .query("customers")
         .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
@@ -928,11 +1143,23 @@ export const fieldServiceWorkspace = query({
       ctx.db
         .query("measurements")
         .withIndex("by_status", (q: any) => q.eq("tenantId", tenant._id))
+        .collect(),
+      ctx.db
+        .query("projectTasks")
+        .withIndex("by_status", (q: any) => q.eq("tenantId", tenant._id).eq("status", "open"))
         .collect()
     ]);
     const customerById = new Map(
       customers.map((customer: Doc<"customers">) => [String(customer._id), customer])
     );
+    const tasksByProjectId = new Map<string, Doc<"projectTasks">[]>();
+
+    for (const task of projectTasks) {
+      const projectTasksForProject = tasksByProjectId.get(String(task.projectId)) ?? [];
+      projectTasksForProject.push(task);
+      tasksByProjectId.set(String(task.projectId), projectTasksForProject);
+    }
+
     const allowedStatuses = [
       "lead",
       "quote_draft",
@@ -941,7 +1168,8 @@ export const fieldServiceWorkspace = query({
       "measurement_planned",
       "execution_planned",
       "ordering",
-      "in_progress"
+      "in_progress",
+      "invoiced"
     ];
     const grouped = {
       today: [] as any[],
@@ -958,22 +1186,30 @@ export const fieldServiceWorkspace = query({
           const customer = customerById.get(String(project.customerId));
           const quote = activeFieldQuote(quotes, project._id);
           const measurement = latestMeasurement(measurements, project._id);
-          const bucket = fieldBucket(project, quote, measurement, now);
+          const tasks = sortProjectTasks(tasksByProjectId.get(String(project._id)) ?? []);
+          const nextTask = tasks.find((task) => task.status === "open");
+          const bucket = fieldBucket(project, quote, measurement, now, tasks);
           const visitAt = fieldVisitTimestamp(project, measurement);
 
           return {
             id: String(project._id),
             href: `/portal/buitendienst/projecten/${project._id}`,
             bucket,
-            nextAction: fieldNextAction(bucket),
+            nextAction: nextTask?.title ?? fieldNextAction(bucket),
             visitAt,
             address: customerAddress(customer),
             phone: customer?.phone,
             email: customer?.email,
-            updatedAt: Math.max(project.updatedAt, quote?.updatedAt ?? 0, measurement?.updatedAt ?? 0),
+            updatedAt: Math.max(
+              project.updatedAt,
+              quote?.updatedAt ?? 0,
+              measurement?.updatedAt ?? 0,
+              nextTask?.updatedAt ?? 0
+            ),
             project: await toProject(ctx, tenant.slug, project),
             customer: customer ? toCustomer(tenant.slug, customer) : null,
             latestQuote: quote ? toQuoteSummary(tenant.slug, quote) : null,
+            tasks: tasks.map((task) => toProjectTask(tenant.slug, task)),
             measurement: measurement
               ? {
                   id: String(measurement._id),
@@ -1018,7 +1254,7 @@ export const fieldProjectWorkspace = query({
       return null;
     }
 
-    const [customer, quotes, templates, measurements] = await Promise.all([
+    const [customer, quotes, templates, measurements, projectTasks] = await Promise.all([
       ctx.db.get(project.customerId),
       ctx.db
         .query("quotes")
@@ -1033,6 +1269,12 @@ export const fieldProjectWorkspace = query({
         .collect(),
       ctx.db
         .query("measurements")
+        .withIndex("by_project", (q: any) =>
+          q.eq("tenantId", tenant._id).eq("projectId", project._id)
+        )
+        .collect(),
+      ctx.db
+        .query("projectTasks")
         .withIndex("by_project", (q: any) =>
           q.eq("tenantId", tenant._id).eq("projectId", project._id)
         )
@@ -1052,6 +1294,9 @@ export const fieldProjectWorkspace = query({
       templates: templates
         .filter((template: Doc<"quoteTemplates">) => template.status === "active")
         .map((template: Doc<"quoteTemplates">) => toQuoteTemplate(tenant.slug, template)),
+      tasks: sortProjectTasks(projectTasks).map((task: Doc<"projectTasks">) =>
+        toProjectTask(tenant.slug, task)
+      ),
       visit: {
         status: visitAt ? "Afspraak bekend" : "Nog geen meetmoment",
         visitAt,
@@ -1156,10 +1401,16 @@ export const projectDetail = query({
       return null;
     }
 
-    const [customer, workflowEvents] = await Promise.all([
+    const [customer, workflowEvents, projectTasks] = await Promise.all([
       ctx.db.get(project.customerId),
       ctx.db
         .query("projectWorkflowEvents")
+        .withIndex("by_project", (q: any) =>
+          q.eq("tenantId", tenant._id).eq("projectId", project._id)
+        )
+        .collect(),
+      ctx.db
+        .query("projectTasks")
         .withIndex("by_project", (q: any) =>
           q.eq("tenantId", tenant._id).eq("projectId", project._id)
         )
@@ -1174,7 +1425,10 @@ export const projectDetail = query({
           (left: Doc<"projectWorkflowEvents">, right: Doc<"projectWorkflowEvents">) =>
             right.createdAt - left.createdAt
         )
-        .map((event: Doc<"projectWorkflowEvents">) => toWorkflowEvent(tenant.slug, event))
+        .map((event: Doc<"projectWorkflowEvents">) => toWorkflowEvent(tenant.slug, event)),
+      projectTasks: sortProjectTasks(projectTasks).map((task: Doc<"projectTasks">) =>
+        toProjectTask(tenant.slug, task)
+      )
     };
   }
 });
@@ -1405,7 +1659,8 @@ export const processProjectAction = mutation({
       v.literal("bookkeeper_export_sent"),
       v.literal("closed"),
       v.literal("cancelled")
-    )
+    ),
+    invoiceDueAt: v.optional(v.number())
   },
   handler: async (ctx, args) => {
     const { tenant, externalUserId } = await requireMutationRole(
@@ -1421,6 +1676,11 @@ export const processProjectAction = mutation({
     }
 
     const now = Date.now();
+    const customer =
+      args.action === "invoice_created" ? await ctx.db.get(project.customerId) : null;
+    const invoiceTermDays = invoicePaymentTermDays(
+      customer && customer.tenantId === tenant._id ? customer : null
+    );
     const actionConfig = {
       quote_accepted: {
         projectStatus: "quote_accepted" as const,
@@ -1477,6 +1737,52 @@ export const processProjectAction = mutation({
           updatedAt: now
         });
       }
+
+      await closeOpenProjectTasks(
+        ctx,
+        tenant._id,
+        project._id,
+        "quote_follow_up",
+        "done",
+        quote?._id
+      );
+      await upsertProjectTask(
+        ctx,
+        tenant._id,
+        project._id,
+        "confirmation_payment",
+        "Bevestigingsmail / betaling binnen 5 dagen",
+        addCalendarDays(now, 5),
+        externalUserId,
+        quote?._id
+      );
+      await upsertProjectTask(
+        ctx,
+        tenant._id,
+        project._id,
+        "execution_call",
+        "Bellen / afspraak maken voor uitvoering",
+        addCalendarDays(now, 5),
+        externalUserId,
+        quote?._id
+      );
+    }
+
+    if (args.action === "supplier_order_created") {
+      await closeOpenProjectTasks(ctx, tenant._id, project._id, "execution_call", "done");
+    }
+
+    if (args.action === "invoice_created") {
+      await closeOpenProjectTasks(ctx, tenant._id, project._id, "confirmation_payment", "done");
+      await upsertProjectTask(
+        ctx,
+        tenant._id,
+        project._id,
+        "invoice_payment",
+        "Factuurbetaling opvolgen",
+        args.invoiceDueAt ?? addCalendarDays(now, invoiceTermDays),
+        externalUserId
+      );
     }
 
     if (args.action === "cancelled") {
@@ -1489,6 +1795,17 @@ export const processProjectAction = mutation({
       }
     }
 
+    if (args.action === "closed" || args.action === "cancelled") {
+      const finalTaskStatus = args.action === "closed" ? "done" : "dismissed";
+
+      await Promise.all(
+        (["quote_follow_up", "confirmation_payment", "execution_call", "invoice_payment"] as const)
+          .map((type) =>
+            closeOpenProjectTasks(ctx, tenant._id, project._id, type, finalTaskStatus)
+          )
+      );
+    }
+
     await addProjectEvent(
       ctx,
       tenant._id,
@@ -1499,6 +1816,38 @@ export const processProjectAction = mutation({
     );
 
     return project._id;
+  }
+});
+
+export const updateProjectTaskStatus = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    taskId: v.string(),
+    status: projectTaskStatus
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+    const task = await ctx.db.get(args.taskId as Id<"projectTasks">);
+
+    if (!task || task.tenantId !== tenant._id) {
+      throw new Error("Project task not found");
+    }
+
+    const now = Date.now();
+
+    await ctx.db.patch(task._id, {
+      status: args.status,
+      completedAt: args.status === "done" ? now : undefined,
+      dismissedAt: args.status === "dismissed" ? now : undefined,
+      updatedAt: now
+    });
+
+    return task._id;
   }
 });
 
@@ -1653,6 +2002,7 @@ export const addQuoteLine = mutation({
     actor: mutationActorValidator,
     quoteId: v.string(),
     projectRoomId: v.optional(v.string()),
+    productId: v.optional(v.string()),
     lineType: quoteLineType,
     title: v.string(),
     description: v.optional(v.string()),
@@ -1696,6 +2046,10 @@ export const addQuoteLine = mutation({
       }
     }
 
+    const productId = args.lineType === "product"
+      ? await validateQuoteLineProduct(ctx, tenant._id, args.productId)
+      : undefined;
+
     const totals = calculateLineTotals(
       args.lineType,
       args.quantity,
@@ -1708,6 +2062,7 @@ export const addQuoteLine = mutation({
       tenantId: tenant._id,
       quoteId: quote._id,
       projectRoomId,
+      productId,
       lineType: args.lineType,
       title: args.title,
       description: args.description,
@@ -1772,6 +2127,7 @@ export const updateQuoteLine = mutation({
     actor: mutationActorValidator,
     lineId: v.string(),
     projectRoomId: v.optional(v.string()),
+    productId: v.optional(v.string()),
     lineType: quoteLineType,
     title: v.string(),
     description: v.optional(v.string()),
@@ -1821,6 +2177,10 @@ export const updateQuoteLine = mutation({
       }
     }
 
+    const productId = args.lineType === "product"
+      ? await validateQuoteLineProduct(ctx, tenant._id, args.productId)
+      : undefined;
+
     const totals = calculateLineTotals(
       args.lineType,
       args.quantity,
@@ -1831,6 +2191,7 @@ export const updateQuoteLine = mutation({
 
     await ctx.db.patch(line._id, {
       projectRoomId,
+      productId,
       lineType: args.lineType,
       title: args.title,
       description: args.description,
@@ -1913,12 +2274,17 @@ export const updateQuoteStatus = mutation({
     }
 
     const now = Date.now();
-    await ctx.db.patch(quote._id, {
+    const quotePatch: Partial<Doc<"quotes">> = {
       status: args.status,
+      sentAt: args.status === "sent" ? quote.sentAt ?? now : quote.sentAt,
+      validUntil:
+        args.status === "sent" ? quote.validUntil ?? addCalendarDays(now, 30) : quote.validUntil,
       acceptedAt: args.status === "accepted" ? now : quote.acceptedAt,
       rejectedAt: args.status === "rejected" ? now : quote.rejectedAt,
       updatedAt: now
-    });
+    };
+
+    await ctx.db.patch(quote._id, quotePatch);
 
     const statusMap: Partial<Record<Doc<"quotes">["status"], Doc<"projects">["status"]>> = {
       draft: "quote_draft",
@@ -1939,14 +2305,50 @@ export const updateQuoteStatus = mutation({
 
     if (args.status === "sent") {
       await addProjectEvent(ctx, tenant._id, project._id, "quote_sent", "Offerte verzonden", externalUserId);
+      await upsertProjectTask(
+        ctx,
+        tenant._id,
+        project._id,
+        "quote_follow_up",
+        "Offerte opvolgen",
+        addCalendarDays(now, 18),
+        externalUserId,
+        quote._id
+      );
     }
 
     if (args.status === "accepted") {
       await addProjectEvent(ctx, tenant._id, project._id, "quote_accepted", "Offerte akkoord", externalUserId);
+      await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "done", quote._id);
+      await upsertProjectTask(
+        ctx,
+        tenant._id,
+        project._id,
+        "confirmation_payment",
+        "Bevestigingsmail / betaling binnen 5 dagen",
+        addCalendarDays(now, 5),
+        externalUserId,
+        quote._id
+      );
+      await upsertProjectTask(
+        ctx,
+        tenant._id,
+        project._id,
+        "execution_call",
+        "Bellen / afspraak maken voor uitvoering",
+        addCalendarDays(now, 5),
+        externalUserId,
+        quote._id
+      );
     }
 
     if (args.status === "cancelled") {
       await addProjectEvent(ctx, tenant._id, project._id, "closed", "Offerte geannuleerd", externalUserId);
+      await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "dismissed", quote._id);
+    }
+
+    if (args.status === "rejected") {
+      await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "dismissed", quote._id);
     }
 
     return quote._id;

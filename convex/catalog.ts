@@ -2,6 +2,12 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { mutationActorValidator, requireMutationRole, requireMutationRoleForTenantId } from "./authz";
 import type { Doc, Id } from "./_generated/dataModel";
+import {
+  displayProductName,
+  displaySupplierName,
+  pilotHiddenReason,
+  visibleCommercialNames
+} from "./pilotCatalog";
 
 const productStatus = v.union(
   v.literal("draft"),
@@ -181,6 +187,7 @@ export const listProductsForPortal = query({
     search: v.optional(v.string()),
     category: v.optional(v.string()),
     status: v.optional(productStatus),
+    includePilotHidden: v.optional(v.boolean()),
     limit: v.optional(v.number())
   },
   handler: async (ctx, args) => {
@@ -219,6 +226,12 @@ export const listProductsForPortal = query({
     const activeProducts = products.filter(
       (product) => normalizedProductStatus(product.status) === requestedStatus
     );
+    const visibleProducts = args.includePilotHidden
+      ? activeProducts
+      : activeProducts.filter((product) => {
+          const categoryName = categoryById.get(String(product.categoryId))?.name ?? "Overig";
+          return !pilotHiddenReason(product, categoryName);
+        });
     const categoryCounts = new Map<string, number>();
     const categoryOrder = [
       "PVC Vloeren",
@@ -248,7 +261,7 @@ export const listProductsForPortal = query({
       "Overig"
     ];
 
-    for (const product of activeProducts) {
+    for (const product of visibleProducts) {
       const categoryName = categoryById.get(String(product.categoryId))?.name ?? "Overig";
       categoryCounts.set(categoryName, (categoryCounts.get(categoryName) ?? 0) + 1);
     }
@@ -265,7 +278,7 @@ export const listProductsForPortal = query({
       });
     const search = (args.search ?? "").trim().toLowerCase();
     const categoryFilter = args.category && args.category !== "Alle" ? args.category : "";
-    const filtered = activeProducts
+    const filtered = visibleProducts
       .filter((product) => {
         const categoryName = categoryById.get(String(product.categoryId))?.name ?? "Overig";
 
@@ -280,11 +293,14 @@ export const listProductsForPortal = query({
         const supplierName = product.supplierId
           ? supplierById.get(String(product.supplierId))?.name
           : "";
-        const labels = product.commercialNames
+        const customerName = displayProductName(product, categoryName, supplierName);
+        const customerSupplierName = displaySupplierName(supplierName ?? "");
+        const labels = visibleCommercialNames(product, categoryName)
           ?.map((name) => name.displayName)
           .join(" ");
         const haystack = [
           product.name,
+          customerName,
           product.articleNumber,
           product.supplierCode,
           product.commercialCode,
@@ -292,6 +308,7 @@ export const listProductsForPortal = query({
           product.ean,
           product.colorName,
           supplierName,
+          customerSupplierName,
           categoryName,
           labels
         ]
@@ -331,20 +348,23 @@ export const listProductsForPortal = query({
       const supplierName = product.supplierId
         ? supplierById.get(String(product.supplierId))?.name ?? "Onbekend"
         : "Onbekend";
+      const hiddenReason = pilotHiddenReason(product, categoryName);
 
       items.push({
         id: String(product._id),
         tenantId: tenant.slug,
         category: categoryName,
         supplier: supplierName,
+        displaySupplierName: displaySupplierName(supplierName),
         articleNumber: product.articleNumber,
         supplierCode: product.supplierCode,
         commercialCode: product.commercialCode,
         supplierProductGroup: product.supplierProductGroup,
         name: product.name,
+        displayName: displayProductName(product, categoryName, supplierName),
         colorName: product.colorName,
         productKind: product.productKind,
-        commercialNames: product.commercialNames,
+        commercialNames: visibleCommercialNames(product, categoryName),
         unit: product.unit,
         packageContentM2: product.packageContentM2,
         piecesPerPackage: product.piecesPerPackage,
@@ -354,6 +374,7 @@ export const listProductsForPortal = query({
         bundleSize: product.bundleSize,
         priceExVat: preferredPrice?.amount ?? 0,
         vatRate: preferredPrice?.vatRate ?? 21,
+        pilotHiddenReason: args.includePilotHidden ? hiddenReason : undefined,
         status: normalizedProductStatus(product.status)
       });
     }

@@ -57,6 +57,17 @@ function startOfToday() {
 }
 
 function visitUrgency(workspace: FieldProjectWorkspaceResult): FieldUrgency {
+  const openTask = workspace.tasks.find((task) => task.status === "open");
+
+  if (openTask) {
+    return {
+      level: openTask.priority.level,
+      label: openTask.priority.label,
+      title: openTask.title,
+      description: `Deadline ${formatDate(openTask.dueAt)}.`
+    };
+  }
+
   const measurementStatus = workspace.visit.measurementStatus;
 
   if (measurementStatus === "reviewed" || measurementStatus === "converted_to_quote") {
@@ -327,6 +338,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
   }
 
   const urgency = visitUrgency(workspace);
+  const openTasks = workspace.tasks.filter((task) => task.status === "open");
 
   return (
     <div className="grid field-project-workspace">
@@ -406,6 +418,22 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
           </div>
         </a>
       </section>
+
+      {openTasks.length > 0 ? (
+        <section className="field-action-plan" aria-label="Procesopvolging">
+          {openTasks.slice(0, 3).map((task) => (
+            <article className="field-action-card" key={task.id}>
+              <span>{task.priority.label.slice(0, 1)}</span>
+              <div>
+                <strong>
+                  {task.priority.label}: {task.title}
+                </strong>
+                <p>Deadline {formatDate(task.dueAt)}</p>
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : null}
 
       <section className="grid field-project-grid">
         <article className="panel field-customer-card">

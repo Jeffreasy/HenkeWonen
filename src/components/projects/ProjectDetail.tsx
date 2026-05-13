@@ -1,4 +1,4 @@
-import { CalendarClock, Plus, Save } from "lucide-react";
+import { CalendarClock, CheckCircle2, Plus, Save, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -9,11 +9,13 @@ import { formatProjectStatus } from "../../lib/i18n/statusLabels";
 import type {
   PortalCustomer,
   PortalProject,
+  PortalProjectTask,
   PortalRoom,
   PortalWorkflowEvent
 } from "../../lib/portalTypes";
 import { NoteVisibilityBadge } from "../common/NoteVisibilityBadge";
 import { Alert } from "../ui/Alert";
+import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
@@ -41,6 +43,7 @@ type ProjectDetailResult = {
   project: PortalProject;
   customer: PortalCustomer | null;
   workflowEvents: PortalWorkflowEvent[];
+  projectTasks: PortalProjectTask[];
 } | null;
 
 type ProjectAction =
@@ -121,6 +124,31 @@ function eventLabel(type: PortalWorkflowEvent["type"]) {
   return labels[type] ?? "Dossiermoment";
 }
 
+function taskTypeLabel(type: PortalProjectTask["type"]) {
+  const labels: Record<PortalProjectTask["type"], string> = {
+    quote_follow_up: "Offerte opvolgen",
+    confirmation_payment: "Bevestiging/betaling",
+    execution_call: "Afspraak uitvoering",
+    invoice_payment: "Factuurbetaling"
+  };
+
+  return labels[type];
+}
+
+function taskStatusLabel(status: PortalProjectTask["status"]) {
+  const labels: Record<PortalProjectTask["status"], string> = {
+    open: "Open",
+    done: "Gereed",
+    dismissed: "Verborgen"
+  };
+
+  return labels[status];
+}
+
+function invoicePaymentTermDays(customer?: PortalCustomer | null) {
+  return customer?.type === "business" ? 21 : 8;
+}
+
 export default function ProjectDetail({ session, projectId }: ProjectDetailProps) {
   const [detail, setDetail] = useState<ProjectDetailResult>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -147,6 +175,8 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   });
   const [pendingRoomDelete, setPendingRoomDelete] = useState<PortalRoom | null>(null);
   const [pendingProjectAction, setPendingProjectAction] = useState<ProjectAction | null>(null);
+  const [invoiceDueDate, setInvoiceDueDate] = useState("");
+  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const canEditProject = canEditDossiers(session.role);
 
   const loadProject = useCallback(async () => {
@@ -209,6 +239,20 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     }
 
     return new Date(`${value}T12:00:00`).getTime();
+  }
+
+  function defaultDateInputInDays(days: number) {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return date.toISOString().slice(0, 10);
+  }
+
+  function openProjectAction(action: ProjectAction) {
+    if (action === "invoice_created") {
+      setInvoiceDueDate(defaultDateInputInDays(invoicePaymentTermDays(detail?.customer)));
+    }
+
+    setPendingProjectAction(action);
   }
 
   function numberFromInput(value: string): number | undefined {
@@ -368,10 +412,37 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
       projectId,
-      action
+      action,
+      invoiceDueAt:
+        action === "invoice_created" ? fromDateInputValue(invoiceDueDate) : undefined
     });
     setPendingProjectAction(null);
     await loadProject();
+  }
+
+  async function updateProjectTaskStatus(
+    task: PortalProjectTask,
+    status: PortalProjectTask["status"]
+  ) {
+    const client = createConvexHttpClient();
+
+    if (!client) {
+      setError("Kan de taak nu niet bijwerken.");
+      return;
+    }
+
+    setUpdatingTaskId(task.id);
+    try {
+      await client.mutation(api.portal.updateProjectTaskStatus, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        taskId: task.id,
+        status
+      });
+      await loadProject();
+    } finally {
+      setUpdatingTaskId(null);
+    }
   }
 
   const roomColumns = useMemo<Array<DataTableColumn<PortalRoom>>>(
@@ -423,6 +494,70 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     ],
     [canEditProject]
   );
+  const taskColumns = useMemo<Array<DataTableColumn<PortalProjectTask>>>(
+    () => [
+      {
+        key: "priority",
+        header: "Signaal",
+        width: "100px",
+        render: (task) => <Badge variant={task.priority.tone}>{task.priority.label}</Badge>
+      },
+      {
+        key: "task",
+        header: "Taak",
+        priority: "primary",
+        render: (task) => (
+          <div className="stack-sm">
+            <strong>{task.title}</strong>
+            <small className="muted">{taskTypeLabel(task.type)}</small>
+          </div>
+        )
+      },
+      {
+        key: "due",
+        header: "Deadline",
+        width: "120px",
+        render: (task) => dateText(task.dueAt)
+      },
+      {
+        key: "status",
+        header: "Status",
+        width: "110px",
+        render: (task) => taskStatusLabel(task.status)
+      },
+      {
+        key: "actions",
+        header: "Acties",
+        width: "190px",
+        render: (task) =>
+          canEditProject && task.status === "open" ? (
+            <div className="toolbar">
+              <Button
+                disabled={updatingTaskId === task.id}
+                leftIcon={<CheckCircle2 size={16} aria-hidden="true" />}
+                onClick={() => void updateProjectTaskStatus(task, "done")}
+                size="sm"
+                variant="secondary"
+              >
+                Gereed
+              </Button>
+              <Button
+                disabled={updatingTaskId === task.id}
+                leftIcon={<XCircle size={16} aria-hidden="true" />}
+                onClick={() => void updateProjectTaskStatus(task, "dismissed")}
+                size="sm"
+                variant="ghost"
+              >
+                Verberg
+              </Button>
+            </div>
+          ) : (
+            "-"
+          )
+      }
+    ],
+    [canEditProject, updatingTaskId]
+  );
 
   if (isLoading) {
     return <LoadingState title="Project laden" description="Projectgegevens ophalen." />;
@@ -436,7 +571,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     return <EmptyState title="Project niet gevonden" description="Controleer de link of ga terug naar projecten." />;
   }
 
-  const { project, customer, workflowEvents } = detail;
+  const { project, customer, workflowEvents, projectTasks } = detail;
   const pendingProjectActionDetails = pendingProjectAction
     ? projectActionCopy[pendingProjectAction]
     : null;
@@ -468,7 +603,22 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
             void processProjectAction(pendingProjectAction);
           }
         }}
-      />
+      >
+        {pendingProjectAction === "invoice_created" ? (
+          <Field
+            htmlFor="invoice-due-date"
+            label="Betaaltermijn"
+            description={`Standaard ${invoicePaymentTermDays(customer)} kalenderdagen voor deze klant. Particulier is 8 dagen, zakelijk/groot project is 21 dagen. Aanpasbaar voordat de factuurstap wordt verwerkt.`}
+          >
+            <Input
+              id="invoice-due-date"
+              type="date"
+              value={invoiceDueDate}
+              onChange={(event) => setInvoiceDueDate(event.target.value)}
+            />
+          </Field>
+        ) : null}
+      </ConfirmDialog>
       <section className="grid three-column">
         <StatCard label="Ruimtes" value={project.rooms.length} tone="info" />
         <StatCard label="Dossiermomenten" value={workflowEvents.length} />
@@ -494,7 +644,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
                     <Button size="sm" variant="secondary" onClick={() => setEditingProject((current) => !current)}>
                       Bewerken
                     </Button>
-                    <Button size="sm" variant="danger" onClick={() => setPendingProjectAction("cancelled")}>
+                    <Button size="sm" variant="danger" onClick={() => openProjectAction("cancelled")}>
                       Annuleren
                     </Button>
                   </>
@@ -726,37 +876,54 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       <section className="panel">
         <SectionHeader
           compact
+          title="Procesopvolging"
+          description="Winkel en buitendienst gebruiken dezelfde rood/oranje/groen signalen op open taken en deadlines."
+        />
+        <DataTable
+          ariaLabel="Projecttaken"
+          columns={taskColumns}
+          density="compact"
+          emptyDescription="Taken worden automatisch aangemaakt bij offerte verzenden, akkoord en factureren."
+          emptyTitle="Nog geen procesopvolging"
+          getRowKey={(task) => task.id}
+          rows={projectTasks}
+        />
+      </section>
+
+      <section className="panel">
+        <SectionHeader
+          compact
           title="Dossieracties"
           description="Snelle dossieracties voor dagelijkse opvolging."
         />
         {canEditProject ? (
           <div className="toolbar">
             <Button
-              onClick={() => setPendingProjectAction("quote_accepted")}
+              onClick={() => openProjectAction("quote_accepted")}
               variant="secondary"
             >
               Akkoord
             </Button>
             <Button
-              onClick={() => setPendingProjectAction("supplier_order_created")}
+              onClick={() => openProjectAction("supplier_order_created")}
               variant="secondary"
             >
               Bestellen
             </Button>
             <Button
-              onClick={() => setPendingProjectAction("invoice_created")}
+              onClick={() => openProjectAction("invoice_created")}
               variant="secondary"
             >
               Factuur
             </Button>
             <Button
-              onClick={() => setPendingProjectAction("bookkeeper_export_sent")}
+              onClick={() => openProjectAction("bookkeeper_export_sent")}
               variant="secondary"
             >
               Naar boekhouder
             </Button>
             <Button
-              onClick={() => setPendingProjectAction("closed")}
+              onClick={() => openProjectAction("closed")}
               variant="secondary"
             >
               Sluiten

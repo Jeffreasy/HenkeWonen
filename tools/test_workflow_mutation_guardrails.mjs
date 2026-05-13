@@ -145,6 +145,32 @@ assert.ok(markMeasurementLineConverted.includes("convertedQuoteLineId: args.quot
 const listReadyForQuote = read("convex/measurements.ts");
 assert.ok(listReadyForQuote.includes('line.quotePreparationStatus !== "ready_for_quote"'));
 
+const portalCatalog = read("convex/catalog.ts");
+assert.ok(portalCatalog.includes("includePilotHidden"));
+assert.ok(portalCatalog.includes("pilotHiddenReason"));
+assert.ok(portalCatalog.includes("displayProductName"));
+assert.ok(portalCatalog.includes("displaySupplierName"));
+
+const updateQuoteStatus = exportedMutationBlock("convex/portal.ts", "updateQuoteStatus");
+assert.ok(updateQuoteStatus.includes("sentAt"));
+assert.ok(updateQuoteStatus.includes("validUntil"));
+assert.ok(updateQuoteStatus.includes("addCalendarDays(now, 30)"));
+assert.ok(updateQuoteStatus.includes('"quote_follow_up"'));
+assert.ok(updateQuoteStatus.includes("addCalendarDays(now, 18)"));
+assert.ok(updateQuoteStatus.includes('"confirmation_payment"'));
+assert.ok(updateQuoteStatus.includes('"execution_call"'));
+
+const processProjectAction = exportedMutationBlock("convex/portal.ts", "processProjectAction");
+assert.ok(processProjectAction.includes("invoiceDueAt"));
+assert.ok(processProjectAction.includes('"invoice_payment"'));
+assert.ok(processProjectAction.includes("invoicePaymentTermDays"));
+assert.ok(processProjectAction.includes("addCalendarDays(now, invoiceTermDays)"));
+
+const addPortalQuoteLine = exportedMutationBlock("convex/portal.ts", "addQuoteLine");
+const updatePortalQuoteLine = exportedMutationBlock("convex/portal.ts", "updateQuoteLine");
+assert.ok(addPortalQuoteLine.includes("validateQuoteLineProduct"));
+assert.ok(updatePortalQuoteLine.includes("validateQuoteLineProduct"));
+
 const commitPreviewBatchChunk = exportedMutationBlock(
   "convex/catalogImport.ts",
   "commitPreviewBatchChunk"
@@ -194,6 +220,7 @@ const securedPortalMutations = [
   "deleteProjectRoom",
   "updateProjectStatus",
   "processProjectAction",
+  "updateProjectTaskStatus",
   "createWorkflowEvent",
   "createQuote",
   "addQuoteLine",

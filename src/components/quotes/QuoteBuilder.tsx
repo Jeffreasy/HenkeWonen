@@ -51,6 +51,7 @@ type QuoteBuilderProps = {
 
 type QuoteLineDraft = {
   projectRoomId: string;
+  productId: string;
   lineType: QuoteLineType;
   title: string;
   description: string;
@@ -144,6 +145,7 @@ function optionalDecimal(value: string): number | undefined {
 function draftFromLine(line: PortalQuoteLine): QuoteLineDraft {
   return {
     projectRoomId: line.projectRoomId ?? "",
+    productId: line.productId ?? "",
     lineType: line.lineType,
     title: line.title,
     description: line.description ?? "",
@@ -208,6 +210,10 @@ export default function QuoteBuilder({
   const [isSavingLine, setIsSavingLine] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const canEditDraftLines = canEdit && quote.status === "draft";
+  const roomById = useMemo(
+    () => new Map((project?.rooms ?? []).map((room) => [room.id, room.name])),
+    [project?.rooms]
+  );
 
   useEffect(() => {
     setTermsText(polishQuoteTemplateLines(quote.terms ?? []).join("\n"));
@@ -255,6 +261,7 @@ export default function QuoteBuilder({
     try {
       await onUpdateLine(editingLine.id, {
         projectRoomId: lineDraft.projectRoomId || undefined,
+        productId: lineDraft.productId || undefined,
         lineType: lineDraft.lineType,
         title: lineDraft.title.trim(),
         description: lineDraft.description.trim() || undefined,
@@ -323,6 +330,13 @@ export default function QuoteBuilder({
           {line.description ? <small className="muted">{line.description}</small> : null}
         </div>
       )
+    },
+    {
+      key: "room",
+      header: "Ruimte",
+      width: "130px",
+      hideOnMobile: true,
+      render: (line) => (line.projectRoomId ? roomById.get(line.projectRoomId) ?? "-" : "-")
     },
     {
       key: "quantity",
@@ -409,6 +423,8 @@ export default function QuoteBuilder({
       surface={isFieldMode ? "plain" : "panel"}
       sortOrder={quote.lines.length + 1}
       templateLines={defaultTemplate?.defaultLines ?? []}
+      session={session}
+      projectRooms={project?.rooms ?? []}
       onAdd={onAddLine}
     />
   );
@@ -467,6 +483,26 @@ export default function QuoteBuilder({
               />
             </Field>
           </div>
+          {(project?.rooms ?? []).length > 0 ? (
+            <Field htmlFor="quote-line-edit-room" label="Ruimte">
+              <Select
+                id="quote-line-edit-room"
+                value={lineDraft.projectRoomId}
+                onChange={(event) =>
+                  setLineDraft((current) =>
+                    current ? { ...current, projectRoomId: event.target.value } : current
+                  )
+                }
+              >
+                <option value="">Geen specifieke ruimte</option>
+                {project?.rooms.map((room) => (
+                  <option value={room.id} key={room.id}>
+                    {room.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          ) : null}
           <Field htmlFor="quote-line-edit-description" label="Beschrijving">
             <Textarea
               id="quote-line-edit-description"
