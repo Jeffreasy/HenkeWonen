@@ -28,6 +28,12 @@ Deze map bevat dossiers die relevant zijn voor productie-vrijgave.
 | [Duplicate EAN review 2026-06-01](./data-issues/catalog-duplicate-ean-review-2026-06-01.md) | Actuele duplicate-EAN review na volledige development-import en batch-sync |
 | [Duplicate EAN review](./data-issues/catalog-duplicate-ean-review-2026-04-29.md) | Dubbele EAN-waarschuwingen |
 
+## Auth en omgevingen
+
+| Document | Gebruik |
+| --- | --- |
+| [Auth/env status 2026-06-01](./auth-env-status-2026-06-01.md) | Inventarisatie van AUTHZ secrets, Convex/Vercel targets, dev-auth flags, verplichte env vars en auth smoke-tests |
+
 ## Hoofdregel
 
 Productie-import mag pas door als verplichte btw-mappings opgelost zijn, de gekozen catalogusbron aantoonbaar overeenkomt met de development-importbaseline en open datakwaliteitspunten expliciet beoordeeld of professioneel geparkeerd zijn. Dubbele EAN-waarschuwingen blijven zichtbaar als reviewpunt, maar worden niet automatisch samengevoegd.
