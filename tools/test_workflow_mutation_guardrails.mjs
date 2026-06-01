@@ -471,6 +471,13 @@ assert.ok(authCookies.includes("path: parsed.path"));
 assert.ok(authCookies.includes('"/api/auth"'));
 assert.ok(authCookies.includes('"/api/v1/auth"'));
 assert.ok(authCookies.includes("firstCookieValue"));
+const authSession = read("src/lib/auth/laventeCareSession.ts");
+assert.ok(authSession.includes("authTokenFromRequest"));
+assert.ok(authSession.includes("headers.authorization"));
+assert.ok(authSession.includes("sessionPayloadCandidates"));
+assert.ok(authSession.includes("roleAliases"));
+assert.ok(authSession.includes("beheerder"));
+assert.ok(authSession.includes("medewerker"));
 assert.ok(middleware.includes("refreshLaventeCareSession"));
 
 console.log("Workflow mutation guardrail tests passed.");

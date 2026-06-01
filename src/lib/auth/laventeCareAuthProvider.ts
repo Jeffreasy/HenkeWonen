@@ -1,6 +1,7 @@
 import type { AstroCookies } from "astro";
 import type { AppSession, AuthProvider } from "./session";
 import {
+  authTokenFromRequest,
   getSessionFromJwt,
   getSessionFromMeEndpoint,
   parseCookies
@@ -23,16 +24,6 @@ const authMeUrl = laventeCareAuthMeUrl();
 const jwtSecret = import.meta.env.LAVENTECARE_JWT_SECRET;
 const appTenantSlug = henkeTenantSlug();
 const authTenantId = laventeCareTenantId();
-
-function bearerToken(request: Request) {
-  const authorization = request.headers.get("authorization") ?? "";
-
-  if (!authorization.toLowerCase().startsWith("bearer ")) {
-    return undefined;
-  }
-
-  return authorization.slice("bearer ".length).trim();
-}
 
 function requestWithCookieHeader(request: Request, cookieHeader: string) {
   const headers = new Headers(request.headers);
@@ -77,7 +68,7 @@ export const laventeCareAuthProvider: AuthProvider = {
       cookies.access_token ??
       cookies.token ??
       cookies.id_token ??
-      bearerToken(request);
+      authTokenFromRequest(request);
 
     if (!token) {
       return null;

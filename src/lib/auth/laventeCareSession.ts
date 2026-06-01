@@ -4,6 +4,18 @@ type UnknownRecord = Record<string, unknown>;
 
 const roles: AppRole[] = ["viewer", "user", "editor", "admin"];
 const workspaceModes: AppWorkspaceMode[] = ["general", "field"];
+const roleAliases: Record<string, AppRole> = {
+  administrator: "admin",
+  beheerder: "admin",
+  manager: "editor",
+  medewerker: "user",
+  owner: "admin",
+  readonly: "viewer",
+  "read-only": "viewer",
+  superadmin: "admin",
+  "super-admin": "admin",
+  super_admin: "admin"
+};
 
 export function parseCookies(cookieHeader: string) {
   return Object.fromEntries(
@@ -30,14 +42,31 @@ function asRecord(value: unknown): UnknownRecord {
   return value && typeof value === "object" ? (value as UnknownRecord) : {};
 }
 
+function asOptionalRecord(value: unknown): UnknownRecord | undefined {
+  return value && typeof value === "object" ? (value as UnknownRecord) : undefined;
+}
+
 function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
 function asRole(value: unknown): AppRole | undefined {
-  const role = asString(value);
+  const role =
+    asString(value) ??
+    asString(asRecord(value).name) ??
+    asString(asRecord(value).slug) ??
+    asString(asRecord(value).key);
 
-  return role && roles.includes(role as AppRole) ? (role as AppRole) : undefined;
+  if (!role) {
+    return undefined;
+  }
+
+  const normalizedRole = role.toLowerCase().trim().replace(/\s+/gu, "_");
+  const aliasedRole = roleAliases[normalizedRole] ?? roleAliases[normalizedRole.replace(/_/gu, "-")];
+
+  return roles.includes(normalizedRole as AppRole)
+    ? (normalizedRole as AppRole)
+    : aliasedRole;
 }
 
 function asWorkspaceMode(value: unknown): AppWorkspaceMode | undefined {
@@ -53,28 +82,112 @@ type SessionTenantOptions = {
   forceTenantId?: string;
 };
 
+function firstString(...values: unknown[]) {
+  for (const value of values) {
+    const stringValue = asString(value);
+
+    if (stringValue) {
+      return stringValue;
+    }
+  }
+
+  return undefined;
+}
+
+function firstRole(...values: unknown[]) {
+  for (const value of values) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const role = asRole(item);
+
+        if (role) {
+          return role;
+        }
+      }
+    }
+
+    const role = asRole(value);
+
+    if (role) {
+      return role;
+    }
+  }
+
+  return undefined;
+}
+
+function fullName(...values: unknown[]) {
+  return values.map(asString).filter(Boolean).join(" ").trim() || undefined;
+}
+
+function sessionPayloadCandidates(payload: UnknownRecord) {
+  const candidates: UnknownRecord[] = [payload];
+
+  for (const key of ["data", "result", "session", "profile"]) {
+    const candidate = asOptionalRecord(payload[key]);
+
+    if (candidate) {
+      candidates.push(candidate);
+    }
+  }
+
+  return candidates;
+}
+
 function sessionFromPayload(
   payload: UnknownRecord,
   { fallbackTenantId, forceTenantId }: SessionTenantOptions = {}
 ): AppSession | null {
-  const user = asRecord(payload.user);
-  const tenant = asRecord(payload.tenant);
+  const source = sessionPayloadCandidates(payload).find((candidate) => {
+    const user = asRecord(candidate.user);
+
+    return Boolean(
+      firstString(
+        candidate.sub,
+        candidate.id,
+        candidate.userId,
+        candidate.externalUserId,
+        user.id,
+        user.userId,
+        user.externalUserId
+      ) && firstString(candidate.email, candidate.emailAddress, user.email, user.emailAddress)
+    );
+  }) ?? payload;
+  const user = asRecord(source.user);
+  const tenant = asRecord(source.tenant ?? user.tenant);
   const userId =
-    asString(payload.sub) ??
-    asString(payload.userId) ??
-    asString(payload.externalUserId) ??
-    asString(user.id) ??
-    asString(user.externalUserId);
-  const email = asString(payload.email) ?? asString(user.email);
+    firstString(
+      source.sub,
+      source.id,
+      source.userId,
+      source.externalUserId,
+      user.id,
+      user.userId,
+      user.externalUserId
+    );
+  const email = firstString(source.email, source.emailAddress, user.email, user.emailAddress);
   const tenantId =
     forceTenantId ??
-    asString(payload.tenantSlug) ??
-    asString(payload.tenantId) ??
-    asString(tenant.slug) ??
-    asString(tenant.id) ??
+    firstString(
+      source.tenantSlug,
+      source.tenantId,
+      user.tenantSlug,
+      user.tenantId,
+      tenant.slug,
+      tenant.id
+    ) ??
     fallbackTenantId;
-  const role = asRole(payload.role ?? user.role);
-  const workspaceModeFromAuth = asWorkspaceMode(payload.workspaceMode ?? user.workspaceMode);
+  const role = firstRole(
+    source.role,
+    source.userRole,
+    source.roles,
+    source.permissions,
+    user.role,
+    user.userRole,
+    user.roles,
+    user.permissions
+  );
+  const workspaceModeFromAuth = asWorkspaceMode(source.workspaceMode ?? user.workspaceMode);
   const workspaceMode = workspaceModeFromAuth ?? "general";
 
   if (!userId || !email || !tenantId || !role) {
@@ -85,11 +198,36 @@ function sessionFromPayload(
     userId,
     tenantId,
     email,
-    name: asString(payload.name) ?? asString(user.name),
+    name:
+      firstString(source.name, user.name, source.displayName, user.displayName) ??
+      fullName(source.firstName, source.lastName) ??
+      fullName(user.firstName, user.lastName),
     role,
     workspaceMode,
     workspaceModeFromAuth: Boolean(workspaceModeFromAuth)
   };
+}
+
+function sessionCookieName() {
+  return import.meta.env.LAVENTECARE_SESSION_COOKIE ?? "access_token";
+}
+
+function tokenFromCookieHeader(cookieHeader: string) {
+  const cookies = parseCookies(cookieHeader);
+
+  return cookies[sessionCookieName()] ?? cookies.access_token ?? cookies.token ?? cookies.id_token;
+}
+
+function bearerToken(request: Request) {
+  const authorization = request.headers.get("authorization") ?? "";
+
+  return authorization.toLowerCase().startsWith("bearer ")
+    ? authorization.slice("bearer ".length).trim()
+    : undefined;
+}
+
+export function authTokenFromRequest(request: Request) {
+  return tokenFromCookieHeader(request.headers.get("cookie") ?? "") ?? bearerToken(request);
 }
 
 function base64UrlDecode(value: string) {
@@ -171,9 +309,14 @@ export async function getSessionFromMeEndpoint(
     accept: "application/json",
     cookie: request.headers.get("cookie") ?? ""
   };
+  const authToken = authTokenFromRequest(request);
 
   if (tenantHeaderId) {
     headers["X-Tenant-ID"] = tenantHeaderId;
+  }
+
+  if (authToken) {
+    headers.authorization = `Bearer ${authToken}`;
   }
 
   const response = await fetch(meUrl, {
