@@ -43,8 +43,8 @@ type ProjectDetailProps = {
 type ProjectDetailResult = {
   project: PortalProject;
   customer: PortalCustomer | null;
-  workflowEvents: PortalWorkflowEvent[];
-  projectTasks: PortalProjectTask[];
+  workflowEvents?: PortalWorkflowEvent[];
+  projectTasks?: PortalProjectTask[];
 } | null;
 
 type ProjectAction =
@@ -579,7 +579,12 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     return <EmptyState title="Project niet gevonden" description="Controleer de link of ga terug naar projecten." />;
   }
 
-  const { project, customer, workflowEvents, projectTasks } = detail;
+  const {
+    project,
+    customer,
+    workflowEvents = [],
+    projectTasks = []
+  } = detail;
   const pendingProjectActionDetails = pendingProjectAction
     ? projectActionCopy[pendingProjectAction]
     : null;

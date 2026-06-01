@@ -113,6 +113,10 @@ function addCalendarDays(timestamp: number, days: number) {
   return date.getTime();
 }
 
+function normalizeProjectId(ctx: any, projectId: string): Id<"projects"> | null {
+  return ctx.db.normalizeId("projects", projectId);
+}
+
 function invoicePaymentTermDays(customer?: Doc<"customers"> | null) {
   return customer?.type === "business" ? 21 : 8;
 }
@@ -1297,7 +1301,13 @@ export const fieldProjectWorkspace = query({
   },
   handler: async (ctx, args) => {
     const tenant = await requireTenant(ctx, args.tenantSlug);
-    const project = await ctx.db.get(args.projectId as Id<"projects">);
+    const projectId = normalizeProjectId(ctx, args.projectId);
+
+    if (!projectId) {
+      return null;
+    }
+
+    const project = await ctx.db.get(projectId);
 
     if (!project || project.tenantId !== tenant._id) {
       return null;
@@ -1444,7 +1454,13 @@ export const projectDetail = query({
   },
   handler: async (ctx, args) => {
     const tenant = await requireTenant(ctx, args.tenantSlug);
-    const project = await ctx.db.get(args.projectId as Id<"projects">);
+    const projectId = normalizeProjectId(ctx, args.projectId);
+
+    if (!projectId) {
+      return null;
+    }
+
+    const project = await ctx.db.get(projectId);
 
     if (!project || project.tenantId !== tenant._id) {
       return null;
