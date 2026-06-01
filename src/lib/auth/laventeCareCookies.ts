@@ -61,6 +61,14 @@ function authCookieNames() {
   return new Set([...DEFAULT_AUTH_COOKIE_NAMES, sessionCookieName()]);
 }
 
+function portalSessionCookieNames() {
+  return new Set(["access_token", "id_token", "token", sessionCookieName()]);
+}
+
+function isPortalSessionCookie(name: string) {
+  return portalSessionCookieNames().has(name);
+}
+
 export function splitSetCookieHeader(header: string) {
   const cookies: string[] = [];
   let start = 0;
@@ -238,8 +246,22 @@ export function applyLaventeCareSetCookies(
         sameSite: "lax",
         secure: options.secure
       });
+      if (parsed.path !== "/" && isPortalSessionCookie(parsed.name)) {
+        cookies.delete(parsed.name, {
+          httpOnly: options.httpOnly,
+          path: "/",
+          sameSite: "lax",
+          secure: options.secure
+        });
+      }
     } else {
       cookies.set(parsed.name, parsed.value, options);
+      if (parsed.path !== "/" && isPortalSessionCookie(parsed.name)) {
+        cookies.set(parsed.name, parsed.value, {
+          ...options,
+          path: "/"
+        });
+      }
     }
 
     applied.push({
