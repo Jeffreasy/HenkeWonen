@@ -933,6 +933,9 @@ def source_key_for_price(
             [
                 row["importKey"],
                 row.get("fileHash") or row["sourcePath"],
+                row["sourceSheetName"],
+                row_number,
+                column_index,
                 price_type,
                 price_unit,
                 round(amount, 4),
@@ -972,6 +975,9 @@ def prices_for(
             purchase_key = stable_hash([
                 row["importKey"],
                 row.get("fileHash") or row["sourcePath"],
+                row["sourceSheetName"],
+                row["sourceRowNumber"],
+                price_index,
                 "purchase",
                 "piece",
                 round(purchase_amount, 4),
@@ -996,6 +1002,9 @@ def prices_for(
             retail_key = stable_hash([
                 row["importKey"],
                 row.get("fileHash") or row["sourcePath"],
+                row["sourceSheetName"],
+                row["sourceRowNumber"],
+                price_index,
                 "advice_retail",
                 "piece",
                 round(msrp, 4),
@@ -1172,10 +1181,7 @@ def build_row(
         brand_name = get_text(headers, values, ["Company"]) or supplier_name
     source_rel = str(source_path.relative_to(ROOT))
     if is_lamelio(source_path):
-        if "kit" in product_name.lower():
-            import_identity = f"{ean or ''}_{product_name}"
-        else:
-            import_identity = ean or product_name
+        import_identity = f"{ean or ''}_{product_name}"
     else:
         import_identity = article_number or supplier_code or commercial_code or ean or product_name
     import_key = stable_hash([supplier_name, category_name, import_identity])

@@ -36,7 +36,10 @@ console.log(JSON.stringify({ ...targetSummary(toolEnv), action: "catalog reset" 
 console.log(
   JSON.stringify(
     {
-      before: await client.query(api.catalogImport.getCatalogImportStats, { tenantSlug }),
+      before: await client.query(api.catalogImport.getCatalogImportStats, {
+        tenantSlug,
+        summaryOnly: true,
+      }),
     },
     null,
     2
@@ -73,7 +76,10 @@ console.log(
       done: true,
       iterations,
       deleted: totals,
-      after: await client.query(api.catalogImport.getCatalogImportStats, { tenantSlug }),
+      after: await client.query(api.catalogImport.getCatalogImportStats, {
+        tenantSlug,
+        summaryOnly: true,
+      }),
     },
     null,
     2

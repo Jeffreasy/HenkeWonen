@@ -18,6 +18,15 @@ const previewFileArg = optionValue(toolEnv.args, "--preview-file");
 const previewPath = previewFileArg
   ? resolve(root, previewFileArg)
   : resolve(root, "docs/catalog-import-preview.json");
+const commitLimitRaw =
+  optionValue(toolEnv.args, "--commit-limit") ?? process.env.CATALOG_IMPORT_COMMIT_LIMIT ?? "25";
+const commitLimitNumber = Number(commitLimitRaw);
+
+if (!Number.isFinite(commitLimitNumber)) {
+  throw new Error("--commit-limit moet een getal zijn.");
+}
+
+const commitLimit = Math.min(Math.max(Math.trunc(commitLimitNumber), 1), 100);
 
 const allowUnknownVatMode = hasFlag(toolEnv.args, "--allow-unknown-vat");
 const noCommit = hasFlag(toolEnv.args, "--no-commit");
@@ -336,7 +345,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
           batchId,
           allowUnknownVatMode: batchAllowUnknownVatMode,
           importedByExternalUserId: "dev-catalog-import",
-          limit: 75,
+          limit: commitLimit,
         });
 
         batchSummary.commitIterations += 1;
