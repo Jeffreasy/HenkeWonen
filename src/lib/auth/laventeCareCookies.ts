@@ -11,6 +11,19 @@ const DEFAULT_AUTH_COOKIE_NAMES = [
 ];
 
 const clientReadableCookieNames = new Set(["csrf_token"]);
+const jsonTokenCookieNames = new Map([
+  ["access_token", "access_token"],
+  ["accessToken", "access_token"],
+  ["refresh_token", "refresh_token"],
+  ["refreshToken", "refresh_token"],
+  ["id_token", "id_token"],
+  ["idToken", "id_token"],
+  ["token", "token"],
+  ["pre_auth_token", "pre_auth_token"],
+  ["preAuthToken", "pre_auth_token"],
+  ["csrf_token", "csrf_token"],
+  ["csrfToken", "csrf_token"]
+]);
 
 type ParsedSetCookie = {
   name: string;
@@ -38,6 +51,10 @@ function isSecureRequest(request: Request) {
 
 function isClientReadableCookie(name: string) {
   return clientReadableCookieNames.has(name);
+}
+
+function asRecord(value: unknown) {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
 }
 
 function authCookieNames() {
@@ -159,6 +176,44 @@ function cookieOptions(
   return options;
 }
 
+function tokenCookieOptions(name: string, request: Request): AstroCookieSetOptions {
+  return {
+    path: name === "pre_auth_token" || name === "csrf_token" ? "/api/auth" : "/",
+    httpOnly: !isClientReadableCookie(name),
+    sameSite: "lax",
+    secure: isSecureRequest(request)
+  };
+}
+
+function collectJsonTokenCookies(value: unknown, cookies = new Map<string, string>()) {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectJsonTokenCookies(item, cookies);
+    }
+
+    return cookies;
+  }
+
+  const record = asRecord(value);
+
+  if (!record) {
+    return cookies;
+  }
+
+  for (const [key, itemValue] of Object.entries(record)) {
+    const cookieName = jsonTokenCookieNames.get(key);
+
+    if (cookieName && typeof itemValue === "string" && itemValue.trim()) {
+      cookies.set(cookieName, itemValue.trim());
+      continue;
+    }
+
+    collectJsonTokenCookies(itemValue, cookies);
+  }
+
+  return cookies;
+}
+
 export function applyLaventeCareSetCookies(
   backendResponse: Response,
   cookies: AstroCookies,
@@ -192,6 +247,27 @@ export function applyLaventeCareSetCookies(
       value: parsed.value,
       path: parsed.path,
       deleted
+    });
+  }
+
+  return applied;
+}
+
+export function applyLaventeCareJsonTokenCookies(
+  payload: unknown,
+  cookies: AstroCookies,
+  request: Request
+) {
+  const applied: AppliedLaventeCareCookie[] = [];
+  const tokenCookies = collectJsonTokenCookies(payload);
+
+  for (const [name, value] of tokenCookies) {
+    cookies.set(name, value, tokenCookieOptions(name, request));
+    applied.push({
+      name,
+      value,
+      path: tokenCookieOptions(name, request).path ?? "/",
+      deleted: false
     });
   }
 

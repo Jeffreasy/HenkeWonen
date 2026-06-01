@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { laventeCareApiBaseUrl, laventeCareTenantId } from "../../../lib/auth/laventeCareConfig";
 import {
+  applyLaventeCareJsonTokenCookies,
   applyLaventeCareSetCookies,
   clearLaventeCareCookies
 } from "../../../lib/auth/laventeCareCookies";
@@ -19,10 +20,14 @@ const ALLOWED_AUTH_PATHS = new Set([
 
 const SENSITIVE_AUTH_RESPONSE_FIELDS = new Set([
   "access_token",
+  "accessToken",
   "refresh_token",
+  "refreshToken",
   "id_token",
+  "idToken",
   "token",
-  "pre_auth_token"
+  "pre_auth_token",
+  "preAuthToken"
 ]);
 
 function stripSensitiveAuthFields(value: unknown): unknown {
@@ -45,6 +50,22 @@ function stripSensitiveAuthFields(value: unknown): unknown {
   }
 
   return sanitized;
+}
+
+function parseJsonBody(contentType: string, body: ArrayBuffer) {
+  if (!contentType.toLowerCase().includes("application/json")) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(new TextDecoder().decode(body)) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+function jsonResponseBody(payload: unknown) {
+  return new TextEncoder().encode(JSON.stringify(stripSensitiveAuthFields(payload)));
 }
 
 async function logout(context: Parameters<APIRoute>[0]) {
@@ -103,13 +124,9 @@ function sanitizeJson(contentType: string, body: ArrayBuffer) {
     return body;
   }
 
-  try {
-    const payload = JSON.parse(new TextDecoder().decode(body));
+  const payload = parseJsonBody(contentType, body);
 
-    return new TextEncoder().encode(JSON.stringify(stripSensitiveAuthFields(payload)));
-  } catch {
-    return body;
-  }
+  return payload === undefined ? body : jsonResponseBody(payload);
 }
 
 async function proxyAuth(context: Parameters<APIRoute>[0]) {
@@ -178,7 +195,9 @@ async function proxyAuth(context: Parameters<APIRoute>[0]) {
   });
   const upstreamBody = await upstream.arrayBuffer();
   const upstreamContentType = upstream.headers.get("content-type") ?? "application/json";
-  const responseBody = sanitizeJson(upstreamContentType, upstreamBody);
+  const upstreamJson = parseJsonBody(upstreamContentType, upstreamBody);
+  const responseBody =
+    upstreamJson === undefined ? sanitizeJson(upstreamContentType, upstreamBody) : jsonResponseBody(upstreamJson);
   const response = new Response(responseBody, {
     status: upstream.status,
     statusText: upstream.statusText,
@@ -189,6 +208,9 @@ async function proxyAuth(context: Parameters<APIRoute>[0]) {
   });
 
   applyLaventeCareSetCookies(upstream, context.cookies, context.request);
+  if (upstream.ok && upstreamJson !== undefined) {
+    applyLaventeCareJsonTokenCookies(upstreamJson, context.cookies, context.request);
+  }
 
   return response;
 }

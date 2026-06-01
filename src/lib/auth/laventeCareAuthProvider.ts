@@ -63,7 +63,7 @@ async function getSessionFromCookieHeader(request: Request, cookieHeader: string
   }
 
   const cookies = parseCookies(cookieHeader);
-  const token = cookies[sessionCookieName] ?? cookies.access_token;
+  const token = cookies[sessionCookieName] ?? cookies.access_token ?? cookies.token ?? cookies.id_token;
 
   return token ? await getSessionFromJwt(token, jwtSecret, appTenantSlug, appTenantSlug) : null;
 }
@@ -72,7 +72,12 @@ export const laventeCareAuthProvider: AuthProvider = {
   async getSession(request: Request): Promise<AppSession | null> {
     const cookieHeader = request.headers.get("cookie") ?? "";
     const cookies = parseCookies(cookieHeader);
-    const token = cookies[sessionCookieName] ?? cookies.access_token ?? bearerToken(request);
+    const token =
+      cookies[sessionCookieName] ??
+      cookies.access_token ??
+      cookies.token ??
+      cookies.id_token ??
+      bearerToken(request);
 
     if (!token) {
       return null;
