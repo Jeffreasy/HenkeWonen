@@ -8,6 +8,7 @@ type PageHeaderProps = {
   actions?: ReactNode;
   breadcrumbs?: BreadcrumbItem[];
   meta?: ReactNode;
+  compact?: boolean;
   children?: ReactNode;
 };
 
@@ -18,12 +19,13 @@ export function PageHeader({
   actions,
   breadcrumbs,
   meta,
+  compact = false,
   children
 }: PageHeaderProps) {
   const headerActions = actions ?? children;
 
   return (
-    <section className="ui-page-header">
+    <section className={compact ? "ui-page-header ui-page-header-compact" : "ui-page-header"}>
       {breadcrumbs ? <Breadcrumbs items={breadcrumbs} /> : null}
       <div className="ui-page-header-row">
         <div className="ui-page-header-copy">

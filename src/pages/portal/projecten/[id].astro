@@ -18,9 +18,10 @@ if (!session) {
 
 <PortalLayout title="Project" session={session}>
   <PageHeader
+    compact
     eyebrow="Projectdossier"
-    title="Projectwerkplek"
-    description="De centrale plek voor klantcontext, ruimtes, inmeting, offertevoorbereiding en opvolging."
+    title="Project"
+    description="Klant, ruimtes, inmeting en opvolging."
     breadcrumbs={breadcrumbs}
   />
   <ProjectDetail client:load session={session} projectId={projectId} />

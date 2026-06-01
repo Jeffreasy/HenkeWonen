@@ -1,11 +1,10 @@
-import { CalendarClock, CheckCircle2, Pencil, Plus, Save, Trash2, XCircle } from "lucide-react";
+import { CalendarClock, CheckCircle2, FileText, Pencil, Plus, Save, Trash2, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import type { SubmitEventLike } from "../../lib/events";
 import { createConvexHttpClient } from "../../lib/convex/client";
-import { formatProjectStatus } from "../../lib/i18n/statusLabels";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import type {
   PortalCustomer,
@@ -14,11 +13,8 @@ import type {
   PortalRoom,
   PortalWorkflowEvent
 } from "../../lib/portalTypes";
-import { NoteVisibilityBadge } from "../common/NoteVisibilityBadge";
-import { Alert } from "../ui/Alert";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
-import { Card } from "../ui/Card";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { EmptyState } from "../ui/EmptyState";
@@ -27,8 +23,6 @@ import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
 import { LoadingState } from "../ui/LoadingState";
 import { SectionHeader } from "../ui/SectionHeader";
-import { StatCard } from "../ui/StatCard";
-import { SummaryList } from "../ui/SummaryList";
 import { Textarea } from "../ui/Textarea";
 import { Timeline } from "../ui/Timeline";
 import ProjectStatusBadge from "./ProjectStatusBadge";
@@ -632,60 +626,59 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
           </Field>
         ) : null}
       </ConfirmDialog>
-      <section className="grid three-column">
-        <StatCard label="Ruimtes" value={project.rooms.length} tone="info" />
-        <StatCard label="Dossiermomenten" value={workflowEvents.length} />
-        <StatCard
-          label="Status"
-          value={formatProjectStatus(project.status)}
-          description={customer?.displayName ?? "Geen klant gekoppeld"}
-          tone={project.status === "cancelled" || project.status === "quote_rejected" ? "danger" : "warning"}
-        />
-      </section>
-
-      <div className="grid two-column">
-        <section className="panel">
-          <SectionHeader
-            compact
-            title={project.title}
-            description={project.description ?? "Geen projectomschrijving"}
-            actions={
-              <div className="toolbar">
+      <div className="grid project-workspace-top">
+        <section className="panel project-overview-panel">
+          <div className="project-overview-header">
+            <div className="project-overview-copy">
+              <div className="project-overview-kicker">
                 <ProjectStatusBadge status={project.status} />
-                {canEditProject ? (
-                  <>
-                    <Button
-                      leftIcon={<Pencil size={16} aria-hidden="true" />}
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setEditingProject((current) => !current)}
-                    >
-                      Bewerken
-                    </Button>
-                    <Button
-                      leftIcon={<XCircle size={16} aria-hidden="true" />}
-                      size="sm"
-                      variant="danger"
-                      onClick={() => openProjectAction("cancelled")}
-                    >
-                      Annuleren
-                    </Button>
-                  </>
-                ) : null}
+                <span>{customer?.displayName ?? "Geen klant gekoppeld"}</span>
               </div>
-            }
-          />
-          <SummaryList
-            items={[
+              <h2>{project.title}</h2>
+              <p className="muted">{project.description?.trim() || "Geen projectomschrijving"}</p>
+            </div>
+            {canEditProject ? (
+              <div className="project-overview-actions">
+                <Button
+                  leftIcon={<Pencil size={16} aria-hidden="true" />}
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setEditingProject((current) => !current)}
+                >
+                  Bewerken
+                </Button>
+                <Button
+                  leftIcon={<XCircle size={16} aria-hidden="true" />}
+                  size="sm"
+                  variant="danger"
+                  onClick={() => openProjectAction("cancelled")}
+                >
+                  Annuleren
+                </Button>
+              </div>
+            ) : null}
+          </div>
+
+          <dl className="project-meta-strip" aria-label="Projectgegevens">
+            {[
               { id: "customer", label: "Klant", value: customer?.displayName ?? "-" },
+              { id: "rooms", label: "Ruimtes", value: project.rooms.length },
+              { id: "events", label: "Momenten", value: workflowEvents.length },
               { id: "measurement", label: "Inmeten", value: dateText(project.measurementDate ?? project.measurementPlannedAt) },
               { id: "execution", label: "Uitvoering", value: dateText(project.executionDate ?? project.executionPlannedAt) },
               { id: "updated", label: "Bijgewerkt", value: dateText(project.updatedAt) }
-            ]}
-          />
+            ].map((item) => (
+              <div className="project-meta-item" key={item.id}>
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+
           {canEditProject ? (
-            <div className="toolbar" style={{ marginTop: 16 }}>
+            <div className="project-primary-actions">
               <a className="ui-button ui-button-secondary ui-button-md" href="/portal/offertes">
+                <FileText size={17} aria-hidden="true" />
                 Offerte maken
               </a>
               <Button
@@ -695,6 +688,23 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
               >
                 Inmeten plannen
               </Button>
+            </div>
+          ) : null}
+
+          {(project.internalNotes || project.customerNotes) ? (
+            <div className="project-notes-strip" aria-label="Projectnotities">
+              {project.internalNotes ? (
+                <div className="project-note-preview">
+                  <Badge variant="neutral">Intern</Badge>
+                  <p>{project.internalNotes}</p>
+                </div>
+              ) : null}
+              {project.customerNotes ? (
+                <div className="project-note-preview">
+                  <Badge variant="info">Klant</Badge>
+                  <p>{project.customerNotes}</p>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </section>
@@ -769,31 +779,6 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
           </form>
         </section>
       ) : null}
-
-      {(project.internalNotes || project.customerNotes) ? (
-        <section className="grid two-column">
-          <Card variant="muted">
-            <div className="toolbar" style={{ justifyContent: "space-between" }}>
-              <strong>Interne opmerkingen</strong>
-              <NoteVisibilityBadge visibleToCustomer={false} />
-            </div>
-            <p className="muted">{project.internalNotes ?? "Geen interne opmerkingen."}</p>
-          </Card>
-          <Card variant="info">
-            <div className="toolbar" style={{ justifyContent: "space-between" }}>
-              <strong>Klantzichtbare opmerkingen</strong>
-              <NoteVisibilityBadge visibleToCustomer />
-            </div>
-            <p className="muted">{project.customerNotes ?? "Geen klantzichtbare opmerkingen."}</p>
-          </Card>
-        </section>
-      ) : (
-        <Alert
-          variant="info"
-          title="Notities"
-          description="Interne en klantzichtbare projectnotities worden apart getoond zodra ze beschikbaar zijn."
-        />
-      )}
 
       <section className="panel">
         <SectionHeader
@@ -937,102 +922,89 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
         ) : null}
       </section>
 
-      <section className="panel">
-        <SectionHeader
-          compact
-          title="Procesopvolging"
-          description="Winkel en buitendienst gebruiken dezelfde rood/oranje/groen signalen op open taken en deadlines."
-        />
-        <DataTable
-          ariaLabel="Projecttaken"
-          columns={taskColumns}
-          density="compact"
-          emptyDescription="Taken worden automatisch aangemaakt bij offerte verzenden, akkoord en factureren."
-          emptyTitle="Nog geen procesopvolging"
-          getRowKey={(task) => task.id}
-          mobileMode="cards"
-          renderMobileCard={(task) => (
-            <div className="mobile-card-section">
-              <div className="mobile-card-header">
-                <div className="mobile-card-title">
-                  <strong>{task.title}</strong>
-                  <small className="muted">{taskTypeLabel(task.type)}</small>
+      <div className="grid project-followup-grid">
+        <section className="panel">
+          <SectionHeader
+            compact
+            title="Procesopvolging"
+            description="Open taken en deadlines voor winkel en buitendienst."
+          />
+          <DataTable
+            ariaLabel="Projecttaken"
+            columns={taskColumns}
+            density="compact"
+            emptyDescription="Taken worden automatisch aangemaakt bij offerte verzenden, akkoord en factureren."
+            emptyTitle="Nog geen procesopvolging"
+            getRowKey={(task) => task.id}
+            mobileMode="cards"
+            renderMobileCard={(task) => (
+              <div className="mobile-card-section">
+                <div className="mobile-card-header">
+                  <div className="mobile-card-title">
+                    <strong>{task.title}</strong>
+                    <small className="muted">{taskTypeLabel(task.type)}</small>
+                  </div>
+                  <Badge variant={task.priority.tone}>{task.priority.label}</Badge>
                 </div>
-                <Badge variant={task.priority.tone}>{task.priority.label}</Badge>
-              </div>
-              <div className="mobile-card-meta">
-                <span>Deadline {dateText(task.dueAt)}</span>
-                <span>{taskStatusLabel(task.status)}</span>
-              </div>
-              {canEditProject && task.status === "open" ? (
-                <div className="mobile-card-actions">
-                  <Button
-                    disabled={updatingTaskId === task.id}
-                    leftIcon={<CheckCircle2 size={16} aria-hidden="true" />}
-                    onClick={() => void updateProjectTaskStatus(task, "done")}
-                    size="sm"
-                    variant="secondary"
-                  >
-                    Gereed
-                  </Button>
-                  <Button
-                    disabled={updatingTaskId === task.id}
-                    leftIcon={<XCircle size={16} aria-hidden="true" />}
-                    onClick={() => void updateProjectTaskStatus(task, "dismissed")}
-                    size="sm"
-                    variant="ghost"
-                  >
-                    Verberg
-                  </Button>
+                <div className="mobile-card-meta">
+                  <span>Deadline {dateText(task.dueAt)}</span>
+                  <span>{taskStatusLabel(task.status)}</span>
                 </div>
-              ) : null}
-            </div>
-          )}
-          rows={projectTasks}
-        />
-      </section>
+                {canEditProject && task.status === "open" ? (
+                  <div className="mobile-card-actions">
+                    <Button
+                      disabled={updatingTaskId === task.id}
+                      leftIcon={<CheckCircle2 size={16} aria-hidden="true" />}
+                      onClick={() => void updateProjectTaskStatus(task, "done")}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      Gereed
+                    </Button>
+                    <Button
+                      disabled={updatingTaskId === task.id}
+                      leftIcon={<XCircle size={16} aria-hidden="true" />}
+                      onClick={() => void updateProjectTaskStatus(task, "dismissed")}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      Verberg
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            )}
+            rows={projectTasks}
+          />
+        </section>
 
-      <section className="panel">
-        <SectionHeader
-          compact
-          title="Dossieracties"
-          description="Snelle dossieracties voor dagelijkse opvolging."
-        />
-        {canEditProject ? (
-          <div className="toolbar">
-            <Button
-              onClick={() => openProjectAction("quote_accepted")}
-              variant="secondary"
-            >
-              Akkoord
-            </Button>
-            <Button
-              onClick={() => openProjectAction("supplier_order_created")}
-              variant="secondary"
-            >
-              Bestellen
-            </Button>
-            <Button
-              onClick={() => openProjectAction("invoice_created")}
-              variant="secondary"
-            >
-              Factuur
-            </Button>
-            <Button
-              onClick={() => openProjectAction("bookkeeper_export_sent")}
-              variant="secondary"
-            >
-              Naar boekhouder
-            </Button>
-            <Button
-              onClick={() => openProjectAction("closed")}
-              variant="secondary"
-            >
-              Sluiten
-            </Button>
-          </div>
-        ) : null}
-        <div style={{ marginTop: 16 }}>
+        <section className="panel project-timeline-panel">
+          <SectionHeader
+            compact
+            title="Dossiermomenten"
+            description="Statusacties en klantcontact bij elkaar."
+            actions={
+              canEditProject ? (
+                <div className="project-action-row">
+                  <Button onClick={() => openProjectAction("quote_accepted")} size="sm" variant="secondary">
+                    Akkoord
+                  </Button>
+                  <Button onClick={() => openProjectAction("supplier_order_created")} size="sm" variant="secondary">
+                    Bestellen
+                  </Button>
+                  <Button onClick={() => openProjectAction("invoice_created")} size="sm" variant="secondary">
+                    Factuur
+                  </Button>
+                  <Button onClick={() => openProjectAction("bookkeeper_export_sent")} size="sm" variant="secondary">
+                    Boekhouder
+                  </Button>
+                  <Button onClick={() => openProjectAction("closed")} size="sm" variant="secondary">
+                    Sluiten
+                  </Button>
+                </div>
+              ) : null
+            }
+          />
           <Timeline
             emptyState={
               <EmptyState
@@ -1049,8 +1021,8 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
               tone: event.visibleToCustomer ? "info" : "neutral"
             }))}
           />
-        </div>
-      </section>
+        </section>
+      </div>
 
       <MeasurementPanel
         customerId={project.customerId}

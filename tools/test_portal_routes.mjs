@@ -32,7 +32,7 @@ const routes = [
   { path: "/portal/dossiers", label: "Dossiers" },
   { path: "/portal/klanten", label: "Klanten" },
   { path: "/portal/projecten", label: "Projecten" },
-  { path: "/portal/projecten/kn7drc2c79vjw94h17z7e7e7f585tqra", label: "Projectwerkplek" },
+  { path: "/portal/projecten/kn7drc2c79vjw94h17z7e7e7f585tqra", label: "Project" },
   { path: "/portal/offertes", label: "Offertes" },
   { path: "/portal/offertes/kx7cwgd02r1qy4rph5d79abx5n85vd21", label: "Offerte samenstellen" },
   { path: "/portal/catalogus", label: "Catalogus" },
