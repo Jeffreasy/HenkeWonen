@@ -2,6 +2,12 @@
 
 Deze map bevat dossiers die relevant zijn voor productie-vrijgave.
 
+## Catalogusbron
+
+| Document | Gebruik |
+| --- | --- |
+| [Catalogus bronbesluit 2026-06-01](./catalogus/catalogus-bronbesluit-2026-06-01.md) | Besluit welke catalogusstand leidend is, welke lokale preview kandidaatbron is en welke poort voor productie geldt |
+
 ## Btw-mapping
 
 | Document | Gebruik |
@@ -20,5 +26,4 @@ Deze map bevat dossiers die relevant zijn voor productie-vrijgave.
 
 ## Hoofdregel
 
-Productie-import mag pas door als verplichte btw-mappings opgelost zijn. Dubbele EAN-waarschuwingen blijven zichtbaar als reviewpunt, maar worden niet automatisch samengevoegd.
-
+Productie-import mag pas door als verplichte btw-mappings opgelost zijn en de gekozen catalogusbron aantoonbaar overeenkomt met de development-importbaseline. Dubbele EAN-waarschuwingen blijven zichtbaar als reviewpunt, maar worden niet automatisch samengevoegd.
