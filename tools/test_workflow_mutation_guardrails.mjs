@@ -475,6 +475,8 @@ const authSession = read("src/lib/auth/laventeCareSession.ts");
 assert.ok(authSession.includes("authTokenFromRequest"));
 assert.ok(authSession.includes("headers.authorization"));
 assert.ok(authSession.includes("sessionPayloadCandidates"));
+assert.ok(authSession.includes("safePayloadShape"));
+assert.ok(authSession.includes("LaventeCare /auth/me payload kon niet naar portalsessie worden vertaald."));
 assert.ok(authSession.includes("roleAliases"));
 assert.ok(authSession.includes("beheerder"));
 assert.ok(authSession.includes("medewerker"));

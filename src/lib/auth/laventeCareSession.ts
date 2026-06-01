@@ -134,6 +134,17 @@ function sessionPayloadCandidates(payload: UnknownRecord) {
   return candidates;
 }
 
+function safePayloadShape(payload: UnknownRecord) {
+  const data = asOptionalRecord(payload.data);
+  const user = asOptionalRecord(payload.user ?? data?.user);
+
+  return {
+    topLevelKeys: Object.keys(payload).slice(0, 12),
+    dataKeys: data ? Object.keys(data).slice(0, 12) : [],
+    userKeys: user ? Object.keys(user).slice(0, 12) : []
+  };
+}
+
 function sessionFromPayload(
   payload: UnknownRecord,
   { fallbackTenantId, forceTenantId }: SessionTenantOptions = {}
@@ -324,6 +335,12 @@ export async function getSessionFromMeEndpoint(
   });
 
   if (response.status === 401 || response.status === 403) {
+    console.warn("LaventeCare /auth/me weigerde sessie.", {
+      hasAuthToken: Boolean(authToken),
+      hasCookieHeader: Boolean(request.headers.get("cookie")),
+      status: response.status
+    });
+
     return null;
   }
 
@@ -331,10 +348,17 @@ export async function getSessionFromMeEndpoint(
     throw new Error(`LaventeCare AuthSystem gaf HTTP ${response.status}.`);
   }
 
-  return sessionFromPayload((await response.json()) as UnknownRecord, {
+  const payload = (await response.json()) as UnknownRecord;
+  const session = sessionFromPayload(payload, {
     fallbackTenantId,
     forceTenantId
   });
+
+  if (!session) {
+    console.warn("LaventeCare /auth/me payload kon niet naar portalsessie worden vertaald.", safePayloadShape(payload));
+  }
+
+  return session;
 }
 
 export async function getSessionFromJwt(
