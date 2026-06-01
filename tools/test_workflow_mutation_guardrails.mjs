@@ -427,10 +427,24 @@ assert.equal(measurementLinePicker.includes("markMeasurementLineConverted"), fal
 assert.equal(measurementLinePicker.includes("onAddLine(quoteLine)"), false);
 
 const authProxy = read("src/pages/api/auth/[...path].ts");
-assert.ok(authProxy.includes('"HttpOnly"'));
+const authCookies = read("src/lib/auth/laventeCareCookies.ts");
+const middleware = read("src/middleware.ts");
+
+assert.ok(authProxy.includes("applyLaventeCareSetCookies"));
+assert.ok(authProxy.includes("clearLaventeCareCookies"));
 assert.ok(authProxy.includes("stripSensitiveAuthFields"));
 assert.ok(authProxy.includes('"access_token"'));
 assert.ok(authProxy.includes('"refresh_token"'));
 assert.ok(authProxy.includes('"pre_auth_token"'));
+assert.equal(authProxy.includes('"Path=/"'), false);
+assert.equal(authProxy.includes("response.headers.append(\"set-cookie\""), false);
+assert.ok(authCookies.includes("AstroCookies"));
+assert.ok(authCookies.includes("cookies.set"));
+assert.ok(authCookies.includes("cookies.delete"));
+assert.ok(authCookies.includes("path: parsed.path"));
+assert.ok(authCookies.includes('"/api/auth"'));
+assert.ok(authCookies.includes('"/api/v1/auth"'));
+assert.ok(authCookies.includes("firstCookieValue"));
+assert.ok(middleware.includes("refreshLaventeCareSession"));
 
 console.log("Workflow mutation guardrail tests passed.");

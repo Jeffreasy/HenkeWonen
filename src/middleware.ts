@@ -1,12 +1,16 @@
 import { defineMiddleware } from "astro:middleware";
 import { authProvider } from "./lib/auth";
 import { createSessionAuthzToken } from "./lib/auth/authzToken";
+import { refreshLaventeCareSession } from "./lib/auth/laventeCareAuthProvider";
 import { syncSessionToConvex } from "./lib/auth/sessionSync";
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
   const pathname = url.pathname;
-  const rawSession = await authProvider.getSession(context.request);
+  const protectsPortal = pathname.startsWith("/portal");
+  const rawSession =
+    (await authProvider.getSession(context.request)) ??
+    (protectsPortal ? await refreshLaventeCareSession(context.request, context.cookies) : null);
   const session = rawSession
     ? {
         ...rawSession,
@@ -24,7 +28,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  if (pathname.startsWith("/portal") && !session) {
+  if (protectsPortal && !session) {
     return context.redirect("/login");
   }
 

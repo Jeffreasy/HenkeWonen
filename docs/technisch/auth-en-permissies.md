@@ -16,6 +16,10 @@ De LaventeCare provider gebruikt in productie bij voorkeur de lokale Henke auth-
 - `/api/auth/me`, `/api/auth/refresh`, `/api/auth/logout` en `/api/auth/token` blijven first-party onder het Henke domein.
 - De proxy stuurt altijd `X-Tenant-ID` mee naar LaventeCare AuthSystem.
 - Cookies uit LaventeCare worden herschreven naar het Henke domein, zodat de browser geen cross-site auth-details hoeft te kennen.
+- `Set-Cookie` headers worden via `Astro.cookies` toegepast. De proxy zet dus niet handmatig losse `set-cookie` responseheaders.
+- De proxy behoudt het `Path`-attribuut van LaventeCare cookies. Met name `refresh_token` mag niet blind naar `Path=/` herschreven worden, omdat dat shadow cookies en token-reuse blokkades kan veroorzaken.
+- Logout wist bekende auth-cookies op `/`, `/api/auth` en `/api/v1/auth` en verwerkt daarna eventuele extra wis-instructies van LaventeCare.
+- De middleware probeert een server-side refresh wanneer een portalroute geen geldige sessie meer kan lezen maar er wel een `refresh_token` beschikbaar is.
 
 Benodigde instellingen:
 

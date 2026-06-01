@@ -1,5 +1,9 @@
 import type { APIRoute } from "astro";
 import { laventeCareApiBaseUrl, laventeCareTenantId } from "../../../lib/auth/laventeCareConfig";
+import {
+  applyLaventeCareSetCookies,
+  clearLaventeCareCookies
+} from "../../../lib/auth/laventeCareCookies";
 
 export const prerender = false;
 
@@ -20,99 +24,6 @@ const SENSITIVE_AUTH_RESPONSE_FIELDS = new Set([
   "token",
   "pre_auth_token"
 ]);
-
-function splitSetCookieHeader(header: string) {
-  const cookies: string[] = [];
-  let start = 0;
-
-  for (let index = 0; index < header.length; index += 1) {
-    if (header[index] !== ",") {
-      continue;
-    }
-
-    const nextPart = header.slice(index + 1).trimStart();
-
-    if (/^[^=;,\s]+=/u.test(nextPart)) {
-      cookies.push(header.slice(start, index).trim());
-      start = index + 1;
-    }
-  }
-
-  cookies.push(header.slice(start).trim());
-
-  return cookies.filter(Boolean);
-}
-
-function upstreamSetCookies(headers: Headers) {
-  const getSetCookie = (headers as Headers & { getSetCookie?: () => string[] }).getSetCookie;
-
-  if (typeof getSetCookie === "function") {
-    return getSetCookie.call(headers);
-  }
-
-  const combined = headers.get("set-cookie");
-
-  return combined ? splitSetCookieHeader(combined) : [];
-}
-
-function rewriteSetCookie(cookie: string, request: Request) {
-  const isSecureRequest = new URL(request.url).protocol === "https:";
-  const isProduction = import.meta.env.PROD;
-  const [nameValue, ...attributes] = cookie
-    .split(";")
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  const filteredAttributes = attributes.filter((attribute) => {
-    return (
-      !/^domain=/iu.test(attribute) &&
-      !/^path=/iu.test(attribute) &&
-      !/^samesite=/iu.test(attribute) &&
-      !/^partitioned$/iu.test(attribute) &&
-      !/^httponly$/iu.test(attribute) &&
-      !/^secure$/iu.test(attribute)
-    );
-  });
-
-  const rewritten = [nameValue, "Path=/", "HttpOnly", "SameSite=Lax", ...filteredAttributes];
-
-  if (isProduction || isSecureRequest) {
-    rewritten.push("Secure");
-  }
-
-  return rewritten.join("; ");
-}
-
-function expireCookie(name: string, request: Request) {
-  const isSecureRequest = new URL(request.url).protocol === "https:";
-  const isProduction = import.meta.env.PROD;
-  const attributes = ["Path=/", "HttpOnly", "SameSite=Lax", "Max-Age=0"];
-
-  if (isProduction || isSecureRequest) {
-    attributes.push("Secure");
-  }
-
-  return `${name}=; ${attributes.join("; ")}`;
-}
-
-function logoutCookieNames(request: Request) {
-  const names = new Set([
-    "access_token",
-    "refresh_token",
-    import.meta.env.LAVENTECARE_SESSION_COOKIE ?? "access_token"
-  ]);
-  const cookieHeader = request.headers.get("cookie") ?? "";
-
-  for (const cookie of cookieHeader.split(";")) {
-    const [name] = cookie.trim().split("=");
-
-    if (name) {
-      names.add(name);
-    }
-  }
-
-  return Array.from(names);
-}
 
 function stripSensitiveAuthFields(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -145,9 +56,7 @@ async function logout(context: Parameters<APIRoute>[0]) {
     }
   });
 
-  for (const cookieName of logoutCookieNames(context.request)) {
-    response.headers.append("set-cookie", expireCookie(cookieName, context.request));
-  }
+  clearLaventeCareCookies(context.cookies, context.request);
 
   const tenantId = laventeCareTenantId();
 
@@ -181,9 +90,7 @@ async function logout(context: Parameters<APIRoute>[0]) {
       redirect: "manual"
     });
 
-    for (const cookieHeader of upstreamSetCookies(upstream.headers)) {
-      response.headers.append("set-cookie", rewriteSetCookie(cookieHeader, context.request));
-    }
+    applyLaventeCareSetCookies(upstream, context.cookies, context.request);
   } catch (logoutError) {
     console.warn("Upstream logout niet bereikbaar; lokale sessie is wel gewist.", logoutError);
   }
@@ -281,9 +188,7 @@ async function proxyAuth(context: Parameters<APIRoute>[0]) {
     }
   });
 
-  for (const cookieHeader of upstreamSetCookies(upstream.headers)) {
-    response.headers.append("set-cookie", rewriteSetCookie(cookieHeader, context.request));
-  }
+  applyLaventeCareSetCookies(upstream, context.cookies, context.request);
 
   return response;
 }
