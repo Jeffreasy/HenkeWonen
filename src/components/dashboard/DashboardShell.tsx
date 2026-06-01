@@ -158,7 +158,7 @@ export default function DashboardShell({ session }: DashboardShellProps) {
       label: "Buitendienst",
       value: dashboard.plannedWorkCount,
       description: "Klantbezoeken, inmeten en conceptoffertes",
-      href: "/portal/buitendienst",
+      href: "/portal/buitendienst/vandaag",
       icon: Ruler,
       tone: "field"
     }

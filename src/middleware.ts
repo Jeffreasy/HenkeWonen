@@ -33,7 +33,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     pathname === "/portal" &&
     url.searchParams.get("full") !== "1"
   ) {
-    return context.redirect("/portal/buitendienst");
+    return context.redirect("/portal/buitendienst/vandaag");
   }
 
   return next();

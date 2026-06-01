@@ -5,6 +5,9 @@ const routes = [
   "/portal",
   "/portal?full=1",
   "/portal/buitendienst",
+  "/portal/buitendienst/vandaag",
+  "/portal/buitendienst/inmeten",
+  "/portal/buitendienst/conceptoffertes",
   "/portal/buitendienst/projecten/kn7drc2c79vjw94h17z7e7e7f585tqra",
   "/portal/dossiers",
   "/portal/klanten",
@@ -153,7 +156,16 @@ function checkFieldWorkspaceCopy(path, html, issues) {
     }
   }
 
-  for (const term of ["Vandaag", "Inmeten", "Conceptofferte", "Klantversie"]) {
+  const expectedTerms = ["Vandaag", "Inmeten", "Conceptofferte"];
+
+  if (
+    path.includes("/conceptoffertes") ||
+    path.includes("/projecten/")
+  ) {
+    expectedTerms.push("Klantversie");
+  }
+
+  for (const term of expectedTerms) {
     if (!text.includes(term)) {
       issues.push(`verwachte buitendienst-term ontbreekt: ${term}`);
     }

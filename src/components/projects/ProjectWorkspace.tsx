@@ -212,6 +212,29 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
             emptyTitle="Geen projecten gevonden"
             getRowKey={(project) => project.id}
             loading={isLoading}
+            mobileMode="cards"
+            renderMobileCard={(project) => (
+              <div className="mobile-card-section">
+                <div className="mobile-card-header">
+                  <div className="mobile-card-title">
+                    <a href={`/portal/projecten/${project.id}`}>
+                      <strong>{project.title}</strong>
+                    </a>
+                    <small className="muted">{project.customerName ?? "Geen klant gekoppeld"}</small>
+                  </div>
+                  <ProjectStatusBadge status={project.status} />
+                </div>
+                <div className="mobile-card-meta">
+                  <span>{project.description ?? "Geen omschrijving"}</span>
+                  <span>{project.rooms.length} ruimtes</span>
+                </div>
+                <div className="mobile-card-actions">
+                  <a className="ui-button ui-button-secondary ui-button-sm" href={`/portal/projecten/${project.id}`}>
+                    Project openen
+                  </a>
+                </div>
+              </div>
+            )}
             rows={filteredProjects}
           />
         </section>

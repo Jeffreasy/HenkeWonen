@@ -227,7 +227,7 @@ def header_score(values: list[Any]) -> float:
 
 def detect_header_row(ws, max_scan_rows: int, max_col: int) -> int | None:
     candidates: list[tuple[float, int]] = []
-    scan_to = min(ws.max_row or 0, max_scan_rows)
+    scan_to = min(ws.max_row or max_scan_rows, max_scan_rows)
     for offset, row in enumerate(sheet_rows(ws, 1, scan_to, max_col), start=1):
         row_idx = offset
         values = list(row)
@@ -256,7 +256,7 @@ def row_kind(values: list[Any], code_indexes: list[int], price_indexes: list[int
 
 
 def summarize_sheet(path: Path, ws) -> dict[str, Any]:
-    max_col = min(ws.max_column or 1, 80)
+    max_col = min(ws.max_column or 80, 80)
     header_row = detect_header_row(ws, 100, max_col)
     headers: list[str] = []
     if header_row:
@@ -295,7 +295,7 @@ def summarize_sheet(path: Path, ws) -> dict[str, Any]:
     first_product_rows: list[dict[str, Any]] = []
 
     start = (header_row + 1) if header_row else 1
-    max_iter_row = min(ws.max_row or 0, 50000)
+    max_iter_row = min(ws.max_row or 50000, 50000)
     empty_streak = 0
     last_observed_row = 0
     for row_idx, row in enumerate(sheet_rows(ws, start, max_iter_row, max_col), start=start):

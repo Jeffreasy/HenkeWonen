@@ -98,6 +98,12 @@ function isValidDevToken(
   );
 }
 
+function allowsDevAuthzTokens() {
+  return ["1", "true", "yes"].includes(
+    String(process.env.ALLOW_DEV_AUTHZ_TOKENS ?? "").toLowerCase()
+  );
+}
+
 async function verifyToken(
   token: string,
   expectedKind: TokenKind,
@@ -107,11 +113,16 @@ async function verifyToken(
   const secret = process.env.AUTHZ_TOKEN_SECRET;
 
   if (!secret) {
-    if (isValidDevToken(token, expectedKind, expectedTenantSlug, expectedExternalUserId)) {
+    if (
+      allowsDevAuthzTokens() &&
+      isValidDevToken(token, expectedKind, expectedTenantSlug, expectedExternalUserId)
+    ) {
       return;
     }
 
-    throw new Error("AUTHZ_TOKEN_SECRET ontbreekt voor beveiligde mutaties.");
+    throw new Error(
+      "AUTHZ_TOKEN_SECRET ontbreekt voor beveiligde mutaties. Zet ALLOW_DEV_AUTHZ_TOKENS=true alleen in lokale/dev omgevingen."
+    );
   }
 
   const parts = token.split(".");

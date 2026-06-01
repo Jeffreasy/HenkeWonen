@@ -695,6 +695,55 @@ async function validateQuoteLineProduct(
   return product._id;
 }
 
+const measurementProductGroupLabels: Record<string, string> = {
+  flooring: "Vloeren",
+  plinths: "Plinten",
+  wallpaper: "Behang",
+  wall_panels: "Wandpanelen",
+  curtains: "Gordijnen",
+  rails: "Rails",
+  stairs: "Trap",
+  other: "Overig"
+};
+
+const measurementCalculationTypeLabels: Record<string, string> = {
+  area: "Oppervlakte",
+  perimeter: "Omtrek",
+  rolls: "Rollen",
+  panels: "Panelen",
+  stairs: "Trap",
+  manual: "Handmatig"
+};
+
+function readableMeasurementFallback(value: string) {
+  return value.replaceAll("_", " ").replaceAll("-", " ");
+}
+
+function importedMeasurementLineTitle(
+  line: Doc<"measurementLines">,
+  room: Doc<"measurementRooms"> | null
+) {
+  return [
+    measurementProductGroupLabels[line.productGroup] ?? readableMeasurementFallback(line.productGroup),
+    measurementCalculationTypeLabels[line.calculationType] ??
+      readableMeasurementFallback(line.calculationType),
+    room?.name
+  ]
+    .filter(Boolean)
+    .join(" - ");
+}
+
+function importedMeasurementLineDescription(line: Doc<"measurementLines">) {
+  return [
+    "Overgenomen uit inmeting.",
+    "Richtprijs. Kies product, verkoopprijs en btw bewust voordat je de offerte verstuurt.",
+    line.wastePercent !== undefined ? `Snijverlies: ${line.wastePercent}%.` : undefined,
+    line.notes ? `Meetnotitie: ${line.notes}` : undefined
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 export const dashboard = query({
   args: {
     tenantSlug: v.string()
@@ -2083,6 +2132,151 @@ export const addQuoteLine = mutation({
     await recalculateQuote(ctx, tenant._id, quote._id);
 
     return lineId;
+  }
+});
+
+export const importMeasurementLinesToQuote = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    quoteId: v.string(),
+    lineIds: v.array(v.id("measurementLines")),
+    startSortOrder: v.number()
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+    const quote = await ctx.db.get(args.quoteId as Id<"quotes">);
+
+    if (!quote || quote.tenantId !== tenant._id) {
+      throw new Error("Quote not found");
+    }
+
+    if (quote.status !== "draft") {
+      throw new Error("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
+    }
+
+    if (args.lineIds.length === 0) {
+      return [];
+    }
+
+    if (new Set(args.lineIds.map((lineId) => String(lineId))).size !== args.lineIds.length) {
+      throw new Error("Meetregels mogen maar een keer worden geimporteerd.");
+    }
+
+    const now = Date.now();
+    const insertedLineIds: Id<"quoteLines">[] = [];
+    const touchedMeasurementIds = new Set<Id<"measurements">>();
+    const existingQuoteLines = await ctx.db
+      .query("quoteLines")
+      .withIndex("by_quote", (q: any) => q.eq("tenantId", tenant._id).eq("quoteId", quote._id))
+      .collect();
+    const requestedSortOrder = Number.isFinite(args.startSortOrder)
+      ? Math.max(1, Math.round(args.startSortOrder))
+      : 1;
+    const nextSortOrder =
+      existingQuoteLines.reduce(
+        (highest: number, line: Doc<"quoteLines">) => Math.max(highest, line.sortOrder),
+        0
+      ) + 1;
+    const startSortOrder = Math.max(requestedSortOrder, nextSortOrder);
+
+    for (const [index, lineId] of args.lineIds.entries()) {
+      const line = await ctx.db.get(lineId);
+
+      if (!line || line.tenantId !== tenant._id) {
+        throw new Error("Measurement line not found");
+      }
+
+      if (line.quotePreparationStatus !== "ready_for_quote") {
+        throw new Error("Measurement line is not ready for quote");
+      }
+
+      const measurement = await ctx.db.get(line.measurementId);
+
+      if (
+        !measurement ||
+        measurement.tenantId !== tenant._id ||
+        measurement.projectId !== quote.projectId
+      ) {
+        throw new Error("Measurement not found for quote project");
+      }
+
+      const room = line.roomId ? await ctx.db.get(line.roomId) : null;
+
+      if (
+        room &&
+        (room.tenantId !== tenant._id || room.measurementId !== measurement._id)
+      ) {
+        throw new Error("Measurement room not found");
+      }
+
+      if (room?.projectRoomId) {
+        const projectRoom = await ctx.db.get(room.projectRoomId);
+
+        if (
+          !projectRoom ||
+          projectRoom.tenantId !== tenant._id ||
+          projectRoom.projectId !== quote.projectId
+        ) {
+          throw new Error("Project room not found");
+        }
+      }
+
+      const totals = calculateLineTotals(line.quoteLineType, line.quantity, 0, 0);
+      const quoteLineId = await ctx.db.insert("quoteLines", {
+        tenantId: tenant._id,
+        quoteId: quote._id,
+        projectRoomId: room?.projectRoomId,
+        lineType: line.quoteLineType,
+        title: importedMeasurementLineTitle(line, room),
+        description: importedMeasurementLineDescription(line),
+        quantity: line.quantity,
+        unit: line.unit,
+        unitPriceExVat: 0,
+        vatRate: 0,
+        lineTotalExVat: totals.lineTotalExVat,
+        lineVatTotal: totals.lineVatTotal,
+        lineTotalIncVat: totals.lineTotalIncVat,
+        sortOrder: startSortOrder + index,
+        metadata: {
+          source: "measurement",
+          measurementId: measurement._id,
+          measurementLineId: line._id,
+          measurementRoomId: room?._id,
+          productGroup: line.productGroup,
+          calculationType: line.calculationType,
+          wastePercent: line.wastePercent,
+          isIndicative: true,
+          requiresManualProductReview: true,
+          requiresManualPriceReview: true,
+          requiresManualVatReview: true
+        },
+        createdAt: now,
+        updatedAt: now
+      });
+
+      await ctx.db.patch(line._id, {
+        quotePreparationStatus: "converted",
+        convertedQuoteId: quote._id,
+        convertedQuoteLineId: quoteLineId,
+        updatedAt: now
+      });
+
+      insertedLineIds.push(quoteLineId);
+      touchedMeasurementIds.add(measurement._id);
+    }
+
+    for (const measurementId of touchedMeasurementIds) {
+      await ctx.db.patch(measurementId, { updatedAt: now });
+    }
+
+    await recalculateQuote(ctx, tenant._id, quote._id);
+
+    return insertedLineIds;
   }
 });
 

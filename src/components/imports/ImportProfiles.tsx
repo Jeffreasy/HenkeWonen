@@ -1318,6 +1318,54 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
             emptyTitle="Geen importprofielen gevonden"
             getRowKey={(profile) => profile.id}
             loading={isLoading}
+            mobileMode="cards"
+            renderMobileCard={(profile) => (
+              <div className="mobile-card-section">
+                <div className="mobile-card-header">
+                  <div className="mobile-card-title">
+                    <strong>{profile.name}</strong>
+                    <small className="muted">{profile.supplierName}</small>
+                  </div>
+                  <StatusBadge
+                    status={profile.status}
+                    label={formatImportProfileStatus(profile.status)}
+                    variant={profile.status === "inactive" ? "neutral" : "success"}
+                  />
+                </div>
+                <div className="mobile-card-meta">
+                  <span>{profile.filePattern ?? "Geen bestandsfilter"}</span>
+                  <span>{profile.sheetPattern ?? "Alle tabbladen"}</span>
+                  {profile.supportsXlsx ? <Badge variant="neutral">xlsx</Badge> : null}
+                  {profile.supportsXls ? <Badge variant="neutral">xls</Badge> : null}
+                  {profile.expectedFileExtension ? (
+                    <Badge variant="info">{profile.expectedFileExtension}</Badge>
+                  ) : null}
+                </div>
+                {canManageProfiles ? (
+                  <div className="mobile-card-actions">
+                    {profile.status === "inactive" ? (
+                      <Button
+                        leftIcon={<RotateCcw size={16} aria-hidden="true" />}
+                        onClick={() => setPendingProfileStatus({ profile, nextStatus: "active" })}
+                        size="sm"
+                        variant="secondary"
+                      >
+                        Activeren
+                      </Button>
+                    ) : (
+                      <Button
+                        leftIcon={<Archive size={16} aria-hidden="true" />}
+                        onClick={() => setPendingProfileStatus({ profile, nextStatus: "inactive" })}
+                        size="sm"
+                        variant="danger"
+                      >
+                        Archiveren
+                      </Button>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            )}
             rows={visibleProfiles}
           />
         </div>

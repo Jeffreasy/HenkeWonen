@@ -1,5 +1,5 @@
 import { Ban, CheckCircle2, Pencil, Save, Send, Trash2, XCircle } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
 import type { SubmitEventLike } from "../../lib/events";
 import type {
@@ -15,6 +15,7 @@ import { formatLineType, formatQuoteStatus, formatUnit } from "../../lib/i18n/st
 import { formatEuro } from "../../lib/money";
 import { buildQuoteDocumentModel } from "../../lib/quotes/quoteDocumentModel";
 import { polishQuoteTemplateLines, polishQuoteTemplateText } from "../../lib/quoteTemplateCopy";
+import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import { Button } from "../ui/Button";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
@@ -209,6 +210,7 @@ export default function QuoteBuilder({
   const [pendingStatus, setPendingStatus] = useState<QuoteStatus | null>(null);
   const [isSavingLine, setIsSavingLine] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const lineEditPanelRef = useRef<HTMLElement>(null);
   const canEditDraftLines = canEdit && quote.status === "draft";
   const roomById = useMemo(
     () => new Map((project?.rooms ?? []).map((room) => [room.id, room.name])),
@@ -226,6 +228,8 @@ export default function QuoteBuilder({
     setPendingDeleteLine(null);
     setPendingStatus(null);
   }, [quote.id]);
+
+  useAutoFocusPanel(Boolean(editingLine), lineEditPanelRef);
 
   async function saveTerms() {
     if (!onUpdateTerms || !canEditDraftLines) {
@@ -387,6 +391,7 @@ export default function QuoteBuilder({
               <IconButton
                 aria-label={`Offertepost ${line.title} bewerken`}
                 onClick={() => startEditLine(line)}
+                title={`Offertepost ${line.title} bewerken`}
                 variant="secondary"
                 size="sm"
               >
@@ -396,6 +401,7 @@ export default function QuoteBuilder({
             <IconButton
               aria-label={`Offertepost ${line.title} verwijderen`}
               onClick={() => setPendingDeleteLine(line)}
+              title={`Offertepost ${line.title} verwijderen`}
               variant="danger"
               size="sm"
             >
@@ -436,17 +442,16 @@ export default function QuoteBuilder({
       projectId={quote.projectId}
       session={session}
       startSortOrder={quote.lines.length + 1}
-      onAddLine={onAddLine}
       onImported={onMeasurementLinesImported}
     />
   );
   const lineEditPanel =
     editingLine && lineDraft && onUpdateLine && canEditDraftLines ? (
-      <section className="panel">
+      <section className="panel edit-work-panel" ref={lineEditPanelRef}>
         <SectionHeader
           compact
-          title="Offertepost bewerken"
-          description="Pas de conceptregel aan. Definitieve of verzonden offertes blijven beschermd tegen losse regelwijzigingen."
+          title={`Offertepost bewerken: ${editingLine.title}`}
+          description="Je bewerkt nu deze ene conceptregel. Definitieve of verzonden offertes blijven beschermd tegen losse regelwijzigingen."
           actions={<LineTypeBadge lineType={lineDraft.lineType} />}
         />
         <form className="form-grid" onSubmit={saveLine}>
@@ -639,6 +644,49 @@ export default function QuoteBuilder({
             : "Voeg een product, werkzaamheid, materiaal, korting of tekst toe."
         }
         getRowKey={(line) => line.id}
+        mobileMode="cards"
+        renderMobileCard={(line) => (
+          <div className="mobile-card-section">
+            <div className="mobile-card-header">
+              <div className="mobile-card-title">
+                <strong>{line.title}</strong>
+                {line.description ? <small className="muted">{line.description}</small> : null}
+              </div>
+              <LineTypeBadge lineType={line.lineType} />
+            </div>
+            <div className="mobile-card-meta">
+              <span>
+                {line.projectRoomId ? roomById.get(line.projectRoomId) ?? "Geen ruimte" : "Geen ruimte"}
+              </span>
+              <span>
+                {line.quantity} {formatUnit(line.unit)}
+              </span>
+              <strong>{formatEuro(line.lineTotalIncVat)}</strong>
+            </div>
+            {canEditDraftLines ? (
+              <div className="mobile-card-actions">
+                {onUpdateLine ? (
+                  <Button
+                    leftIcon={<Pencil size={16} aria-hidden="true" />}
+                    onClick={() => startEditLine(line)}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Bewerken
+                  </Button>
+                ) : null}
+                <Button
+                  leftIcon={<Trash2 size={16} aria-hidden="true" />}
+                  onClick={() => setPendingDeleteLine(line)}
+                  size="sm"
+                  variant="danger"
+                >
+                  Verwijderen
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        )}
         rows={quote.lines}
       />
       {canEdit && quote.status !== "draft" ? (

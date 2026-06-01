@@ -589,11 +589,24 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
               Beoordeling bewaren
             </Button>
             <div className="muted" style={{ marginTop: 8 }}>
-              {!issue.issueId
-                ? "Werk waarschuwingen bij voordat je deze groep kunt beoordelen."
-                : issue.reviewedAt
-                  ? `Beoordeeld ${dateText(issue.reviewedAt)}`
-                  : "Nog niet beoordeeld"}
+              {!issue.issueId ? (
+                <span>
+                  Dit signaal is nog niet geregistreerd.{" "}
+                  <button
+                    type="button"
+                    style={{ color: "inherit", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit" }}
+                    onClick={() => void syncIssues()}
+                    disabled={isSaving}
+                  >
+                    Klik hier om signalen bij te werken
+                  </button>
+                  , dan kun je direct beoordelen.
+                </span>
+              ) : issue.reviewedAt ? (
+                `Beoordeeld ${dateText(issue.reviewedAt)}`
+              ) : (
+                "Nog niet beoordeeld"
+              )}
             </div>
           </>
         );

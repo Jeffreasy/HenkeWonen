@@ -20,6 +20,7 @@ import type { SubmitEventLike } from "../../lib/events";
 import { formatMeasurementStatus, formatProjectStatus, formatQuoteStatus } from "../../lib/i18n/statusLabels";
 import type {
   CustomerType,
+  FieldWorkspaceBucket,
   FieldServiceWorkspaceResult,
   FieldWorkspaceCard
 } from "../../lib/portalTypes";
@@ -37,15 +38,20 @@ import { Textarea } from "../ui/Textarea";
 
 type FieldServiceWorkspaceProps = {
   session: AppSession;
+  view?: FieldServiceView;
 };
 
+export type FieldServiceView = "today" | "measure" | "quote";
+type CardActionPreference = "measure" | "quote";
+
 type FieldSection = {
-  id?: string;
+  bucket: FieldWorkspaceBucket;
   title: string;
   description: string;
   items: FieldWorkspaceCard[];
   emptyTitle: string;
   emptyDescription: string;
+  preferredAction: CardActionPreference;
 };
 
 type CardUrgency = {
@@ -56,6 +62,102 @@ type CardUrgency = {
 type PriorityCounts = Record<CardUrgency["level"], number>;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const fieldPages: Array<{
+  view: FieldServiceView;
+  href: string;
+  label: string;
+  shortLabel?: string;
+  bucket: FieldWorkspaceBucket;
+}> = [
+  {
+    view: "today",
+    href: "/portal/buitendienst/vandaag",
+    label: "Vandaag",
+    bucket: "today"
+  },
+  {
+    view: "measure",
+    href: "/portal/buitendienst/inmeten",
+    label: "Inmeten",
+    bucket: "measure"
+  },
+  {
+    view: "quote",
+    href: "/portal/buitendienst/conceptoffertes",
+    label: "Conceptoffertes",
+    shortLabel: "Offertes",
+    bucket: "quote"
+  }
+];
+
+const pageCopy: Record<
+  FieldServiceView,
+  {
+    title: string;
+    description: string;
+    searchPlaceholder: string;
+  }
+> = {
+  today: {
+    title: "Vandaag",
+    description:
+      "Klantbezoeken, deadlines en opvolging die nu aandacht vragen in de buitendienst werkplek.",
+    searchPlaceholder: "Zoek klant, adres, taak of project"
+  },
+  measure: {
+    title: "Inmeten",
+    description:
+      "Dossiers waar klantgegevens, adres en meetwerk vooraan staan, zonder afleiding van kantoor- of beheerschermen.",
+    searchPlaceholder: "Zoek klant, adres of inmeetdossier"
+  },
+  quote: {
+    title: "Conceptoffertes",
+    description:
+      "Dossiers waar meetregels kunnen worden omgezet naar een nette Klantversie voor overleg.",
+    searchPlaceholder: "Zoek klant, offerte of project"
+  }
+};
+
+const sectionCopy: Record<
+  FieldWorkspaceBucket,
+  {
+    title: string;
+    description: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    preferredAction: CardActionPreference;
+  }
+> = {
+  today: {
+    title: "Vandaag",
+    description: "Klantbezoeken en meetmomenten die direct aandacht vragen.",
+    emptyTitle: "Geen bezoeken voor vandaag",
+    emptyDescription: "Er staan nu geen klantbezoeken met een meetmoment voor vandaag klaar.",
+    preferredAction: "measure"
+  },
+  measure: {
+    title: "Inmeten",
+    description: "Dossiers waar klantgegevens, adres en inmeting vooraan staan.",
+    emptyTitle: "Geen dossiers om in te meten",
+    emptyDescription: "Nieuwe meetdossiers verschijnen hier zodra ze aandacht vragen.",
+    preferredAction: "measure"
+  },
+  quote: {
+    title: "Conceptoffertes",
+    description: "Dossiers waar meetregels kunnen worden omgezet naar een Klantversie.",
+    emptyTitle: "Geen conceptoffertes",
+    emptyDescription: "Zodra een offerte voorbereid moet worden, staat het dossier hier.",
+    preferredAction: "quote"
+  },
+  followUp: {
+    title: "Opvolgen",
+    description: "Offertes en lopende dossiers die na het klantbezoek terugkomen.",
+    emptyTitle: "Niets om op te volgen",
+    emptyDescription: "Verzonden offertes en vervolgacties komen hier terug.",
+    preferredAction: "quote"
+  }
+};
 
 const emptyWorkspace: FieldServiceWorkspaceResult = {
   today: [],
@@ -152,13 +254,37 @@ function countPriorities(cards: FieldWorkspaceCard[]): PriorityCounts {
   );
 }
 
-function FieldCard({ card }: { card: FieldWorkspaceCard }) {
+function FieldCard({
+  card,
+  preferredAction
+}: {
+  card: FieldWorkspaceCard;
+  preferredAction: CardActionPreference;
+}) {
   const customerName = card.customer?.displayName ?? "Onbekende klant";
   const urgency = cardUrgency(card);
   const statusLabel = card.latestQuote
     ? formatQuoteStatus(card.latestQuote.status)
     : formatProjectStatus(card.project.status);
   const openTask = card.tasks?.find((task) => task.status === "open");
+  const actions = [
+    {
+      id: "measure" as const,
+      href: `${card.href}#inmeten`,
+      icon: <Ruler size={17} aria-hidden="true" />,
+      label: "Inmeten"
+    },
+    {
+      id: "quote" as const,
+      href: `${card.href}#conceptofferte`,
+      icon: <ExternalLink size={17} aria-hidden="true" />,
+      label: "Conceptofferte"
+    }
+  ].sort((left, right) => {
+    if (left.id === preferredAction) return -1;
+    if (right.id === preferredAction) return 1;
+    return 0;
+  });
 
   return (
     <article className={`field-work-card field-work-card-${urgency.level}`}>
@@ -220,14 +346,18 @@ function FieldCard({ card }: { card: FieldWorkspaceCard }) {
             <span>Route</span>
           </a>
         ) : null}
-        <a className="ui-button ui-button-primary ui-button-md" href={`${card.href}#inmeten`}>
-          <Ruler size={17} aria-hidden="true" />
-          <span>Inmeten</span>
-        </a>
-        <a className="ui-button ui-button-secondary ui-button-md" href={`${card.href}#conceptofferte`}>
-          <ExternalLink size={17} aria-hidden="true" />
-          <span>Conceptofferte</span>
-        </a>
+        {actions.map((action) => (
+          <a
+            className={`ui-button ui-button-${
+              action.id === preferredAction ? "primary" : "secondary"
+            } ui-button-md`}
+            href={action.href}
+            key={action.id}
+          >
+            {action.icon}
+            <span>{action.label}</span>
+          </a>
+        ))}
       </div>
     </article>
   );
@@ -237,7 +367,7 @@ function FieldCardSection({ section, search }: { section: FieldSection; search: 
   const hasSearch = search.trim().length > 0;
 
   return (
-    <section className="field-section" id={section.id}>
+    <section className="field-section">
       <SectionHeader
         compact
         title={`${section.title} (${section.items.length})`}
@@ -247,7 +377,11 @@ function FieldCardSection({ section, search }: { section: FieldSection; search: 
       {section.items.length ? (
         <div className="field-card-list">
           {section.items.map((card) => (
-            <FieldCard key={`${section.title}-${card.id}`} card={card} />
+            <FieldCard
+              key={`${section.title}-${card.id}`}
+              card={card}
+              preferredAction={section.preferredAction}
+            />
           ))}
         </div>
       ) : (
@@ -264,7 +398,38 @@ function FieldCardSection({ section, search }: { section: FieldSection; search: 
   );
 }
 
-export default function FieldServiceWorkspace({ session }: FieldServiceWorkspaceProps) {
+function FieldPageTabs({
+  activeView,
+  counts
+}: {
+  activeView: FieldServiceView;
+  counts: FieldServiceWorkspaceResult["counts"];
+}) {
+  return (
+    <nav className="field-page-tabs" aria-label="Buitendienst onderdelen">
+      {fieldPages.map((page) => {
+        const active = page.view === activeView;
+
+        return (
+          <a
+            aria-current={active ? "page" : undefined}
+            className={active ? "field-page-tab active" : "field-page-tab"}
+            href={page.href}
+            key={page.view}
+          >
+            <span>{page.label}</span>
+            <strong>{counts[page.bucket]}</strong>
+          </a>
+        );
+      })}
+    </nav>
+  );
+}
+
+export default function FieldServiceWorkspace({
+  session,
+  view = "today"
+}: FieldServiceWorkspaceProps) {
   const [workspace, setWorkspace] = useState<FieldServiceWorkspaceResult>(emptyWorkspace);
   const [search, setSearch] = useState("");
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
@@ -392,52 +557,25 @@ export default function FieldServiceWorkspace({ session }: FieldServiceWorkspace
     }
   }
 
+  const activePage = pageCopy[view];
+  const primaryBucket = fieldPages.find((page) => page.view === view)?.bucket ?? "today";
+  const visibleBuckets = view === "today" ? [primaryBucket, "followUp" as const] : [primaryBucket];
   const sections = useMemo<FieldSection[]>(
-    () => [
-      {
-        title: "Vandaag",
-        description: "Klantbezoeken en meetmomenten die direct aandacht vragen.",
-        items: filterCards(workspace.today, search),
-        emptyTitle: "Geen bezoeken voor vandaag",
-        emptyDescription: "Er staan nu geen klantbezoeken met een meetmoment voor vandaag klaar."
-      },
-      {
-        id: "dossiers",
-        title: "Inmeten",
-        description: "Dossiers waar klantgegevens, adres en inmeting vooraan staan.",
-        items: filterCards(workspace.measure, search),
-        emptyTitle: "Geen dossiers om in te meten",
-        emptyDescription: "Nieuwe meetdossiers verschijnen hier zodra ze aandacht vragen."
-      },
-      {
-        id: "conceptoffertes",
-        title: "Conceptoffertes",
-        description: "Dossiers waar meetregels kunnen worden omgezet naar een Klantversie.",
-        items: filterCards(workspace.quote, search),
-        emptyTitle: "Geen conceptoffertes",
-        emptyDescription: "Zodra een offerte voorbereid moet worden, staat het dossier hier."
-      },
-      {
-        title: "Opvolgen",
-        description: "Offertes en lopende dossiers die na het klantbezoek terugkomen.",
-        items: filterCards(workspace.followUp, search),
-        emptyTitle: "Niets om op te volgen",
-        emptyDescription: "Verzonden offertes en vervolgacties komen hier terug."
-      }
-    ],
-    [search, workspace]
+    () =>
+      visibleBuckets.map((bucket) => ({
+        bucket,
+        ...sectionCopy[bucket],
+        items: filterCards(workspace[bucket], search)
+      })),
+    [search, visibleBuckets, workspace]
+  );
+  const pageCards = useMemo(
+    () => uniqueCards(visibleBuckets.flatMap((bucket) => workspace[bucket])),
+    [visibleBuckets, workspace]
   );
   const priorityCounts = useMemo(
-    () =>
-      countPriorities(
-        uniqueCards([
-          ...workspace.today,
-          ...workspace.measure,
-          ...workspace.quote,
-          ...workspace.followUp
-        ])
-      ),
-    [workspace]
+    () => countPriorities(pageCards),
+    [pageCards]
   );
 
   return (
@@ -446,13 +584,9 @@ export default function FieldServiceWorkspace({ session }: FieldServiceWorkspace
 
       <section className="field-hero-panel">
         <div>
-          <p className="eyebrow">Vandaag</p>
-          <h1>Buitendienst werkplek</h1>
-          <p>
-            Klantbezoeken, Inmeten en Conceptoffertes bij elkaar, met Klantversie klaar voor
-            overleg en zonder winkel- of kantoorschermen
-            ertussen.
-          </p>
+          <p className="eyebrow">Buitendienst werkplek</p>
+          <h1>{activePage.title}</h1>
+          <p>{activePage.description}</p>
           <div className="field-priority-summary" aria-label="Urgentie overzicht">
             <span className="field-priority-pill field-priority-pill-red">
               <strong>{priorityCounts.red}</strong>
@@ -474,7 +608,7 @@ export default function FieldServiceWorkspace({ session }: FieldServiceWorkspace
         <div className="field-hero-search">
           <SearchInput
             aria-label="Buitendienst dossiers zoeken"
-            placeholder="Zoek klant, adres, project of offerte"
+            placeholder={activePage.searchPlaceholder}
             value={search}
             onChange={setSearch}
           />
@@ -503,6 +637,8 @@ export default function FieldServiceWorkspace({ session }: FieldServiceWorkspace
           ) : null}
         </div>
       </section>
+
+      <FieldPageTabs activeView={view} counts={workspace.counts} />
 
       {intakeNotice ? (
         <Alert variant="success" title="Lead vastgelegd" description={intakeNotice} />

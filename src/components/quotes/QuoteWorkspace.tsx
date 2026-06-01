@@ -402,6 +402,35 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
           emptyTitle="Geen offertes gevonden"
           getRowKey={(quote) => quote.id}
           loading={isLoading}
+          mobileMode="cards"
+          renderMobileCard={(quote) => (
+            <div className="mobile-card-section">
+              <div className="mobile-card-header">
+                <div className="mobile-card-title">
+                  <strong>{quote.quoteNumber}</strong>
+                  <small className="muted">{quote.title}</small>
+                </div>
+                <StatusBadge status={quote.status} label={formatQuoteStatus(quote.status)} />
+              </div>
+              <div className="mobile-card-meta">
+                <span>{customerById.get(quote.customerId)?.displayName ?? "Geen klant"}</span>
+                <span>{quote.lines.length} posten</span>
+                <strong>{formatEuro(quote.totalIncVat)}</strong>
+              </div>
+              <div className="mobile-card-actions">
+                <Button
+                  onClick={() => setSelectedQuoteId(quote.id)}
+                  size="sm"
+                  variant={quote.id === selectedQuoteId ? "primary" : "secondary"}
+                >
+                  {quote.id === selectedQuoteId ? "Geselecteerd" : "Selecteren"}
+                </Button>
+                <a className="ui-button ui-button-secondary ui-button-sm" href={`/portal/offertes/${quote.id}`}>
+                  Openen
+                </a>
+              </div>
+            </div>
+          )}
           rows={filteredQuotes}
         />
       </section>

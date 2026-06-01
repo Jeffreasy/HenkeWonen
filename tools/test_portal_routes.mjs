@@ -6,7 +6,22 @@ const routes = [
   { path: "/portal?full=1", label: "Start" },
   {
     path: "/portal/buitendienst",
-    label: "Buitendienst werkplek",
+    label: "Vandaag",
+    forbidden: fieldForbiddenTerms
+  },
+  {
+    path: "/portal/buitendienst/vandaag",
+    label: "Vandaag",
+    forbidden: fieldForbiddenTerms
+  },
+  {
+    path: "/portal/buitendienst/inmeten",
+    label: "Inmeten",
+    forbidden: fieldForbiddenTerms
+  },
+  {
+    path: "/portal/buitendienst/conceptoffertes",
+    label: "Conceptoffertes",
     forbidden: fieldForbiddenTerms
   },
   {

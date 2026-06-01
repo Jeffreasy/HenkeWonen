@@ -1,11 +1,12 @@
-import { CalendarClock, CheckCircle2, Plus, Save, XCircle } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { CalendarClock, CheckCircle2, Pencil, Plus, Save, Trash2, XCircle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import type { SubmitEventLike } from "../../lib/events";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatProjectStatus } from "../../lib/i18n/statusLabels";
+import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import type {
   PortalCustomer,
   PortalProject,
@@ -177,7 +178,12 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   const [pendingProjectAction, setPendingProjectAction] = useState<ProjectAction | null>(null);
   const [invoiceDueDate, setInvoiceDueDate] = useState("");
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const projectEditFormRef = useRef<HTMLFormElement>(null);
+  const roomEditFormRef = useRef<HTMLFormElement>(null);
   const canEditProject = canEditDossiers(session.role);
+
+  useAutoFocusPanel(editingProject, projectEditFormRef);
+  useAutoFocusPanel(Boolean(editingRoomId), roomEditFormRef);
 
   const loadProject = useCallback(async () => {
     const client = createConvexHttpClient();
@@ -481,9 +487,11 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
           canEditProject ? (
             <div className="toolbar">
               <Button size="sm" variant="secondary" onClick={() => startEditRoom(room)}>
+                <Pencil size={16} aria-hidden="true" />
                 Bewerken
               </Button>
               <Button size="sm" variant="danger" onClick={() => setPendingRoomDelete(room)}>
+                <Trash2 size={16} aria-hidden="true" />
                 Verwijderen
               </Button>
             </div>
@@ -641,10 +649,20 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
                 <ProjectStatusBadge status={project.status} />
                 {canEditProject ? (
                   <>
-                    <Button size="sm" variant="secondary" onClick={() => setEditingProject((current) => !current)}>
+                    <Button
+                      leftIcon={<Pencil size={16} aria-hidden="true" />}
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setEditingProject((current) => !current)}
+                    >
                       Bewerken
                     </Button>
-                    <Button size="sm" variant="danger" onClick={() => openProjectAction("cancelled")}>
+                    <Button
+                      leftIcon={<XCircle size={16} aria-hidden="true" />}
+                      size="sm"
+                      variant="danger"
+                      onClick={() => openProjectAction("cancelled")}
+                    >
                       Annuleren
                     </Button>
                   </>
@@ -680,9 +698,9 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       </div>
 
       {canEditProject && editingProject ? (
-        <section className="panel">
+        <section className="panel edit-work-panel">
           <SectionHeader compact title="Projectgegevens aanpassen" description="Wijzig planning, omschrijving en interne of klantzichtbare notities." />
-          <form className="form-grid" onSubmit={saveProject}>
+          <form className="form-grid" onSubmit={saveProject} ref={projectEditFormRef}>
             <Field htmlFor="edit-project-title" label="Projectnaam" required>
               <Input
                 id="edit-project-title"
@@ -821,12 +839,53 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
             emptyDescription="Voeg hierboven de eerste ruimte toe."
             emptyTitle="Nog geen ruimtes"
             getRowKey={(room) => room.id}
+            mobileMode="cards"
+            renderMobileCard={(room) => (
+              <div className="mobile-card-section">
+                <div className="mobile-card-header">
+                  <div className="mobile-card-title">
+                    <strong>{room.name}</strong>
+                    <small className="muted">{room.floor ?? "Geen verdieping"}</small>
+                  </div>
+                  <strong>{room.areaM2 ?? "-"} m2</strong>
+                </div>
+                <div className="mobile-card-meta">
+                  <span>{room.perimeterMeter ? `${room.perimeterMeter} m omtrek` : "Geen omtrek"}</span>
+                  <span>{room.notes ?? "Geen notities"}</span>
+                </div>
+                {canEditProject ? (
+                  <div className="mobile-card-actions">
+                    <Button
+                      leftIcon={<Pencil size={16} aria-hidden="true" />}
+                      onClick={() => startEditRoom(room)}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      Bewerken
+                    </Button>
+                    <Button
+                      leftIcon={<Trash2 size={16} aria-hidden="true" />}
+                      onClick={() => setPendingRoomDelete(room)}
+                      size="sm"
+                      variant="danger"
+                    >
+                      Verwijderen
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            )}
             rows={project.rooms}
           />
         </div>
         {editingRoomId ? (
-          <form className="form-grid" onSubmit={saveRoom} style={{ marginTop: 16 }}>
-            <SectionHeader compact title="Ruimte aanpassen" description="Corrigeer naam, meters en notities van deze projectruimte." />
+          <form
+            className="form-grid edit-work-panel"
+            onSubmit={saveRoom}
+            ref={roomEditFormRef}
+            style={{ marginTop: 16 }}
+          >
+            <SectionHeader compact title={`Ruimte aanpassen: ${roomDraft.name}`} description="Je corrigeert nu deze projectruimte." />
             <div className="grid three-column">
               <Field htmlFor="edit-room-name" label="Ruimte" required>
                 <Input
@@ -886,6 +945,44 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
           emptyDescription="Taken worden automatisch aangemaakt bij offerte verzenden, akkoord en factureren."
           emptyTitle="Nog geen procesopvolging"
           getRowKey={(task) => task.id}
+          mobileMode="cards"
+          renderMobileCard={(task) => (
+            <div className="mobile-card-section">
+              <div className="mobile-card-header">
+                <div className="mobile-card-title">
+                  <strong>{task.title}</strong>
+                  <small className="muted">{taskTypeLabel(task.type)}</small>
+                </div>
+                <Badge variant={task.priority.tone}>{task.priority.label}</Badge>
+              </div>
+              <div className="mobile-card-meta">
+                <span>Deadline {dateText(task.dueAt)}</span>
+                <span>{taskStatusLabel(task.status)}</span>
+              </div>
+              {canEditProject && task.status === "open" ? (
+                <div className="mobile-card-actions">
+                  <Button
+                    disabled={updatingTaskId === task.id}
+                    leftIcon={<CheckCircle2 size={16} aria-hidden="true" />}
+                    onClick={() => void updateProjectTaskStatus(task, "done")}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Gereed
+                  </Button>
+                  <Button
+                    disabled={updatingTaskId === task.id}
+                    leftIcon={<XCircle size={16} aria-hidden="true" />}
+                    onClick={() => void updateProjectTaskStatus(task, "dismissed")}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    Verberg
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          )}
           rows={projectTasks}
         />
       </section>

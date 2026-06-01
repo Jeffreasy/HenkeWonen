@@ -1,5 +1,5 @@
 import { Archive, Pencil, RotateCcw, Save } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canManage, type AppSession } from "../../lib/auth/session";
@@ -7,6 +7,7 @@ import { createConvexHttpClient } from "../../lib/convex/client";
 import type { SubmitEventLike } from "../../lib/events";
 import { formatStatusLabel } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
+import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
@@ -77,7 +78,10 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const ruleFormRef = useRef<HTMLFormElement>(null);
   const canManageRules = canManage(session.role);
+
+  useAutoFocusPanel(Boolean(editingRule), ruleFormRef);
 
   useEffect(() => {
     let isActive = true;
@@ -330,11 +334,19 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
 
       {canManageRules ? (
         <section className="panel">
-          <form className="form-grid" onSubmit={saveRule}>
+          <form
+            className={editingRule ? "form-grid edit-work-panel" : "form-grid"}
+            onSubmit={saveRule}
+            ref={ruleFormRef}
+          >
             <SectionHeader
               compact
-              title={editingRule ? "Werkzaamheid bewerken" : "Werkzaamheid toevoegen"}
-              description="Beheer werkzaamheden die als offertepost of standaardregel gebruikt worden."
+              title={editingRule ? `Werkzaamheid bewerken: ${editingRule.name}` : "Werkzaamheid toevoegen"}
+              description={
+                editingRule
+                  ? "Je past nu deze werkzaamheid aan. Historische offertes blijven intact."
+                  : "Beheer werkzaamheden die als offertepost of standaardregel gebruikt worden."
+              }
               actions={<StatusBadge status={ruleDraft.status} label={formatStatusLabel(ruleDraft.status)} />}
             />
             <div className="grid two-column-even">
@@ -442,6 +454,54 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
         error={error}
         getRowKey={(rule) => rule.id}
         loading={isLoading}
+        mobileMode="cards"
+        renderMobileCard={(rule) => (
+          <div className="mobile-card-section">
+            <div className="mobile-card-header">
+              <div className="mobile-card-title">
+                <strong>{rule.name}</strong>
+                {rule.description ? <small className="muted">{rule.description}</small> : null}
+              </div>
+              <StatusBadge status={rule.status} label={formatStatusLabel(rule.status)} />
+            </div>
+            <div className="mobile-card-meta">
+              <span>{formatStatusLabel(rule.calculationType)}</span>
+              <strong>{formatEuro(rule.priceExVat)}</strong>
+              <span>{rule.vatRate}% btw</span>
+            </div>
+            {canManageRules ? (
+              <div className="mobile-card-actions">
+                <Button
+                  leftIcon={<Pencil size={16} aria-hidden="true" />}
+                  onClick={() => startEditRule(rule)}
+                  size="sm"
+                  variant="secondary"
+                >
+                  Bewerken
+                </Button>
+                {rule.status === "inactive" ? (
+                  <Button
+                    leftIcon={<RotateCcw size={16} aria-hidden="true" />}
+                    onClick={() => setPendingRuleStatus({ rule, nextStatus: "active" })}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Herstellen
+                  </Button>
+                ) : (
+                  <Button
+                    leftIcon={<Archive size={16} aria-hidden="true" />}
+                    onClick={() => setPendingRuleStatus({ rule, nextStatus: "inactive" })}
+                    size="sm"
+                    variant="danger"
+                  >
+                    Archiveren
+                  </Button>
+                )}
+              </div>
+            ) : null}
+          </div>
+        )}
         rows={rules}
       />
     </div>

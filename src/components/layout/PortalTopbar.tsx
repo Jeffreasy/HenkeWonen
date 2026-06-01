@@ -27,7 +27,7 @@ export default function PortalTopbar({ session, pathname }: PortalTopbarProps) {
         <strong>{activeItem?.label ?? "Start"}</strong>
       </div>
       <div className="portal-topbar-actions">
-        <a className="portal-topbar-link" href="/portal/buitendienst">
+        <a className="portal-topbar-link" href="/portal/buitendienst/vandaag">
           <Ruler size={16} aria-hidden="true" />
           <span>Buitendienst</span>
         </a>

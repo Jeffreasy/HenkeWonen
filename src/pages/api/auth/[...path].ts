@@ -13,6 +13,14 @@ const ALLOWED_AUTH_PATHS = new Set([
   "mfa/send-email"
 ]);
 
+const SENSITIVE_AUTH_RESPONSE_FIELDS = new Set([
+  "access_token",
+  "refresh_token",
+  "id_token",
+  "token",
+  "pre_auth_token"
+]);
+
 function splitSetCookieHeader(header: string) {
   const cookies: string[] = [];
   let start = 0;
@@ -61,11 +69,12 @@ function rewriteSetCookie(cookie: string, request: Request) {
       !/^path=/iu.test(attribute) &&
       !/^samesite=/iu.test(attribute) &&
       !/^partitioned$/iu.test(attribute) &&
+      !/^httponly$/iu.test(attribute) &&
       !/^secure$/iu.test(attribute)
     );
   });
 
-  const rewritten = [nameValue, "Path=/", "SameSite=Lax", ...filteredAttributes];
+  const rewritten = [nameValue, "Path=/", "HttpOnly", "SameSite=Lax", ...filteredAttributes];
 
   if (isProduction || isSecureRequest) {
     rewritten.push("Secure");
@@ -103,6 +112,28 @@ function logoutCookieNames(request: Request) {
   }
 
   return Array.from(names);
+}
+
+function stripSensitiveAuthFields(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stripSensitiveAuthFields);
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const sanitized: Record<string, unknown> = {};
+
+  for (const [key, itemValue] of Object.entries(value)) {
+    if (SENSITIVE_AUTH_RESPONSE_FIELDS.has(key)) {
+      continue;
+    }
+
+    sanitized[key] = stripSensitiveAuthFields(itemValue);
+  }
+
+  return sanitized;
 }
 
 async function logout(context: Parameters<APIRoute>[0]) {
@@ -160,20 +191,15 @@ async function logout(context: Parameters<APIRoute>[0]) {
   return response;
 }
 
-function sanitizeJson(path: string, contentType: string, body: ArrayBuffer) {
-  if (path !== "login" || !contentType.toLowerCase().includes("application/json")) {
+function sanitizeJson(contentType: string, body: ArrayBuffer) {
+  if (!contentType.toLowerCase().includes("application/json")) {
     return body;
   }
 
   try {
-    const payload = JSON.parse(new TextDecoder().decode(body)) as Record<string, unknown>;
+    const payload = JSON.parse(new TextDecoder().decode(body));
 
-    delete payload.access_token;
-    delete payload.refresh_token;
-    delete payload.token;
-    delete payload.pre_auth_token;
-
-    return new TextEncoder().encode(JSON.stringify(payload));
+    return new TextEncoder().encode(JSON.stringify(stripSensitiveAuthFields(payload)));
   } catch {
     return body;
   }
@@ -245,7 +271,7 @@ async function proxyAuth(context: Parameters<APIRoute>[0]) {
   });
   const upstreamBody = await upstream.arrayBuffer();
   const upstreamContentType = upstream.headers.get("content-type") ?? "application/json";
-  const responseBody = sanitizeJson(path, upstreamContentType, upstreamBody);
+  const responseBody = sanitizeJson(upstreamContentType, upstreamBody);
   const response = new Response(responseBody, {
     status: upstream.status,
     statusText: upstream.statusText,

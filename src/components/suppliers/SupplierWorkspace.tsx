@@ -1,5 +1,5 @@
 import { Archive, Pencil, RotateCcw, Save } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import type { AppSession } from "../../lib/auth/session";
@@ -11,6 +11,7 @@ import {
 } from "../../lib/i18n/statusLabels";
 import type { PortalSupplier, ProductListStatus } from "../../lib/portalTypes";
 import type { SubmitEventLike } from "../../lib/events";
+import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
@@ -143,6 +144,9 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const supplierEditFormRef = useRef<HTMLFormElement>(null);
+
+  useAutoFocusPanel(Boolean(editingSupplier), supplierEditFormRef);
 
   const loadSuppliers = useCallback(async () => {
     const client = createConvexHttpClient();
@@ -609,11 +613,11 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
 
       {editingSupplier ? (
         <Card>
-          <form className="form-grid" onSubmit={saveSupplier}>
+          <form className="form-grid edit-work-panel" onSubmit={saveSupplier} ref={supplierEditFormRef}>
             <SectionHeader
               compact
-              title="Leverancier bewerken"
-              description="Beheer contactgegevens, opvolging en zichtbaarheid van deze leverancier."
+              title={`Leverancier bewerken: ${editingSupplier.name}`}
+              description="Je past nu deze leverancier aan. Producten, imports en historie blijven bewaard."
               actions={
                 <StatusBadge
                   status={supplierDraft.status}
@@ -955,7 +959,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
             loading={isLoading}
             mobileMode="cards"
             renderMobileCard={(supplier) => (
-              <div>
+              <div className="mobile-card-section">
                 <div className="mobile-card-header">
                   <div className="mobile-card-title">
                     <strong>{supplier.name}</strong>
@@ -1008,6 +1012,33 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
                       </option>
                     ))}
                   </Select>
+                  <Button
+                    leftIcon={<Pencil size={16} aria-hidden="true" />}
+                    onClick={() => startEditSupplier(supplier)}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Bewerken
+                  </Button>
+                  {(supplier.status ?? "active") === "archived" ? (
+                    <Button
+                      leftIcon={<RotateCcw size={16} aria-hidden="true" />}
+                      onClick={() => setPendingSupplierStatus({ supplier, nextStatus: "active" })}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      Herstellen
+                    </Button>
+                  ) : (
+                    <Button
+                      leftIcon={<Archive size={16} aria-hidden="true" />}
+                      onClick={() => setPendingSupplierStatus({ supplier, nextStatus: "archived" })}
+                      size="sm"
+                      variant="danger"
+                    >
+                      Archiveren
+                    </Button>
+                  )}
                 </div>
               </div>
             )}

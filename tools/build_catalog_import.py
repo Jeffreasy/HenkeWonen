@@ -6,6 +6,7 @@ import math
 import os
 import re
 import sys
+import pypdf
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -24,7 +25,7 @@ from audit_excel_data import (  # noqa: E402
     infer_price_type,
     infer_unit,
     infer_vat_mode,
-    is_price_header,
+    is_price_header as _orig_is_price_header,
     is_quantity_header,
     row_kind,
     safe_sample,
@@ -32,10 +33,18 @@ from audit_excel_data import (  # noqa: E402
 )
 
 
+def is_price_header(header: str) -> bool:
+    lower = header.lower()
+    if "prix" in lower or "achat" in lower or "vente" in lower:
+        return True
+    return _orig_is_price_header(header)
+
+
 OUT_DIR = ROOT / "docs"
 SUMMARY_OUT = OUT_DIR / "catalog-import-summary.md"
 SUMMARY_JSON_OUT = OUT_DIR / "catalog-import-summary.json"
 SAMPLE_OUT = OUT_DIR / "catalog-import-sample.md"
+PREVIEW_JSON_OUT = OUT_DIR / "catalog-import-preview.json"
 GENERATED_DIR = OUT_DIR / "generated"
 FULL_ROWS_OUT = GENERATED_DIR / "catalog-import-preview.full.jsonl"
 
@@ -43,7 +52,7 @@ MAX_ROWS_PER_SHEET = 50000
 
 DISPLAY_CATEGORIES = {
     "pvc-vloeren": "PVC Vloeren",
-    "pvc-click": "PVC Click",
+    # "pvc-click" is uitgesloten op verzoek van de klant (2026-05-19)
     "pvc-dryback": "PVC Dryback",
     "palletcollectie-pvc": "Palletcollectie PVC",
     "traprenovatie": "Traprenovatie",
@@ -66,6 +75,12 @@ DISPLAY_CATEGORIES = {
     "horren": "Horren",
     "verlichting": "Verlichting",
     "overig": "Overig",
+}
+
+# Categorieën die bewust worden uitgesloten van de import.
+# Producten met een slug in deze set worden als 'ignored' gemarkeerd.
+EXCLUDED_CATEGORY_SLUGS: set[str] = {
+    "pvc-click",  # klantverzoek 2026-05-19: PVC Click niet meer tonen
 }
 
 ATTRIBUTE_HEADERS = {
@@ -263,6 +278,18 @@ def numeric_article_number_string(value: Any) -> str | None:
 
 
 def article_number_for(headers: list[str], values: list[Any], source_path: Path) -> str | None:
+    if is_texdecor(source_path):
+        return code_string(get_value(headers, values, ["Réfcom"]))
+    if is_unilin(source_path):
+        # Lay Red: "Material" is the SAP material number (e.g. 400105600)
+        material = code_string(get_value(headers, values, ["Material"]))
+        if material:
+            return material
+        # Moods: "SAP order code" (e.g. 398647)
+        sap = code_string(get_value(headers, values, ["SAP order code"]))
+        if sap:
+            return sap
+        return None
     value = get_value(headers, values, ["Artikelnummer", "Art.nr."])
     if source_path.name.lower() == "prijslijst traprenovatie floorlife 2025.xlsx":
         return numeric_article_number_string(value)
@@ -303,7 +330,7 @@ def intish(value: float | None) -> int | float | None:
 
 
 def headers_for(ws) -> tuple[int | None, list[str]]:
-    max_col = min(ws.max_column or 1, 80)
+    max_col = min(ws.max_column or 80, 80)
     header_row = detect_header_row(ws, 100, max_col)
     if not header_row:
         return None, []
@@ -351,6 +378,50 @@ def is_ztahl_skip_code(value: str | None) -> bool:
     )
 
 
+def is_unilin(path: Path) -> bool:
+    """True for files in the Unilin Flooring supplier directory."""
+    rel = str(path).replace("\\", "/").lower()
+    return "unilin flooring" in rel
+
+
+def is_flexcolours(path: Path) -> bool:
+    """True for FlexColours raambekleding price-matrix files (not parseable as product rows)."""
+    rel = str(path).replace("\\", "/").lower()
+    return "flexcolours" in rel
+
+
+def is_texdecor(path: Path) -> bool:
+    """True for files in the Texdecor supplier directory."""
+    rel = str(path).replace("\\", "/").lower()
+    return "leveranciers/texdecor" in rel or "texdecor" in path.name.lower()
+
+
+def is_lamelio(path: Path) -> bool:
+    """True for files in the Lamelio supplier directory."""
+    rel = str(path).replace("\\", "/").lower()
+    return "leveranciers/lamelio" in rel or "lamelio" in path.name.lower()
+
+
+def is_hebeta(path: Path) -> bool:
+    """True for files in the Hebeta Tapijt supplier directory."""
+    rel = str(path).replace("\\", "/").lower()
+    return "hebeta tapijt" in rel or "hebeta" in path.name.lower()
+
+
+def texdecor_headers_for(ws, file_name: str) -> tuple[int | None, list[str]]:
+    """Determine the header row and retrieve clean column headers for Texdecor."""
+    if "CAD_CAL" in file_name:
+        header_row = 2
+    else:
+        header_row = 3
+    max_col = min(ws.max_column or 150, 150)
+    header_values = next(sheet_rows(ws, header_row, header_row, max_col), [])
+    headers = [clean_text(value).replace("\n", " ") for value in header_values]
+    while headers and not headers[-1]:
+        headers.pop()
+    return header_row, headers
+
+
 def ztahl_article_code(headers: list[str], values: list[Any]) -> str | None:
     return get_text(headers, values, ["Artikelnummer", "Art.nr."]) or (
         code_string(values[0]) if values else None
@@ -383,8 +454,8 @@ def ztahl_headers_for(ws, sheet_name: str) -> tuple[int | None, list[str]]:
     if is_ztahl_light_source_sheet(sheet_name):
         return headers_for(ws)
 
-    max_col = min(ws.max_column or 1, 80)
-    max_scan_row = min(ws.max_row or 0, 150)
+    max_col = min(ws.max_column or 80, 80)
+    max_scan_row = min(ws.max_row or 150, 150)
     for row_number in range(1, max_scan_row + 1):
         header_values = next(sheet_rows(ws, row_number, row_number, max_col), [])
         headers = [clean_text(value).replace("\n", " ") for value in header_values]
@@ -409,7 +480,7 @@ def ztahl_light_source_codes(workbook) -> set[str]:
 
     codes: set[str] = set()
     max_col = len(headers)
-    for values in sheet_rows(ws, header_row + 1, ws.max_row, max_col):
+    for values in sheet_rows(ws, header_row + 1, ws.max_row or MAX_ROWS_PER_SHEET, max_col):
         row = list(values)
         code = ztahl_article_code(headers, row)
         if is_ztahl_skip_code(code) or first_price_amount(headers, row) is None:
@@ -440,6 +511,8 @@ def ztahl_duplicate_price_key(row: dict[str, Any]) -> tuple[Any, ...] | None:
 
 
 def supplier_for(path: Path) -> str:
+    if is_lamelio(path):
+        return "Lamelio"
     name = path.name.lower()
     if "ztahl" in name:
         return "ZTAHL"
@@ -455,16 +528,30 @@ def supplier_for(path: Path) -> str:
         return "EVC"
     if "vtwonen" in name or "vt wonen" in name:
         return "vtwonen"
+    if is_unilin(path):
+        return "Unilin Flooring"
     if "roots" in name:
-        return "Roots"
+        # Roots is een merk van Unilin Flooring (groothandel) — klantverzoek 2026-05-19
+        return "Unilin Flooring"
+    if "moduleo" in name:
+        # Moduleo is een merk van Unilin Flooring (groothandel) — klantverzoek 2026-05-19
+        return "Unilin Flooring"
     return "Floorlife"
 
 
 def category_slug_for(path: Path, sheet_name: str, section_label: str | None, product_name: str) -> str:
     source = f"{path.name} {sheet_name}".lower()
     text = f"{source} {section_label or ''} {product_name}".lower()
+    if is_lamelio(path):
+        if "kit" in product_name.lower():
+            return "kit"
+        return "wandpanelen"
     if is_ztahl(path):
         return "verlichting"
+    if is_unilin(path):
+        # Lay Red en Moods zijn PVC LVT-vloercollecties van Unilin (niet click)
+        # Roots-bestanden vallen hier niet onder (die staan in de HenkeWonen-map)
+        return "pvc-vloeren"
     if "lijm" in source and "kit" in source and "egaline" in source:
         product_text = product_name.lower()
         if any(
@@ -530,6 +617,8 @@ def product_kind_for(category_slug: str, path: Path, sheet_name: str, product_na
     text = f"{source} {product_name}".lower()
     if category_slug == "karpetten":
         return "rug"
+    if is_unilin(path):
+        return "click"
     if "src" in sheet_name.lower():
         return "src"
     if "dryback" in sheet_name.lower() or "drbyack" in sheet_name.lower():
@@ -595,6 +684,12 @@ def commercial_names(headers: list[str], values: list[Any]) -> list[dict[str, st
 
 
 def product_name_for(headers: list[str], values: list[Any], path: Path, sheet_name: str) -> str | None:
+    if is_lamelio(path):
+        return get_text(headers, values, ["NL_Title_Short"])
+    if is_texdecor(path):
+        collection = get_text(headers, values, ["Collection Réfcom"])
+        dessin = get_text(headers, values, ["Nom Dessin commercial"])
+        return has_text(collection, dessin) or get_text(headers, values, ["Nom produit"]) or get_text(headers, values, ["Nom réfcom"])
     supplier = supplier_for(path)
     if supplier == "ZTAHL":
         article_number = ztahl_article_code(headers, values)
@@ -617,7 +712,21 @@ def product_name_for(headers: list[str], values: list[Any], path: Path, sheet_na
             get_text(headers, values, ["Design"]),
             get_text(headers, values, ["Type"]),
         )
-    if supplier == "Roots":
+    if supplier == "Unilin Flooring":
+        if "roots" in path.name.lower():
+            # Roots collectie: eigen kolomnamen (Material Description / Decor name)
+            return has_text(
+                get_text(headers, values, ["Material Description"]),
+                get_text(headers, values, ["Decor name"]),
+                get_text(headers, values, ["Commercial Code"]),
+            )
+        # Lay Red: full material description (e.g. "LAYRED COUNTRY OAK 54991")
+        mat_descr = get_text(headers, values, ["Material Descr.", "Material Descr"])
+        if mat_descr:
+            return mat_descr
+        # Moods: pattern name + code (e.g. "Rectangle Mono 647")
+        return get_text(headers, values, ["Pattern name + code", "Pattern name"])
+    if supplier == "Roots":  # legacy — niet meer bereikbaar na 2026-05-19 fix
         return has_text(
             get_text(headers, values, ["Material Description"]),
             get_text(headers, values, ["Decor name"]),
@@ -637,19 +746,54 @@ def product_name_for(headers: list[str], values: list[Any], path: Path, sheet_na
     )
 
 
-def set_dimension_fields(row: dict[str, Any], headers: list[str], values: list[Any]) -> None:
-    width = number_value(get_value(headers, values, ["Breedte (cm)", "Breedte", "Breedte in cm", "Width", "W"]))
-    length = number_value(get_value(headers, values, ["Lengte (cm)", "Lengte in cm", "Lengte plank (cm)", "Lengte mm", "Lengte", "Length", "L"]))
+def set_dimension_fields(row: dict[str, Any], headers: list[str], values: list[Any], source_path: Path) -> None:
+    if is_texdecor(source_path):
+        width_cm = number_value(get_value(headers, values, ["Laize totale Cm", "Laize utilie Cm"]))
+        length_ml = number_value(get_value(headers, values, ["Longuer pièce Ml"]))
+        if width_cm is not None:
+            row["widthMm"] = width_cm * 10
+        if length_ml is not None:
+            row["lengthMm"] = length_ml * 1000
+    elif is_lamelio(source_path):
+        desc = get_text(headers, values, ["NL_Description_Short", "NL_Description_Long"])
+        width_mm, length_mm = None, None
+        if desc:
+            length_match = re.search(r"lengte\s+[^.]*?\b(\d+(?:[.,]\d+)?)\s*cm", desc, re.IGNORECASE)
+            if length_match:
+                length_mm = float(length_match.group(1).replace(",", ".")) * 10
+            width_match = re.search(r"breedte\s+[^.]*?\b(\d+(?:[.,]\d+)?)\s*cm", desc, re.IGNORECASE)
+            if width_match:
+                width_mm = float(width_match.group(1).replace(",", ".")) * 10
+
+        title = get_text(headers, values, ["NL_Title_Short"]) or ""
+        if length_mm is None:
+            title_length_match = re.search(r"\b(\d+)\s*cm\b", title)
+            if title_length_match:
+                length_mm = float(title_length_match.group(1)) * 10
+            elif "wandpaneel" in title.lower() or "strip" in title.lower():
+                length_mm = 2700.0
+
+        if width_mm is None and ("wandpaneel" in title.lower() or "3d wandpaneel" in title.lower() or "strip" in title.lower()):
+            width_mm = 122.0
+
+        if length_mm is not None:
+            row["lengthMm"] = intish(length_mm)
+        if width_mm is not None:
+            row["widthMm"] = intish(width_mm)
+    else:
+        width = number_value(get_value(headers, values, ["Breedte (cm)", "Breedte", "Breedte in cm", "Width", "W"]))
+        length = number_value(get_value(headers, values, ["Lengte (cm)", "Lengte in cm", "Lengte plank (cm)", "Lengte mm", "Lengte", "Length", "L"]))
+        if width is not None:
+            row["widthMm"] = width * 10 if width < 1000 else width
+        if length is not None:
+            row["lengthMm"] = length * 10 if length < 1000 else length
+
     thickness = number_value(get_value(headers, values, ["Dikte (mm)", "Totale dikte (mm)", "Totaal dikte (mm)", "Dikte mm", "Dikte in mm", "Dikte", "Tick"]))
     wear = number_value(get_value(headers, values, ["Dikte toplaag (mm)", "Toplaag in mm", "Toplaag (mm)", "Toplaag mm", "Toplaag"]))
     package_m2 = number_value(get_value(headers, values, ["Aantal m2 per pak", "Pakinhoud (m²)", "Pakinhoud", "m2"]))
     pieces = number_value(get_value(headers, values, ["Aantal panelen per pak", "Planken per pak", "Panels"]))
     packs = number_value(get_value(headers, values, ["Aantal pakken per pallet", "Aantal pakker per pallet", "Pakken per pallet", "Packs"]))
 
-    if width is not None:
-        row["widthMm"] = width * 10 if width < 1000 else width
-    if length is not None:
-        row["lengthMm"] = length * 10 if length < 1000 else length
     if thickness is not None:
         row["thicknessMm"] = thickness
     if wear is not None:
@@ -720,6 +864,12 @@ def attributes_for(headers: list[str], values: list[Any]) -> dict[str, Any] | No
 
 
 def price_unit_for(header: str, category_slug: str) -> str:
+    if category_slug == "behang":
+        return "roll"
+    if category_slug == "gordijnen":
+        return "m1"
+    if category_slug == "wandpanelen":
+        return "piece"
     unit = infer_unit(header)
     if unit != "custom":
         return unit
@@ -742,6 +892,12 @@ def price_type_for(header: str, source_path: Path) -> str:
             return "purchase"
         if "verkoop" in lower:
             return "advice_retail"
+    if is_texdecor(source_path):
+        lower = header.lower()
+        if "achat" in lower or "vente ned" in lower:
+            return "purchase"
+        if "public" in lower:
+            return "advice_retail"
     return infer_price_type(header)
 
 
@@ -751,6 +907,12 @@ def vat_mode_for(header: str, source_path: Path) -> str:
         if "inkoop" in lower:
             return "exclusive"
         if "verkoop" in lower:
+            return "inclusive"
+    if is_texdecor(source_path):
+        lower = header.lower()
+        if "achat" in lower or "vente ned" in lower:
+            return "exclusive"
+        if "public" in lower:
             return "inclusive"
     return infer_vat_mode(header)
 
@@ -799,6 +961,63 @@ def prices_for(
     row: dict[str, Any],
     source_path: Path,
 ) -> list[dict[str, Any]]:
+    if is_lamelio(source_path):
+        msrp = number_value(get_value(headers, values, ["Price"]))
+        if msrp is not None and msrp > 0:
+            prices = []
+            price_index = headers.index("Price") if "Price" in headers else 8
+
+            # 1. purchase price (excl VAT)
+            purchase_amount = msrp / 1.21 * 0.60
+            purchase_key = stable_hash([
+                row["importKey"],
+                row.get("fileHash") or row["sourcePath"],
+                "purchase",
+                "piece",
+                round(purchase_amount, 4),
+                "exclusive",
+                "Price"
+            ])
+            prices.append({
+                "sourceKey": purchase_key,
+                "priceType": "purchase",
+                "priceUnit": "piece",
+                "amount": round(purchase_amount, 4),
+                "vatRate": 21,
+                "vatMode": "exclusive",
+                "validFrom": row.get("validFrom"),
+                "currency": "EUR",
+                "sourceColumnName": "Price",
+                "sourceColumnIndex": price_index,
+                "sourceValue": safe_sample(get_value(headers, values, ["Price"])),
+            })
+
+            # 2. advice retail price (incl VAT)
+            retail_key = stable_hash([
+                row["importKey"],
+                row.get("fileHash") or row["sourcePath"],
+                "advice_retail",
+                "piece",
+                round(msrp, 4),
+                "inclusive",
+                "Price"
+            ])
+            prices.append({
+                "sourceKey": retail_key,
+                "priceType": "advice_retail",
+                "priceUnit": "piece",
+                "amount": round(msrp, 4),
+                "vatRate": 21,
+                "vatMode": "inclusive",
+                "validFrom": row.get("validFrom"),
+                "currency": "EUR",
+                "sourceColumnName": "Price",
+                "sourceColumnIndex": price_index,
+                "sourceValue": safe_sample(get_value(headers, values, ["Price"])),
+            })
+            return prices
+        return []
+
     prices = []
     for index, header in enumerate(headers):
         if index >= len(values) or not header or not is_price_header(header):
@@ -852,21 +1071,62 @@ def build_row(
     if not product_name:
         return None
 
-    supplier_name = supplier_for(source_path)
-    category_slug = category_slug_for(source_path, sheet_name, section_label, product_name)
-    category_name = DISPLAY_CATEGORIES.get(category_slug, "Overig")
-    product_kind = product_kind_for(category_slug, source_path, sheet_name, product_name)
+    if is_texdecor(source_path):
+        brand_code = clean_text(values[0]) if values else None
+        if brand_code == "CAD":
+            supplier_name = "Casadeco"
+        elif brand_code == "CAL":
+            supplier_name = "Caselio"
+        elif brand_code in ("CAS", "CAM"):
+            supplier_name = "Casamance"
+        else:
+            supplier_name = "Texdecor"
+
+        support_type = clean_text(get_value(headers, values, ["Nom Type support"]))
+        if support_type in ("Papier  peint", "Frise", "Stickers"):
+            category_slug = "behang"
+            product_kind = "wallpaper"
+            unit = "roll"
+        elif support_type in ("Tissus", "Panoramique Tissu"):
+            category_slug = "gordijnen"
+            product_kind = "curtain_fabric"
+            unit = "m1"
+        elif support_type in ("Panoramique Papier Peint", "Panoramique Revêtement", "Revêtement", "Affiche"):
+            category_slug = "wandpanelen"
+            product_kind = "panel"
+            unit = "piece"
+        else:
+            category_slug = "overig"
+            product_kind = "other"
+            unit = "piece"
+
+        category_name = DISPLAY_CATEGORIES.get(category_slug, "Overig")
+    else:
+        supplier_name = supplier_for(source_path)
+        category_slug = category_slug_for(source_path, sheet_name, section_label, product_name)
+
+    # Sla uitgesloten categorieën over (EXCLUDED_CATEGORY_SLUGS)
+    if category_slug in EXCLUDED_CATEGORY_SLUGS:
+        return None
+
+    if not is_texdecor(source_path):
+        category_name = DISPLAY_CATEGORIES.get(category_slug, "Overig")
+        product_kind = product_kind_for(category_slug, source_path, sheet_name, product_name)
+        unit = unit_for(category_slug, product_kind)
+        if is_lamelio(source_path):
+            unit = "piece"
+
     aliases = commercial_names(headers, values)
     article_number = article_number_for(headers, values, source_path)
     if "entreematten" in source_path.name.lower() and not article_number:
         article_number = code_string(values[0]) if values else None
     supplier_code = get_text(headers, values, ["Supplier Code", "SAP codes floors"])
-    commercial_code = get_text(headers, values, ["Commercial Code"])
-    ean = get_text(headers, values, ["EAN", "EAN code", "EAN-code", "EAN Code"])
+    commercial_code = get_text(headers, values, ["Commercial Code", "Commercial code"])
+    ean = get_text(headers, values, ["EAN", "EAN code", "EAN-code", "EAN Code", "EAN/UPC", "Code barre"])
     color = get_text(
         headers,
         values,
-        ["Kleur", "Kleurindicatie", "Kleurnummer", "Design", "Decor name", "Uitvoering", "Kelvin/ kleur"],
+        ["Kleur", "Kleurindicatie", "Kleurnummer", "Design", "Decor name", "Uitvoering", "Kelvin/ kleur", "Color", "Nom couleur"],
     )
     supplier_group = get_text(headers, values, ["Artikelgroep", "Soort"])
     if is_ztahl(source_path):
@@ -879,6 +1139,29 @@ def build_row(
     elif "entreematten" in source_path.name.lower():
         collection_name = section_label
         brand_name = supplier_name
+    elif is_unilin(source_path):
+        # Lay Red / Moods — Unilin PVC-vloercollecties
+        collection_name = (
+            get_text(headers, values, ["Pattern name"])
+            or section_label
+        )
+        brand_name = supplier_name  # "Unilin Flooring"
+    elif "roots" in source_path.name.lower():
+        # Roots is een Unilin-merk; sla op als merk zodat het zichtbaar blijft
+        collection_name = section_label
+        brand_name = "Roots"
+    elif is_texdecor(source_path):
+        collection_name = get_text(headers, values, ["Collection Réfcom"]) or section_label
+        brand_name = supplier_name
+    elif is_lamelio(source_path):
+        collection_name = None
+        for col_name in ["Vasco", "Olmo", "Milo", "Asti", "Amber", "Onda", "Infinity", "Allure"]:
+            if col_name.lower() in product_name.lower():
+                collection_name = col_name
+                break
+        if not collection_name:
+            collection_name = "Overig"
+        brand_name = "Lamelio"
     else:
         collection_name = (
             get_text(headers, values, ["Quality"])
@@ -888,7 +1171,13 @@ def build_row(
         )
         brand_name = get_text(headers, values, ["Company"]) or supplier_name
     source_rel = str(source_path.relative_to(ROOT))
-    import_identity = article_number or supplier_code or commercial_code or ean or product_name
+    if is_lamelio(source_path):
+        if "kit" in product_name.lower():
+            import_identity = f"{ean or ''}_{product_name}"
+        else:
+            import_identity = ean or product_name
+    else:
+        import_identity = article_number or supplier_code or commercial_code or ean or product_name
     import_key = stable_hash([supplier_name, category_name, import_identity])
 
     row: dict[str, Any] = {
@@ -917,9 +1206,9 @@ def build_row(
         "productKind": product_kind,
         "productType": product_type_for(product_kind),
         "commercialNames": aliases or None,
-        "unit": unit_for(category_slug, product_kind),
+        "unit": unit,
     }
-    set_dimension_fields(row, headers, values)
+    set_dimension_fields(row, headers, values, source_path)
     set_quantity_fields(row, headers, values)
     attrs = attributes_for(headers, values)
     if attrs:
@@ -959,7 +1248,309 @@ def label_status(value: str) -> str:
     return STATUS_LABELS.get(value, value)
 
 
+def parse_hebeta_line(line: str, filename: str) -> dict[str, Any] | None:
+    line = line.strip()
+    if not line:
+        return None
+    # Skip header and footer lines
+    if (line.startswith("Versie:") or line.startswith("Kwaliteit ") or
+        line.startswith("Advies") or line.startswith("Levering:") or
+        line.startswith("Tijdzending") or line.startswith("Voor het ") or
+        line.startswith("Levering 12.00") or line.startswith("Tapijtcollectie") or
+        line.startswith("HEBETA |") or line.startswith("MONTINIQUE |") or
+        "orderwaarde" in line or "vervoerder" in line):
+        return None
+    # Also skip any time/price listing lines
+    if (re.search(r"Levering \d{2}\.\d{2} uur", line) or
+        re.search(r"afwijkingsmarge", line) or
+        re.search(r"Schade:", line) or
+        re.search(r"pakbon", line)):
+        return None
+
+    project_indicator = None
+    if "✓" in line:
+        project_indicator = "✓"
+    elif "" in line:
+        project_indicator = ""
+    else:
+        return None  # Not a product row
+
+    left, right = line.split(project_indicator, 1)
+    left = left.strip()
+    right = right.strip()
+
+    quality = None
+    for q in ["Vario Tapijttegel", "Projecta Tapijttegel", "Marble Fushion"]:
+        if left.startswith(q):
+            quality = q
+            break
+    if not quality:
+        parts = left.split(" ", 1)
+        quality = parts[0]
+
+    samenstelling_and_weight = left[len(quality):].strip()
+    weight_match = re.search(r"\b(\d+)\s*gram\b", samenstelling_and_weight)
+    weight = None
+    if weight_match:
+        weight = weight_match.group(0)
+        samenstelling = samenstelling_and_weight[:weight_match.start()].strip()
+    else:
+        samenstelling = samenstelling_and_weight
+
+    right_parts = right.split(" ", 1)
+    breedte = right_parts[0]
+    remainder = right_parts[1].strip()
+
+    garantie_match = re.match(r"^(\d+)\s*jaar", remainder)
+    garantie = None
+    if garantie_match:
+        garantie = garantie_match.group(0)
+        price_part = remainder[garantie_match.end():].strip()
+    else:
+        price_part = remainder
+
+    prices = re.findall(r"€\s*(\d+(?:[.,]\d+)?)(?:\s*p/m²)?", price_part)
+    purchase_price = None
+    retail_price = None
+    if "Montinique" in filename:
+        if len(prices) >= 1:
+            retail_price = float(prices[0].replace(",", "."))
+    else:
+        if len(prices) >= 2:
+            purchase_price = float(prices[0].replace(",", "."))
+            retail_price = float(prices[1].replace(",", "."))
+        elif len(prices) == 1:
+            retail_price = float(prices[0].replace(",", "."))
+
+    if purchase_price is None and retail_price is not None:
+        lookup = {
+            39.95: 16.00, 57.95: 23.20, 59.00: 23.60, 79.00: 31.60, 89.95: 36.00,
+            119.95: 48.00, 129.00: 51.60, 149.00: 59.60, 159.00: 63.60, 169.00: 67.60,
+            179.00: 71.60, 189.00: 75.60, 219.00: 87.60, 269.00: 107.60, 270.25: 108.10,
+            329.00: 131.60, 339.00: 135.60, 519.00: 235.95, 579.00: 263.20, 609.00: 276.85,
+            699.00: 317.75, 759.00: 345.00, 779.00: 354.10, 28.95: 18.95, 29.95: 19.95
+        }
+        purchase_price = lookup.get(retail_price)
+        if purchase_price is None:
+            if retail_price >= 500:
+                purchase_price = round(retail_price * 0.4546, 2)
+            else:
+                purchase_price = round(retail_price * 0.40, 2)
+
+    return {
+        "quality": quality,
+        "samenstelling": samenstelling,
+        "weight": weight,
+        "project": project_indicator == "✓",
+        "breedte": breedte,
+        "garantie": garantie,
+        "purchase_price": purchase_price,
+        "retail_price": retail_price,
+    }
+
+
+def parse_pdf(source_path: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
+    rows: list[dict[str, Any]] = []
+    preview_rows: list[dict[str, Any]] = []
+    warnings: list[str] = []
+
+    file_hash = sha256(source_path)
+    filename = source_path.name
+
+    headers = [
+        "Kwaliteit",
+        "Samenstelling",
+        "Gewicht",
+        "Projectgeschikt",
+        "Breedte",
+        "Garantie woongebruik",
+        "Inkoopprijs",
+        "Adviesverkoopprijs"
+    ]
+
+    reader = pypdf.PdfReader(source_path)
+    row_number = 0
+    for page in reader.pages:
+        text = page.extract_text()
+        if not text:
+            continue
+        for line in text.split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+
+            if (line.startswith("Versie:") or line.startswith("Kwaliteit ") or
+                line.startswith("Advies") or line.startswith("Levering:") or
+                line.startswith("Tijdzending") or line.startswith("Voor het ") or
+                line.startswith("Levering 12.00") or line.startswith("Tapijtcollectie") or
+                line.startswith("HEBETA |") or line.startswith("MONTINIQUE |") or
+                "orderwaarde" in line or "vervoerder" in line or
+                re.search(r"Levering \d{2}\.\d{2} uur", line) or
+                re.search(r"afwijkingsmarge", line) or
+                re.search(r"Schade:", line) or
+                re.search(r"pakbon", line)):
+                continue
+
+            parsed = parse_hebeta_line(line, filename)
+            row_number += 1
+
+            if not parsed:
+                preview_rows.append(
+                    preview_row(
+                        source_path=source_path,
+                        analysis_path=source_path,
+                        sheet_name="PDF",
+                        row_number=row_number,
+                        row_kind_value="ignored",
+                        headers=["Regel"],
+                        values=[line],
+                        section_label=None,
+                        normalized=None,
+                        warnings=["Rij kon niet naar een productregel worden genormaliseerd."],
+                    )
+                )
+                continue
+
+            quality = parsed["quality"]
+            samenstelling = parsed["samenstelling"]
+            weight = parsed["weight"]
+            project = parsed["project"]
+            breedte = parsed["breedte"]
+            garantie = parsed["garantie"]
+            purchase_price = parsed["purchase_price"]
+            retail_price = parsed["retail_price"]
+
+            supplier_name = "Hebeta"
+            brand_name = "Montinique" if "Montinique" in filename else "Hebeta"
+            category_slug = "tapijt"
+            category_name = "Tapijt"
+
+            width_mm = None
+            length_mm = None
+            if breedte == "50x50":
+                width_mm = 500
+                length_mm = 500
+                product_kind = "tile"
+                unit = "m2"
+            else:
+                try:
+                    width_mm = int(breedte) * 10
+                except ValueError:
+                    width_mm = 4000
+                product_kind = "carpet"
+                unit = "m2"
+
+            import_key = stable_hash([supplier_name, category_name, quality])
+
+            row: dict[str, Any] = {
+                "importKey": import_key,
+                "sourceFileName": filename,
+                "sourceSheetName": "PDF",
+                "sourcePath": str(source_path.relative_to(ROOT)),
+                "analysisPath": str(source_path.relative_to(ROOT)),
+                "fileHash": file_hash,
+                "sourceRowNumber": row_number,
+                "year": 2026,
+                "validFrom": "2026-01-01",
+                "supplierName": supplier_name,
+                "brandName": brand_name,
+                "collectionName": quality,
+                "categorySlug": category_slug,
+                "categoryName": category_name,
+                "productName": quality,
+                "productKind": product_kind,
+                "productType": "standard",
+                "unit": unit,
+                "widthMm": width_mm,
+                "lengthMm": length_mm,
+                "attributes": {
+                    "samenstelling": samenstelling,
+                    "poolgewicht": weight,
+                    "projectgeschikt": "x" if project else None,
+                    "garantie_woongebruik": garantie
+                }
+            }
+
+            row["attributes"] = {k: v for k, v in row["attributes"].items() if v is not None}
+            if not row["attributes"]:
+                del row["attributes"]
+
+            prices: list[dict[str, Any]] = []
+
+            def add_price(price_type: str, vat_mode: str, base_amount: float, price_unit: str, divisor: float = 1.0):
+                amount = round(base_amount / divisor, 4)
+                price_key = stable_hash([
+                    import_key,
+                    file_hash,
+                    price_type,
+                    price_unit,
+                    amount,
+                    vat_mode,
+                    "Prijslijst"
+                ])
+                prices.append({
+                    "sourceKey": price_key,
+                    "priceType": price_type,
+                    "priceUnit": price_unit,
+                    "amount": amount,
+                    "vatRate": 21,
+                    "vatMode": vat_mode,
+                    "validFrom": "2026-01-01",
+                    "currency": "EUR",
+                    "sourceColumnName": "Prijs",
+                    "sourceColumnIndex": 6 if price_type == "purchase" else 7,
+                    "sourceValue": f"€ {base_amount:.2f}",
+                })
+
+            if breedte == "50x50":
+                if purchase_price is not None:
+                    add_price("purchase", "exclusive", purchase_price, "m2")
+                if retail_price is not None:
+                    add_price("advice_retail", "inclusive", retail_price, "m2")
+            else:
+                if purchase_price is not None:
+                    add_price("purchase", "exclusive", purchase_price, "m1")
+                    add_price("purchase", "exclusive", purchase_price, "m2", divisor=4.0)
+                if retail_price is not None:
+                    add_price("advice_retail", "inclusive", retail_price, "m1")
+                    add_price("advice_retail", "inclusive", retail_price, "m2", divisor=4.0)
+
+            row["prices"] = prices
+            rows.append(row)
+
+            row_values = [
+                quality,
+                samenstelling,
+                weight,
+                "✓" if project else "",
+                breedte,
+                garantie,
+                f"€ {purchase_price:.2f}" if purchase_price is not None else None,
+                f"€ {retail_price:.2f}" if retail_price is not None else None
+            ]
+
+            preview_rows.append(
+                preview_row(
+                    source_path=source_path,
+                    analysis_path=source_path,
+                    sheet_name="PDF",
+                    row_number=row_number,
+                    row_kind_value="product",
+                    headers=headers,
+                    values=row_values,
+                    section_label=None,
+                    normalized=row,
+                    warnings=None,
+                )
+            )
+
+    return rows, preview_rows, warnings
+
+
 def parse_workbook(source_path: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
+    if source_path.suffix.lower() == ".pdf":
+        return parse_pdf(source_path)
+
     analysis_path = converted_xlsx_for(source_path)
     if analysis_path is None:
         return [], [], [f"{source_path.name}: legacy .xls is not converted in .audit-cache"]
@@ -971,11 +1562,17 @@ def parse_workbook(source_path: Path) -> tuple[list[dict[str, Any]], list[dict[s
     workbook = load_workbook(analysis_path, read_only=True, data_only=True)
     try:
         is_ztahl_file = is_ztahl(source_path)
+        is_texdecor_file = is_texdecor(source_path)
         light_source_codes = ztahl_light_source_codes(workbook) if is_ztahl_file else set()
         seen_ztahl_price_keys: set[tuple[Any, ...]] = set()
         for sheet_name in workbook.sheetnames:
             ws = workbook[sheet_name]
-            header_row, headers = ztahl_headers_for(ws, sheet_name) if is_ztahl_file else headers_for(ws)
+            if is_ztahl_file:
+                header_row, headers = ztahl_headers_for(ws, sheet_name)
+            elif is_texdecor_file:
+                header_row, headers = texdecor_headers_for(ws, source_path.name)
+            else:
+                header_row, headers = headers_for(ws)
             if not header_row or not headers:
                 continue
             max_col = len(headers)
@@ -999,12 +1596,14 @@ def parse_workbook(source_path: Path) -> tuple[list[dict[str, Any]], list[dict[s
             section_label: str | None = None
             empty_streak = 0
             start = header_row + 1
-            max_row = min(ws.max_row or 0, MAX_ROWS_PER_SHEET)
+            max_row = min(ws.max_row or MAX_ROWS_PER_SHEET, MAX_ROWS_PER_SHEET)
             for row_number, row_values in enumerate(
                 sheet_rows(ws, start, max_row, max_col),
                 start=start,
             ):
                 values = list(row_values)
+                if is_texdecor_file and values and values[0] == "BRAND":
+                    continue
                 kind = row_kind(values, code_indexes, price_indexes)
                 if kind == "empty":
                     empty_streak += 1
@@ -1406,11 +2005,30 @@ def main() -> None:
     source_filters = options["sourceFilters"]
     if not no_write:
         OUT_DIR.mkdir(exist_ok=True)
-    source_files = sorted(
+    flexcolours_files = sorted(
         path
         for path in DATA_DIR.rglob("*")
         if path.is_file()
         and path.suffix.lower() in {".xlsx", ".xls"}
+        and is_flexcolours(path)
+    )
+    if flexcolours_files and not source_filters:
+        import sys as _sys
+        print(
+            f"[INFO] {len(flexcolours_files)} FlexColours raambekleding bestand(en) overgeslagen "
+            "(prijsmatrix-structuur; vereist aparte parser). Bestanden:",
+            file=_sys.stderr,
+        )
+        for _fc in flexcolours_files:
+            print(f"  - {_fc.relative_to(ROOT)}", file=_sys.stderr)
+    source_files = sorted(
+        path
+        for path in DATA_DIR.rglob("*")
+        if path.is_file()
+        and (
+            (path.suffix.lower() in {".xlsx", ".xls"} and not is_flexcolours(path))
+            or (path.suffix.lower() == ".pdf" and is_hebeta(path))
+        )
         and path.name != "Henke Wonen Jeffrey.xlsx"
         and matches_source_filter(path, source_filters)
     )
@@ -1441,6 +2059,21 @@ def main() -> None:
         )
         SUMMARY_OUT.write_text(build_markdown(summary), encoding="utf-8")
         SAMPLE_OUT.write_text(build_sample(rows, preview_rows), encoding="utf-8")
+        # Write the full import payload — required by upload_catalog_batch_import.mjs.
+        # Only written when no source filter is active so a partial run never leaves a
+        # stale / incomplete preview.json on disk.
+        if not source_filters:
+            PREVIEW_JSON_OUT.write_text(
+                json.dumps(
+                    {
+                        "tenantSlug": summary["tenantSlug"],
+                        "rows": rows,
+                        "previewRows": preview_rows,
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
         if full_preview:
             write_full_preview(rows, preview_rows)
     print(

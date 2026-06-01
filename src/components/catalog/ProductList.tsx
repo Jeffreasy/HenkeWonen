@@ -1,5 +1,5 @@
 import { Archive, Pencil, RotateCcw, Save } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canManage, type AppSession } from "../../lib/auth/session";
@@ -9,6 +9,7 @@ import { formatEuro } from "../../lib/money";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatStatusLabel, formatUnit } from "../../lib/i18n/statusLabels";
 import { Badge } from "../ui/Badge";
+import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import { Button } from "../ui/Button";
 import { Checkbox } from "../ui/Checkbox";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
@@ -33,6 +34,8 @@ type CatalogResult = {
     name: string;
     count: number;
   }>;
+  isDone: boolean;
+  continueCursor: string;
 };
 
 type ProductStatus = PortalProduct["status"];
@@ -64,7 +67,9 @@ export default function ProductList({ session }: ProductListProps) {
   const [category, setCategory] = useState("Alle");
   const [statusFilter, setStatusFilter] = useState<ProductStatus>("active");
   const [categories, setCategories] = useState<CatalogResult["categories"]>([]);
-  const [limit, setLimit] = useState(300);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [continueCursor, setContinueCursor] = useState<string>("");
+  const [isDone, setIsDone] = useState(false);
   const [total, setTotal] = useState(0);
   const [includePilotHidden, setIncludePilotHidden] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +92,36 @@ export default function ProductList({ session }: ProductListProps) {
     nextStatus: ProductStatus;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const productEditPanelRef = useRef<HTMLElement>(null);
   const canManageProducts = canManage(session.role);
+
+  useAutoFocusPanel(Boolean(editingProduct), productEditPanelRef);
+
+  // Aparte query voor categorie-tellingen — loopt onafhankelijk van paginering
+  // zodat álle categorieën zichtbaar zijn, ook FlexColours die laat in de index staan
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadCategoryStats() {
+      const client = createConvexHttpClient();
+      if (!client) return;
+
+      try {
+        const result = await client.query(api.catalog.listCategoryStats, {
+          tenantSlug: session.tenantId,
+          status: statusFilter
+        });
+        if (isActive) {
+          setCategories(result.categories);
+        }
+      } catch {
+        // Stille fout — categorie-dropdown is niet-kritisch
+      }
+    }
+
+    void loadCategoryStats();
+    return () => { isActive = false; };
+  }, [session.tenantId, statusFilter]);
 
   useEffect(() => {
     let isActive = true;
@@ -105,19 +139,23 @@ export default function ProductList({ session }: ProductListProps) {
       }
 
       try {
+        const isFirstPage = !cursor;
         const result = (await client.query(api.catalog.listProductsForPortal, {
           tenantSlug: session.tenantId,
           search: query || undefined,
           category: category === "Alle" ? undefined : category,
           status: statusFilter,
           includePilotHidden: canManageProducts && includePilotHidden,
-          limit
+          limit: 300,
+          cursor: cursor ?? undefined
         })) as CatalogResult;
 
         if (isActive) {
-          setProducts(result.items);
-          setTotal(result.total);
-          setCategories(result.categories ?? []);
+          setProducts((prev) => (isFirstPage ? result.items : [...prev, ...result.items]));
+          setTotal((prev) => (isFirstPage ? result.items.length : prev + result.items.length));
+          setIsDone(result.isDone);
+          setContinueCursor(result.continueCursor);
+          // Categorieën komen nu altijd van listCategoryStats (aparte useEffect)
         }
       } catch (loadError) {
         console.error(loadError);
@@ -142,8 +180,8 @@ export default function ProductList({ session }: ProductListProps) {
   }, [
     canManageProducts,
     category,
+    cursor,
     includePilotHidden,
-    limit,
     query,
     reloadKey,
     session.tenantId,
@@ -152,18 +190,24 @@ export default function ProductList({ session }: ProductListProps) {
 
   function handleSearch(nextQuery: string) {
     setQuery(nextQuery);
-    setLimit(300);
+    setCursor(null);
+    setIsDone(false);
+    setProducts([]);
   }
 
   function handleCategory(nextCategory: string) {
     setCategory(nextCategory);
-    setLimit(300);
+    setCursor(null);
+    setIsDone(false);
+    setProducts([]);
   }
 
   function handleStatus(nextStatus: ProductStatus) {
     setStatusFilter(nextStatus);
     setCategory("Alle");
-    setLimit(300);
+    setCursor(null);
+    setIsDone(false);
+    setProducts([]);
   }
 
   function startEditProduct(product: PortalProduct) {
@@ -455,10 +499,13 @@ export default function ProductList({ session }: ProductListProps) {
                 <Checkbox
                   checked={includePilotHidden}
                   label="Verborgen pilotproducten tonen"
+                  aria-label="Verborgen pilotproducten tonen"
                   description="Alleen voor importcontrole en beheer."
                   onChange={(event) => {
                     setIncludePilotHidden(event.target.checked);
-                    setLimit(300);
+                    setCursor(null);
+                    setIsDone(false);
+                    setProducts([]);
                   }}
                 />
               ) : null}
@@ -468,10 +515,17 @@ export default function ProductList({ session }: ProductListProps) {
         <div className="toolbar" style={{ marginTop: 12 }}>
           <Badge>Catalogus</Badge>
           <span className="muted">
-            {isLoading ? "Bezig met laden..." : `Toont ${products.length} van ${total} producten`}
+            {isLoading
+              ? "Bezig met laden..."
+              : isDone
+                ? `Alle ${total} producten geladen`
+                : `${total} producten geladen — meer beschikbaar`}
           </span>
-          {products.length < total ? (
-            <Button variant="secondary" onClick={() => setLimit(limit + 300)}>
+          {!isDone && !isLoading ? (
+            <Button
+              variant="secondary"
+              onClick={() => setCursor(continueCursor)}
+            >
               Meer laden
             </Button>
           ) : null}
@@ -479,11 +533,11 @@ export default function ProductList({ session }: ProductListProps) {
         {error ? <div className="empty-state">{error}</div> : null}
       </section>
       {editingProduct ? (
-        <section className="panel">
+        <section className="panel edit-work-panel" ref={productEditPanelRef}>
           <SectionHeader
             compact
-            title="Catalogusproduct bewerken"
-            description="Pas alleen beheerbare verkoopgegevens aan. Prijshistorie en importherkomst blijven bewaard."
+            title={`Catalogusproduct bewerken: ${editingProduct.displayName ?? editingProduct.name}`}
+            description="Je past nu dit product aan. Prijshistorie en importherkomst blijven bewaard."
             actions={<StatusBadge status={productDraft.status} label={formatStatusLabel(productDraft.status)} />}
           />
           <form className="form-grid" onSubmit={saveProduct}>
@@ -607,6 +661,58 @@ export default function ProductList({ session }: ProductListProps) {
         emptyTitle="Geen producten gevonden"
         emptyDescription="Pas de zoekopdracht of categoriefilter aan."
         density="compact"
+        mobileMode="cards"
+        renderMobileCard={(product) => (
+          <div className="mobile-card-section">
+            <div className="mobile-card-header">
+              <div className="mobile-card-title">
+                <strong>{product.displayName ?? product.name}</strong>
+                <small className="muted">
+                  {[product.articleNumber, product.supplierCode, product.colorName]
+                    .filter(Boolean)
+                    .join(" · ") || "-"}
+                </small>
+              </div>
+              <StatusBadge status={product.status} label={formatStatusLabel(product.status)} />
+            </div>
+            <div className="mobile-card-meta">
+              <span>{product.category}</span>
+              <span>{product.displaySupplierName ?? product.supplier}</span>
+              <strong>{formatEuro(product.priceExVat)}</strong>
+            </div>
+            {canManageProducts ? (
+              <div className="mobile-card-actions">
+                <Button
+                  leftIcon={<Pencil size={16} aria-hidden="true" />}
+                  onClick={() => startEditProduct(product)}
+                  size="sm"
+                  variant="secondary"
+                >
+                  Bewerken
+                </Button>
+                {product.status === "archived" ? (
+                  <Button
+                    leftIcon={<RotateCcw size={16} aria-hidden="true" />}
+                    onClick={() => setPendingProductStatus({ product, nextStatus: "active" })}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Herstellen
+                  </Button>
+                ) : (
+                  <Button
+                    leftIcon={<Archive size={16} aria-hidden="true" />}
+                    onClick={() => setPendingProductStatus({ product, nextStatus: "archived" })}
+                    size="sm"
+                    variant="danger"
+                  >
+                    Archiveren
+                  </Button>
+                )}
+              </div>
+            ) : null}
+          </div>
+        )}
         ariaLabel="Catalogusproducten"
       />
     </div>

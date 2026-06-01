@@ -3,7 +3,7 @@ import { classNames } from "./classNames";
 
 type AlertVariant = "info" | "success" | "warning" | "danger";
 
-type AlertProps = HTMLAttributes<HTMLDivElement> & {
+type AlertProps = Omit<HTMLAttributes<HTMLDivElement>, "title"> & {
   variant?: AlertVariant;
   title?: ReactNode;
   description?: ReactNode;

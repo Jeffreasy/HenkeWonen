@@ -3,6 +3,7 @@ import net from "node:net";
 
 const host = "127.0.0.1";
 const startPort = Number(process.env.PORTAL_TEST_START_PORT ?? 4323);
+const testScript = process.argv[2] ?? "tools/test_portal_routes.mjs";
 
 function cmdQuote(value) {
   if (/^[\w./:=@-]+$/u.test(value)) {
@@ -122,7 +123,7 @@ pipePrefixed(server.stderr, "[portal-test-server]");
 try {
   await waitForServer(baseUrl, server);
 
-  const test = spawnCommand("node", ["tools/test_portal_routes.mjs"], {
+  const test = spawnCommand("node", [testScript], {
     env: {
       ...process.env,
       PORTAL_TEST_BASE_URL: baseUrl

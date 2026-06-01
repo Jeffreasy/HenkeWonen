@@ -1,10 +1,11 @@
-import { Save } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Archive, Pencil, RotateCcw, Save } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatCustomerStatus, formatProjectStatus } from "../../lib/i18n/statusLabels";
+import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import type {
   PortalCustomer,
   PortalCustomerContact,
@@ -97,7 +98,10 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
   });
   const [pendingCustomerStatus, setPendingCustomerStatus] =
     useState<PortalCustomer["status"] | null>(null);
+  const customerEditFormRef = useRef<HTMLFormElement>(null);
   const canAddContact = canEditDossiers(session.role);
+
+  useAutoFocusPanel(editingCustomer, customerEditFormRef);
 
   const loadDetail = useCallback(async () => {
     const client = createConvexHttpClient();
@@ -372,10 +376,22 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
                 <StatusBadge status={customer.status} label={formatCustomerStatus(customer.status)} />
                 {canAddContact ? (
                   <>
-                    <Button size="sm" variant="secondary" onClick={() => setEditingCustomer((current) => !current)}>
+                    <Button
+                      leftIcon={<Pencil size={16} aria-hidden="true" />}
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setEditingCustomer((current) => !current)}
+                    >
                       Bewerken
                     </Button>
                     <Button
+                      leftIcon={
+                        customer.status === "archived" ? (
+                          <RotateCcw size={16} aria-hidden="true" />
+                        ) : (
+                          <Archive size={16} aria-hidden="true" />
+                        )
+                      }
                       size="sm"
                       variant={customer.status === "archived" ? "secondary" : "danger"}
                       onClick={() => setPendingCustomerStatus(customer.status === "archived" ? "active" : "archived")}
@@ -423,15 +439,37 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
             emptyDescription="Maak vanuit projecten een nieuw traject aan voor deze klant."
             emptyTitle="Nog geen projecten"
             getRowKey={(project) => project.id}
+            mobileMode="cards"
+            renderMobileCard={(project) => (
+              <div className="mobile-card-section">
+                <div className="mobile-card-header">
+                  <div className="mobile-card-title">
+                    <a href={`/portal/projecten/${project.id}`}>
+                      <strong>{project.title}</strong>
+                    </a>
+                    <small className="muted">{project.description ?? "Geen omschrijving"}</small>
+                  </div>
+                  <StatusBadge status={project.status} label={formatProjectStatus(project.status)} />
+                </div>
+                <div className="mobile-card-meta">
+                  <span>{project.rooms.length} ruimtes</span>
+                </div>
+                <div className="mobile-card-actions">
+                  <a className="ui-button ui-button-secondary ui-button-sm" href={`/portal/projecten/${project.id}`}>
+                    Project openen
+                  </a>
+                </div>
+              </div>
+            )}
             rows={projects}
           />
         </section>
       </div>
 
       {canAddContact && editingCustomer ? (
-        <section className="panel">
+        <section className="panel edit-work-panel">
           <SectionHeader compact title="Klantgegevens aanpassen" description="Wijzig contactgegevens en notities voor dit klantdossier." />
-          <form className="form-grid" onSubmit={saveCustomer}>
+          <form className="form-grid" onSubmit={saveCustomer} ref={customerEditFormRef}>
             <div className="grid two-column-even">
               <Field htmlFor="edit-customer-name" label="Naam" required>
                 <Input
@@ -573,6 +611,24 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
             emptyDescription="Voeg hierboven een eerste contactmoment toe."
             emptyTitle="Nog geen contactmomenten"
             getRowKey={(contact) => contact.id}
+            mobileMode="cards"
+            renderMobileCard={(contact) => (
+              <div className="mobile-card-section">
+                <div className="mobile-card-header">
+                  <div className="mobile-card-title">
+                    <strong>{contact.title}</strong>
+                    {contact.description ? <small className="muted">{contact.description}</small> : null}
+                  </div>
+                  <Badge variant={contact.type === "loaned_item" ? "warning" : "neutral"}>
+                    {contactTypeLabel(contact.type)}
+                  </Badge>
+                </div>
+                <div className="mobile-card-meta">
+                  <NoteVisibilityBadge visibleToCustomer={contact.visibleToCustomer} />
+                  <span>{dateText(contact.createdAt)}</span>
+                </div>
+              </div>
+            )}
             rows={contacts}
           />
         </section>

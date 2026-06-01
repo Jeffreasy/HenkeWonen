@@ -7,13 +7,18 @@ import { createToolMutationActor } from "./authz_actor.mjs";
 import {
   hasFlag,
   loadCatalogToolEnv,
+  optionValue,
   requireCatalogToolTarget,
   targetSummary
 } from "./catalog_tooling_env.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const previewPath = resolve(root, "docs/catalog-import-preview.json");
 const toolEnv = loadCatalogToolEnv({ root, argv: process.argv.slice(2) });
+const previewFileArg = optionValue(toolEnv.args, "--preview-file");
+const previewPath = previewFileArg
+  ? resolve(root, previewFileArg)
+  : resolve(root, "docs/catalog-import-preview.json");
+
 const allowUnknownVatMode = hasFlag(toolEnv.args, "--allow-unknown-vat");
 const noCommit = hasFlag(toolEnv.args, "--no-commit");
 

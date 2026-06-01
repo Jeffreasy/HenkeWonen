@@ -26,7 +26,6 @@ import { EmptyState } from "../ui/EmptyState";
 import { LoadingState } from "../ui/LoadingState";
 import { SectionHeader } from "../ui/SectionHeader";
 import { StatusBadge } from "../ui/StatusBadge";
-import type { QuoteLineFormValues } from "./QuoteLineEditor";
 
 type MeasurementLinePickerProps = {
   tenantSlug: string;
@@ -34,7 +33,6 @@ type MeasurementLinePickerProps = {
   projectId: string;
   session: AppSession;
   startSortOrder: number;
-  onAddLine: (line: QuoteLineFormValues) => Promise<string | void> | string | void;
   onImported?: () => Promise<void> | void;
   mode?: "full" | "field";
 };
@@ -97,59 +95,16 @@ function buildLineTitle(item: ReadyMeasurementLine) {
   return parts.join(" - ");
 }
 
-function buildLineDescription(item: ReadyMeasurementLine) {
-  const descriptionLines = [
-    "Overgenomen uit inmeting.",
-    "Richtprijs. Kies product, verkoopprijs en btw bewust voordat je de offerte verstuurt.",
-    item.line.wastePercent !== undefined ? `Snijverlies: ${item.line.wastePercent}%.` : undefined,
-    item.line.notes ? `Meetnotitie: ${item.line.notes}` : undefined
-  ].filter(Boolean);
-
-  return descriptionLines.join("\n");
-}
-
-function buildQuoteLine(
-  item: ReadyMeasurementLine,
-  sortOrder: number
-): QuoteLineFormValues {
-  return {
-    projectRoomId: item.room?.projectRoomId,
-    lineType: item.line.quoteLineType,
-    title: buildLineTitle(item),
-    description: buildLineDescription(item),
-    quantity: item.line.quantity,
-    unit: item.line.unit,
-    unitPriceExVat: 0,
-    vatRate: 0,
-    sortOrder,
-    metadata: {
-      source: "measurement",
-      measurementId: item.measurement._id,
-      measurementLineId: item.line._id,
-      measurementRoomId: item.room?._id,
-      productGroup: item.line.productGroup,
-      calculationType: item.line.calculationType,
-      wastePercent: item.line.wastePercent,
-      isIndicative: true,
-      requiresManualProductReview: true,
-      requiresManualPriceReview: true,
-      requiresManualVatReview: true
-    }
-  };
-}
-
 export default function MeasurementLinePicker({
   tenantSlug,
   quoteId,
   projectId,
   session,
   startSortOrder,
-  onAddLine,
   onImported,
   mode = "full"
 }: MeasurementLinePickerProps) {
   const isFieldMode = mode === "field";
-  const [tenantConvexId, setTenantConvexId] = useState<string | null>(null);
   const [readyLines, setReadyLines] = useState<ReadyMeasurementLine[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -174,7 +129,6 @@ export default function MeasurementLinePicker({
     try {
       const tenant = await client.query(api.tenants.getBySlug, { slug: tenantSlug });
       const resolvedTenantId = String(tenant?._id ?? tenantSlug);
-      setTenantConvexId(resolvedTenantId);
 
       const result = (await client.query(api.measurements.listReadyForQuoteByProject, {
         tenantId: resolvedTenantId as Id<"tenants">,
@@ -275,7 +229,7 @@ export default function MeasurementLinePicker({
   );
 
   async function importSelectedLines() {
-    if (!tenantConvexId || selectedLines.length === 0) {
+    if (selectedLines.length === 0) {
       return;
     }
 
@@ -291,22 +245,13 @@ export default function MeasurementLinePicker({
     setNotice(null);
 
     try {
-      for (const [index, item] of selectedLines.entries()) {
-        const quoteLine = buildQuoteLine(item, startSortOrder + index);
-        const quoteLineId = await onAddLine(quoteLine);
-
-        if (!quoteLineId) {
-          throw new Error("De offertepost is toegevoegd, maar de bevestiging kwam niet terug.");
-        }
-
-        await client.mutation(api.measurements.markMeasurementLineConverted, {
-          tenantId: tenantConvexId as Id<"tenants">,
-          actor: mutationActorFromSession(session),
-          lineId: item.line._id as Id<"measurementLines">,
-          quoteId: quoteId as Id<"quotes">,
-          quoteLineId: String(quoteLineId) as Id<"quoteLines">
-        });
-      }
+      await client.mutation(api.portal.importMeasurementLinesToQuote, {
+        tenantSlug,
+        actor: mutationActorFromSession(session),
+        quoteId,
+        lineIds: selectedLines.map((item) => item.line._id as Id<"measurementLines">),
+        startSortOrder
+      });
 
       setSelectedIds([]);
       setConfirmOpen(false);

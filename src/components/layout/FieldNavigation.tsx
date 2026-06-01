@@ -35,6 +35,9 @@ type FieldNavGroup = {
 };
 
 const fieldHomePath = "/portal/buitendienst";
+const fieldTodayPath = `${fieldHomePath}/vandaag`;
+const fieldMeasurePath = `${fieldHomePath}/inmeten`;
+const fieldQuotePath = `${fieldHomePath}/conceptoffertes`;
 
 function currentPathname(pathname?: string) {
   if (pathname) {
@@ -60,12 +63,12 @@ function isProjectPath(pathname: string) {
   return pathname.startsWith(`${fieldHomePath}/projecten`);
 }
 
-function workspaceAnchor(pathname: string, hash: string) {
-  return pathname === fieldHomePath ? hash : `${fieldHomePath}${hash}`;
+function isTodayPath(pathname: string) {
+  return pathname === fieldHomePath || pathname === fieldTodayPath;
 }
 
-function visitAnchor(pathname: string, hash: string) {
-  return isProjectPath(pathname) ? hash : `${fieldHomePath}${hash === "#inmeten" ? "#dossiers" : "#conceptoffertes"}`;
+function workdayHref(pathname: string, pagePath: string, projectHash: string) {
+  return isProjectPath(pathname) ? projectHash : pagePath;
 }
 
 function fieldRoleLabel(role: AppSession["role"]) {
@@ -80,9 +83,10 @@ function fieldRoleLabel(role: AppSession["role"]) {
 }
 
 function fieldNavGroups(pathname: string, hash: string): FieldNavGroup[] {
-  const onWorkspace = pathname === fieldHomePath;
   const onProject = isProjectPath(pathname);
-  const isDefaultWorkspace = onWorkspace && !hash;
+  const onToday = isTodayPath(pathname);
+  const onMeasure = pathname === fieldMeasurePath;
+  const onQuote = pathname === fieldQuotePath;
 
   const groups: FieldNavGroup[] = [
     {
@@ -90,25 +94,25 @@ function fieldNavGroups(pathname: string, hash: string): FieldNavGroup[] {
       label: "Werkdag",
       items: [
         {
-          href: fieldHomePath,
+          href: fieldTodayPath,
           label: "Vandaag",
           icon: CalendarDays,
-          active: isDefaultWorkspace,
+          active: onToday,
           quickbar: true
         },
         {
-          href: workspaceAnchor(pathname, "#dossiers"),
+          href: workdayHref(pathname, fieldMeasurePath, "#inmeten"),
           label: "Inmeten",
           icon: Ruler,
-          active: (onWorkspace && hash === "#dossiers") || (onProject && hash === "#inmeten"),
+          active: onMeasure || (onProject && hash === "#inmeten"),
           quickbar: true
         },
         {
-          href: workspaceAnchor(pathname, "#conceptoffertes"),
+          href: workdayHref(pathname, fieldQuotePath, "#conceptofferte"),
           label: "Conceptoffertes",
           shortLabel: "Offertes",
           icon: FileText,
-          active: (onWorkspace && hash === "#conceptoffertes") || (onProject && hash === "#conceptofferte"),
+          active: onQuote || (onProject && hash === "#conceptofferte"),
           quickbar: true
         }
       ]
@@ -121,16 +125,16 @@ function fieldNavGroups(pathname: string, hash: string): FieldNavGroup[] {
       label: "Klantbezoek",
       items: [
         {
-          href: fieldHomePath,
+          href: fieldMeasurePath,
           label: "Dossiers",
           icon: BriefcaseBusiness,
-          active: !hash
+          active: false
         },
         {
-          href: visitAnchor(pathname, "#conceptofferte"),
+          href: "#conceptofferte",
           label: "Klantversie",
           icon: Printer,
-          active: false
+          active: hash === "#conceptofferte"
         }
       ]
     });

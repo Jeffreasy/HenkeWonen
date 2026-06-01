@@ -172,12 +172,178 @@ export const getProductCount = query({
       return 0;
     }
 
-    const products = await ctx.db
+    let count = 0;
+    let scanned = 0;
+
+    for await (const product of ctx.db
       .query("products")
+      .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
+    ) {
+      if (scanned >= MAX_PRODUCT_STAT_SCAN) {
+        break;
+      }
+
+      scanned += 1;
+      if (normalizedProductStatus(product.status) === "active") {
+        count += 1;
+      }
+    }
+
+    return count;
+  }
+});
+
+const categoryOrder = [
+  "PVC Vloeren",
+  "PVC Click",
+  "PVC Dryback",
+  "Palletcollectie PVC",
+  "Traprenovatie",
+  "Tapijt",
+  "Vinyl",
+  "Gordijnen",
+  "Raambekleding",
+  "Wandpanelen",
+  "Douchepanelen",
+  "Tegels",
+  "Entreematten",
+  "Plinten",
+  "Lijm",
+  "Kit",
+  "Egaline",
+  "Ondervloer",
+  "Behang",
+  "Roedes/Railsen",
+  "Karpetten",
+  "Horren",
+  "Verlichting",
+  "Winkelvoorraad",
+  "Overig"
+];
+
+type ProductDoc = Doc<"products">;
+type CategoryDoc = Doc<"categories">;
+type SupplierDoc = Doc<"suppliers">;
+
+const MAX_PRODUCT_STAT_SCAN = 50000;
+const PRODUCT_PORTAL_SCAN_BATCH_SIZE = 500;
+const PRODUCT_PORTAL_SCAN_MULTIPLIER = 20;
+
+function productMatchesPortalFilters({
+  product,
+  categoryName,
+  supplierName,
+  requestedStatus,
+  includePilotHidden,
+  search,
+  categoryFilter
+}: {
+  product: ProductDoc;
+  categoryName: string;
+  supplierName: string;
+  requestedStatus: ProductStatus;
+  includePilotHidden: boolean;
+  search: string;
+  categoryFilter: string;
+}) {
+  if (normalizedProductStatus(product.status) !== requestedStatus) {
+    return false;
+  }
+
+  if (!includePilotHidden && pilotHiddenReason(product, categoryName)) {
+    return false;
+  }
+
+  if (categoryFilter && categoryName !== categoryFilter) {
+    return false;
+  }
+
+  if (!search) {
+    return true;
+  }
+
+  const customerName = displayProductName(product, categoryName, supplierName);
+  const customerSupplierName = displaySupplierName(supplierName);
+  const labels = visibleCommercialNames(product, categoryName)
+    ?.map((name) => name.displayName)
+    .join(" ");
+  const haystack = [
+    product.name,
+    customerName,
+    product.articleNumber,
+    product.supplierCode,
+    product.commercialCode,
+    product.supplierProductGroup,
+    product.ean,
+    product.colorName,
+    supplierName,
+    customerSupplierName,
+    categoryName,
+    labels
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(search);
+}
+
+/**
+ * Lichte telquery voor de categorie-dropdown.
+ * Loopt onafhankelijk van paginering zodat alle categorieën altijd zichtbaar zijn,
+ * ook als ze pas laat in de index staan (bijv. FlexColours raambekleding).
+ * Itereert producten zonder prijzen en kapt af op een hoge veiligheidslimiet.
+ */
+export const listCategoryStats = query({
+  args: {
+    tenantSlug: v.string(),
+    status: v.optional(productStatus)
+  },
+  handler: async (ctx, args) => {
+    const tenant = await ctx.db
+      .query("tenants")
+      .withIndex("by_slug", (q) => q.eq("slug", args.tenantSlug))
+      .first();
+
+    if (!tenant) {
+      return { categories: [] };
+    }
+
+    const categories = await ctx.db
+      .query("categories")
       .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
       .collect();
 
-    return products.filter((product) => normalizedProductStatus(product.status) === "active").length;
+    const requestedStatus = args.status ?? "active";
+    const categoryById = new Map<string, CategoryDoc>(categories.map((c) => [String(c._id), c]));
+    const counts = new Map<string, number>();
+    let scanned = 0;
+    let truncated = false;
+
+    for await (const product of ctx.db
+      .query("products")
+      .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
+    ) {
+      if (scanned >= MAX_PRODUCT_STAT_SCAN) {
+        truncated = true;
+        break;
+      }
+
+      scanned += 1;
+      if (normalizedProductStatus(product.status) !== requestedStatus) continue;
+      const name = categoryById.get(String(product.categoryId))?.name ?? "Overig";
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+
+    const result = [...counts.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => {
+        const ai = categoryOrder.indexOf(a.name);
+        const bi = categoryOrder.indexOf(b.name);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi) || a.name.localeCompare(b.name, "nl");
+      });
+
+    return { categories: result, scanned, truncated };
   }
 });
 
@@ -188,7 +354,8 @@ export const listProductsForPortal = query({
     category: v.optional(v.string()),
     status: v.optional(productStatus),
     includePilotHidden: v.optional(v.boolean()),
-    limit: v.optional(v.number())
+    limit: v.optional(v.number()),
+    cursor: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     const tenant = await ctx.db
@@ -201,11 +368,14 @@ export const listProductsForPortal = query({
         items: [],
         total: 0,
         limit: args.limit ?? 300,
-        categories: []
+        categories: [],
+        isDone: true,
+        continueCursor: ""
       };
     }
 
-    const [categories, suppliers, products] = await Promise.all([
+    // Categorieën en leveranciers zijn kleine tabellen — altijd veilig om te collecten
+    const [categories, suppliers] = await Promise.all([
       ctx.db
         .query("categories")
         .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
@@ -214,118 +384,104 @@ export const listProductsForPortal = query({
         .query("suppliers")
         .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
         .collect(),
-      ctx.db
-        .query("products")
-        .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
-        .collect()
     ]);
 
-    const categoryById = new Map(categories.map((category) => [String(category._id), category]));
-    const supplierById = new Map(suppliers.map((supplier) => [String(supplier._id), supplier]));
-    const requestedStatus = args.status ?? "active";
-    const activeProducts = products.filter(
-      (product) => normalizedProductStatus(product.status) === requestedStatus
-    );
-    const visibleProducts = args.includePilotHidden
-      ? activeProducts
-      : activeProducts.filter((product) => {
-          const categoryName = categoryById.get(String(product.categoryId))?.name ?? "Overig";
-          return !pilotHiddenReason(product, categoryName);
-        });
-    const categoryCounts = new Map<string, number>();
-    const categoryOrder = [
-      "PVC Vloeren",
-      "PVC Click",
-      "PVC Dryback",
-      "Palletcollectie PVC",
-      "Traprenovatie",
-      "Tapijt",
-      "Vinyl",
-      "Gordijnen",
-      "Raambekleding",
-      "Wandpanelen",
-      "Douchepanelen",
-      "Tegels",
-      "Entreematten",
-      "Plinten",
-      "Lijm",
-      "Kit",
-      "Egaline",
-      "Ondervloer",
-      "Behang",
-      "Roedes/Railsen",
-      "Karpetten",
-      "Horren",
-      "Verlichting",
-      "Winkelvoorraad",
-      "Overig"
-    ];
+    // Bepaal categoriefilter vóór het laden van producten
+    const categoryFilter = args.category && args.category !== "Alle" ? args.category : "";
+    const targetCategory = categoryFilter
+      ? categories.find((c) => c.name === categoryFilter) ?? null
+      : null;
+    const pageSize = Math.min(Math.max(args.limit ?? 300, 25), 500);
+    const limit = pageSize;
 
-    for (const product of visibleProducts) {
-      const categoryName = categoryById.get(String(product.categoryId))?.name ?? "Overig";
-      categoryCounts.set(categoryName, (categoryCounts.get(categoryName) ?? 0) + 1);
+    if (categoryFilter && !targetCategory) {
+      return {
+        items: [],
+        total: 0,
+        limit,
+        categories: [] as { name: string; count: number }[],
+        isDone: true,
+        continueCursor: "",
+        scannedProducts: 0
+      };
     }
 
-    const categoryFilters = [...categoryCounts.entries()]
-      .map(([name, count]) => ({ name, count }))
-      .sort((left, right) => {
-        const leftIndex = categoryOrder.indexOf(left.name);
-        const rightIndex = categoryOrder.indexOf(right.name);
-        return (
-          (leftIndex === -1 ? 999 : leftIndex) - (rightIndex === -1 ? 999 : rightIndex) ||
-          left.name.localeCompare(right.name, "nl")
-        );
-      });
+    const categoryById = new Map<string, CategoryDoc>(
+      categories.map((category) => [String(category._id), category])
+    );
+    const supplierById = new Map<string, SupplierDoc>(
+      suppliers.map((supplier) => [String(supplier._id), supplier])
+    );
+    const requestedStatus = args.status ?? "active";
+    const includePilotHidden = args.includePilotHidden ?? false;
     const search = (args.search ?? "").trim().toLowerCase();
-    const categoryFilter = args.category && args.category !== "Alle" ? args.category : "";
-    const filtered = visibleProducts
-      .filter((product) => {
+    const selected: ProductDoc[] = [];
+    let cursor = args.cursor ?? null;
+    let continueCursor = args.cursor ?? "";
+    let isDone = false;
+    let scannedProducts = 0;
+    const maxScannedProducts = pageSize * PRODUCT_PORTAL_SCAN_MULTIPLIER;
+
+    while (selected.length < pageSize && !isDone && scannedProducts < maxScannedProducts) {
+      const remainingScanBudget = maxScannedProducts - scannedProducts;
+      const remainingPageSlots = pageSize - selected.length;
+      const numItems = Math.min(
+        PRODUCT_PORTAL_SCAN_BATCH_SIZE,
+        remainingScanBudget,
+        remainingPageSlots
+      );
+      const paginated = targetCategory
+        ? await ctx.db
+            .query("products")
+            .withIndex("by_category", (q) =>
+              q.eq("tenantId", tenant._id).eq("categoryId", targetCategory._id)
+            )
+            .paginate({ numItems, cursor })
+        : await ctx.db
+            .query("products")
+            .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
+            .paginate({ numItems, cursor });
+
+      scannedProducts += paginated.page.length;
+      isDone = paginated.isDone;
+      continueCursor = paginated.continueCursor;
+      cursor = paginated.continueCursor;
+
+      for (const product of paginated.page) {
         const categoryName = categoryById.get(String(product.categoryId))?.name ?? "Overig";
-
-        if (categoryFilter && categoryName !== categoryFilter) {
-          return false;
-        }
-
-        if (!search) {
-          return true;
-        }
-
         const supplierName = product.supplierId
-          ? supplierById.get(String(product.supplierId))?.name
+          ? supplierById.get(String(product.supplierId))?.name ?? ""
           : "";
-        const customerName = displayProductName(product, categoryName, supplierName);
-        const customerSupplierName = displaySupplierName(supplierName ?? "");
-        const labels = visibleCommercialNames(product, categoryName)
-          ?.map((name) => name.displayName)
-          .join(" ");
-        const haystack = [
-          product.name,
-          customerName,
-          product.articleNumber,
-          product.supplierCode,
-          product.commercialCode,
-          product.supplierProductGroup,
-          product.ean,
-          product.colorName,
-          supplierName,
-          customerSupplierName,
-          categoryName,
-          labels
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
 
-        return haystack.includes(search);
-      })
-      .sort((left, right) => {
-        const leftCategory = categoryById.get(String(left.categoryId))?.name ?? "";
-        const rightCategory = categoryById.get(String(right.categoryId))?.name ?? "";
-        return `${leftCategory} ${left.name}`.localeCompare(`${rightCategory} ${right.name}`, "nl");
-      });
+        if (
+          productMatchesPortalFilters({
+            product,
+            categoryName,
+            supplierName,
+            requestedStatus,
+            includePilotHidden,
+            search,
+            categoryFilter
+          })
+        ) {
+          selected.push(product);
+        }
 
-    const limit = Math.min(Math.max(args.limit ?? 300, 25), 2000);
-    const selected = filtered.slice(0, limit);
+        if (selected.length >= pageSize) {
+          break;
+        }
+      }
+
+      if (paginated.page.length === 0) {
+        break;
+      }
+    }
+
+    selected.sort((left, right) => {
+      const leftCategory = categoryById.get(String(left.categoryId))?.name ?? "";
+      const rightCategory = categoryById.get(String(right.categoryId))?.name ?? "";
+      return `${leftCategory} ${left.name}`.localeCompare(`${rightCategory} ${right.name}`, "nl");
+    });
     const items = [];
 
     for (const product of selected) {
@@ -381,9 +537,13 @@ export const listProductsForPortal = query({
 
     return {
       items,
-      total: filtered.length,
+      total: items.length,
       limit,
-      categories: categoryFilters
+      // Categorie-tellingen komen via de aparte listCategoryStats query
+      categories: [] as { name: string; count: number }[],
+      isDone,
+      continueCursor,
+      scannedProducts
     };
   }
 });

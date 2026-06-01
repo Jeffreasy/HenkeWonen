@@ -1,5 +1,5 @@
-import { CalendarClock, Plus, Ruler, Save } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { CalendarClock, Pencil, Plus, Ruler, Save, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -13,6 +13,7 @@ import {
 } from "../../lib/calculators";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { SubmitEventLike } from "../../lib/events";
+import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import {
   formatLineType,
   formatMeasurementCalculationType,
@@ -361,6 +362,8 @@ export default function MeasurementPanel({
     quotePreparationStatus: "draft" as QuotePreparationStatus
   });
   const [pendingLineDelete, setPendingLineDelete] = useState<MeasurementLineDoc | null>(null);
+  const roomEditFormRef = useRef<HTMLFormElement>(null);
+  const lineEditFormRef = useRef<HTMLFormElement>(null);
 
   const measurement = data?.measurement ?? null;
   const rooms = data?.rooms ?? [];
@@ -403,6 +406,9 @@ export default function MeasurementPanel({
   useEffect(() => {
     void loadMeasurement();
   }, [loadMeasurement]);
+
+  useAutoFocusPanel(Boolean(editingRoomId), roomEditFormRef);
+  useAutoFocusPanel(Boolean(editingLineId), lineEditFormRef);
 
   useEffect(() => {
     if (!measurement) {
@@ -1023,9 +1029,11 @@ export default function MeasurementPanel({
           canEditMeasurement ? (
             <div className="toolbar">
               <Button size="sm" variant="secondary" onClick={() => startEditRoom(room)}>
+                <Pencil size={16} aria-hidden="true" />
                 Bewerken
               </Button>
               <Button size="sm" variant="danger" onClick={() => setPendingRoomDelete(room)}>
+                <Trash2 size={16} aria-hidden="true" />
                 Verwijderen
               </Button>
             </div>
@@ -1180,9 +1188,11 @@ export default function MeasurementPanel({
                 </Button>
               ) : null}
               <Button size="sm" variant="secondary" onClick={() => startEditLine(line)}>
+                <Pencil size={16} aria-hidden="true" />
                 Bewerken
               </Button>
               <Button size="sm" variant="danger" onClick={() => setPendingLineDelete(line)}>
+                <Trash2 size={16} aria-hidden="true" />
                 Verwijderen
               </Button>
             </div>
@@ -1499,22 +1509,57 @@ export default function MeasurementPanel({
                 getRowKey={(room) => room._id}
                 mobileMode="cards"
                 renderMobileCard={(room) => (
-                  <div>
-                    <strong>{room.name}</strong>
-                    <p className="muted">
-                      {isFieldMode
-                        ? room.floor ?? "Geen verdieping"
-                        : `${formatNumber(room.areaM2, " m²")} · ${formatNumber(room.perimeterM, " m")}`}
-                    </p>
-                    <p className="muted">{room.notes ?? "Geen notitie"}</p>
+                  <div className="mobile-card-section">
+                    <div className="mobile-card-header">
+                      <div className="mobile-card-title">
+                        <strong>{room.name}</strong>
+                        <small className="muted">{room.floor ?? "Geen verdieping"}</small>
+                      </div>
+                      {!isFieldMode ? (
+                        <strong>{formatNumber(room.areaM2, " m²")}</strong>
+                      ) : null}
+                    </div>
+                    <div className="mobile-card-meta">
+                      {!isFieldMode ? <span>{formatNumber(room.perimeterM, " m")} omtrek</span> : null}
+                      <span>{room.notes ?? "Geen notitie"}</span>
+                    </div>
+                    {canEditMeasurement ? (
+                      <div className="mobile-card-actions">
+                        <Button
+                          leftIcon={<Pencil size={16} aria-hidden="true" />}
+                          onClick={() => startEditRoom(room)}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Bewerken
+                        </Button>
+                        <Button
+                          leftIcon={<Trash2 size={16} aria-hidden="true" />}
+                          onClick={() => setPendingRoomDelete(room)}
+                          size="sm"
+                          variant="danger"
+                        >
+                          Verwijderen
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 )}
                 rows={rooms}
               />
             </div>
             {editingRoomId ? (
-              <form className="form-grid" onSubmit={saveRoomCorrection} style={{ marginTop: 16 }}>
-                <SectionHeader compact title="Meetruimte corrigeren" description="Pas een opgeslagen ruimte aan zonder een dubbele ruimte aan te maken." />
+              <form
+                className="form-grid edit-work-panel"
+                onSubmit={saveRoomCorrection}
+                ref={roomEditFormRef}
+                style={{ marginTop: 16 }}
+              >
+                <SectionHeader
+                  compact
+                  title={`Meetruimte bewerken: ${roomCorrectionDraft.name}`}
+                  description="Je past nu deze opgeslagen ruimte aan zonder een dubbele ruimte aan te maken."
+                />
                 <div className="grid three-column">
                   <Field htmlFor="measurement-room-edit-name" label="Ruimte" required>
                     <Input
@@ -2110,9 +2155,11 @@ export default function MeasurementPanel({
                     </Button>
                   ) : null}
                   <Button size="sm" variant="secondary" onClick={() => startEditLine(line)}>
+                    <Pencil size={16} aria-hidden="true" />
                     Bewerken
                   </Button>
                   <Button size="sm" variant="danger" onClick={() => setPendingLineDelete(line)}>
+                    <Trash2 size={16} aria-hidden="true" />
                     Verwijderen
                   </Button>
                 </div>
@@ -2122,8 +2169,17 @@ export default function MeasurementPanel({
           rows={lines}
         />
         {editingLineId ? (
-          <form className="form-grid" onSubmit={saveLineCorrection} style={{ marginTop: 16 }}>
-            <SectionHeader compact title="Meetregel corrigeren" description="Pas hoeveelheid, ruimte of notitie aan zolang de regel nog niet verwerkt is." />
+          <form
+            className="form-grid edit-work-panel"
+            onSubmit={saveLineCorrection}
+            ref={lineEditFormRef}
+            style={{ marginTop: 16 }}
+          >
+            <SectionHeader
+              compact
+              title="Meetregel bewerken"
+              description="Je past nu deze meetregel aan. Verwerkte regels blijven beschermd."
+            />
             <div className="grid three-column">
               <Field htmlFor="measurement-line-edit-room" label="Ruimte">
                 <Select

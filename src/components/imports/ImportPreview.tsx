@@ -1205,6 +1205,39 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
                     emptyTitle="Geen regels gevonden"
                     emptyDescription="Deze prijslijst heeft geen regels voor de huidige filters."
                     density="compact"
+                    mobileMode="cards"
+                    renderMobileCard={(row) => {
+                      const normalized = row.normalized ?? {};
+                      const title =
+                        typeof normalized.productName === "string"
+                          ? normalized.productName
+                          : row.sectionLabel ?? "-";
+                      const messages = [...row.errors, ...row.warnings];
+
+                      return (
+                        <div className="mobile-card-section">
+                          <div className="mobile-card-header">
+                            <div className="mobile-card-title">
+                              <strong>{title}</strong>
+                              <small className="muted">
+                                Regel {row.rowNumber} · {formatRowKind(row.rowKind)}
+                              </small>
+                            </div>
+                            <StatusBadge status={row.status} label={formatRowStatus(row.status)} />
+                          </div>
+                          <div className="mobile-card-meta">
+                            {row.sourceSheetName ? <span>{row.sourceSheetName}</span> : null}
+                            {row.importedProductId ? <span>verwerkt als product</span> : null}
+                          </div>
+                          {messages.length > 0 ? (
+                            <div className="mobile-card-section">
+                              <p className="mobile-card-section-label">Meldingen</p>
+                              <span className="muted">{messages.join(", ")}</span>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    }}
                     ariaLabel="Prijslijstregels"
                   />
                 </div>

@@ -367,6 +367,30 @@ export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
           emptyTitle="Geen dossiers gevonden"
           getRowKey={(row) => row.id}
           loading={isLoading}
+          mobileMode="cards"
+          renderMobileCard={(row) => (
+            <div className="mobile-card-section">
+              <div className="mobile-card-header">
+                <div className="mobile-card-title">
+                  <a href={row.href}>
+                    <strong>{row.title}</strong>
+                  </a>
+                  <small className="muted">{row.subtitle}</small>
+                </div>
+                <StatusBadge status={row.status} label={row.statusLabel} />
+              </div>
+              <div className="mobile-card-meta">
+                <StatusBadge status={row.type} label={row.typeLabel} />
+                <span>Bijgewerkt {formatDate(row.updatedAt)}</span>
+                {row.amountLabel ? <strong>{row.amountLabel}</strong> : null}
+              </div>
+              <div className="mobile-card-actions">
+                <a className="ui-button ui-button-secondary ui-button-sm" href={row.href}>
+                  Openen
+                </a>
+              </div>
+            </div>
+          )}
           rows={filteredRows}
         />
       </section>

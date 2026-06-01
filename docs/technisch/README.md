@@ -10,6 +10,7 @@ Deze map bevat de actuele technische samenvattingen. De losse faseverslagen en a
 | [Inmeetmodule](./inmeetmodule.md) | Huidige architectuur en guardrails van de inmeetmodule |
 | [Importstraat en catalogus](./importstraat-catalogus.md) | Catalogusbaseline, importguardrails, btw-mapping en datakwaliteit |
 | [Auth en permissies](./auth-en-permissies.md) | Productie-auth, dev-auth scheiding en Convex-mutatiebeveiliging |
+| [Projectstabilisatie 2026-06-01](./project-stabilisatie-2026-06-01.md) | Vastgelegde baseline, verificatie, Node 24 workflow en catalogusreleasepunten |
 | [Projectoverdracht 2026-05-05](./project-overdracht-2026-05-05.md) | Grondige actuele projectkaart voor vervolgontwikkeling |
 | [Workflow technische map](./henke-wonen-portal-workflow-technical-map-2026-04-30.md) | Route naar component naar Convex functie |
 | [Codebase-inventarisatie](./workflow-codebase-inventory-2026-04-30.md) | Inventarisatie van routes, modules, acties en beperkingen |

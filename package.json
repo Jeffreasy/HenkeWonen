@@ -3,6 +3,7 @@
   "version": "0.1.1",
   "private": true,
   "type": "module",
+  "packageManager": "npm@11.13.0",
   "engines": {
     "node": "24.x"
   },
@@ -13,12 +14,17 @@
     "check": "astro check",
     "catalog:audit": "node tools/run_python_tool.mjs tools/audit_excel_data.py",
     "catalog:preview": "node tools/run_python_tool.mjs tools/build_catalog_import.py",
+    "catalog:preview:check": "node tools/run_python_tool.mjs tools/build_catalog_import.py --no-write",
     "catalog:reconcile": "node tools/run_python_tool.mjs tools/reconcile_catalog_sources.py",
     "catalog:reset": "node tools/reset_catalog_import.mjs",
     "catalog:import": "node tools/upload_catalog_batch_import.mjs",
     "catalog:import:prod": "node tools/upload_catalog_batch_import.mjs --production --target=production",
     "catalog:import:dev": "node tools/upload_catalog_batch_import.mjs --allow-unknown-vat",
     "catalog:import:legacy": "node tools/upload_catalog_import.mjs",
+    "catalog:flexcolours:preview": "node tools/run_python_tool.mjs tools/parse_flexcolours_matrix.py",
+    "catalog:flexcolours:preview:check": "node tools/run_python_tool.mjs tools/parse_flexcolours_matrix.py --no-write",
+    "catalog:flexcolours:cleanup:dev": "node tools/cleanup_raambekleding.mjs",
+    "catalog:flexcolours:import:dev": "node tools/upload_catalog_batch_import.mjs --preview-file docs/flexcolours-import-preview.json --allow-unknown-vat",
     "catalog:prod:bootstrap": "node tools/bootstrap_production_base.mjs --production --target=production",
     "catalog:status": "node tools/catalog_status.mjs",
     "catalog:vat:export": "node tools/export_vat_mapping_review.mjs",
@@ -26,7 +32,7 @@
     "portal:demo-seed": "node tools/seed_demo_portal_data.mjs",
     "test:portal": "node tools/test_portal_routes_with_dev_auth.mjs",
     "test:portal:routes": "node tools/test_portal_routes.mjs",
-    "test:a11y": "node tools/test_portal_a11y.mjs",
+    "test:a11y": "node tools/test_portal_routes_with_dev_auth.mjs tools/test_portal_a11y.mjs",
     "test:calculators": "node tools/test_calculators.mjs",
     "test:quote-document": "node tools/test_quote_document_model.mjs",
     "test:workflow-guardrails": "node tools/test_workflow_mutation_guardrails.mjs",
@@ -34,21 +40,26 @@
     "convex:deploy": "convex deploy"
   },
   "dependencies": {
-    "@astrojs/check": "latest",
-    "@astrojs/react": "latest",
-    "@astrojs/vercel": "latest",
-    "@convex-dev/react-query": "latest",
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "astro": "latest",
-    "convex": "latest",
-    "lucide-react": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "typescript": "latest"
+    "@astrojs/check": "0.9.9",
+    "@astrojs/react": "5.0.4",
+    "@astrojs/vercel": "10.0.7",
+    "@convex-dev/react-query": "0.1.0",
+    "@types/node": "24.12.4",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "astro": "6.1.10",
+    "convex": "1.39.1",
+    "lucide-react": "1.14.0",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "typescript": "5.9.3"
   },
   "devDependencies": {
-    "tailwindcss": "latest"
+    "tailwindcss": "4.3.0"
+  },
+  "overrides": {
+    "path-to-regexp": "6.3.0",
+    "ws": "8.20.1",
+    "yaml": "2.8.3"
   }
 }

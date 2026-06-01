@@ -22,7 +22,7 @@ const tenantSlug = toolEnv.tenantSlug;
 const [readiness, vatReview, catalogStats] = await Promise.all([
   client.query(api.catalogReview.productionReadiness, { tenantSlug }),
   client.query(api.catalogReview.vatMappingReview, { tenantSlug }),
-  client.query(api.catalogImport.getCatalogImportStats, { tenantSlug })
+  client.query(api.catalogImport.getCatalogImportStats, { tenantSlug, summaryOnly: true })
 ]);
 
 console.log(

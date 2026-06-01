@@ -58,7 +58,7 @@ export const portalNavGroups: PortalNavGroup[] = [
         matches: [{ path: "/portal/catalogus", exact: true }]
       },
       {
-        href: "/portal/buitendienst",
+        href: "/portal/buitendienst/vandaag",
         label: "Buitendienst",
         icon: Ruler,
         matches: [{ path: "/portal/buitendienst" }]

@@ -9,6 +9,32 @@ if (!scriptPath) {
   throw new Error("Usage: node tools/run_python_tool.mjs <script.py> [...args]");
 }
 
+function hasArg(args, name) {
+  return args.includes(name) || args.some((arg) => arg.startsWith(`${name}=`));
+}
+
+function restoreNpmConfigArgs(args) {
+  const restored = [...args];
+
+  // npm 11 on Windows may convert `npm run x -- --flag` into npm_config_* env vars
+  // instead of forwarding them to the script. Restore the flags used by catalog tools.
+  if (!hasArg(restored, "--no-write") && ["", "false"].includes(process.env.npm_config_write ?? "unset")) {
+    restored.push("--no-write");
+  }
+
+  if (!hasArg(restored, "--full") && process.env.npm_config_full === "true") {
+    restored.push("--full");
+  }
+
+  if (!hasArg(restored, "--source") && process.env.npm_config_source) {
+    restored.push("--source", process.env.npm_config_source);
+  }
+
+  return restored;
+}
+
+const restoredScriptArgs = restoreNpmConfigArgs(scriptArgs);
+
 const bundledPython = join(
   homedir(),
   ".cache",
@@ -44,7 +70,7 @@ if (!python) {
   process.exit(1);
 }
 
-const result = spawnSync(python, [resolve(scriptPath), ...scriptArgs], {
+const result = spawnSync(python, [resolve(scriptPath), ...restoredScriptArgs], {
   stdio: "inherit",
   shell: false,
 });

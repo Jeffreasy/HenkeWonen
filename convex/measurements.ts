@@ -59,6 +59,10 @@ async function requireMeasurement(ctx: any, tenantId: any, measurementId: any) {
   return measurement;
 }
 
+async function touchMeasurement(ctx: any, measurementId: any, updatedAt = Date.now()) {
+  await ctx.db.patch(measurementId, { updatedAt });
+}
+
 async function getActiveWasteProfiles(ctx: any, tenantId: any, productGroupArg?: string) {
   if (productGroupArg) {
     return await ctx.db
@@ -328,7 +332,7 @@ export const addMeasurementRoom = mutation({
       .collect();
     const now = Date.now();
 
-    return await ctx.db.insert("measurementRooms", {
+    const roomId = await ctx.db.insert("measurementRooms", {
       tenantId: args.tenantId,
       measurementId: args.measurementId,
       projectRoomId: args.projectRoomId,
@@ -344,6 +348,9 @@ export const addMeasurementRoom = mutation({
       createdAt: now,
       updatedAt: now
     });
+    await touchMeasurement(ctx, args.measurementId, now);
+
+    return roomId;
   }
 });
 
@@ -389,7 +396,7 @@ export const updateMeasurementRoom = mutation({
     if (hasArg(args, "notes")) patch.notes = args.notes;
 
     await ctx.db.patch(args.roomId, patch);
-    await ctx.db.patch(measurement._id, { updatedAt: Date.now() });
+    await touchMeasurement(ctx, measurement._id);
 
     return args.roomId;
   }
@@ -423,7 +430,7 @@ export const deleteMeasurementRoom = mutation({
     }
 
     await ctx.db.delete(room._id);
-    await ctx.db.patch(room.measurementId, { updatedAt: Date.now() });
+    await touchMeasurement(ctx, room.measurementId);
 
     return room._id;
   }
@@ -467,7 +474,7 @@ export const addMeasurementLine = mutation({
 
     const now = Date.now();
 
-    return await ctx.db.insert("measurementLines", {
+    const lineId = await ctx.db.insert("measurementLines", {
       tenantId: args.tenantId,
       measurementId: args.measurementId,
       roomId: args.roomId,
@@ -484,6 +491,9 @@ export const addMeasurementLine = mutation({
       createdAt: now,
       updatedAt: now
     });
+    await touchMeasurement(ctx, args.measurementId, now);
+
+    return lineId;
   }
 });
 
@@ -510,10 +520,13 @@ export const updateMeasurementLineStatus = mutation({
       throw new Error("Gebruik de verwerkingsactie om een meetregel aan een offerte te koppelen.");
     }
 
+    const now = Date.now();
+
     await ctx.db.patch(args.lineId, {
       quotePreparationStatus: args.quotePreparationStatus,
-      updatedAt: Date.now()
+      updatedAt: now
     });
+    await touchMeasurement(ctx, line.measurementId, now);
 
     return args.lineId;
   }
@@ -574,7 +587,7 @@ export const updateMeasurementLine = mutation({
       quotePreparationStatus: args.quotePreparationStatus ?? line.quotePreparationStatus,
       updatedAt: Date.now()
     });
-    await ctx.db.patch(line.measurementId, { updatedAt: Date.now() });
+    await touchMeasurement(ctx, line.measurementId);
 
     return line._id;
   }
@@ -607,7 +620,7 @@ export const deleteMeasurementLine = mutation({
     }
 
     await ctx.db.delete(line._id);
-    await ctx.db.patch(line.measurementId, { updatedAt: Date.now() });
+    await touchMeasurement(ctx, line.measurementId);
 
     return line._id;
   }
@@ -659,12 +672,15 @@ export const markMeasurementLineConverted = mutation({
       throw new Error("Quote line not found");
     }
 
+    const now = Date.now();
+
     await ctx.db.patch(args.lineId, {
       quotePreparationStatus: "converted",
       convertedQuoteId: args.quoteId,
       convertedQuoteLineId: args.quoteLineId,
-      updatedAt: Date.now()
+      updatedAt: now
     });
+    await touchMeasurement(ctx, line.measurementId, now);
 
     return args.lineId;
   }

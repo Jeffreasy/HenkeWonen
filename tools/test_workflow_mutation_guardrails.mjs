@@ -21,6 +21,19 @@ function exportedMutationBlock(relativePath, name) {
   return source.slice(start, end + 4);
 }
 
+function exportedQueryBlock(relativePath, name) {
+  const source = read(relativePath);
+  const start = source.indexOf(`export const ${name} = query({`);
+
+  assert.notEqual(start, -1, `${relativePath} should export query ${name}`);
+
+  const end = source.indexOf("\n});", start);
+
+  assert.notEqual(end, -1, `${relativePath}:${name} should have a closing query block`);
+
+  return source.slice(start, end + 4);
+}
+
 function allConvexWriteBlocks() {
   const convexDir = path.join(root, "convex");
   const files = fs
@@ -73,6 +86,8 @@ for (const { file, name, block } of publicMutations) {
 assert.deepEqual(
   deleteBlocks.map(({ file, name }) => `${file}:${name}`).sort(),
   [
+    "convex/catalogImport.ts:deleteProductsByCategoryChunk",
+    "convex/catalogImport.ts:deleteProductsBySupplierChunk",
     "convex/catalogImport.ts:resetCatalogChunk",
     "convex/measurements.ts:deleteMeasurementLine",
     "convex/measurements.ts:deleteMeasurementRoom",
@@ -127,11 +142,51 @@ assert.ok(!resetCatalogChunk.includes('"customers"'));
 assert.ok(!resetCatalogChunk.includes('"projects"'));
 assert.ok(!resetCatalogChunk.includes('"quotes"'));
 
+const deleteProductsByCategoryChunk = exportedMutationBlock(
+  "convex/catalogImport.ts",
+  "deleteProductsByCategoryChunk"
+);
+assert.ok(deleteProductsByCategoryChunk.includes('confirm: v.literal("DELETE_PRODUCTS_BY_CATEGORY")'));
+assert.ok(deleteProductsByCategoryChunk.includes("actor: mutationActorValidator"));
+assert.ok(deleteProductsByCategoryChunk.includes('["admin"]'));
+
+const deleteProductsBySupplierChunk = exportedMutationBlock(
+  "convex/catalogImport.ts",
+  "deleteProductsBySupplierChunk"
+);
+assert.ok(deleteProductsBySupplierChunk.includes('confirm: v.literal("DELETE_PRODUCTS_BY_SUPPLIER")'));
+assert.ok(deleteProductsBySupplierChunk.includes("actor: mutationActorValidator"));
+assert.ok(deleteProductsBySupplierChunk.includes('["admin"]'));
+
+const catalogStats = exportedQueryBlock("convex/catalogImport.ts", "getCatalogImportStats");
+assert.ok(catalogStats.includes("summaryOnly: v.optional(v.boolean())"));
+assert.ok(catalogStats.includes('source: "summary_only"'));
+assert.ok(catalogStats.includes('source: "catalog_documents"'));
+
+const schemaSource = read("convex/schema.ts");
+assert.ok(schemaSource.includes('index("by_category_status", ["tenantId", "categoryId", "status"])'));
+assert.ok(schemaSource.includes('index("by_supplier_status", ["tenantId", "supplierId", "status"])'));
+
+for (const cleanupScript of [
+  "tools/cleanup_pvc_click.mjs",
+  "tools/cleanup_raambekleding.mjs",
+  "tools/cleanup_roots_supplier.mjs"
+]) {
+  const script = read(cleanupScript);
+  assert.ok(script.includes("productionConfirmFlag"), `${cleanupScript} should require explicit prod confirm`);
+  assert.ok(script.includes("requireAuthzSecret: true"), `${cleanupScript} should require authz secret in prod`);
+  assert.ok(script.includes("confirm:"), `${cleanupScript} should pass server-side delete confirm`);
+}
+
 const resetCatalogImportScript = read("tools/reset_catalog_import.mjs");
 assert.ok(resetCatalogImportScript.includes("--confirm-reset-imported-catalog"));
 assert.ok(resetCatalogImportScript.includes("Catalog reset is destructive"));
 assert.ok(resetCatalogImportScript.includes("createToolMutationActor"));
 assert.ok(resetCatalogImportScript.includes("actor"));
+
+const authzSource = read("convex/authz.ts");
+assert.ok(authzSource.includes("ALLOW_DEV_AUTHZ_TOKENS"));
+assert.ok(authzSource.includes("allowsDevAuthzTokens()"));
 
 const markMeasurementLineConverted = exportedMutationBlock(
   "convex/measurements.ts",
@@ -141,6 +196,24 @@ assert.ok(markMeasurementLineConverted.includes('line.quotePreparationStatus !==
 assert.ok(markMeasurementLineConverted.includes('quotePreparationStatus: "converted"'));
 assert.ok(markMeasurementLineConverted.includes("convertedQuoteId: args.quoteId"));
 assert.ok(markMeasurementLineConverted.includes("convertedQuoteLineId: args.quoteLineId"));
+assert.ok(markMeasurementLineConverted.includes("touchMeasurement"));
+
+const importMeasurementLinesToQuote = exportedMutationBlock(
+  "convex/portal.ts",
+  "importMeasurementLinesToQuote"
+);
+assert.ok(importMeasurementLinesToQuote.includes("actor: mutationActorValidator"));
+assert.ok(importMeasurementLinesToQuote.includes("requireMutationRole"));
+assert.ok(importMeasurementLinesToQuote.includes('quote.status !== "draft"'));
+assert.ok(importMeasurementLinesToQuote.includes('line.quotePreparationStatus !== "ready_for_quote"'));
+assert.ok(importMeasurementLinesToQuote.includes("ctx.db.insert(\"quoteLines\""));
+assert.ok(importMeasurementLinesToQuote.includes("unitPriceExVat: 0"));
+assert.ok(importMeasurementLinesToQuote.includes("vatRate: 0"));
+assert.ok(importMeasurementLinesToQuote.includes("quotePreparationStatus: \"converted\""));
+assert.ok(importMeasurementLinesToQuote.includes("convertedQuoteId: quote._id"));
+assert.ok(importMeasurementLinesToQuote.includes("convertedQuoteLineId: quoteLineId"));
+assert.ok(importMeasurementLinesToQuote.includes("recalculateQuote"));
+assert.ok(importMeasurementLinesToQuote.includes("touchedMeasurementIds"));
 
 const listReadyForQuote = read("convex/measurements.ts");
 assert.ok(listReadyForQuote.includes('line.quotePreparationStatus !== "ready_for_quote"'));
@@ -301,6 +374,21 @@ for (const field of ["floor", "widthM", "lengthM", "heightM", "areaM2", "perimet
   );
 }
 
+for (const mutationName of [
+  "addMeasurementRoom",
+  "updateMeasurementRoom",
+  "deleteMeasurementRoom",
+  "addMeasurementLine",
+  "updateMeasurementLine",
+  "deleteMeasurementLine",
+  "updateMeasurementLineStatus",
+  "markMeasurementLineConverted"
+]) {
+  const block = exportedMutationBlock("convex/measurements.ts", mutationName);
+
+  assert.ok(block.includes("touchMeasurement"), `${mutationName} should touch parent measurement`);
+}
+
 const updateProductForPortal = exportedMutationBlock("convex/catalog.ts", "updateProductForPortal");
 assert.ok(updateProductForPortal.includes("actor: mutationActorValidator"));
 assert.ok(updateProductForPortal.includes("requireMutationRole"));
@@ -334,7 +422,15 @@ assert.ok(!quoteBuilder.includes("{canEdit ? measurementPicker : null}"));
 const measurementLinePicker = read("src/components/quotes/MeasurementLinePicker.tsx");
 assert.ok(measurementLinePicker.includes("setConfirmOpen(true)"));
 assert.ok(measurementLinePicker.includes("Controleer prijs, product en btw"));
-assert.ok(measurementLinePicker.includes("unitPriceExVat: 0"));
-assert.ok(measurementLinePicker.includes("vatRate: 0"));
+assert.ok(measurementLinePicker.includes("api.portal.importMeasurementLinesToQuote"));
+assert.equal(measurementLinePicker.includes("markMeasurementLineConverted"), false);
+assert.equal(measurementLinePicker.includes("onAddLine(quoteLine)"), false);
+
+const authProxy = read("src/pages/api/auth/[...path].ts");
+assert.ok(authProxy.includes('"HttpOnly"'));
+assert.ok(authProxy.includes("stripSensitiveAuthFields"));
+assert.ok(authProxy.includes('"access_token"'));
+assert.ok(authProxy.includes('"refresh_token"'));
+assert.ok(authProxy.includes('"pre_auth_token"'));
 
 console.log("Workflow mutation guardrail tests passed.");

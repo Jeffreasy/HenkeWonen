@@ -43,4 +43,4 @@ Mutaties krijgen een server-gesigneerde actor mee. Convex valideert:
 - de gebruiker in de Convex `users` tabel;
 - de rol die bij de mutatie hoort.
 
-Gebruik `AUTHZ_TOKEN_SECRET` in Astro en Convex met dezelfde waarde. Zonder deze secret worden alleen lokale `dev.*` tokens geaccepteerd, bedoeld voor development.
+Gebruik `AUTHZ_TOKEN_SECRET` in Astro en Convex met dezelfde waarde. Zonder deze secret accepteert Convex alleen lokale `dev.*` tokens wanneer `ALLOW_DEV_AUTHZ_TOKENS=true` expliciet in de Convex-omgeving staat. Zet die vlag nooit in productie.

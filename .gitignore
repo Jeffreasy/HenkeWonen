@@ -3,6 +3,7 @@ dist/
 .astro/
 .vercel/
 .audit-cache/
+.local-node/
 DATA/
 
 .env
@@ -13,6 +14,7 @@ DATA/
 *.err.log
 tmp/
 temp/
+scratch/
 *.tmp
 *.temp
 .DS_Store
@@ -41,4 +43,9 @@ __pycache__/
 
 docs/generated/
 docs/catalog-import-preview.json
+docs/data-audit.json
+docs/data-audit.md
+docs/flexcolours-import-preview.json
+docs/flexcolours-import-summary.json
+docs/texdecor-import-details.md
 docs/artifacts/

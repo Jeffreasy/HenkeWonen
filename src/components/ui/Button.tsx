@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { classNames } from "./classNames";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -12,20 +12,24 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   rightIcon?: ReactNode;
 };
 
-export function Button({
-  variant = "secondary",
-  size = "md",
-  isLoading = false,
-  leftIcon,
-  rightIcon,
-  children,
-  className,
-  disabled,
-  type = "button",
-  ...props
-}: ButtonProps) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = "secondary",
+    size = "md",
+    isLoading = false,
+    leftIcon,
+    rightIcon,
+    children,
+    className,
+    disabled,
+    type = "button",
+    ...props
+  },
+  ref
+) {
   return (
     <button
+      ref={ref}
       className={classNames(
         "ui-button",
         `ui-button-${variant}`,
@@ -42,4 +46,4 @@ export function Button({
       {rightIcon}
     </button>
   );
-}
+});

@@ -1098,7 +1098,8 @@ export const commitPreviewBatchChunk = mutation({
 
 export const getCatalogImportStats = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    summaryOnly: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
     const tenant = await getTenant(ctx, args.tenantSlug);
@@ -1115,6 +1116,44 @@ export const getCatalogImportStats = query({
         productCollections: 0,
         categories: {},
         suppliers: {}
+      };
+    }
+
+    if (args.summaryOnly) {
+      const latestImportedBatch = await ctx.db
+        .query("productImportBatches")
+        .withIndex("by_status", (q: any) => q.eq("tenantId", tenant._id).eq("status", "imported"))
+        .order("desc")
+        .first();
+      const [priceLists, brands, productCollections] = await Promise.all([
+        collectByTenant(ctx, "priceLists", tenant._id),
+        collectByTenant(ctx, "brands", tenant._id),
+        collectByTenant(ctx, "productCollections", tenant._id)
+      ]);
+
+      return {
+        tenantSlug: tenant.slug,
+        exists: true,
+        exact: false,
+        source: "summary_only",
+        products: null,
+        activeProducts: null,
+        productPrices: null,
+        priceLists: priceLists.length,
+        brands: brands.length,
+        productCollections: productCollections.length,
+        categories: {},
+        suppliers: {},
+        latestImportedBatch: latestImportedBatch
+          ? {
+              id: String(latestImportedBatch._id),
+              importedAt: latestImportedBatch.importedAt ?? latestImportedBatch.committedAt,
+              productRows: latestImportedBatch.productRows,
+              importedProducts: latestImportedBatch.importedProducts,
+              updatedProducts: latestImportedBatch.updatedProducts,
+              importedPrices: latestImportedBatch.importedPrices
+            }
+          : null
       };
     }
 
@@ -1151,6 +1190,8 @@ export const getCatalogImportStats = query({
     return {
       tenantSlug: tenant.slug,
       exists: true,
+      exact: true,
+      source: "catalog_documents",
       products: products.length,
       activeProducts: products.filter((product: any) => product.status === "active").length,
       productPrices: productPrices.length,
@@ -1238,6 +1279,137 @@ export const getSupplierCatalogStats = query({
       priceTypes: priceTypeCounts,
       vatModes: vatModeCounts,
       sourceFileName: sourceFileCounts
+    };
+  }
+});
+
+/**
+ * Verwijdert producten (en hun prijzen) voor een specifieke categorie in batches.
+ * Veilig te herhalen — retourneert done:true als er niets meer te verwijderen is.
+ */
+export const deleteProductsByCategoryChunk = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    categorySlug: v.string(),
+    confirm: v.literal("DELETE_PRODUCTS_BY_CATEGORY"),
+    batchSize: v.optional(v.number())
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const tenantId = tenant._id;
+    const batchSize = Math.min(Math.max(args.batchSize ?? 200, 25), 500);
+
+    // Zoek de categorie op slug
+    const category = await ctx.db
+      .query("categories")
+      .withIndex("by_slug", (q: any) => q.eq("tenantId", tenantId).eq("slug", args.categorySlug))
+      .first();
+
+    if (!category) {
+      return { done: true, categorySlug: args.categorySlug, deleted: 0, note: "Categorie niet gevonden." };
+    }
+
+    // Haal een batch producten op voor deze categorie
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_category", (q: any) => q.eq("tenantId", tenantId).eq("categoryId", category._id))
+      .take(batchSize);
+
+    if (products.length === 0) {
+      return { done: true, categorySlug: args.categorySlug, deleted: 0 };
+    }
+
+    let deletedPrices = 0;
+    let deletedProducts = 0;
+
+    for (const product of products) {
+      // Verwijder alle prijzen van dit product
+      const prices = await ctx.db
+        .query("productPrices")
+        .withIndex("by_product", (q: any) => q.eq("tenantId", tenantId).eq("productId", product._id))
+        .collect();
+
+      for (const price of prices) {
+        await ctx.db.delete(price._id);
+        deletedPrices += 1;
+      }
+
+      await ctx.db.delete(product._id);
+      deletedProducts += 1;
+    }
+
+    return {
+      done: false,
+      categorySlug: args.categorySlug,
+      deletedProducts,
+      deletedPrices,
+    };
+  }
+});
+
+/**
+ * Verwijdert producten (en hun prijzen) voor een specifieke leveranciersnaam in batches.
+ * Gebruikt voor migraties waarbij de leverancier wordt geherstructureerd (bijv. Roots → Unilin Flooring).
+ * Veilig te herhalen — retourneert done:true als er niets meer te verwijderen is.
+ */
+export const deleteProductsBySupplierChunk = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    supplierName: v.string(),
+    confirm: v.literal("DELETE_PRODUCTS_BY_SUPPLIER"),
+    batchSize: v.optional(v.number())
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const tenantId = tenant._id;
+    const batchSize = Math.min(Math.max(args.batchSize ?? 200, 25), 500);
+
+    const supplier = await ctx.db
+      .query("suppliers")
+      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
+      .filter((q: any) => q.eq(q.field("name"), args.supplierName))
+      .first();
+
+    if (!supplier) {
+      return { done: true, supplierName: args.supplierName, deletedProducts: 0, deletedPrices: 0, note: "Leverancier niet gevonden." };
+    }
+
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
+      .filter((q: any) => q.eq(q.field("supplierId"), supplier._id))
+      .take(batchSize);
+
+    if (products.length === 0) {
+      return { done: true, supplierName: args.supplierName, deletedProducts: 0, deletedPrices: 0 };
+    }
+
+    let deletedPrices = 0;
+    let deletedProducts = 0;
+
+    for (const product of products) {
+      const prices = await ctx.db
+        .query("productPrices")
+        .withIndex("by_product", (q: any) => q.eq("tenantId", tenantId).eq("productId", product._id))
+        .collect();
+
+      for (const price of prices) {
+        await ctx.db.delete(price._id);
+        deletedPrices += 1;
+      }
+
+      await ctx.db.delete(product._id);
+      deletedProducts += 1;
+    }
+
+    return {
+      done: false,
+      supplierName: args.supplierName,
+      deletedProducts,
+      deletedPrices,
+      remaining: "meer te verwijderen"
     };
   }
 });
