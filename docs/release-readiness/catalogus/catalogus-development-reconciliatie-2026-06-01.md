@@ -97,7 +97,6 @@ De bulk van de EAN-herhaling zit in Texdecor/Casadeco/Caselio/Casamance-bronnen 
 
 Development is nu bruikbaar als actuele volledige catalogusbaseline voor portaltesten en featureontwikkeling.
 
-Productie-import blijft nog niet vrijgegeven totdat een van deze twee paden expliciet gekozen is:
+Duplicate-EAN is professioneel geparkeerd in `docs/release-readiness/data-issues/duplicate-ean-parkeerbesluit-2026-06-01.md`.
 
-1. De 1.821 duplicate-EAN groepen formeel beoordelen in de portal of via een businessbesluit.
-2. Met businessakkoord vastleggen dat duplicate-EAN voor Texdecor/verwante bronnen als waarschuwing wordt geaccepteerd en geen harde productieblokkade is.
+Daarmee is dit geen blokkade voor verdere ontwikkeling, demo of interne test op de development-catalogus. Voor productie is dit alleen acceptabel als bekende waarschuwing met expliciete release-acceptatie; zonder die acceptatie blijft het een productiepoort.

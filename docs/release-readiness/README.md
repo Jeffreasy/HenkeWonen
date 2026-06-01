@@ -24,9 +24,10 @@ Deze map bevat dossiers die relevant zijn voor productie-vrijgave.
 
 | Document | Gebruik |
 | --- | --- |
+| [Duplicate-EAN parkeerbesluit 2026-06-01](./data-issues/duplicate-ean-parkeerbesluit-2026-06-01.md) | Professioneel parkeerbesluit: bekende waarschuwing, guardrails en heropen-triggers |
 | [Duplicate EAN review 2026-06-01](./data-issues/catalog-duplicate-ean-review-2026-06-01.md) | Actuele duplicate-EAN review na volledige development-import en batch-sync |
 | [Duplicate EAN review](./data-issues/catalog-duplicate-ean-review-2026-04-29.md) | Dubbele EAN-waarschuwingen |
 
 ## Hoofdregel
 
-Productie-import mag pas door als verplichte btw-mappings opgelost zijn en de gekozen catalogusbron aantoonbaar overeenkomt met de development-importbaseline. Dubbele EAN-waarschuwingen blijven zichtbaar als reviewpunt, maar worden niet automatisch samengevoegd.
+Productie-import mag pas door als verplichte btw-mappings opgelost zijn, de gekozen catalogusbron aantoonbaar overeenkomt met de development-importbaseline en open datakwaliteitspunten expliciet beoordeeld of professioneel geparkeerd zijn. Dubbele EAN-waarschuwingen blijven zichtbaar als reviewpunt, maar worden niet automatisch samengevoegd.
