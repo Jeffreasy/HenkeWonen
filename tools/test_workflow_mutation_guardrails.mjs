@@ -450,6 +450,7 @@ const middleware = read("src/middleware.ts");
 
 assert.ok(authProxy.includes("applyLaventeCareSetCookies"));
 assert.ok(authProxy.includes("applyLaventeCareJsonTokenCookies"));
+assert.ok(authProxy.includes("appendLaventeCareCookieHeaders"));
 assert.ok(authProxy.includes("clearLaventeCareCookies"));
 assert.ok(authProxy.includes("parseJsonBody"));
 assert.ok(authProxy.includes("stripSensitiveAuthFields"));
@@ -468,6 +469,9 @@ assert.ok(authCookies.includes("applyLaventeCareJsonTokenCookies"));
 assert.ok(authCookies.includes("portalSessionCookieNames"));
 assert.ok(authCookies.includes("isPortalSessionCookie"));
 assert.ok(authCookies.includes('path: "/"'));
+assert.ok(authCookies.includes("serializedCookie"));
+assert.ok(authCookies.includes("import.meta.env.DEV"));
+assert.ok(authCookies.includes('response.headers.append("set-cookie"'));
 assert.ok(authCookies.includes("cookies.set"));
 assert.ok(authCookies.includes("cookies.delete"));
 assert.ok(authCookies.includes("path: parsed.path"));

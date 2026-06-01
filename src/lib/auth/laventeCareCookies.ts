@@ -253,6 +253,12 @@ export function applyLaventeCareSetCookies(
           sameSite: "lax",
           secure: options.secure
         });
+        applied.push({
+          name: parsed.name,
+          value: "",
+          path: "/",
+          deleted
+        });
       }
     } else {
       cookies.set(parsed.name, parsed.value, options);
@@ -260,6 +266,12 @@ export function applyLaventeCareSetCookies(
         cookies.set(parsed.name, parsed.value, {
           ...options,
           path: "/"
+        });
+        applied.push({
+          name: parsed.name,
+          value: parsed.value,
+          path: "/",
+          deleted
         });
       }
     }
@@ -297,6 +309,7 @@ export function applyLaventeCareJsonTokenCookies(
 }
 
 export function clearLaventeCareCookies(cookies: AstroCookies, request: Request) {
+  const applied: AppliedLaventeCareCookie[] = [];
   const names = authCookieNames();
   const cookieHeader = request.headers.get("cookie") ?? "";
 
@@ -317,8 +330,16 @@ export function clearLaventeCareCookies(cookies: AstroCookies, request: Request)
         sameSite: "lax",
         secure: isSecureRequest(request)
       });
+      applied.push({
+        name,
+        value: "",
+        path,
+        deleted: true
+      });
     }
   }
+
+  return applied;
 }
 
 export function firstCookieValue(cookieHeader: string, name: string) {
@@ -356,4 +377,39 @@ export function cookieHeaderFromAppliedCookies(applied: AppliedLaventeCareCookie
   }
 
   return Array.from(cookies, ([name, value]) => `${name}=${value}`).join("; ");
+}
+
+function serializedCookie(cookie: AppliedLaventeCareCookie, request: Request) {
+  const value = cookie.deleted ? "deleted" : encodeURIComponent(cookie.value);
+  const parts = [`${cookie.name}=${value}`, `Path=${cookie.path}`];
+
+  if (cookie.deleted) {
+    parts.push("Expires=Thu, 01 Jan 1970 00:00:00 GMT", "Max-Age=0");
+  }
+
+  if (!isClientReadableCookie(cookie.name)) {
+    parts.push("HttpOnly");
+  }
+
+  parts.push("SameSite=Lax");
+
+  if (isSecureRequest(request)) {
+    parts.push("Secure");
+  }
+
+  return parts.join("; ");
+}
+
+export function appendLaventeCareCookieHeaders(
+  response: Response,
+  applied: AppliedLaventeCareCookie[],
+  request: Request
+) {
+  if (!import.meta.env.DEV) {
+    return;
+  }
+
+  for (const cookie of applied) {
+    response.headers.append("set-cookie", serializedCookie(cookie, request));
+  }
 }

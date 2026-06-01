@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { laventeCareApiBaseUrl, laventeCareTenantId } from "../../../lib/auth/laventeCareConfig";
 import {
+  appendLaventeCareCookieHeaders,
   applyLaventeCareJsonTokenCookies,
   applyLaventeCareSetCookies,
   clearLaventeCareCookies
@@ -77,7 +78,7 @@ async function logout(context: Parameters<APIRoute>[0]) {
     }
   });
 
-  clearLaventeCareCookies(context.cookies, context.request);
+  const appliedCookies = clearLaventeCareCookies(context.cookies, context.request);
 
   const tenantId = laventeCareTenantId();
 
@@ -111,10 +112,12 @@ async function logout(context: Parameters<APIRoute>[0]) {
       redirect: "manual"
     });
 
-    applyLaventeCareSetCookies(upstream, context.cookies, context.request);
+    appliedCookies.push(...applyLaventeCareSetCookies(upstream, context.cookies, context.request));
   } catch (logoutError) {
     console.warn("Upstream logout niet bereikbaar; lokale sessie is wel gewist.", logoutError);
   }
+
+  appendLaventeCareCookieHeaders(response, appliedCookies, context.request);
 
   return response;
 }
@@ -207,10 +210,11 @@ async function proxyAuth(context: Parameters<APIRoute>[0]) {
     }
   });
 
-  applyLaventeCareSetCookies(upstream, context.cookies, context.request);
+  const appliedCookies = applyLaventeCareSetCookies(upstream, context.cookies, context.request);
   if (upstream.ok && upstreamJson !== undefined) {
-    applyLaventeCareJsonTokenCookies(upstreamJson, context.cookies, context.request);
+    appliedCookies.push(...applyLaventeCareJsonTokenCookies(upstreamJson, context.cookies, context.request));
   }
+  appendLaventeCareCookieHeaders(response, appliedCookies, context.request);
 
   return response;
 }
