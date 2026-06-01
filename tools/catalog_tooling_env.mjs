@@ -12,6 +12,7 @@ const VALUE_OPTIONS = new Set([
   "--decisions-file",
   "--env-file",
   "--commit-limit",
+  "--batch-size",
   "--preview-file",
   "--result-file",
   "--target",

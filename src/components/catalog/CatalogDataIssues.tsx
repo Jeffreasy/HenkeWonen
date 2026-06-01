@@ -68,6 +68,10 @@ type DuplicateEanReview = {
   duplicateProductCount: number;
   groups: DuplicateEanIssue[];
 };
+type DuplicateEanSyncResult = {
+  requiresPreviewSync?: boolean;
+  message?: string;
+};
 
 type IssueDraft = {
   decision: DuplicateEanDecision;
@@ -378,12 +382,12 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
     setNotice(null);
 
     try {
-      await client.mutation(api.catalogReview.syncDuplicateEanIssues, {
+      const result = (await client.mutation(api.catalogReview.syncDuplicateEanIssues, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session)
-      });
+      })) as DuplicateEanSyncResult;
       await loadReview();
-      setNotice("Dubbele EAN-waarschuwingen zijn bijgewerkt.");
+      setNotice(result.message ?? "Dubbele EAN-waarschuwingen zijn bijgewerkt.");
     } catch (syncError) {
       console.error(syncError);
       setError("Dubbele EAN-waarschuwingen konden niet worden bijgewerkt.");

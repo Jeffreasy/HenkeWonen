@@ -24,6 +24,7 @@ Deze map bevat dossiers die relevant zijn voor productie-vrijgave.
 
 | Document | Gebruik |
 | --- | --- |
+| [Duplicate EAN review 2026-06-01](./data-issues/catalog-duplicate-ean-review-2026-06-01.md) | Actuele duplicate-EAN review na volledige development-import en batch-sync |
 | [Duplicate EAN review](./data-issues/catalog-duplicate-ean-review-2026-04-29.md) | Dubbele EAN-waarschuwingen |
 
 ## Hoofdregel

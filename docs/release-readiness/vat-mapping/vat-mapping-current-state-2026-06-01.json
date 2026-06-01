@@ -9,7 +9,7 @@
     "envFileLoaded": true,
     "skipEnvFile": false
   },
-  "exportedAt": "2026-06-01T12:24:01.400Z",
+  "exportedAt": "2026-06-01T12:59:42.391Z",
   "summary": {
     "totalProfiles": 16,
     "totalPriceColumns": 55,
@@ -17,7 +17,7 @@
     "unresolvedColumns": 0,
     "allowUnknownColumns": 0,
     "productionImportStatus": "READY",
-    "duplicateEanOpenIssues": 4,
+    "duplicateEanOpenIssues": 1816,
     "highConfidenceAutoApplicable": 0,
     "humanDecisionRequired": 0
   },

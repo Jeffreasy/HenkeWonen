@@ -10,7 +10,7 @@ Deze export toont de actuele btw-mapping review uit Convex. Alleen kolommen met 
 - Unresolved: 0
 - Onbekende btw-modus toegestaan: 0
 - Productie-importstatus: READY
-- Open duplicate-EAN waarschuwingen: 4
+- Open duplicate-EAN waarschuwingen: 1816
 
 ## Automatisch toepasbaar met hoge zekerheid
 

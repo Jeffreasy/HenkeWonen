@@ -29,6 +29,7 @@
     "catalog:status": "node tools/catalog_status.mjs",
     "catalog:vat:export": "node tools/export_vat_mapping_review.mjs",
     "catalog:vat:apply": "node tools/apply_vat_mapping_decisions.mjs",
+    "catalog:duplicates:sync": "node tools/sync_duplicate_ean_issues_from_preview.mjs",
     "portal:demo-seed": "node tools/seed_demo_portal_data.mjs",
     "test:portal": "node tools/test_portal_routes_with_dev_auth.mjs",
     "test:portal:routes": "node tools/test_portal_routes.mjs",

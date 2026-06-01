@@ -71,9 +71,7 @@ Let op: `latestImportRun` in `catalog:status` is batchniveau, niet de aggregate 
 
 ## Duplicate-EAN
 
-De bestaande Convex duplicate-EAN sync/review schaalt niet meer op de volledige catalogus. Na de volledige import loopt `catalogReview.syncDuplicateEanIssues` stuk op de Convex read-byte limiet, omdat de mutation alle producten in een keer verzamelt.
-
-Daarom is de duplicate-EAN stand lokaal uit de gerepareerde preview bepaald:
+De duplicate-EAN sync/review is na deze reconciliatie schaalbaar gemaakt. De stand is vanuit de gerepareerde preview batchgewijs naar `catalogDataIssues` gesynchroniseerd, zodat de portalreview niet meer alle producten en prijzen in een query hoeft te verzamelen.
 
 | Leverancier | Groepen | Producten |
 | --- | ---: | ---: |
@@ -86,7 +84,14 @@ Daarom is de duplicate-EAN stand lokaal uit de gerepareerde preview bepaald:
 | Casamance | 937 | 2.016 |
 | **Totaal** | **1.821** | **4.278** |
 
-De oude Convex-status `duplicateEanIssues.open = 4` is daarom niet betrouwbaar als releasepoort voor de volledige catalogus. De bulk van de EAN-herhaling zit in Texdecor/Casadeco/Caselio/Casamance-bronnen en lijkt vaak collectie-/artikelnummerhergebruik rond dezelfde EAN te zijn. Dit moet niet automatisch worden gemerged.
+Syncresultaat:
+
+- 1.816 issues aangemaakt.
+- 5 bestaande issues bijgewerkt.
+- 21 stale issues op `resolved` gezet.
+- `catalog:status` toont nu 1.816 open duplicate-EAN issues.
+
+De bulk van de EAN-herhaling zit in Texdecor/Casadeco/Caselio/Casamance-bronnen en lijkt vaak collectie-/artikelnummerhergebruik rond dezelfde EAN te zijn. Dit moet niet automatisch worden gemerged.
 
 ## Releasebetekenis
 
@@ -94,5 +99,5 @@ Development is nu bruikbaar als actuele volledige catalogusbaseline voor portalt
 
 Productie-import blijft nog niet vrijgegeven totdat een van deze twee paden expliciet gekozen is:
 
-1. Duplicate-EAN tooling schaalbaar maken en de 1.821 kandidaatgroepen formeel beoordelen.
+1. De 1.821 duplicate-EAN groepen formeel beoordelen in de portal of via een businessbesluit.
 2. Met businessakkoord vastleggen dat duplicate-EAN voor Texdecor/verwante bronnen als waarschuwing wordt geaccepteerd en geen harde productieblokkade is.

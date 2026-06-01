@@ -10,6 +10,20 @@ const duplicateEanDecision = v.union(
   v.literal("accepted_duplicate"),
   v.literal("resolved")
 );
+const duplicateEanSyncProduct = v.object({
+  importKey: v.optional(v.string()),
+  productName: v.string(),
+  articleNumber: v.optional(v.string()),
+  supplierCode: v.optional(v.string()),
+  sourceFileName: v.optional(v.string()),
+  sourceSheetName: v.optional(v.string()),
+  sourceRowNumber: v.optional(v.number())
+});
+const duplicateEanSyncGroup = v.object({
+  supplierName: v.string(),
+  ean: v.string(),
+  products: v.array(duplicateEanSyncProduct)
+});
 
 function idString(value: unknown): string {
   return String(value ?? "");
@@ -26,6 +40,25 @@ function label(value: unknown, fallback = "Onbekend"): string {
 
 function hasText(value: unknown): boolean {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function optionalText(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function uniqueTexts(values: unknown[]): string[] {
+  return [...new Set(values.filter(hasText).map((value) => String(value).trim()))];
+}
+
+function compactObject<T extends Record<string, any>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined)
+  ) as T;
 }
 
 function priceColumns(profile: any) {
@@ -554,11 +587,7 @@ export const duplicateEanReview = query({
   },
   handler: async (ctx, args) => {
     const tenant = await tenantBySlug(ctx, args.tenantSlug);
-    const [products, suppliers, issues] = await Promise.all([
-      ctx.db
-        .query("products")
-        .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-        .collect(),
+    const [suppliers, issues] = await Promise.all([
       ctx.db
         .query("suppliers")
         .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
@@ -569,83 +598,78 @@ export const duplicateEanReview = query({
         .collect()
     ]);
     const supplierById = new Map(suppliers.map((supplier: any) => [idString(supplier._id), supplier]));
+    const duplicateGroups = [];
 
-    const groups = new Map<string, any[]>();
-    for (const product of products.filter((item: any) => item.status === "active")) {
-      if (!product.supplierId || !hasText(product.ean)) {
+    for (const issue of issues.filter((item: any) => item.issueType === "duplicate_ean")) {
+      const metadata = issue.metadata ?? {};
+      const supplier = issue.supplierId ? supplierById.get(idString(issue.supplierId)) : undefined;
+      const productsFromMetadata = Array.isArray(metadata.products) ? metadata.products : [];
+      const productRows =
+        productsFromMetadata.length > 0
+          ? productsFromMetadata.map((product: any, index: number) => ({
+              productId: idString(product.productId ?? issue.productIds?.[index]),
+              articleNumber: optionalText(product.articleNumber),
+              supplierCode: optionalText(product.supplierCode),
+              productName: label(product.productName, "Onbekend product"),
+              sourceFileNames: Array.isArray(product.sourceFileNames)
+                ? uniqueTexts(product.sourceFileNames)
+                : uniqueTexts([product.sourceFileName]),
+              sourceSheetNames: Array.isArray(product.sourceSheetNames)
+                ? uniqueTexts(product.sourceSheetNames)
+                : uniqueTexts([product.sourceSheetName]),
+              priceCount: typeof product.priceCount === "number" ? product.priceCount : 0
+            }))
+          : (issue.productIds ?? []).map((productId: any, index: number) => ({
+              productId: idString(productId),
+              articleNumber: metadata.articleNumbers?.[index],
+              supplierCode: metadata.supplierCodes?.[index],
+              productName: label(metadata.productNames?.[index], "Onbekend product"),
+              sourceFileNames: [],
+              sourceSheetNames: [],
+              priceCount: 0
+            }));
+
+      if (productRows.length <= 1) {
         continue;
       }
 
-      const key = `${idString(product.supplierId)}|${product.ean}`;
-      groups.set(key, [...(groups.get(key) ?? []), product]);
-    }
+      const uniqueNames = new Set(productRows.map((product: any) => product.productName));
+      const uniqueArticles = new Set(
+        productRows.map((product: any) => product.articleNumber).filter(Boolean)
+      );
+      const recommendation =
+        metadata.recommendation ??
+        (uniqueNames.size === 1 && uniqueArticles.size <= 1 ? "merge" : "needs human review");
+      const reason =
+        recommendation === "merge"
+          ? "Productnamen en artikelnummers lijken gelijk; controleer of dit echte dubbele records zijn."
+          : "Zelfde EAN komt voor bij verschillende artikelnummers/productnamen; EAN alleen als ondersteunend signaal gebruiken.";
 
-    const issueByKey = new Map(
-      issues
-        .filter((issue: any) => issue.issueType === "duplicate_ean")
-        .map((issue: any) => [`${idString(issue.supplierId)}|${issue.ean}`, issue])
-    );
-    const duplicateGroups = [];
-
-    for (const [key, values] of [...groups.entries()].filter(([, groupValues]) => groupValues.length > 1)) {
-        const [supplierId, ean] = key.split("|");
-        const supplier = supplierById.get(supplierId);
-        const productRows = [];
-
-        for (const product of values) {
-          const productPrices = await ctx.db
-            .query("productPrices")
-            .withIndex("by_product", (q: any) =>
-              q.eq("tenantId", tenant._id).eq("productId", product._id)
-            )
-            .collect();
-
-          productRows.push({
-            productId: idString(product._id),
-            articleNumber: product.articleNumber,
-            supplierCode: product.supplierCode,
-            productName: product.name,
-            sourceFileNames: [...new Set(productPrices.map((price: any) => price.sourceFileName).filter(Boolean))],
-            sourceSheetNames: [...new Set(productPrices.map((price: any) => price.sourceSheetName).filter(Boolean))],
-            priceCount: productPrices.length
-          });
-        }
-
-        const uniqueNames = new Set(productRows.map((product: any) => product.productName));
-        const uniqueArticles = new Set(productRows.map((product: any) => product.articleNumber).filter(Boolean));
-        const recommendation =
-          uniqueNames.size === 1 && uniqueArticles.size <= 1 ? "merge" : "needs human review";
-        const reason =
-          recommendation === "merge"
-            ? "Productnamen en artikelnummers lijken gelijk; controleer of dit echte dubbele records zijn."
-            : "Zelfde EAN komt voor bij verschillende artikelnummers/productnamen; EAN alleen als ondersteunend signaal gebruiken.";
-        const issue = issueByKey.get(key);
-
-        duplicateGroups.push({
-          supplierId,
-          supplier: supplier?.name ?? "Onbekend",
-          ean,
-          productIds: productRows.map((product: any) => product.productId),
-          articleNumbers: productRows.map((product: any) => product.articleNumber).filter(Boolean),
-          supplierCodes: productRows.map((product: any) => product.supplierCode).filter(Boolean),
-          productNames: productRows.map((product: any) => product.productName),
-          sourceFileNames: [...new Set(productRows.flatMap((product: any) => product.sourceFileNames))],
-          sourceSheetNames: [...new Set(productRows.flatMap((product: any) => product.sourceSheetNames))],
-          priceCounts: Object.fromEntries(
-            productRows.map((product: any) => [product.productId, product.priceCount])
-          ),
-          products: productRows,
-          issueType: "duplicate_ean",
-          severity: issue?.severity ?? "warning",
-          recommendation,
-          reason,
-          issueStatus: issue?.status ?? "open",
-          issueId: issue ? idString(issue._id) : undefined,
-          notes: issue?.notes,
-          reviewDecision: issue?.metadata?.reviewDecision,
-          reviewedByExternalUserId: issue?.metadata?.reviewedByExternalUserId,
-          reviewedAt: issue?.metadata?.reviewedAt
-        });
+      duplicateGroups.push({
+        supplierId: issue.supplierId ? idString(issue.supplierId) : undefined,
+        supplier: metadata.supplierName ?? supplier?.name ?? "Onbekend",
+        ean: issue.ean ?? metadata.ean ?? "-",
+        productIds: productRows.map((product: any) => product.productId),
+        articleNumbers: productRows.map((product: any) => product.articleNumber).filter(Boolean),
+        supplierCodes: productRows.map((product: any) => product.supplierCode).filter(Boolean),
+        productNames: productRows.map((product: any) => product.productName),
+        sourceFileNames: [...new Set(productRows.flatMap((product: any) => product.sourceFileNames))],
+        sourceSheetNames: [...new Set(productRows.flatMap((product: any) => product.sourceSheetNames))],
+        priceCounts: Object.fromEntries(
+          productRows.map((product: any) => [product.productId, product.priceCount])
+        ),
+        products: productRows,
+        issueType: "duplicate_ean",
+        severity: issue?.severity ?? "warning",
+        recommendation,
+        reason,
+        issueStatus: issue?.status ?? "open",
+        issueId: idString(issue._id),
+        notes: issue?.notes,
+        reviewDecision: issue?.metadata?.reviewDecision,
+        reviewedByExternalUserId: issue?.metadata?.reviewedByExternalUserId,
+        reviewedAt: issue?.metadata?.reviewedAt
+      });
     }
 
     duplicateGroups.sort(
@@ -704,61 +728,158 @@ export const updateDuplicateEanIssueReview = mutation({
   }
 });
 
+async function supplierByName(ctx: any, tenantId: any, supplierName: string) {
+  return await ctx.db
+    .query("suppliers")
+    .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
+    .filter((q: any) => q.eq(q.field("name"), supplierName))
+    .first();
+}
+
+async function productForDuplicateInput(ctx: any, tenantId: any, supplierId: any, product: any) {
+  const importKey = optionalText(product.importKey);
+
+  if (importKey) {
+    const existing = await ctx.db
+      .query("products")
+      .withIndex("by_import_key", (q: any) => q.eq("tenantId", tenantId).eq("importKey", importKey))
+      .first();
+
+    if (existing) {
+      return existing;
+    }
+  }
+
+  const articleNumber = optionalText(product.articleNumber);
+  if (articleNumber) {
+    return await ctx.db
+      .query("products")
+      .withIndex("by_article_number", (q: any) =>
+        q.eq("tenantId", tenantId).eq("supplierId", supplierId).eq("articleNumber", articleNumber)
+      )
+      .first();
+  }
+
+  return null;
+}
+
 export const syncDuplicateEanIssues = mutation({
   args: {
     tenantSlug: v.string(),
-    actor: mutationActorValidator
+    actor: mutationActorValidator,
+    groups: v.optional(v.array(duplicateEanSyncGroup)),
+    syncRunId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
-    const [products, issues] = await Promise.all([
-      ctx.db
-        .query("products")
-        .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-        .collect(),
-      ctx.db
-        .query("catalogDataIssues")
-        .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-        .collect()
-    ]);
-    const issueByKey = new Map(
-      issues
-        .filter((issue: any) => issue.issueType === "duplicate_ean")
-        .map((issue: any) => [`${idString(issue.supplierId)}|${issue.ean}`, issue])
-    );
-    const groups = new Map<string, any[]>();
 
-    for (const product of products.filter((item: any) => item.status === "active")) {
-      if (!product.supplierId || !hasText(product.ean)) {
-        continue;
-      }
-
-      const key = `${idString(product.supplierId)}|${product.ean}`;
-      groups.set(key, [...(groups.get(key) ?? []), product]);
+    if (!args.groups) {
+      return {
+        created: 0,
+        updated: 0,
+        skipped: 0,
+        requiresPreviewSync: true,
+        message:
+          "Duplicate-EAN sync is batch-gebaseerd. Gebruik tools/sync_duplicate_ean_issues_from_preview.mjs."
+      };
     }
 
     const now = Date.now();
+    const syncRunId = args.syncRunId ?? `duplicate-ean-${now}`;
+    const supplierCache = new Map<string, any>();
     let created = 0;
     let updated = 0;
+    let skipped = 0;
 
-    for (const [key, values] of groups.entries()) {
-      if (values.length <= 1) {
+    for (const group of args.groups) {
+      if (!hasText(group.ean) || !hasText(group.supplierName) || group.products.length <= 1) {
+        skipped += 1;
         continue;
       }
 
-      const [supplierId, ean] = key.split("|");
-      const productIds = values.map((product: any) => product._id);
+      const supplierName = group.supplierName.trim();
+      let supplier = supplierCache.get(supplierName);
+
+      if (supplier === undefined) {
+        supplier = await supplierByName(ctx, tenant._id, supplierName);
+        supplierCache.set(supplierName, supplier ?? null);
+      }
+
+      if (!supplier) {
+        skipped += 1;
+        continue;
+      }
+
+      const productRows = [];
+      for (const product of group.products) {
+        const existingProduct = await productForDuplicateInput(ctx, tenant._id, supplier._id, product);
+
+        if (!existingProduct) {
+          continue;
+        }
+
+        productRows.push(compactObject({
+          productId: existingProduct._id,
+          articleNumber: optionalText(product.articleNumber ?? existingProduct.articleNumber),
+          supplierCode: optionalText(product.supplierCode ?? existingProduct.supplierCode),
+          productName: label(product.productName ?? existingProduct.name, "Onbekend product"),
+          sourceFileNames: uniqueTexts([product.sourceFileName]),
+          sourceSheetNames: uniqueTexts([product.sourceSheetName]),
+          sourceRowNumber: product.sourceRowNumber
+        }));
+      }
+
+      if (productRows.length <= 1) {
+        skipped += 1;
+        continue;
+      }
+
+      const productIds = productRows.map((product: any) => product.productId);
+      const articleNumbers = uniqueTexts(productRows.map((product: any) => product.articleNumber));
+      const supplierCodes = uniqueTexts(productRows.map((product: any) => product.supplierCode));
+      const productNames = productRows.map((product: any) => product.productName);
+      const uniqueNames = new Set(productNames);
+      const uniqueArticles = new Set(articleNumbers);
+      const recommendation =
+        uniqueNames.size === 1 && uniqueArticles.size <= 1 ? "merge" : "needs human review";
       const metadata = {
-        articleNumbers: values.map((product: any) => product.articleNumber).filter(Boolean),
-        supplierCodes: values.map((product: any) => product.supplierCode).filter(Boolean),
-        productNames: values.map((product: any) => product.name)
+        supplierName,
+        ean: group.ean.trim(),
+        articleNumbers,
+        supplierCodes,
+        productNames,
+        sourceFileNames: uniqueTexts(productRows.flatMap((product: any) => product.sourceFileNames)),
+        sourceSheetNames: uniqueTexts(productRows.flatMap((product: any) => product.sourceSheetNames)),
+        recommendation,
+        syncRunId,
+        syncedAt: now,
+        products: productRows.map((product: any) =>
+          compactObject({
+            productId: idString(product.productId),
+            articleNumber: product.articleNumber,
+            supplierCode: product.supplierCode,
+            productName: product.productName,
+            sourceFileNames: product.sourceFileNames,
+            sourceSheetNames: product.sourceSheetNames,
+            sourceRowNumber: product.sourceRowNumber
+          })
+        )
       };
-      const existing = issueByKey.get(key);
+      const existing = await ctx.db
+        .query("catalogDataIssues")
+        .withIndex("by_supplier_ean", (q: any) =>
+          q.eq("tenantId", tenant._id).eq("supplierId", supplier._id).eq("ean", group.ean.trim())
+        )
+        .first();
 
       if (existing) {
         await ctx.db.patch(existing._id, {
+          status: existing.status === "resolved" ? ("open" as const) : existing.status,
           productIds,
-          metadata,
+          metadata: {
+            ...(existing.metadata ?? {}),
+            ...metadata
+          },
           updatedAt: now
         });
         updated += 1;
@@ -768,8 +889,8 @@ export const syncDuplicateEanIssues = mutation({
           issueType: "duplicate_ean" as const,
           severity: "warning" as const,
           status: "open" as const,
-          supplierId: supplierId as any,
-          ean,
+          supplierId: supplier._id,
+          ean: group.ean.trim(),
           productIds,
           metadata,
           createdAt: now,
@@ -781,7 +902,53 @@ export const syncDuplicateEanIssues = mutation({
 
     return {
       created,
-      updated
+      updated,
+      skipped,
+      syncRunId
+    };
+  }
+});
+
+export const finalizeDuplicateEanIssueSync = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    syncRunId: v.string()
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const issues = await ctx.db
+      .query("catalogDataIssues")
+      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+      .collect();
+    const now = Date.now();
+    let resolvedStale = 0;
+    let active = 0;
+
+    for (const issue of issues.filter((item: any) => item.issueType === "duplicate_ean")) {
+      if (issue.metadata?.syncRunId === args.syncRunId) {
+        active += 1;
+        continue;
+      }
+
+      if (issue.status !== "resolved") {
+        await ctx.db.patch(issue._id, {
+          status: "resolved" as const,
+          metadata: {
+            ...(issue.metadata ?? {}),
+            staleAfterSyncRunId: args.syncRunId,
+            staleResolvedAt: now
+          },
+          updatedAt: now
+        });
+        resolvedStale += 1;
+      }
+    }
+
+    return {
+      active,
+      resolvedStale,
+      syncRunId: args.syncRunId
     };
   }
 });
