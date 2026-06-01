@@ -1,4 +1,4 @@
-import { CalendarClock, CheckCircle2, FileText, Pencil, Plus, Save, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, FileText, Pencil, Plus, Ruler, Save, Trash2, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -172,6 +172,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   const [pendingProjectAction, setPendingProjectAction] = useState<ProjectAction | null>(null);
   const [invoiceDueDate, setInvoiceDueDate] = useState("");
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const [isStartingMeasurement, setIsStartingMeasurement] = useState(false);
   const projectEditFormRef = useRef<HTMLFormElement>(null);
   const roomEditFormRef = useRef<HTMLFormElement>(null);
   const canEditProject = canEditDossiers(session.role);
@@ -288,7 +289,16 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     await loadProject();
   }
 
-  async function updateStatus() {
+  function focusMeasurementPanel() {
+    window.setTimeout(() => {
+      document.getElementById("project-measurement")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    }, 0);
+  }
+
+  async function startMeasurementWorkflow() {
     const client = createConvexHttpClient();
 
     if (!client) {
@@ -296,16 +306,24 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       return;
     }
 
-    await client.mutation(api.portal.updateProjectStatus, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      projectId,
-      status: "measurement_planned",
-      workflowType: "measurement_planned",
-      workflowTitle: "Inmeetmoment gepland",
-      createdByExternalUserId: session.userId
-    });
-    await loadProject();
+    setIsStartingMeasurement(true);
+    setError(null);
+
+    try {
+      await client.mutation(api.portal.startOrPlanMeasurement, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        projectId,
+        measuredBy: session.name ?? session.email
+      });
+      await loadProject();
+      focusMeasurementPanel();
+    } catch (startError) {
+      console.error(startError);
+      setError("Inmeting kon niet worden gestart.");
+    } finally {
+      setIsStartingMeasurement(false);
+    }
   }
 
   async function saveProject(event: SubmitEventLike) {
@@ -664,7 +682,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
               { id: "customer", label: "Klant", value: customer?.displayName ?? "-" },
               { id: "rooms", label: "Ruimtes", value: project.rooms.length },
               { id: "events", label: "Momenten", value: workflowEvents.length },
-              { id: "measurement", label: "Inmeten", value: dateText(project.measurementDate ?? project.measurementPlannedAt) },
+              { id: "measurement", label: "Inmeetdatum", value: dateText(project.measurementDate) },
               { id: "execution", label: "Uitvoering", value: dateText(project.executionDate ?? project.executionPlannedAt) },
               { id: "updated", label: "Bijgewerkt", value: dateText(project.updatedAt) }
             ].map((item) => (
@@ -682,11 +700,12 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
                 Offerte maken
               </a>
               <Button
-                leftIcon={<CalendarClock size={17} aria-hidden="true" />}
-                onClick={() => void updateStatus()}
+                isLoading={isStartingMeasurement}
+                leftIcon={<Ruler size={17} aria-hidden="true" />}
+                onClick={() => void startMeasurementWorkflow()}
                 variant="primary"
               >
-                Inmeten plannen
+                Inmeting starten
               </Button>
             </div>
           ) : null}
@@ -1024,13 +1043,15 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
         </section>
       </div>
 
-      <MeasurementPanel
-        customerId={project.customerId}
-        projectId={project.id}
-        projectRooms={project.rooms}
-        session={session}
-        tenantId={session.tenantId}
-      />
+      <div id="project-measurement">
+        <MeasurementPanel
+          customerId={project.customerId}
+          projectId={project.id}
+          projectRooms={project.rooms}
+          session={session}
+          tenantId={session.tenantId}
+        />
+      </div>
     </div>
   );
 }

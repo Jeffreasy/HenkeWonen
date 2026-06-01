@@ -228,6 +228,38 @@ export const createForProject = mutation({
     }
 
     const now = Date.now();
+    const existing = await ctx.db
+      .query("measurements")
+      .withIndex("by_project", (q) =>
+        q.eq("tenantId", args.tenantId).eq("projectId", args.projectId)
+      )
+      .order("desc")
+      .first();
+
+    if (existing) {
+      const patch: Record<string, unknown> = {};
+
+      if (hasArg(args, "measurementDate") && existing.measurementDate !== args.measurementDate) {
+        patch.measurementDate = args.measurementDate;
+      }
+
+      if (args.measuredBy && !existing.measuredBy) {
+        patch.measuredBy = args.measuredBy;
+      }
+
+      if (hasArg(args, "notes") && args.notes && !existing.notes) {
+        patch.notes = args.notes;
+      }
+
+      if (Object.keys(patch).length > 0) {
+        await ctx.db.patch(existing._id, {
+          ...patch,
+          updatedAt: now
+        });
+      }
+
+      return existing._id;
+    }
 
     return await ctx.db.insert("measurements", {
       tenantId: args.tenantId,

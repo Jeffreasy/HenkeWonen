@@ -239,6 +239,19 @@ assert.ok(processProjectAction.includes('"invoice_payment"'));
 assert.ok(processProjectAction.includes("invoicePaymentTermDays"));
 assert.ok(processProjectAction.includes("addCalendarDays(now, invoiceTermDays)"));
 
+const startOrPlanMeasurement = exportedMutationBlock("convex/portal.ts", "startOrPlanMeasurement");
+assert.ok(startOrPlanMeasurement.includes('ctx.db.insert("measurements"'));
+assert.ok(startOrPlanMeasurement.includes("latestMeasurementForProject"));
+assert.ok(startOrPlanMeasurement.includes("hasProjectEvent"));
+assert.ok(startOrPlanMeasurement.includes('projectPatch.measurementPlannedAt = undefined'));
+assert.ok(startOrPlanMeasurement.includes('"Inmeting gestart"'));
+
+const fieldVisitTimestamp = read("convex/portal.ts").match(
+  /function fieldVisitTimestamp[\s\S]*?^}/m
+)?.[0] ?? "";
+assert.ok(fieldVisitTimestamp.includes("project.measurementDate ?? measurement?.measurementDate"));
+assert.equal(fieldVisitTimestamp.includes("project.measurementPlannedAt"), false);
+
 const addPortalQuoteLine = exportedMutationBlock("convex/portal.ts", "addQuoteLine");
 const updatePortalQuoteLine = exportedMutationBlock("convex/portal.ts", "updateQuoteLine");
 assert.ok(addPortalQuoteLine.includes("validateQuoteLineProduct"));
@@ -291,6 +304,7 @@ const securedPortalMutations = [
   "updateProject",
   "updateProjectRoom",
   "deleteProjectRoom",
+  "startOrPlanMeasurement",
   "updateProjectStatus",
   "processProjectAction",
   "updateProjectTaskStatus",
@@ -365,6 +379,10 @@ const updateMeasurement = exportedMutationBlock("convex/measurements.ts", "updat
 assert.ok(updateMeasurement.includes('hasArg(args, "measurementDate")'));
 assert.ok(updateMeasurement.includes('hasArg(args, "measuredBy")'));
 assert.ok(updateMeasurement.includes('hasArg(args, "notes")'));
+
+const createMeasurementForProject = exportedMutationBlock("convex/measurements.ts", "createForProject");
+assert.ok(createMeasurementForProject.includes("const existing = await ctx.db"));
+assert.ok(createMeasurementForProject.includes("return existing._id"));
 
 const updateMeasurementRoom = exportedMutationBlock("convex/measurements.ts", "updateMeasurementRoom");
 for (const field of ["floor", "widthM", "lengthM", "heightM", "areaM2", "perimeterM", "notes"]) {

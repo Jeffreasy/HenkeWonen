@@ -445,7 +445,7 @@ function fieldVisitTimestamp(
   project: Doc<"projects">,
   measurement: Doc<"measurements"> | undefined
 ) {
-  return project.measurementDate ?? project.measurementPlannedAt ?? measurement?.measurementDate;
+  return project.measurementDate ?? measurement?.measurementDate;
 }
 
 function isDueTodayOrEarlier(timestamp: number | undefined, now: number) {
@@ -572,6 +572,35 @@ async function latestQuoteForProject(ctx: any, tenantId: Id<"tenants">, projectI
     .collect();
 
   return quotes.sort((left: Doc<"quotes">, right: Doc<"quotes">) => right.updatedAt - left.updatedAt)[0];
+}
+
+async function latestMeasurementForProject(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  projectId: Id<"projects">
+) {
+  const measurements = await ctx.db
+    .query("measurements")
+    .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
+    .collect();
+
+  return measurements.sort((left: Doc<"measurements">, right: Doc<"measurements">) =>
+    right.updatedAt - left.updatedAt
+  )[0];
+}
+
+async function hasProjectEvent(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  projectId: Id<"projects">,
+  type: Doc<"projectWorkflowEvents">["type"]
+) {
+  const events = await ctx.db
+    .query("projectWorkflowEvents")
+    .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
+    .collect();
+
+  return events.some((event: Doc<"projectWorkflowEvents">) => event.type === type);
 }
 
 async function addProjectEvent(
@@ -1672,6 +1701,116 @@ export const updateProjectStatus = mutation({
     }
 
     return project._id;
+  }
+});
+
+export const startOrPlanMeasurement = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    projectId: v.string(),
+    measurementDate: v.optional(v.number()),
+    measuredBy: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const { tenant, externalUserId } = await requireMutationRole(
+      ctx,
+      args.tenantSlug,
+      args.actor,
+      ["user", "editor", "admin"]
+    );
+    const project = await ctx.db.get(args.projectId as Id<"projects">);
+
+    if (!project || project.tenantId !== tenant._id) {
+      throw new Error("Project not found");
+    }
+
+    if (["closed", "cancelled", "paid"].includes(project.status)) {
+      throw new Error("Afgesloten dossiers kunnen niet opnieuw worden ingemeten.");
+    }
+
+    const customer = await ctx.db.get(project.customerId);
+
+    if (!customer || customer.tenantId !== tenant._id) {
+      throw new Error("Customer not found");
+    }
+
+    const now = Date.now();
+    const existingMeasurement = await latestMeasurementForProject(ctx, tenant._id, project._id);
+    const measurementDate = hasArg(args, "measurementDate")
+      ? args.measurementDate
+      : project.measurementDate ?? existingMeasurement?.measurementDate;
+    let measurementId = existingMeasurement?._id;
+    let measurementCreated = false;
+
+    if (existingMeasurement) {
+      const measurementPatch: Partial<Doc<"measurements">> = {};
+
+      if (hasArg(args, "measurementDate") && existingMeasurement.measurementDate !== measurementDate) {
+        measurementPatch.measurementDate = measurementDate;
+      }
+
+      if (args.measuredBy && !existingMeasurement.measuredBy) {
+        measurementPatch.measuredBy = args.measuredBy;
+      }
+
+      if (Object.keys(measurementPatch).length > 0) {
+        await ctx.db.patch(existingMeasurement._id, {
+          ...measurementPatch,
+          updatedAt: now
+        });
+      }
+    } else {
+      measurementCreated = true;
+      measurementId = await ctx.db.insert("measurements", {
+        tenantId: tenant._id,
+        projectId: project._id,
+        customerId: project.customerId,
+        status: "draft",
+        measurementDate,
+        measuredBy: args.measuredBy,
+        createdByExternalUserId: externalUserId,
+        createdAt: now,
+        updatedAt: now
+      });
+    }
+
+    const projectPatch: Partial<Doc<"projects">> = {
+      status: "measurement_planned",
+      updatedAt: now
+    };
+
+    if (hasArg(args, "measurementDate")) {
+      projectPatch.measurementDate = measurementDate;
+    } else if (!project.measurementDate) {
+      projectPatch.measurementPlannedAt = undefined;
+    }
+
+    await ctx.db.patch(project._id, projectPatch);
+
+    const alreadyHasMeasurementEvent = await hasProjectEvent(
+      ctx,
+      tenant._id,
+      project._id,
+      "measurement_planned"
+    );
+
+    if (!alreadyHasMeasurementEvent) {
+      await addProjectEvent(
+        ctx,
+        tenant._id,
+        project._id,
+        "measurement_planned",
+        measurementDate ? "Inmeting gepland" : "Inmeting gestart",
+        externalUserId
+      );
+    }
+
+    return {
+      projectId: project._id,
+      measurementId,
+      measurementCreated
+    };
   }
 });
 
