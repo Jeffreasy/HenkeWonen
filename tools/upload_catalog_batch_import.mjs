@@ -17,7 +17,7 @@ const toolEnv = loadCatalogToolEnv({ root, argv: process.argv.slice(2) });
 const previewFileArg = optionValue(toolEnv.args, "--preview-file");
 const previewPath = previewFileArg
   ? resolve(root, previewFileArg)
-  : resolve(root, "docs/catalog-import-preview.json");
+  : resolve(root, "docs/generated/catalog-import-preview.json");
 const commitLimitRaw =
   optionValue(toolEnv.args, "--commit-limit") ?? process.env.CATALOG_IMPORT_COMMIT_LIMIT ?? "25";
 const commitLimitNumber = Number(commitLimitRaw);
@@ -80,11 +80,79 @@ function profilePriceColumns(profile) {
   return Array.isArray(profile.priceColumnMappings) ? profile.priceColumnMappings : [];
 }
 
-function currentColumnVatMode(profile, sourceColumnName) {
-  const column = profilePriceColumns(profile).find(
-    (item) => (item.header ?? item.sourceColumnName) === sourceColumnName
+function normalizePriceColumnKey(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\u20ac/g, "eur")
+    .replace(/m\u00b2/g, "m2")
+    .replace(/m\u00b9/g, "m1")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function normalizePriceColumnFamilyKey(value) {
+  return normalizePriceColumnKey(String(value ?? "").replace(/\([^)]*\)/g, ""));
+}
+
+function currentColumnVatMode(profile, price) {
+  const sourceColumnName = price.sourceColumnName;
+  const normalizedSourceColumnName = normalizePriceColumnKey(sourceColumnName);
+  const normalizedSourceFamilyName = normalizePriceColumnFamilyKey(sourceColumnName);
+  const column = profilePriceColumns(profile).find((item) => {
+    const header = item.header ?? item.sourceColumnName;
+
+    return (
+      header === sourceColumnName ||
+      normalizePriceColumnKey(header) === normalizedSourceColumnName ||
+      normalizePriceColumnFamilyKey(header) === normalizedSourceFamilyName
+    );
+  });
+  const vatModeByPriceColumn = profile.vatModeByPriceColumn ?? {};
+  const directVatMode = sourceColumnName ? vatModeByPriceColumn[sourceColumnName] : undefined;
+  const normalizedVatMode = Object.entries(vatModeByPriceColumn).find(
+    ([header]) => normalizePriceColumnKey(header) === normalizedSourceColumnName
+  )?.[1];
+
+  return column?.vatMode ?? directVatMode ?? normalizedVatMode ?? "unknown";
+}
+
+function isNonPriceReferencePrice(price) {
+  const normalizedColumnName = normalizePriceColumnKey(price?.sourceColumnName);
+
+  return (
+    price?.vatMode === "unknown" &&
+    price?.priceType === "manual" &&
+    (normalizedColumnName.startsWith("codeprix") || normalizedColumnName === "unitedevente")
   );
-  return column?.vatMode ?? profile.vatModeByPriceColumn?.[sourceColumnName] ?? "unknown";
+}
+
+function stripNonPriceReferencePrices(row) {
+  const normalized = row.normalized;
+
+  if (!normalized || !Array.isArray(normalized.prices)) {
+    return row;
+  }
+
+  const prices = normalized.prices.filter((price) => !isNonPriceReferencePrice(price));
+
+  if (prices.length === normalized.prices.length) {
+    return row;
+  }
+
+  const stillHasUnknownVatMode = prices.some((price) => price.vatMode === "unknown");
+  const warnings = stillHasUnknownVatMode
+    ? row.warnings ?? []
+    : (row.warnings ?? []).filter((warning) => warning !== "Btw-modus onbekend voor een of meer prijskolommen.");
+
+  return {
+    ...row,
+    warnings,
+    normalized: {
+      ...normalized,
+      prices,
+    },
+  };
 }
 
 function isPlainObject(value) {
@@ -156,8 +224,7 @@ function applyProfileVatMappingsToRow(row, profile) {
   }
 
   const prices = normalized.prices.map((price) => {
-    const sourceColumnName = price.sourceColumnName;
-    const mappedVatMode = sourceColumnName ? currentColumnVatMode(profile, sourceColumnName) : "unknown";
+    const mappedVatMode = price.sourceColumnName ? currentColumnVatMode(profile, price) : "unknown";
 
     return mappedVatMode === "inclusive" || mappedVatMode === "exclusive"
       ? {
@@ -185,7 +252,7 @@ function applyProfileVatMappingsToRow(row, profile) {
 const convexUrl = toolEnv.convexUrl;
 const client = new ConvexHttpClient(convexUrl);
 const defaultTenantSlug = toolEnv.tenantSlug;
-const initialVatReview = await client.query(api.catalogReview.vatMappingReview, {
+const initialVatReview = await client.query(api.catalog.review.vatMappingReview, {
   tenantSlug: defaultTenantSlug,
 });
 const initialUnresolvedProfileMappings = initialVatReview.rows.filter(
@@ -222,8 +289,8 @@ const actor = createToolMutationActor(tenantSlug);
 const vatReview =
   tenantSlug === defaultTenantSlug
     ? initialVatReview
-    : await client.query(api.catalogReview.vatMappingReview, { tenantSlug });
-const profiles = await client.query(api.imports.listProfilesForPortal, { tenantSlug });
+    : await client.query(api.catalog.review.vatMappingReview, { tenantSlug });
+const profiles = await client.query(api.catalog.imports.listProfilesForPortal, { tenantSlug });
 const profileBySourceFile = new Map();
 
 for (const row of payload.previewRows ?? rows.map(toPreviewRow)) {
@@ -241,7 +308,10 @@ const unresolvedProfileMappings = vatReview.rows.filter(
 );
 const previewRows = (payload.previewRows ?? rows.map(toPreviewRow)).map((row) => {
   const sourceFileName = row.sourceFileName ?? row.normalized?.sourceFileName ?? "Onbekend bestand";
-  return applyProfileVatMappingsToRow(row, profileBySourceFile.get(sourceFileName));
+  return applyProfileVatMappingsToRow(
+    stripNonPriceReferencePrices(row),
+    profileBySourceFile.get(sourceFileName)
+  );
 });
 const groups = groupBy(previewRows, (row) => row.sourceFileName ?? row.normalized?.sourceFileName ?? "Onbekend bestand");
 const unknownVatRows = previewRows.filter(
@@ -291,7 +361,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
   let batchId;
 
   try {
-    batchId = await client.mutation(api.catalogImport.createPreviewBatch, {
+    batchId = await client.mutation(api.catalog.import.createPreviewBatch, {
       tenantSlug,
       actor,
       fileName: sourceFileName,
@@ -306,7 +376,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
 
     let insertedRows = 0;
     for (const rowsChunk of chunk(sourceRows.map(toPreviewRow), 100)) {
-      const appendResult = await client.mutation(api.catalogImport.appendPreviewRows, {
+      const appendResult = await client.mutation(api.catalog.import.appendPreviewRows, {
         tenantSlug,
         actor,
         batchId,
@@ -315,7 +385,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
       insertedRows += appendResult.insertedRows ?? rowsChunk.length;
     }
 
-    await client.mutation(api.catalogImport.savePreviewMapping, {
+    await client.mutation(api.catalog.import.savePreviewMapping, {
       tenantSlug,
       actor,
       batchId,
@@ -323,7 +393,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
       mapping: {
         mode: "generated-preview",
         requiresVatOverride: batchAllowUnknownVatMode,
-        source: "docs/catalog-import-preview.json",
+        source: "docs/generated/catalog-import-preview.json",
       },
     });
 
@@ -339,7 +409,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
 
     if (!noCommit) {
       while (true) {
-        const commitResult = await client.mutation(api.catalogImport.commitPreviewBatchChunk, {
+        const commitResult = await client.mutation(api.catalog.import.commitPreviewBatchChunk, {
           tenantSlug,
           actor,
           batchId,
@@ -365,7 +435,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
     console.log(JSON.stringify(batchSummary, null, 2));
   } catch (error) {
     if (batchId) {
-      await client.mutation(api.catalogImport.failPreviewBatch, {
+      await client.mutation(api.catalog.import.failPreviewBatch, {
         tenantSlug,
         actor,
         batchId,

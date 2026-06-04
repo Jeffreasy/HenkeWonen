@@ -22,7 +22,7 @@ from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parent.parent
 FLEX_DIR = ROOT / "DATA" / "Leveranciers" / "Unilin Flooring" / "FlexColours"
-OUT_DIR = ROOT / "docs"
+OUT_DIR = ROOT / "docs" / "generated"
 PREVIEW_JSON_OUT = OUT_DIR / "flexcolours-import-preview.json"
 SUMMARY_OUT = OUT_DIR / "flexcolours-import-summary.json"
 
@@ -369,7 +369,7 @@ def main() -> None:
         raise SystemExit(f"Geen FlexColours bestanden gevonden in {FLEX_DIR}")
 
     if not no_write:
-        OUT_DIR.mkdir(exist_ok=True)
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     all_rows: list[dict[str, Any]] = []
     for path in source_files:

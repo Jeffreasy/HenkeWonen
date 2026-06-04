@@ -9,27 +9,30 @@
  */
 
 import type * as authz from "../authz.js";
-import type * as catalog from "../catalog.js";
-import type * as catalogImport from "../catalogImport.js";
-import type * as catalogReview from "../catalogReview.js";
-import type * as catalogValidation from "../catalogValidation.js";
-import type * as categories from "../categories.js";
-import type * as customers from "../customers.js";
-import type * as demoSeed from "../demoSeed.js";
-import type * as importProductionAudit from "../importProductionAudit.js";
-import type * as imports from "../imports.js";
-import type * as measurements from "../measurements.js";
-import type * as pilotCatalog from "../pilotCatalog.js";
+import type * as beheer_categories from "../beheer/categories.js";
+import type * as beheer_customers from "../beheer/customers.js";
+import type * as beheer_serviceCostRules from "../beheer/serviceCostRules.js";
+import type * as beheer_suppliers from "../beheer/suppliers.js";
+import type * as beheer_tenants from "../beheer/tenants.js";
+import type * as beheer_users from "../beheer/users.js";
+import type * as catalog_core from "../catalog/core.js";
+import type * as catalog_import from "../catalog/import.js";
+import type * as catalog_imports from "../catalog/imports.js";
+import type * as catalog_pilot from "../catalog/pilot.js";
+import type * as catalog_productionAudit from "../catalog/productionAudit.js";
+import type * as catalog_reconciliation from "../catalog/reconciliation.js";
+import type * as catalog_review from "../catalog/review.js";
+import type * as catalog_validation from "../catalog/validation.js";
+import type * as offertes_core from "../offertes/core.js";
+import type * as offertes_templates from "../offertes/templates.js";
 import type * as portal from "../portal.js";
-import type * as projectWorkflowEvents from "../projectWorkflowEvents.js";
-import type * as projects from "../projects.js";
-import type * as quoteTemplates from "../quoteTemplates.js";
-import type * as quotes from "../quotes.js";
-import type * as seed from "../seed.js";
-import type * as serviceCostRules from "../serviceCostRules.js";
-import type * as suppliers from "../suppliers.js";
-import type * as tenants from "../tenants.js";
-import type * as users from "../users.js";
+import type * as portalUtils from "../portalUtils.js";
+import type * as projecten_core from "../projecten/core.js";
+import type * as projecten_fieldService from "../projecten/fieldService.js";
+import type * as projecten_measurements from "../projecten/measurements.js";
+import type * as projecten_workflowEvents from "../projecten/workflowEvents.js";
+import type * as seed_core from "../seed/core.js";
+import type * as seed_demo from "../seed/demo.js";
 
 import type {
   ApiFromModules,
@@ -39,27 +42,30 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   authz: typeof authz;
-  catalog: typeof catalog;
-  catalogImport: typeof catalogImport;
-  catalogReview: typeof catalogReview;
-  catalogValidation: typeof catalogValidation;
-  categories: typeof categories;
-  customers: typeof customers;
-  demoSeed: typeof demoSeed;
-  importProductionAudit: typeof importProductionAudit;
-  imports: typeof imports;
-  measurements: typeof measurements;
-  pilotCatalog: typeof pilotCatalog;
+  "beheer/categories": typeof beheer_categories;
+  "beheer/customers": typeof beheer_customers;
+  "beheer/serviceCostRules": typeof beheer_serviceCostRules;
+  "beheer/suppliers": typeof beheer_suppliers;
+  "beheer/tenants": typeof beheer_tenants;
+  "beheer/users": typeof beheer_users;
+  "catalog/core": typeof catalog_core;
+  "catalog/import": typeof catalog_import;
+  "catalog/imports": typeof catalog_imports;
+  "catalog/pilot": typeof catalog_pilot;
+  "catalog/productionAudit": typeof catalog_productionAudit;
+  "catalog/reconciliation": typeof catalog_reconciliation;
+  "catalog/review": typeof catalog_review;
+  "catalog/validation": typeof catalog_validation;
+  "offertes/core": typeof offertes_core;
+  "offertes/templates": typeof offertes_templates;
   portal: typeof portal;
-  projectWorkflowEvents: typeof projectWorkflowEvents;
-  projects: typeof projects;
-  quoteTemplates: typeof quoteTemplates;
-  quotes: typeof quotes;
-  seed: typeof seed;
-  serviceCostRules: typeof serviceCostRules;
-  suppliers: typeof suppliers;
-  tenants: typeof tenants;
-  users: typeof users;
+  portalUtils: typeof portalUtils;
+  "projecten/core": typeof projecten_core;
+  "projecten/fieldService": typeof projecten_fieldService;
+  "projecten/measurements": typeof projecten_measurements;
+  "projecten/workflowEvents": typeof projecten_workflowEvents;
+  "seed/core": typeof seed_core;
+  "seed/demo": typeof seed_demo;
 }>;
 
 /**

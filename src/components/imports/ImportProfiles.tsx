@@ -1,45 +1,28 @@
-import {
-  Archive,
-  CheckCheck,
-  CheckCircle2,
-  Filter,
-  RefreshCw,
-  RotateCcw,
-  Search,
-  ShieldAlert,
-  X
-} from "lucide-react";
+import { RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canManage, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
-import {
-  formatImportProfileStatus,
-  formatPriceType,
-  formatUnit,
-  formatVatMode
-} from "../../lib/i18n/statusLabels";
+import { formatVatMode } from "../../lib/i18n/statusLabels";
 import { Alert } from "../ui/Alert";
-import { Badge, type BadgeVariant } from "../ui/Badge";
+import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
-import { Checkbox } from "../ui/Checkbox";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { FilterBar } from "../ui/FilterBar";
-import { InlineHelp } from "../ui/InlineHelp";
-import { StatusBadge } from "../ui/StatusBadge";
-import { Select } from "../ui/Select";
+import { VatWorkbenchHeader } from "./VatWorkbenchHeader";
+import { ImportProfilesTable } from "./ImportProfilesTable";
+import { VatMappingGroups } from "./VatMappingGroups";
 
 type ImportProfilesProps = {
   session: AppSession;
 };
 
-type VatMode = "inclusive" | "exclusive" | "unknown";
-type MappingFilter = "all" | "unresolved" | "inclusive" | "exclusive" | "unknown" | "allowUnknown";
+export type VatMode = "inclusive" | "exclusive" | "unknown";
+export type MappingFilter = "all" | "unresolved" | "inclusive" | "exclusive" | "unknown" | "allowUnknown";
 type ProfileStatusFilter = "all" | "active" | "archived";
 
-type VatMappingReviewRow = {
+export type VatMappingReviewRow = {
   profileId: string;
   profileName: string;
   supplier: string;
@@ -62,7 +45,7 @@ type VatMappingReviewRow = {
   reviewedAt?: number;
 };
 
-type VatMappingReview = {
+export type VatMappingReview = {
   totalProfiles: number;
   totalPriceColumns: number;
   resolvedColumns: number;
@@ -71,7 +54,7 @@ type VatMappingReview = {
   rows: VatMappingReviewRow[];
 };
 
-type ImportProfileSummary = {
+export type ImportProfileSummary = {
   id: string;
   supplierName: string;
   name: string;
@@ -115,31 +98,16 @@ function rowKey(row: VatMappingReviewRow) {
   return `${row.profileId}::${row.sourceColumnIndex}::${row.sourceColumnName}`;
 }
 
-function confidenceVariant(confidence: VatMappingReviewRow["confidence"]): BadgeVariant {
-  if (confidence === "high") {
-    return "success";
-  }
-
-  if (confidence === "medium") {
-    return "warning";
-  }
-
-  return "danger";
-}
-
 function filterRow(row: VatMappingReviewRow, filter: MappingFilter) {
   if (filter === "all") {
     return true;
   }
-
   if (filter === "unresolved") {
     return row.currentVatMode === "unknown" && !row.allowUnknownVatMode;
   }
-
   if (filter === "allowUnknown") {
     return row.allowUnknownVatMode;
   }
-
   return row.currentVatMode === filter;
 }
 
@@ -155,15 +123,12 @@ function rowMatchesSearch(row: VatMappingReviewRow, searchQuery: string) {
   if (!searchQuery) {
     return true;
   }
-
   return [
     row.profileName,
     row.supplier,
     row.category,
     row.sourceFileNamePattern,
     row.sourceColumnName,
-    formatPriceType(row.detectedPriceType),
-    formatUnit(row.detectedUnit),
     formatVatMode(row.currentVatMode),
     formatVatMode(row.suggestedVatMode),
     row.reason
@@ -174,7 +139,6 @@ function profileMatchesSearch(profile: ImportProfileSummary, searchQuery: string
   if (!searchQuery) {
     return true;
   }
-
   return [
     profile.name,
     profile.supplierName,
@@ -182,8 +146,7 @@ function profileMatchesSearch(profile: ImportProfileSummary, searchQuery: string
     profile.sheetPattern,
     profile.expectedFileExtension,
     profile.supportsXlsx ? "xlsx" : "",
-    profile.supportsXls ? "xls" : "",
-    formatImportProfileStatus(profile.status)
+    profile.supportsXls ? "xls" : ""
   ].some((value) => normalizedText(value).includes(searchQuery));
 }
 
@@ -191,32 +154,7 @@ function progressPercentage(done: number, total: number) {
   if (total <= 0) {
     return 100;
   }
-
   return Math.round((done / total) * 100);
-}
-
-function shortReason(value: string) {
-  return value.length > 96 ? `${value.slice(0, 94).trim()}...` : value;
-}
-
-function formatConfidence(confidence: VatMappingReviewRow["confidence"]) {
-  if (confidence === "high") {
-    return "hoog";
-  }
-
-  if (confidence === "medium") {
-    return "middel";
-  }
-
-  return "laag";
-}
-
-function formatVatChoiceLabel(vatMode: VatMode) {
-  if (vatMode === "unknown") {
-    return "Nog kiezen";
-  }
-
-  return formatVatMode(vatMode);
 }
 
 export default function ImportProfiles({ session }: ImportProfilesProps) {
@@ -252,7 +190,6 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
 
   const groupedProfiles = useMemo(() => {
     const groups = new Map<string, VatMappingReviewRow[]>();
-
     for (const row of visibleRows) {
       const key = `${row.profileId}::${row.profileName}`;
       groups.set(key, [...(groups.get(key) ?? []), row]);
@@ -290,10 +227,8 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
 
   const summary = useMemo(() => {
     const rows = review?.rows ?? [];
-
     return {
-      unresolved: rows.filter((row) => row.currentVatMode === "unknown" && !row.allowUnknownVatMode)
-        .length,
+      unresolved: rows.filter((row) => row.currentVatMode === "unknown" && !row.allowUnknownVatMode).length,
       inclusive: rows.filter((row) => row.currentVatMode === "inclusive").length,
       exclusive: rows.filter((row) => row.currentVatMode === "exclusive").length,
       allowUnknown: rows.filter((row) => row.allowUnknownVatMode).length,
@@ -338,7 +273,6 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
           if (left.status !== right.status) {
             return left.status === "active" ? -1 : 1;
           }
-
           return `${left.supplierName} ${left.name}`.localeCompare(
             `${right.supplierName} ${right.name}`,
             "nl-NL"
@@ -347,29 +281,55 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     [profileSearchQuery, profileStatusFilter, profiles]
   );
 
-  const completedColumns = (review?.totalPriceColumns ?? 0) - summary.unresolved;
-  const completionPercentage = progressPercentage(completedColumns, review?.totalPriceColumns ?? 0);
-  const selectedVisibleRows = visibleRows.filter((row) => selected[rowKey(row)]);
-  const highConfidenceOpen = (review?.rows ?? []).filter(
-    (row) =>
-      row.currentVatMode === "unknown" &&
-      !row.allowUnknownVatMode &&
-      row.confidence === "high"
-  ).length;
-  const carefulReviewOpen = (review?.rows ?? []).filter(
-    (row) =>
-      row.currentVatMode === "unknown" &&
-      !row.allowUnknownVatMode &&
-      (row.confidence === "low" || row.needsReview)
-  ).length;
-  const nextOpenProfile = groupedProfiles.find((profile) =>
-    profile.rows.some((row) => row.currentVatMode === "unknown" && !row.allowUnknownVatMode)
+  const completedColumns = useMemo(
+    () => (review?.totalPriceColumns ?? 0) - summary.unresolved,
+    [review?.totalPriceColumns, summary.unresolved]
   );
-  const hasUnresolvedVatChoices = Boolean(review && summary.unresolved > 0);
+
+  const completionPercentage = useMemo(
+    () => progressPercentage(completedColumns, review?.totalPriceColumns ?? 0),
+    [completedColumns, review?.totalPriceColumns]
+  );
+
+  const selectedVisibleRows = useMemo(
+    () => visibleRows.filter((row) => selected[rowKey(row)]),
+    [selected, visibleRows]
+  );
+
+  const highConfidenceOpen = useMemo(
+    () =>
+      (review?.rows ?? []).filter(
+        (row) => row.currentVatMode === "unknown" && !row.allowUnknownVatMode && row.confidence === "high"
+      ).length,
+    [review?.rows]
+  );
+
+  const carefulReviewOpen = useMemo(
+    () =>
+      (review?.rows ?? []).filter(
+        (row) =>
+          row.currentVatMode === "unknown" &&
+          !row.allowUnknownVatMode &&
+          (row.confidence === "low" || row.needsReview)
+      ).length,
+    [review?.rows]
+  );
+
+  const nextOpenProfile = useMemo(
+    () =>
+      groupedProfiles.find((profile) =>
+        profile.rows.some((row) => row.currentVatMode === "unknown" && !row.allowUnknownVatMode)
+      ),
+    [groupedProfiles]
+  );
+
+  const hasUnresolvedVatChoices = useMemo(
+    () => Boolean(review && summary.unresolved > 0),
+    [review, summary.unresolved]
+  );
 
   const loadReview = useCallback(async () => {
     const client = createConvexHttpClient();
-
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
@@ -381,10 +341,10 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
 
     try {
       const [result, profileResult] = await Promise.all([
-        client.query(api.catalogReview.vatMappingReview, {
+        client.query(api.catalog.review.vatMappingReview, {
           tenantSlug: session.tenantId
         }) as Promise<VatMappingReview>,
-        client.query(api.imports.listProfilesForPortal, {
+        client.query(api.catalog.imports.listProfilesForPortal, {
           tenantSlug: session.tenantId
         }) as Promise<ImportProfileSummary[]>
       ]);
@@ -403,25 +363,8 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     void loadReview();
   }, [loadReview]);
 
-  function selectedRowsForProfile(rows: VatMappingReviewRow[]) {
-    return rows.filter((row) => selected[rowKey(row)]);
-  }
-
-  function setProfileSelection(rows: VatMappingReviewRow[], checked: boolean) {
-    setSelected((current) => {
-      const next = { ...current };
-
-      for (const row of rows) {
-        next[rowKey(row)] = checked;
-      }
-
-      return next;
-    });
-  }
-
   async function updateVatMode(row: VatMappingReviewRow, value: VatMode) {
     const client = createConvexHttpClient();
-
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
@@ -431,7 +374,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     setError(null);
 
     try {
-      await client.mutation(api.catalogReview.updateProfileVatMode, {
+      await client.mutation(api.catalog.review.updateProfileVatMode, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         profileId: row.profileId,
@@ -455,7 +398,6 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     vatMode: "inclusive" | "exclusive"
   ) {
     const client = createConvexHttpClient();
-
     if (!client || selectedRows.length === 0) {
       return;
     }
@@ -464,7 +406,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     setError(null);
 
     try {
-      await client.mutation(api.catalogReview.bulkUpdateProfileVatModes, {
+      await client.mutation(api.catalog.review.bulkUpdateProfileVatModes, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         profileId,
@@ -475,7 +417,13 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
         vatMode,
         updatedByExternalUserId: session.userId
       });
-      setProfileSelection(selectedRows, false);
+      setSelected((current) => {
+        const next = { ...current };
+        for (const row of selectedRows) {
+          next[rowKey(row)] = false;
+        }
+        return next;
+      });
       setNotice(
         `${selectedRows.length} prijskolommen zijn op ${formatVatMode(vatMode).toLowerCase()} gezet.`
       );
@@ -489,9 +437,8 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
   }
 
   async function markReviewed(rows: VatMappingReviewRow[]) {
-    const selectedRows = selectedRowsForProfile(rows);
+    const selectedRows = rows.filter((row) => selected[rowKey(row)]);
     const client = createConvexHttpClient();
-
     if (!client || selectedRows.length === 0) {
       return;
     }
@@ -500,7 +447,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     setError(null);
 
     try {
-      await client.mutation(api.catalogReview.markProfileVatColumnsReviewed, {
+      await client.mutation(api.catalog.review.markProfileVatColumnsReviewed, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         profileId: rows[0].profileId,
@@ -510,7 +457,13 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
         })),
         reviewedByExternalUserId: session.userId
       });
-      setProfileSelection(selectedRows, false);
+      setSelected((current) => {
+        const next = { ...current };
+        for (const row of selectedRows) {
+          next[rowKey(row)] = false;
+        }
+        return next;
+      });
       await loadReview();
     } catch (saveError) {
       console.error(saveError);
@@ -522,7 +475,6 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
 
   async function setAllowUnknown(profileId: string, allowUnknownVatMode: boolean) {
     const client = createConvexHttpClient();
-
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
@@ -532,7 +484,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     setError(null);
 
     try {
-      await client.mutation(api.catalogReview.setProfileAllowUnknownVatMode, {
+      await client.mutation(api.catalog.review.setProfileAllowUnknownVatMode, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         profileId,
@@ -559,7 +511,6 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     }
 
     const client = createConvexHttpClient();
-
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
@@ -569,7 +520,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     setError(null);
 
     try {
-      await client.mutation(api.imports.updateProfileStatusForPortal, {
+      await client.mutation(api.catalog.imports.updateProfileStatusForPortal, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         profileId: pendingProfileStatus.profile.id,
@@ -594,7 +545,6 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     if (!pendingConfirmation) {
       return;
     }
-
     const pending = pendingConfirmation;
     setPendingConfirmation(null);
 
@@ -602,7 +552,6 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
       await bulkSetVatMode(pending.rows[0]?.profileId ?? "", pending.rows, pending.vatMode);
       return;
     }
-
     await setAllowUnknown(pending.profileId, pending.allowUnknownVatMode);
   }
 
@@ -611,12 +560,10 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     rows: VatMappingReviewRow[],
     vatMode: "inclusive" | "exclusive"
   ) {
-    const selectedRows = selectedRowsForProfile(rows);
-
+    const selectedRows = rows.filter((row) => selected[rowKey(row)]);
     if (selectedRows.length === 0) {
       return;
     }
-
     setPendingConfirmation({
       type: "bulkVatMode",
       rows: selectedRows,
@@ -630,7 +577,6 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
       void setAllowUnknown(profileId, false);
       return;
     }
-
     setPendingConfirmation({
       type: "allowUnknown",
       profileId,
@@ -655,87 +601,6 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     pendingConfirmation?.type === "bulkVatMode"
       ? "Aanpassen bevestigen"
       : "Uitzondering toestaan";
-  const profileColumns: Array<DataTableColumn<ImportProfileSummary>> = [
-    {
-      key: "profile",
-      header: "Importprofiel",
-      priority: "primary",
-      render: (profile) => (
-        <div className="stack-sm">
-          <strong>{profile.name}</strong>
-          <small className="muted">{profile.supplierName}</small>
-          <small className="muted">
-            {profile.status === "inactive"
-              ? "Niet gebruikt voor nieuwe import of btw-readiness."
-              : "Wordt gebruikt als actuele import- en btw-route."}
-          </small>
-        </div>
-      )
-    },
-    {
-      key: "pattern",
-      header: "Bestand",
-      render: (profile) => (
-        <div className="stack-sm">
-          <span>{profile.filePattern ?? "Geen bestandsfilter"}</span>
-          <small className="muted">{profile.sheetPattern ?? "Alle tabbladen"}</small>
-        </div>
-      )
-    },
-    {
-      key: "support",
-      header: "Ondersteuning",
-      width: "150px",
-      render: (profile) => (
-        <div className="toolbar">
-          {profile.supportsXlsx ? <Badge variant="neutral">xlsx</Badge> : null}
-          {profile.supportsXls ? <Badge variant="neutral">xls</Badge> : null}
-          {profile.expectedFileExtension ? (
-            <Badge variant="info">{profile.expectedFileExtension}</Badge>
-          ) : null}
-        </div>
-      )
-    },
-    {
-      key: "status",
-      header: "Gebruik",
-      width: "170px",
-      render: (profile) => (
-        <StatusBadge
-          status={profile.status}
-          label={formatImportProfileStatus(profile.status)}
-          variant={profile.status === "inactive" ? "neutral" : "success"}
-        />
-      )
-    },
-    {
-      key: "actions",
-      header: "Acties",
-      width: "150px",
-      render: (profile) =>
-        canManageProfiles ? (
-          profile.status === "inactive" ? (
-            <Button
-              leftIcon={<RotateCcw size={16} aria-hidden="true" />}
-              onClick={() => setPendingProfileStatus({ profile, nextStatus: "active" })}
-              size="sm"
-              variant="secondary"
-            >
-              Activeren
-            </Button>
-          ) : (
-            <Button
-              leftIcon={<Archive size={16} aria-hidden="true" />}
-              onClick={() => setPendingProfileStatus({ profile, nextStatus: "inactive" })}
-              size="sm"
-              variant="danger"
-            >
-              Archiveren
-            </Button>
-          )
-        ) : null
-    }
-  ];
 
   return (
     <div className="grid">
@@ -749,6 +614,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
         onCancel={() => setPendingConfirmation(null)}
         onConfirm={() => void confirmPendingAction()}
       />
+
       <ConfirmDialog
         open={Boolean(pendingProfileStatus)}
         title={
@@ -770,606 +636,109 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
         onConfirm={() => void updateProfileStatus()}
       />
 
-      <section
-        className={
-          hasUnresolvedVatChoices ? "panel vat-workbench vat-workbench-blocked" : "panel vat-workbench"
-        }
-      >
-        <div className="toolbar vat-workbench-titlebar">
-          <div>
-            <p className="eyebrow">Btw-werkbank</p>
-            <h2 className="vat-workbench-title">
-              {isLoading
-                ? "Btw-keuzes laden"
-                : hasUnresolvedVatChoices
-                  ? `${numberText(summary.unresolved)} prijskolommen vragen nog een keuze`
-                  : "Alle prijskolommen hebben een btw-keuze"}
-            </h2>
-            <p className="muted vat-workbench-copy">
-              {isLoading
-                ? "De controles worden opgehaald."
-                : `${numberText(review?.totalProfiles ?? 0)} importprofielen met ${numberText(
-                    review?.totalPriceColumns ?? 0
-                  )} prijskolommen.`}
-            </p>
-          </div>
-          <div className="toolbar">
-            <Badge
-              variant={isLoading || !review ? "neutral" : hasUnresolvedVatChoices ? "danger" : "success"}
-              icon={
-                isLoading || !review ? (
-                  <RefreshCw size={14} aria-hidden="true" />
-                ) : hasUnresolvedVatChoices ? (
-                  <ShieldAlert size={14} aria-hidden="true" />
-                ) : (
-                  <CheckCircle2 size={14} aria-hidden="true" />
-                )
-              }
-            >
-              {isLoading || !review ? "Laden" : hasUnresolvedVatChoices ? "Import geblokkeerd" : "Btw gereed"}
-            </Badge>
-            <Button
-              leftIcon={<RefreshCw size={17} aria-hidden="true" />}
-              variant="secondary"
-              onClick={() => void loadReview()}
-            >
-              Verversen
-            </Button>
-          </div>
-        </div>
-        {error ? (
-          <Alert
-            variant="danger"
-            title="Btw-keuzes niet geladen"
-            description={error}
-            style={{ marginTop: 16 }}
-          />
-        ) : null}
-        {notice ? (
-          <Alert
-            variant="success"
-            title="Wijziging opgeslagen"
-            description={notice}
-            style={{ marginTop: 16 }}
-          />
-        ) : null}
+      <VatWorkbenchHeader
+        isLoading={isLoading}
+        hasUnresolvedVatChoices={hasUnresolvedVatChoices}
+        summary={summary}
+        review={review}
+        completionPercentage={completionPercentage}
+      />
 
-        {review ? (
-          <>
-            <div className="vat-progress-layout">
-              <div className="vat-progress-block">
-                <div className="toolbar vat-progress-heading">
-                  <span className="muted">Voortgang</span>
-                  <strong>{completionPercentage}%</strong>
-                </div>
-                <div
-                  className="vat-progress-track"
-                  aria-label={`${completionPercentage}% btw-keuzes afgerond`}
-                >
-                  <span style={{ width: `${completionPercentage}%` }} />
-                </div>
-                <div className="vat-progress-meta">
-                  <span>{numberText(completedColumns)} afgerond</span>
-                  <span>{numberText(review.totalPriceColumns)} totaal</span>
-                </div>
-              </div>
-              <div className="vat-next-block">
-                <p className="eyebrow">Nu eerst</p>
-                <strong>
-                  {summary.unresolved === 0
-                    ? "Geen btw-blokkades open"
-                    : nextOpenProfile
-                      ? nextOpenProfile.profileName
-                      : "Open de filter Te beoordelen"}
-                </strong>
-                <p className="muted">
-                  {summary.unresolved === 0
-                    ? "De importstraat kan verder zodra de overige productcontroles ook akkoord zijn."
-                    : nextOpenProfile
-                      ? `${numberText(
-                          nextOpenProfile.rows.filter(
-                            (row) => row.currentVatMode === "unknown" && !row.allowUnknownVatMode
-                          ).length
-                        )} open keuzes in dit profiel.`
-                      : "Er zijn nog open keuzes, maar ze vallen buiten de huidige weergave."}
-                </p>
-              </div>
-            </div>
-
-            <div className="vat-summary-strip" aria-label="Samenvatting btw-keuzes">
-              <div className="vat-summary-item vat-summary-danger">
-                <span>Te beoordelen</span>
-                <strong>{numberText(summary.unresolved)}</strong>
-              </div>
-              <div className="vat-summary-item vat-summary-success">
-                <span>Inclusief btw</span>
-                <strong>{numberText(summary.inclusive)}</strong>
-              </div>
-              <div className="vat-summary-item vat-summary-success">
-                <span>Exclusief btw</span>
-                <strong>{numberText(summary.exclusive)}</strong>
-              </div>
-              <div className="vat-summary-item vat-summary-warning">
-                <span>Uitzonderingen</span>
-                <strong>{numberText(summary.allowUnknown)}</strong>
-              </div>
-              <div className="vat-summary-item">
-                <span>Beoordeeld</span>
-                <strong>{numberText(summary.reviewed)}</strong>
-              </div>
-            </div>
-
-            <div className="vat-signal-row">
-              <Badge variant={highConfidenceOpen > 0 ? "info" : "neutral"}>
-                Hoog vertrouwen open: {numberText(highConfidenceOpen)}
-              </Badge>
-              <Badge variant={carefulReviewOpen > 0 ? "warning" : "success"}>
-                Extra aandacht: {numberText(carefulReviewOpen)}
-              </Badge>
-              <span className="muted">
-                {numberText(selectedVisibleRows.length)} van {numberText(visibleRows.length)} zichtbaar geselecteerd
-              </span>
-            </div>
-
-            <div>
-              <FilterBar
-                search={
-                  <div className="search-input">
-                    <Search className="search-input-icon" size={17} aria-hidden="true" />
-                    <input
-                      aria-label="Zoek in btw-keuzes"
-                      className="search-input-control"
-                      placeholder="Zoek leverancier, profiel, bestand of kolom"
-                      type="search"
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                    />
-                    {searchTerm ? (
-                      <button
-                        aria-label="Zoekopdracht wissen"
-                        className="ui-icon-button ui-icon-button-ghost ui-icon-button-sm search-input-clear"
-                        type="button"
-                        onClick={() => setSearchTerm("")}
-                      >
-                        <X size={15} aria-hidden="true" />
-                      </button>
-                    ) : null}
-                  </div>
-                }
-                filters={
-                  <>
-                    <Badge icon={<Filter size={14} aria-hidden="true" />}>Weergave</Badge>
-                    <div className="tabs vat-tabs">
-                      {filters.map((item) => (
-                        <button
-                          className={filter === item.value ? "tab active" : "tab"}
-                          key={item.value}
-                          type="button"
-                          aria-pressed={filter === item.value}
-                          onClick={() => setFilter(item.value)}
-                        >
-                          <span>{item.label}</span>
-                          <span className="vat-tab-count">{numberText(filterCounts[item.value] ?? 0)}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                }
-                actions={
-                  <span className="muted">{numberText(visibleRows.length)} zichtbare kolommen</span>
-                }
-              />
-            </div>
-          </>
-        ) : null}
-      </section>
-
-      {groupedProfiles.map((profile) => {
-        const selectedRows = selectedRowsForProfile(profile.rows);
-        const allVisibleSelected =
-          profile.rows.length > 0 && profile.rows.every((row) => selected[rowKey(row)]);
-        const profileUnresolved = profile.rows.filter(
-          (row) => row.currentVatMode === "unknown" && !row.allowUnknownVatMode
-        ).length;
-        const profileResolved = profile.rows.length - profileUnresolved;
-        const profileReviewed = profile.rows.filter((row) =>
-          Boolean(row.reviewedAt || row.reviewStatus === "reviewed")
-        ).length;
-        const profileProgress = progressPercentage(profileResolved, profile.rows.length);
-        const columns: Array<DataTableColumn<VatMappingReviewRow>> = [
-          {
-            key: "select",
-            header: "Kies",
-            width: "64px",
-            render: (row) => (
-              <Checkbox
-                aria-label={`Selecteer ${row.sourceColumnName} uit ${row.profileName}`}
-                checked={selected[rowKey(row)] ?? false}
-                onChange={(event) =>
-                  setSelected((current) => ({
-                    ...current,
-                    [rowKey(row)]: event.target.checked
-                  }))
-                }
-              />
-            )
-          },
-          {
-            key: "source",
-            header: "Kolom",
-            width: "170px",
-            render: (row) => (
-              <div className="stack-sm">
-                <strong>{row.sourceColumnName}</strong>
-                <small className="muted">Kolom {row.sourceColumnIndex + 1}</small>
-              </div>
-            )
-          },
-          {
-            key: "context",
-            header: "Type",
-            width: "140px",
-            render: (row) => (
-              <div className="vat-row-meta">
-                <Badge variant="neutral">{formatPriceType(row.detectedPriceType)}</Badge>
-                <small className="muted">{formatUnit(row.detectedUnit)}</small>
-              </div>
-            )
-          },
-          {
-            key: "current",
-            header: "Btw-keuze",
-            width: "170px",
-            render: (row) => (
-              <div className="vat-mode-control">
-                <Select
-                  aria-label={`Btw-keuze voor ${row.sourceColumnName}`}
-                  className={`vat-mode-select vat-mode-select-${row.currentVatMode}`}
-                  value={row.currentVatMode}
-                  disabled={isSaving}
-                  onChange={(event) => void updateVatMode(row, event.target.value as VatMode)}
-                >
-                  <option value="unknown">{formatVatChoiceLabel("unknown")}</option>
-                  <option value="inclusive">{formatVatChoiceLabel("inclusive")}</option>
-                  <option value="exclusive">{formatVatChoiceLabel("exclusive")}</option>
-                </Select>
-              </div>
-            )
-          },
-          {
-            key: "suggestion",
-            header: "Voorstel",
-            width: "130px",
-            render: (row) => (
-              <div className="vat-suggestion">
-                <strong>{formatVatMode(row.suggestedVatMode)}</strong>
-                <Badge variant={confidenceVariant(row.confidence)}>
-                  {formatConfidence(row.confidence)}
-                </Badge>
-              </div>
-            )
-          },
-          {
-            key: "reason",
-            header: "Controle",
-            hideOnMobile: true,
-            render: (row) => (
-              <div className="stack-sm">
-                {row.needsReview ? (
-                  <Badge variant="warning" icon={<ShieldAlert size={14} aria-hidden="true" />}>
-                    Controle vereist
-                  </Badge>
-                ) : (
-                  <Badge variant="success">Akkoord</Badge>
-                )}
-                <small className="muted">
-                  <InlineHelp title={row.reason}>{shortReason(row.reason)}</InlineHelp>
-                </small>
-              </div>
-            )
-          },
-          {
-            key: "reviewed",
-            header: "Beoordeeld",
-            width: "96px",
-            render: (row) =>
-              row.reviewedAt || row.reviewStatus === "reviewed" ? (
-                <Badge variant="success">Beoordeeld</Badge>
-              ) : (
-                <Badge variant="neutral">Open</Badge>
-              )
-          }
-        ];
-
-        return (
-          <section
-            className={
-              profileUnresolved > 0 ? "panel vat-profile-panel vat-profile-needs-work" : "panel vat-profile-panel"
-            }
-            key={profile.key}
-          >
-            <div className="vat-profile-header">
-              <div className="vat-profile-heading">
-                <div className="toolbar">
-                  <Badge variant={profileUnresolved > 0 ? "danger" : "success"}>
-                    {profileUnresolved > 0 ? "Actie nodig" : "Compleet"}
-                  </Badge>
-                  <strong className="vat-profile-title">{profile.profileName}</strong>
-                </div>
-                <p className="muted">
-                  {[
-                    profile.supplier,
-                    profile.category,
-                    profile.sourceFileNamePattern ? `Bestand: ${profile.sourceFileNamePattern}` : null
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-                <div
-                  className="vat-progress-track vat-profile-progress"
-                  aria-label={`${profileProgress}% van dit importprofiel afgerond`}
-                >
-                  <span style={{ width: `${profileProgress}%` }} />
-                </div>
-                <div className="toolbar">
-                  <Badge variant={profileUnresolved > 0 ? "danger" : "success"}>
-                    Te beoordelen {numberText(profileUnresolved)}
-                  </Badge>
-                  <Badge variant="success">Afgerond {numberText(profileResolved)}</Badge>
-                  <Badge variant={profileReviewed > 0 ? "info" : "neutral"}>
-                    Beoordeeld {numberText(profileReviewed)}
-                  </Badge>
-                  <Badge variant={profile.allowUnknownVatMode ? "warning" : "success"}>
-                    {profile.allowUnknownVatMode ? "Onbekende btw toegestaan" : "Btw-keuze verplicht"}
-                  </Badge>
-                </div>
-              </div>
-              <div className="vat-profile-actions">
-                <label className="vat-exception-toggle">
-                  <Checkbox
-                    aria-label={`Sta onbekende btw-keuze toe voor ${profile.profileName}`}
-                    checked={profile.allowUnknownVatMode}
-                    disabled={isSaving}
-                    onChange={(event) =>
-                      requestAllowUnknown(profile.profileId, profile.profileName, event.target.checked)
-                    }
-                  />
-                  <span>Onbekend toestaan</span>
-                </label>
-                <Button
-                  variant="secondary"
-                  disabled={isSaving}
-                  onClick={() => setProfileSelection(profile.rows, !allVisibleSelected)}
-                >
-                  {allVisibleSelected ? "Deselecteer zichtbaar" : "Selecteer zichtbaar"}
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={isSaving || selectedRows.length === 0}
-                  onClick={() => requestBulkVatMode(profile.profileName, profile.rows, "inclusive")}
-                >
-                  Zet inclusief
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={isSaving || selectedRows.length === 0}
-                  onClick={() => requestBulkVatMode(profile.profileName, profile.rows, "exclusive")}
-                >
-                  Zet exclusief
-                </Button>
-                <Button
-                  variant="primary"
-                  disabled={isSaving || selectedRows.length === 0}
-                  onClick={() => void markReviewed(profile.rows)}
-                  leftIcon={<CheckCheck size={17} aria-hidden="true" />}
-                >
-                  Beoordeeld
-                </Button>
-                <span className="vat-selected-count">{numberText(selectedRows.length)} geselecteerd</span>
-              </div>
-            </div>
-
-            <DataTable
-              rows={profile.rows}
-              columns={columns}
-              getRowKey={rowKey}
-              density="compact"
-              ariaLabel={`Btw-keuzes voor ${profile.profileName}`}
-              emptyTitle="Geen prijskolommen in deze controle"
-              mobileMode="cards"
-              renderMobileCard={(row) => (
-                <>
-                  <div className="mobile-card-header">
-                    <div className="mobile-card-title">
-                      <strong>{row.sourceColumnName}</strong>
-                      <small className="muted">Kolom {row.sourceColumnIndex + 1}</small>
-                    </div>
-                    <Checkbox
-                      aria-label={`Selecteer ${row.sourceColumnName} uit ${row.profileName}`}
-                      checked={selected[rowKey(row)] ?? false}
-                      onChange={(event) =>
-                        setSelected((current) => ({
-                          ...current,
-                          [rowKey(row)]: event.target.checked
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="mobile-card-meta">
-                    <Badge variant="neutral">{formatPriceType(row.detectedPriceType)}</Badge>
-                    <Badge variant="neutral">{formatUnit(row.detectedUnit)}</Badge>
-                    <Badge variant={confidenceVariant(row.confidence)}>
-                      Voorstel {formatVatMode(row.suggestedVatMode).toLowerCase()}
-                    </Badge>
-                  </div>
-                  <div className="mobile-card-section">
-                    <p className="mobile-card-section-label">Btw-keuze</p>
-                    <Select
-                      aria-label={`Btw-keuze voor ${row.sourceColumnName}`}
-                      className={`vat-mode-select vat-mode-select-${row.currentVatMode}`}
-                      value={row.currentVatMode}
-                      disabled={isSaving}
-                      onChange={(event) => void updateVatMode(row, event.target.value as VatMode)}
-                    >
-                      <option value="unknown">{formatVatChoiceLabel("unknown")}</option>
-                      <option value="inclusive">{formatVatChoiceLabel("inclusive")}</option>
-                      <option value="exclusive">{formatVatChoiceLabel("exclusive")}</option>
-                    </Select>
-                  </div>
-                  <div className="mobile-card-section">
-                    <p className="mobile-card-section-label">Controle</p>
-                    <div className="stack-sm">
-                      {row.needsReview ? (
-                        <Badge variant="warning" icon={<ShieldAlert size={14} aria-hidden="true" />}>
-                          Controle vereist
-                        </Badge>
-                      ) : (
-                        <Badge variant="success">Akkoord</Badge>
-                      )}
-                      <small className="muted">
-                        <InlineHelp title={row.reason}>{shortReason(row.reason)}</InlineHelp>
-                      </small>
-                    </div>
-                  </div>
-                </>
-              )}
-            />
-          </section>
-        );
-      })}
-
-      {!isLoading && groupedProfiles.length === 0 ? (
-        <section className="panel">
-          <div className="empty-state">Geen prijskolommen gevonden voor deze keuze.</div>
-        </section>
+      {error ? (
+        <Alert
+          variant="danger"
+          title="Btw-keuzes niet geladen"
+          description={error}
+          style={{ marginTop: 16 }}
+        />
+      ) : null}
+      {notice ? (
+        <Alert
+          variant="success"
+          title="Wijziging opgeslagen"
+          description={notice}
+          style={{ marginTop: 16 }}
+        />
       ) : null}
 
-      <section className="panel vat-profile-admin">
-        <div className="toolbar" style={{ justifyContent: "space-between" }}>
+      {review ? (
+        <>
+          <div className="vat-signal-row">
+            <Badge variant={highConfidenceOpen > 0 ? "info" : "neutral"}>
+              Hoog vertrouwen open: {numberText(highConfidenceOpen)}
+            </Badge>
+            <Badge variant={carefulReviewOpen > 0 ? "warning" : "success"}>
+              Extra aandacht: {numberText(carefulReviewOpen)}
+            </Badge>
+            <span className="muted">
+              {numberText(selectedVisibleRows.length)} van {numberText(visibleRows.length)} zichtbaar geselecteerd
+            </span>
+          </div>
+
           <div>
-            <p className="eyebrow">Beheer</p>
-            <h2 style={{ margin: 0 }}>Importprofielen</h2>
-            <p className="muted" style={{ margin: "4px 0 0" }}>
-              Actuele routes worden gebruikt voor nieuwe imports en btw-readiness. Gearchiveerde profielen
-              blijven bewaard als oude of vervangen routes.
-            </p>
-          </div>
-          <div className="toolbar">
-            <Badge variant="success">{numberText(profileCounts.active)} actueel</Badge>
-            <Badge variant="neutral">{numberText(profileCounts.archived)} gearchiveerd</Badge>
-          </div>
-        </div>
-        <div className="vat-profile-admin-filters">
-          <FilterBar
-            search={
-              <div className="search-input">
-                <Search className="search-input-icon" size={17} aria-hidden="true" />
-                <input
-                  aria-label="Zoek in importprofielen"
-                  className="search-input-control"
-                  placeholder="Zoek profiel, leverancier, bestand of tabblad"
-                  type="search"
-                  value={profileSearchTerm}
-                  onChange={(event) => setProfileSearchTerm(event.target.value)}
-                />
-                {profileSearchTerm ? (
-                  <button
-                    aria-label="Zoekopdracht voor importprofielen wissen"
-                    className="ui-icon-button ui-icon-button-ghost ui-icon-button-sm search-input-clear"
-                    type="button"
-                    onClick={() => setProfileSearchTerm("")}
-                  >
-                    <X size={15} aria-hidden="true" />
-                  </button>
-                ) : null}
-              </div>
-            }
-            filters={
-              <div className="tabs vat-tabs">
-                {[
-                  { value: "active" as const, label: "Actueel", count: profileCounts.active },
-                  { value: "archived" as const, label: "Gearchiveerd", count: profileCounts.archived },
-                  { value: "all" as const, label: "Alle", count: profileCounts.total }
-                ].map((item) => (
-                  <button
-                    className={profileStatusFilter === item.value ? "tab active" : "tab"}
-                    key={item.value}
-                    type="button"
-                    aria-pressed={profileStatusFilter === item.value}
-                    onClick={() => setProfileStatusFilter(item.value)}
-                  >
-                    <span>{item.label}</span>
-                    <span className="vat-tab-count">{numberText(item.count)}</span>
-                  </button>
-                ))}
-              </div>
-            }
-            actions={
-              <span className="muted">{numberText(visibleProfiles.length)} zichtbare profielen</span>
-            }
-          />
-        </div>
-        <div style={{ marginTop: 16 }}>
-          <DataTable
-            ariaLabel="Importprofielen"
-            columns={profileColumns}
-            density="compact"
-            emptyDescription="Pas de zoekterm of statusfilter aan om meer profielen te tonen."
-            emptyTitle="Geen importprofielen gevonden"
-            getRowKey={(profile) => profile.id}
-            loading={isLoading}
-            mobileMode="cards"
-            renderMobileCard={(profile) => (
-              <div className="mobile-card-section">
-                <div className="mobile-card-header">
-                  <div className="mobile-card-title">
-                    <strong>{profile.name}</strong>
-                    <small className="muted">{profile.supplierName}</small>
-                  </div>
-                  <StatusBadge
-                    status={profile.status}
-                    label={formatImportProfileStatus(profile.status)}
-                    variant={profile.status === "inactive" ? "neutral" : "success"}
+            <FilterBar
+              search={
+                <div className="search-input">
+                  <Search className="search-input-icon" size={17} aria-hidden="true" />
+                  <input
+                    aria-label="Zoek in btw-keuzes"
+                    className="search-input-control"
+                    placeholder="Zoek leverancier, profiel, bestand of kolom"
+                    type="search"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
                   />
                 </div>
-                <div className="mobile-card-meta">
-                  <span>{profile.filePattern ?? "Geen bestandsfilter"}</span>
-                  <span>{profile.sheetPattern ?? "Alle tabbladen"}</span>
-                  {profile.supportsXlsx ? <Badge variant="neutral">xlsx</Badge> : null}
-                  {profile.supportsXls ? <Badge variant="neutral">xls</Badge> : null}
-                  {profile.expectedFileExtension ? (
-                    <Badge variant="info">{profile.expectedFileExtension}</Badge>
-                  ) : null}
-                </div>
-                {canManageProfiles ? (
-                  <div className="mobile-card-actions">
-                    {profile.status === "inactive" ? (
-                      <Button
-                        leftIcon={<RotateCcw size={16} aria-hidden="true" />}
-                        onClick={() => setPendingProfileStatus({ profile, nextStatus: "active" })}
-                        size="sm"
-                        variant="secondary"
+              }
+              filters={
+                <div className="import-filter-group">
+                  <span className="import-filter-label">Weergave</span>
+                  <div className="tabs vat-tabs">
+                    {filters.map((item) => (
+                      <button
+                        className={filter === item.value ? "tab active" : "tab"}
+                        key={item.value}
+                        type="button"
+                        aria-pressed={filter === item.value}
+                        onClick={() => setFilter(item.value)}
                       >
-                        Activeren
-                      </Button>
-                    ) : (
-                      <Button
-                        leftIcon={<Archive size={16} aria-hidden="true" />}
-                        onClick={() => setPendingProfileStatus({ profile, nextStatus: "inactive" })}
-                        size="sm"
-                        variant="danger"
-                      >
-                        Archiveren
-                      </Button>
-                    )}
+                        <span>{item.label}</span>
+                        <span className="vat-tab-count">{numberText(filterCounts[item.value] ?? 0)}</span>
+                      </button>
+                    ))}
                   </div>
-                ) : null}
-              </div>
-            )}
-            rows={visibleProfiles}
+                </div>
+              }
+              actions={<span className="muted">{numberText(visibleRows.length)} zichtbare kolommen</span>}
+            />
+          </div>
+
+          <VatMappingGroups
+            groupedProfiles={groupedProfiles}
+            selected={selected}
+            setSelected={setSelected}
+            onUpdateVatMode={updateVatMode}
+            onBulkSetVatMode={requestBulkVatMode}
+            onMarkReviewed={markReviewed}
+            onAllowUnknown={requestAllowUnknown}
+            canManageProfiles={canManageProfiles}
+            isSaving={isSaving}
           />
-        </div>
-      </section>
+        </>
+      ) : null}
+
+      <ImportProfilesTable
+        visibleProfiles={visibleProfiles}
+        isLoading={isLoading}
+        error={error}
+        profileSearchTerm={profileSearchTerm}
+        setProfileSearchTerm={setProfileSearchTerm}
+        profileStatusFilter={profileStatusFilter}
+        setProfileStatusFilter={setProfileStatusFilter}
+        profileCounts={profileCounts}
+        canManageProfiles={canManageProfiles}
+        setPendingProfileStatus={setPendingProfileStatus}
+      />
     </div>
   );
 }

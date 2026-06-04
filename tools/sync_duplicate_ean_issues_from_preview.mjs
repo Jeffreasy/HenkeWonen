@@ -16,7 +16,7 @@ const toolEnv = loadCatalogToolEnv({ root, argv: process.argv.slice(2) });
 const previewFileArg = optionValue(toolEnv.args, "--preview-file");
 const previewPath = previewFileArg
   ? resolve(root, previewFileArg)
-  : resolve(root, "docs/catalog-import-preview.json");
+  : resolve(root, "docs/generated/catalog-import-preview.json");
 const dateStamp = optionValue(toolEnv.args, "--date-stamp") ?? new Date().toISOString().slice(0, 10);
 const batchSizeRaw = optionValue(toolEnv.args, "--batch-size") ?? "25";
 const batchSizeNumber = Number(batchSizeRaw);
@@ -123,7 +123,7 @@ function buildMarkdown({ groups, summary, syncResult, target }) {
   const lines = [
     `# Duplicate-EAN review - ${dateStamp}`,
     "",
-    "Deze export is opgebouwd vanuit `docs/catalog-import-preview.json` en daarna batchgewijs gesynchroniseerd naar Convex development.",
+    "Deze export is opgebouwd vanuit `docs/generated/catalog-import-preview.json` en daarna batchgewijs gesynchroniseerd naar Convex development.",
     "",
     "## Samenvatting",
     "",
@@ -191,7 +191,7 @@ const syncTotals = { created: 0, updated: 0, skipped: 0, resolvedStale: 0 };
 const batches = chunk(groups, batchSize);
 
 for (const [index, batch] of batches.entries()) {
-  const result = await client.mutation(api.catalogReview.syncDuplicateEanIssues, {
+  const result = await client.mutation(api.catalog.review.syncDuplicateEanIssues, {
     tenantSlug: toolEnv.tenantSlug,
     actor,
     groups: batch,
@@ -217,7 +217,7 @@ for (const [index, batch] of batches.entries()) {
   }
 }
 
-const finalize = await client.mutation(api.catalogReview.finalizeDuplicateEanIssueSync, {
+const finalize = await client.mutation(api.catalog.review.finalizeDuplicateEanIssueSync, {
   tenantSlug: toolEnv.tenantSlug,
   actor,
   syncRunId

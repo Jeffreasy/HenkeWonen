@@ -33,15 +33,15 @@ De map is geconsolideerd: klantdocumentatie staat apart, actuele technische same
 
 ## Actuele gegenereerde bestanden
 
-Deze drie bestanden blijven bewust in de root van `docs`, omdat `npm run catalog:preview` ze hier genereert.
+Alle automatisch gegenereerde review- en previewbestanden zijn georganiseerd in de map [generated](./generated/).
 
 | Bestand | Functie |
 | --- | --- |
-| [catalog-import-summary.md](./catalog-import-summary.md) | Primaire compacte cataloguspreview voor review |
-| [catalog-import-summary.json](./catalog-import-summary.json) | Machine-readable cataloguspreview |
-| [catalog-import-sample.md](./catalog-import-sample.md) | Kleine sample met product-, warning- en btw-regels |
-
-Belangrijk: verplaats deze bestanden pas als het previewscript ook wordt aangepast.
+| [catalog-import-summary.md](./generated/catalog-import-summary.md) | Primaire compacte cataloguspreview voor review |
+| [catalog-import-summary.json](./generated/catalog-import-summary.json) | Machine-readable cataloguspreview |
+| [catalog-import-sample.md](./generated/catalog-import-sample.md) | Kleine sample met product-, warning- en btw-regels |
+| [catalog-import-preview.json](./generated/catalog-import-preview.json) | Volledige catalogus payload voor de Node batch-import tool |
+| [data-audit.md](./generated/data-audit.md) | Overzicht en risicoanalyse van de lokale Excel bronbestanden |
 
 ## Huidige hoofdstatus
 
@@ -51,12 +51,14 @@ Belangrijk: verplaats deze bestanden pas als het previewscript ook wordt aangepa
 - Dubbele EAN-waarschuwingen zijn review-only en worden nooit automatisch samengevoegd.
 - De cataloguspreview blijft de primaire bron voor importtellingen.
 
-## Niet zomaar verplaatsen
+## Locatiegevoelige bestanden
 
-Deze bestanden zijn gekoppeld aan scripts, releasebeslissingen of actuele review:
+Deze bestanden zijn gekoppeld aan de verwerkings- en importscripts:
 
-- `catalog-import-summary.md`
-- `catalog-import-summary.json`
-- `catalog-import-sample.md`
-- `release-readiness/vat-mapping/vat-mapping-decisions.json`
-- `release-readiness/vat-mapping/vat-mapping-current-state-2026-04-30.json`
+- `docs/generated/catalog-import-summary.md`
+- `docs/generated/catalog-import-summary.json`
+- `docs/generated/catalog-import-sample.md`
+- `docs/generated/catalog-import-preview.json`
+- `docs/audits/reconciliation/02_source_inventory.md` (Gegenereerd door reconciliatiescript)
+- `docs/release-readiness/vat-mapping/vat-mapping-decisions.json`
+- `docs/release-readiness/vat-mapping/vat-mapping-current-state-2026-04-30.json`

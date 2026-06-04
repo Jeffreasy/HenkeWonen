@@ -9,7 +9,7 @@ const args = [
   "--env-file",
   ".env.local",
   "--run",
-  "demoSeed:run"
+  "seed/demo:run"
 ];
 
 const result = spawnSync("npx", args, {

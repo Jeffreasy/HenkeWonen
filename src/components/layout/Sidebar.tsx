@@ -1,26 +1,22 @@
-import { ChevronDown, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
-import { classNames } from "../ui/classNames";
-import { LogoutButton } from "./LogoutButton";
 import {
   activePortalNavItem,
   getCurrentPathname,
   isActivePortalItem,
   quickbarPortalItems,
-  roleLabel,
   visiblePortalNavGroups,
   type PortalNavGroup
 } from "./portalNavigation";
+import { SidebarNav } from "./SidebarNav";
+import { SidebarSessionCard } from "./SidebarSessionCard";
+import { PortalQuickbar } from "./PortalQuickbar";
 
 type SidebarProps = {
   session: AppSession;
   pathname?: string;
 };
-
-function groupHasActiveItem(group: PortalNavGroup, currentPathname: string) {
-  return group.items.some((item) => isActivePortalItem(currentPathname, item));
-}
 
 export default function Sidebar({ session, pathname }: SidebarProps) {
   const currentPathname = getCurrentPathname(pathname);
@@ -46,69 +42,12 @@ export default function Sidebar({ session, pathname }: SidebarProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  function isGroupOpen(group: PortalNavGroup) {
-    if (!group.collapsible) {
-      return true;
-    }
-
-    return groupHasActiveItem(group, currentPathname) || (openGroups[group.id] ?? false);
-  }
-
   function toggleGroup(group: PortalNavGroup) {
-    const nextValue = !isGroupOpen(group);
+    const isGroupActive = group.items.some((item) => isActivePortalItem(currentPathname, item));
+    const isOpen = !group.collapsible || isGroupActive || (openGroups[group.id] ?? false);
 
-    setOpenGroups((current) => ({ ...current, [group.id]: nextValue }));
+    setOpenGroups((current) => ({ ...current, [group.id]: !isOpen }));
   }
-
-  const navigation = (
-    <nav className="nav-list" aria-label="Navigatie">
-      {visibleNavGroups.map((group) => {
-        const isOpen = isGroupOpen(group);
-        const isGroupActive = groupHasActiveItem(group, currentPathname);
-
-        return (
-          <div className={classNames("nav-group", isGroupActive && "nav-group-active")} key={group.id}>
-            {group.collapsible ? (
-              <button
-                aria-controls={`nav-group-${group.id}`}
-                aria-expanded={isOpen}
-                className="nav-group-toggle"
-                type="button"
-                onClick={() => toggleGroup(group)}
-              >
-                <span>{group.label}</span>
-                <ChevronDown size={15} aria-hidden="true" />
-              </button>
-            ) : (
-              <p className="nav-group-label">{group.label}</p>
-            )}
-            <div
-              className={classNames("nav-group-items", group.collapsible && !isOpen && "nav-group-items-collapsed")}
-              id={`nav-group-${group.id}`}
-            >
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = isActivePortalItem(currentPathname, item);
-
-                return (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    className={isActive ? "nav-link active" : "nav-link"}
-                    aria-current={currentPathname === item.href ? "page" : isActive ? "location" : undefined}
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Icon size={17} aria-hidden="true" />
-                    <span>{item.label}</span>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </nav>
-  );
 
   return (
     <>
@@ -140,34 +79,19 @@ export default function Sidebar({ session, pathname }: SidebarProps) {
             <h1 className="brand-title">Winkel</h1>
           </div>
 
-          {navigation}
+          <SidebarNav
+            visibleNavGroups={visibleNavGroups}
+            currentPathname={currentPathname}
+            openGroups={openGroups}
+            onToggleGroup={toggleGroup}
+            onLinkClick={() => setIsMenuOpen(false)}
+          />
 
-          <div className="session-card">
-            <p>{session.name ?? session.email}</p>
-            <p className="role">{roleLabel(session.role)}</p>
-            <LogoutButton className="logout-button-sidebar" />
-          </div>
+          <SidebarSessionCard session={session} />
         </div>
       </aside>
 
-      <nav className="mobile-quickbar" aria-label="Snelle navigatie">
-        {quickbarItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = isActivePortalItem(currentPathname, item);
-
-          return (
-            <a
-              aria-current={currentPathname === item.href ? "page" : isActive ? "location" : undefined}
-              className={isActive ? "mobile-quickbar-link active" : "mobile-quickbar-link"}
-              href={item.href}
-              key={item.href}
-            >
-              <Icon size={18} aria-hidden="true" />
-              <span>{item.label}</span>
-            </a>
-          );
-        })}
-      </nav>
+      <PortalQuickbar quickbarItems={quickbarItems} currentPathname={currentPathname} />
     </>
   );
 }

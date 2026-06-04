@@ -12,7 +12,7 @@ import {
 } from "./catalog_tooling_env.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const previewPath = resolve(root, "docs/catalog-import-preview.json");
+const previewPath = resolve(root, "docs/generated/catalog-import-preview.json");
 const toolEnv = loadCatalogToolEnv({ root, argv: process.argv.slice(2) });
 
 if (!hasFlag(toolEnv.args, "--legacy-direct-confirm")) {
@@ -80,7 +80,7 @@ console.log(
 );
 
 for (let index = 0; index < chunks.length; index += 1) {
-  const result = await client.mutation(api.catalogImport.importRows, {
+  const result = await client.mutation(api.catalog.import.importRows, {
     tenantSlug,
     actor,
     rows: chunks[index],

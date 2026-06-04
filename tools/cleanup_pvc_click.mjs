@@ -39,7 +39,7 @@ let iterations = 0;
 
 while (true) {
   iterations += 1;
-  const result = await client.mutation(api.catalogImport.deleteProductsByCategoryChunk, {
+  const result = await client.mutation(api.catalog.import.deleteProductsByCategoryChunk, {
     tenantSlug: toolEnv.tenantSlug,
     actor,
     categorySlug: CATEGORY_SLUG,

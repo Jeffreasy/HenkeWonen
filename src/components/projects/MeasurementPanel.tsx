@@ -385,11 +385,11 @@ export default function MeasurementPanel({
     setError(null);
 
     try {
-      const tenant = await client.query(api.tenants.getBySlug, { slug: tenantId });
+      const tenant = await client.query(api.beheer.tenants.getBySlug, { slug: tenantId });
       const resolvedTenantId = String(tenant?._id ?? tenantId);
       setTenantConvexId(resolvedTenantId);
 
-      const result = await client.query(api.measurements.getForProject, {
+      const result = await client.query(api.projecten.measurements.getForProject, {
         tenantId: resolvedTenantId as Id<"tenants">,
         projectId: projectId as Id<"projects">
       });
@@ -564,7 +564,7 @@ export default function MeasurementPanel({
     setNotice(null);
 
     try {
-      await client.mutation(api.measurements.createForProject, {
+      await client.mutation(api.projecten.measurements.createForProject, {
         tenantId: tenantConvexId as Id<"tenants">,
         actor: mutationActorFromSession(session),
         projectId: projectId as Id<"projects">,
@@ -601,7 +601,7 @@ export default function MeasurementPanel({
     setNotice(null);
 
     try {
-      await context.client.mutation(api.measurements.updateMeasurement, {
+      await context.client.mutation(api.projecten.measurements.updateMeasurement, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
         measurementId: context.measurementId,
@@ -644,7 +644,7 @@ export default function MeasurementPanel({
     setNotice(null);
 
     try {
-      await context.client.mutation(api.measurements.addMeasurementRoom, {
+      await context.client.mutation(api.projecten.measurements.addMeasurementRoom, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
         measurementId: context.measurementId,
@@ -717,7 +717,7 @@ export default function MeasurementPanel({
     setNotice(null);
 
     try {
-      await context.client.mutation(api.measurements.addMeasurementLine, {
+      await context.client.mutation(api.projecten.measurements.addMeasurementLine, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
         measurementId: context.measurementId,
@@ -759,7 +759,7 @@ export default function MeasurementPanel({
     setNotice(null);
 
     try {
-      await context.client.mutation(api.measurements.updateMeasurementLineStatus, {
+      await context.client.mutation(api.projecten.measurements.updateMeasurementLineStatus, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
         lineId: lineId as Id<"measurementLines">,
@@ -807,7 +807,7 @@ export default function MeasurementPanel({
     setNotice(null);
 
     try {
-      await context.client.mutation(api.measurements.updateMeasurementRoom, {
+      await context.client.mutation(api.projecten.measurements.updateMeasurementRoom, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
         roomId: editingRoomId as Id<"measurementRooms">,
@@ -847,7 +847,7 @@ export default function MeasurementPanel({
     setNotice(null);
 
     try {
-      await context.client.mutation(api.measurements.deleteMeasurementRoom, {
+      await context.client.mutation(api.projecten.measurements.deleteMeasurementRoom, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
         roomId: pendingRoomDelete._id as Id<"measurementRooms">
@@ -898,7 +898,7 @@ export default function MeasurementPanel({
     setNotice(null);
 
     try {
-      await context.client.mutation(api.measurements.updateMeasurementLine, {
+      await context.client.mutation(api.projecten.measurements.updateMeasurementLine, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
         lineId: line._id as Id<"measurementLines">,
@@ -945,7 +945,7 @@ export default function MeasurementPanel({
     setNotice(null);
 
     try {
-      await context.client.mutation(api.measurements.deleteMeasurementLine, {
+      await context.client.mutation(api.projecten.measurements.deleteMeasurementLine, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
         lineId: pendingLineDelete._id as Id<"measurementLines">

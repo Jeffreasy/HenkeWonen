@@ -25,7 +25,7 @@ from audit_excel_data import DATA_DIR, ROOT, clean_text, safe_sample  # noqa: E4
 from build_catalog_import import converted_xlsx_for, parse_workbook  # noqa: E402
 
 
-AUDIT_DIR = ROOT / "docs" / "audit"
+AUDIT_DIR = ROOT / "docs" / "audits" / "reconciliation"
 INVENTORY_OUT = AUDIT_DIR / "02_source_inventory.md"
 RECONCILIATION_OUT = AUDIT_DIR / "03_reconciliation_report.xlsx"
 TENANT_SLUG = "henke-wonen"
@@ -234,6 +234,7 @@ def convex_run(context: ToolContext, query: str) -> Any:
         command,
         cwd=ROOT,
         text=True,
+        encoding="utf-8",
         capture_output=True,
         check=False,
         env=env,
@@ -243,99 +244,47 @@ def convex_run(context: ToolContext, query: str) -> Any:
     return parse_json_output(result.stdout)
 
 
-def convex_page(context: ToolContext, table_name: str, mapper: str, cursor: str | None) -> dict[str, Any]:
-    cursor_literal = json.dumps(cursor)
-    tenant_slug = json.dumps(context.tenant_slug)
-    query = f"""
-const tenant = await ctx.db.query('tenants').withIndex('by_slug', q => q.eq('slug', {tenant_slug})).unique();
-const result = await ctx.db
-  .query('{table_name}')
-  .withIndex('by_tenant', q => q.eq('tenantId', tenant._id))
-  .paginate({{ cursor: {cursor_literal}, numItems: 2000 }});
-return {{
-  page: result.page.map({mapper}),
-  continueCursor: result.continueCursor,
-  isDone: result.isDone,
-}};
-"""
-    return convex_run(context, query)
-
-
-def convex_collect_paged(context: ToolContext, table_name: str, mapper: str) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    cursor: str | None = None
-    while True:
-        page = convex_page(context, table_name, mapper, cursor)
-        rows.extend(page["page"])
-        if page.get("isDone"):
-            break
-        cursor = page.get("continueCursor")
-    return rows
-
-
 def convex_snapshot(context: ToolContext) -> dict[str, list[dict[str, Any]]]:
-    tenant_slug = json.dumps(context.tenant_slug)
-    suppliers = convex_run(
-        context,
-        """
-const tenant = await ctx.db.query('tenants').withIndex('by_slug', q => q.eq('slug', TENANT_SLUG_VALUE)).unique();
-const suppliers = await ctx.db.query('suppliers').withIndex('by_tenant', q => q.eq('tenantId', tenant._id)).collect();
-return suppliers.map((item) => ({ id: String(item._id), name: item.name }));
-""".replace("TENANT_SLUG_VALUE", tenant_slug)
-    )
-    import_profiles = convex_run(
-        context,
-        """
-const tenant = await ctx.db.query('tenants').withIndex('by_slug', q => q.eq('slug', TENANT_SLUG_VALUE)).unique();
-const importProfiles = await ctx.db.query('importProfiles').withIndex('by_tenant', q => q.eq('tenantId', tenant._id)).collect();
-return importProfiles.map((item) => ({
-  id: String(item._id),
-  supplierName: item.supplierName,
-  name: item.name,
-  filePattern: item.filePattern ?? null,
-  expectedFileExtension: item.expectedFileExtension ?? null,
-  supportsXlsx: item.supportsXlsx,
-  supportsXls: item.supportsXls,
-  status: item.status,
-}));
-""".replace("TENANT_SLUG_VALUE", tenant_slug)
-    )
+    node = shutil.which("node")
+    if not node:
+        raise SystemExit("node was not found; cannot retrieve Convex snapshot.")
 
-    products = convex_collect_paged(
-        context,
-        "products",
-        """(item) => ({
-    id: String(item._id),
-    supplierId: item.supplierId ? String(item.supplierId) : null,
-    articleNumber: item.articleNumber ?? null,
-    name: item.name,
-    status: item.status,
-  })""",
+    snapshot_script = ROOT / "tools" / "fetch_convex_snapshot.mjs"
+    command = [node, str(snapshot_script)]
+
+    command.extend(["--tenant", context.tenant_slug])
+    if context.target_option:
+        command.extend(["--target", context.target_option])
+    if context.skip_env_file:
+        command.append("--no-env-file")
+    elif context.env_file:
+        command.extend(["--env-file", str(context.env_file)])
+
+    env = os.environ.copy()
+    if context.convex_deployment:
+        env["CONVEX_DEPLOYMENT"] = context.convex_deployment
+    if context.convex_url:
+        env["PUBLIC_CONVEX_URL"] = context.convex_url
+
+    print("Fetching Convex snapshot using Node script...")
+    result = subprocess.run(
+        command,
+        cwd=ROOT,
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        check=False,
+        env=env,
     )
-    product_prices = convex_collect_paged(
-        context,
-        "productPrices",
-        """(item) => ({
-    id: String(item._id),
-    productId: String(item.productId),
-    sourceKey: item.sourceKey ?? null,
-    sourceFileName: item.sourceFileName ?? null,
-    sourceSheetName: item.sourceSheetName ?? null,
-    sourceRowNumber: item.sourceRowNumber ?? null,
-    sourceColumnIndex: item.sourceColumnIndex ?? null,
-    sourceColumnName: item.sourceColumnName ?? null,
-    sourceValue: item.sourceValue ?? null,
-    amount: item.amount,
-    priceType: item.priceType,
-    vatMode: item.vatMode,
-  })""",
-    )
-    return {
-        "suppliers": suppliers,
-        "products": products,
-        "productPrices": product_prices,
-        "importProfiles": import_profiles,
-    }
+    if result.returncode != 0:
+        raise SystemExit(result.stderr.strip() or result.stdout.strip())
+
+    snapshot_path = ROOT / "docs" / "generated" / "reconciliation-snapshot.json"
+    if not snapshot_path.exists():
+        raise SystemExit(f"Snapshot file not found at {snapshot_path}")
+
+    return json.loads(snapshot_path.read_text(encoding="utf-8"))
+
 
 
 def parse_excel_articles(path: Path) -> set[str]:
@@ -413,7 +362,7 @@ def sampled_articles(article_numbers: set[str]) -> set[str]:
     return set(sampled)
 
 
-def raw_cell_matches(path: Path, price: dict[str, Any]) -> tuple[bool, str | None]:
+def raw_cell_matches(workbook, price: dict[str, Any]) -> tuple[bool, str | None]:
     row_number = price.get("sourceRowNumber")
     column_index = price.get("sourceColumnIndex")
     sheet_name = price.get("sourceSheetName")
@@ -423,15 +372,9 @@ def raw_cell_matches(path: Path, price: dict[str, Any]) -> tuple[bool, str | Non
         return False, "source_column_index missing"
     if not sheet_name:
         return False, "source_sheet_name missing"
+    if not workbook:
+        return False, "workbook is not open / missing"
 
-    analysis_path = converted_xlsx_for(path)
-    if analysis_path is None:
-        return False, "legacy .xls conversion missing"
-
-    try:
-        workbook = load_workbook(analysis_path, read_only=True, data_only=True)
-    except Exception as exc:  # pragma: no cover - surfaced in audit output
-        return False, f"workbook open failed: {exc}"
     try:
         resolved_sheet_name = sheet_name
         if resolved_sheet_name not in workbook.sheetnames:
@@ -451,8 +394,74 @@ def raw_cell_matches(path: Path, price: dict[str, Any]) -> tuple[bool, str | Non
         raw_value = worksheet.cell(row=row_number, column=int(column_index) + 1).value
         if safe_sample(raw_value) != str(price.get("sourceValue") or ""):
             return False, "matching source row/cell missing"
-    finally:
-        workbook.close()
+    except Exception as exc:
+        return False, f"cell read error: {exc}"
+    return True, None
+
+
+def build_cells_cache(workbook, prices_to_check: list[dict[str, Any]]) -> dict[tuple[str, int, int], Any]:
+    sheet_to_coords: dict[str, set[tuple[int, int]]] = defaultdict(set)
+    for price in prices_to_check:
+        sheet_name = price.get("sourceSheetName")
+        row_num = price.get("sourceRowNumber")
+        col_idx = price.get("sourceColumnIndex")
+        if sheet_name and row_num is not None and col_idx is not None:
+            resolved_sheet_name = sheet_name
+            if resolved_sheet_name not in workbook.sheetnames:
+                resolved_sheet_name = next(
+                    (
+                        candidate
+                        for candidate in workbook.sheetnames
+                        if clean_text(candidate) == clean_text(sheet_name)
+                    ),
+                    "",
+                )
+            if resolved_sheet_name:
+                sheet_to_coords[resolved_sheet_name].add((row_num, int(col_idx) + 1))
+
+    cells_cache = {}
+    for sheet_name, coords in sheet_to_coords.items():
+        if not coords:
+            continue
+        try:
+            worksheet = workbook[sheet_name]
+            max_needed_row = max(row for row, col in coords)
+            max_col = max(col for row, col in coords)
+            
+            coords_by_row = defaultdict(list)
+            for row_num, col_num in coords:
+                coords_by_row[row_num].append(col_num)
+
+            for r_idx, row in enumerate(worksheet.iter_rows(min_row=1, max_row=max_needed_row, min_col=1, max_col=max_col, values_only=True), start=1):
+                if r_idx in coords_by_row:
+                    for col_num in coords_by_row[r_idx]:
+                        val = row[col_num - 1] if col_num <= len(row) else None
+                        cells_cache[(sheet_name.lower(), r_idx, col_num)] = val
+        except Exception as exc:
+            pass
+            
+    return cells_cache
+
+
+def raw_cell_matches_cached(cells_cache: dict[tuple[str, int, int], Any], price: dict[str, Any]) -> tuple[bool, str | None]:
+    row_number = price.get("sourceRowNumber")
+    column_index = price.get("sourceColumnIndex")
+    sheet_name = price.get("sourceSheetName")
+    if row_number is None:
+        return False, "source_row_number missing"
+    if column_index is None:
+        return False, "source_column_index missing"
+    if not sheet_name:
+        return False, "source_sheet_name missing"
+
+    cache_key = (sheet_name.lower(), row_number, int(column_index) + 1)
+    if cache_key not in cells_cache:
+        return False, "matching source cell not in cache"
+        
+    raw_value = cells_cache[cache_key]
+    if safe_sample(raw_value) != str(price.get("sourceValue") or ""):
+        return False, f"expected: {price.get('sourceValue')}, got: {safe_sample(raw_value)}"
+        
     return True, None
 
 
@@ -480,83 +489,109 @@ def analyze_sources(context: ToolContext, snapshot: dict[str, list[dict[str, Any
         if article_number:
             articles_by_file[file_name].add(str(article_number))
 
+    progress_file = ROOT / "docs" / "generated" / "reconcile-progress.txt"
+    progress_file.parent.mkdir(parents=True, exist_ok=True)
+
     audits: list[SourceAudit] = []
-    for path in source_files(context):
+    files_list = source_files(context)
+    for idx, path in enumerate(files_list, start=1):
         file_name = path.name
+        progress_file.write_text(f"Processing file {idx}/{len(files_list)}: {file_name}", encoding="utf-8")
         profile_name = profile_for_file(path, snapshot["importProfiles"])
-        excel_articles = parse_excel_articles(path)
-        convex_articles = articles_by_file.get(file_name, set())
-        matched_articles = excel_articles & convex_articles
         price_rows = prices_by_file.get(file_name, [])
 
-        if excel_articles:
-            coverage_pct = round((len(matched_articles) / len(excel_articles)) * 100, 1)
+        if not price_rows:
+            excel_articles = set()
+            matched_articles = set()
+            coverage_pct = 0.0
+            status = "NO_PROFILE" if not profile_name else "NOT_IMPORTED"
+            sample = set()
         else:
-            coverage_pct = None
+            excel_articles = parse_excel_articles(path)
+            convex_articles = articles_by_file.get(file_name, set())
+            matched_articles = excel_articles & convex_articles
+            if excel_articles:
+                coverage_pct = round((len(matched_articles) / len(excel_articles)) * 100, 1)
+            else:
+                coverage_pct = None
 
-        if not price_rows and not profile_name:
-            status = "NO_PROFILE"
-        elif not price_rows:
-            status = "NOT_IMPORTED"
-        elif coverage_pct is not None and coverage_pct >= 99.5:
-            status = "COVERED"
-        else:
-            status = "PARTIAL"
+            if coverage_pct is not None and coverage_pct >= 99.5:
+                status = "COVERED"
+            else:
+                status = "PARTIAL"
+            sample = sampled_articles(convex_articles)
 
-        sample = sampled_articles(convex_articles)
         deviations: list[dict[str, Any]] = []
         untraced: list[dict[str, Any]] = []
         vat_open = sum(1 for price in price_rows if price.get("vatMode") == "unknown")
 
         if status in {"COVERED", "PARTIAL"}:
-            for price in price_rows:
-                product = products_by_id.get(price["productId"], {})
-                article_number = product.get("articleNumber")
-                if not article_number or str(article_number) not in sample:
-                    continue
-                traced, reason = raw_cell_matches(path, price)
-                if not traced:
-                    untraced.append(
-                        {
-                            "file": file_name,
-                            "article": article_number,
-                            "product": product.get("name"),
-                            "source_row": price.get("sourceRowNumber"),
-                            "source_value": price.get("sourceValue"),
-                            "price_type": price.get("priceType"),
-                            "vat_mode": price.get("vatMode"),
-                            "reason": reason,
-                        }
-                    )
-                    continue
-                source_number = strict_number(price.get("sourceValue"))
-                amount = strict_number(price.get("amount"))
-                if source_number is None or amount is None:
-                    untraced.append(
-                        {
-                            "file": file_name,
-                            "article": article_number,
-                            "product": product.get("name"),
-                            "source_row": price.get("sourceRowNumber"),
-                            "source_value": price.get("sourceValue"),
-                            "price_type": price.get("priceType"),
-                            "vat_mode": price.get("vatMode"),
-                            "reason": "numeric source value missing",
-                        }
-                    )
-                    continue
-                delta = amount - source_number
-                if abs(delta) > DEVIATION_THRESHOLD:
-                    deviations.append(
-                        {
-                            "file": file_name,
-                            "article": article_number,
-                            "source_row": price.get("sourceRowNumber"),
-                            "source_value": price.get("sourceValue"),
-                            "amount_convex": price.get("amount"),
-                            "delta": delta,
-                        }
-                    )
+            analysis_path = converted_xlsx_for(path)
+            workbook = None
+            if analysis_path and analysis_path.exists():
+                try:
+                    workbook = load_workbook(analysis_path, read_only=True, data_only=True)
+                except Exception as exc:
+                    pass
+            try:
+                prices_to_check = []
+                for price in price_rows:
+                    product = products_by_id.get(price["productId"], {})
+                    article_number = product.get("articleNumber")
+                    if article_number and str(article_number) in sample:
+                        prices_to_check.append(price)
+
+                cells_cache = build_cells_cache(workbook, prices_to_check) if workbook else {}
+
+                for price in prices_to_check:
+                    product = products_by_id.get(price["productId"], {})
+                    article_number = product.get("articleNumber")
+                    traced, reason = raw_cell_matches_cached(cells_cache, price)
+                    if not traced:
+                        untraced.append(
+                            {
+                                "file": file_name,
+                                "article": article_number,
+                                "product": product.get("name"),
+                                "source_row": price.get("sourceRowNumber"),
+                                "source_value": price.get("sourceValue"),
+                                "price_type": price.get("priceType"),
+                                "vat_mode": price.get("vatMode"),
+                                "reason": reason,
+                            }
+                        )
+                        continue
+                    source_number = strict_number(price.get("sourceValue"))
+                    amount = strict_number(price.get("amount"))
+                    if source_number is None or amount is None:
+                        untraced.append(
+                            {
+                                "file": file_name,
+                                "article": article_number,
+                                "product": product.get("name"),
+                                "source_row": price.get("sourceRowNumber"),
+                                "source_value": price.get("sourceValue"),
+                                "price_type": price.get("priceType"),
+                                "vat_mode": price.get("vatMode"),
+                                "reason": "numeric source value missing",
+                            }
+                        )
+                        continue
+                    delta = amount - source_number
+                    if abs(delta) > DEVIATION_THRESHOLD:
+                        deviations.append(
+                            {
+                                "file": file_name,
+                                "article": article_number,
+                                "source_row": price.get("sourceRowNumber"),
+                                "source_value": price.get("sourceValue"),
+                                "amount_convex": price.get("amount"),
+                                "delta": delta,
+                            }
+                        )
+            finally:
+                if workbook:
+                    workbook.close()
 
         verdict = verdict_for(status, len(deviations), len(untraced), vat_open)
         audits.append(
@@ -608,7 +643,7 @@ def markdown_inventory(audits: list[SourceAudit]) -> str:
     lines.extend(
         [
             "",
-            f"[docs/audit/02_source_inventory.md] | covered: {covered}/{len(audits)} | deviations: {total_deviations} | untraced: {total_untraced} | vat_open: {total_vat_open} | {overall}",
+            f"[docs/audits/reconciliation/02_source_inventory.md] | covered: {covered}/{len(audits)} | deviations: {total_deviations} | untraced: {total_untraced} | vat_open: {total_vat_open} | {overall}",
             "",
         ]
     )

@@ -277,8 +277,8 @@ function buildHumanDecisionMarkdown(rows) {
 
 const convexUrl = toolEnv.convexUrl;
 const client = new ConvexHttpClient(convexUrl);
-const review = await client.query(api.catalogReview.vatMappingReview, { tenantSlug });
-const readiness = await client.query(api.catalogReview.productionReadiness, { tenantSlug });
+const review = await client.query(api.catalog.review.vatMappingReview, { tenantSlug });
+const readiness = await client.query(api.catalog.review.productionReadiness, { tenantSlug });
 const rows = enrichRows(review.rows);
 const currentState = {
   tenantSlug,

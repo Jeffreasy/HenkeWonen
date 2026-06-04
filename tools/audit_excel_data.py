@@ -14,7 +14,7 @@ from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "DATA"
-OUT_DIR = ROOT / "docs"
+OUT_DIR = ROOT / "docs" / "generated"
 CONVERTED_DIR = ROOT / ".audit-cache" / "converted-xls"
 
 
@@ -461,7 +461,7 @@ def build_markdown(audit: dict[str, Any]) -> str:
 
 
 def main() -> None:
-    OUT_DIR.mkdir(exist_ok=True)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
     files = sorted(
         [
             path

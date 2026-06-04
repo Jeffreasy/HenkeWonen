@@ -13,13 +13,13 @@ export async function syncSessionToConvex(session: AppSession) {
 
   const client = new ConvexHttpClient(convexUrl);
   const syncToken = await createConvexSyncToken(session);
-  const tenantId = await client.mutation(api.tenants.ensureTenant, {
+  const tenantId = await client.mutation(api.beheer.tenants.ensureTenant, {
     slug: session.tenantId,
     name: tenantName,
     syncToken
   });
 
-  await client.mutation(api.users.ensureUser, {
+  await client.mutation(api.beheer.users.ensureUser, {
     tenantId,
     externalUserId: session.userId,
     email: session.email,

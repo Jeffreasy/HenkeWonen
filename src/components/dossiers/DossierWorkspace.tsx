@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
-import { formatDate } from "../../lib/dates";
 import {
   formatCustomerStatus,
   formatProjectStatus,
@@ -11,14 +10,9 @@ import {
 import { formatEuro } from "../../lib/money";
 import type { PortalCustomer, PortalProject, QuoteStatus } from "../../lib/portalTypes";
 import { Alert } from "../ui/Alert";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { Field } from "../ui/Field";
-import { FilterBar } from "../ui/FilterBar";
-import { SearchInput } from "../ui/SearchInput";
-import { SectionHeader } from "../ui/SectionHeader";
-import { Select } from "../ui/Select";
-import { StatCard } from "../ui/StatCard";
-import { StatusBadge } from "../ui/StatusBadge";
+import { DossierStats } from "./DossierStats";
+import { DossierSearchPanel, type DossierType, type DossierSearchRow } from "./DossierSearchPanel";
+import { DossierActions } from "./DossierActions";
 
 type DossierWorkspaceProps = {
   session: AppSession;
@@ -46,38 +40,15 @@ type DossierQuoteSummary = {
   updatedAt: number;
 };
 
-type DossierType = "all" | "customer" | "project" | "quote";
-
-type DossierSearchRow = {
-  id: string;
-  type: Exclude<DossierType, "all">;
-  typeLabel: string;
-  title: string;
-  subtitle: string;
-  status: string;
-  statusLabel: string;
-  href: string;
-  updatedAt: number;
-  amountLabel?: string;
-  searchText: string;
-};
-
 const emptyWorkspace: DossierWorkspaceResult = {
   customers: [],
   projects: [],
   quotes: []
 };
 
-const typeOptions: Array<{ value: DossierType; label: string }> = [
-  { value: "customer", label: "Klanten" },
-  { value: "all", label: "Alles" },
-  { value: "project", label: "Projecten" },
-  { value: "quote", label: "Offertes" }
-];
-
 const defaultDossierTypeFilter: DossierType = "customer";
 const dossierTypePreferenceKey = "henke-wonen:dossier-type-filter";
-const dossierTypes = new Set<DossierType>(typeOptions.map((option) => option.value));
+const dossierTypes = new Set<DossierType>(["all", "customer", "project", "quote"]);
 
 function joinParts(parts: Array<string | number | undefined | null>) {
   return parts.filter(Boolean).join(" - ");
@@ -264,152 +235,26 @@ export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
     (quote) => quote.status === "draft" || quote.status === "sent"
   );
 
-  const columns: Array<DataTableColumn<DossierSearchRow>> = [
-    {
-      key: "dossier",
-      header: "Dossier",
-      priority: "primary",
-      render: (row) => (
-        <div className="stack-sm">
-          <a href={row.href}>
-            <strong>{row.title}</strong>
-          </a>
-          <small className="muted">{row.subtitle}</small>
-        </div>
-      )
-    },
-    {
-      key: "type",
-      header: "Soort",
-      width: "120px",
-      render: (row) => <StatusBadge status={row.type} label={row.typeLabel} />
-    },
-    {
-      key: "status",
-      header: "Status",
-      width: "160px",
-      render: (row) => <StatusBadge status={row.status} label={row.statusLabel} />
-    },
-    {
-      key: "updated",
-      header: "Bijgewerkt",
-      width: "120px",
-      hideOnMobile: true,
-      render: (row) => formatDate(row.updatedAt)
-    },
-    {
-      key: "amount",
-      header: "Waarde",
-      align: "right",
-      width: "130px",
-      hideOnMobile: true,
-      render: (row) => row.amountLabel ?? "-"
-    },
-    {
-      key: "action",
-      header: "",
-      align: "right",
-      width: "120px",
-      render: (row) => (
-        <a className="ui-button ui-button-secondary ui-button-sm" href={row.href}>
-          Openen
-        </a>
-      )
-    }
-  ];
-
   return (
     <div className="grid">
       {error ? <Alert variant="danger" title="Dossiers niet geladen" description={error} /> : null}
 
-      <section className="grid three-column">
-        <StatCard label="Klanten" value={workspace.customers.length} tone="info" />
-        <StatCard label="Lopende projecten" value={openProjects.length} tone="warning" />
-        <StatCard label="Open offertes" value={openQuotes.length} tone="success" />
-      </section>
+      <DossierStats
+        customersCount={workspace.customers.length}
+        openProjectsCount={openProjects.length}
+        openQuotesCount={openQuotes.length}
+      />
 
-      <section className="panel dossier-search-panel">
-        <SectionHeader
-          compact
-          title="Zoeken in alle dossiers"
-          description="Zoek op klant, project, plaats, telefoonnummer, offerte of status."
-        />
-        <FilterBar
-          search={
-            <SearchInput
-              aria-label="Dossiers zoeken"
-              placeholder="Zoek klant, project, offerte, plaats of status"
-              value={search}
-              onChange={setSearch}
-            />
-          }
-          filters={
-            <Field label="Toon" htmlFor="dossier-type-filter">
-              <Select
-                id="dossier-type-filter"
-                value={typeFilter}
-                onChange={(event) => handleTypeFilter(event.target.value as DossierType)}
-              >
-                {typeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          }
-        />
-        <DataTable
-          ariaLabel="Dossiers"
-          columns={columns}
-          density="compact"
-          emptyDescription="Pas je zoekopdracht aan of maak een nieuw klant- of projectdossier aan."
-          emptyTitle="Geen dossiers gevonden"
-          getRowKey={(row) => row.id}
-          loading={isLoading}
-          mobileMode="cards"
-          renderMobileCard={(row) => (
-            <div className="mobile-card-section">
-              <div className="mobile-card-header">
-                <div className="mobile-card-title">
-                  <a href={row.href}>
-                    <strong>{row.title}</strong>
-                  </a>
-                  <small className="muted">{row.subtitle}</small>
-                </div>
-                <StatusBadge status={row.status} label={row.statusLabel} />
-              </div>
-              <div className="mobile-card-meta">
-                <StatusBadge status={row.type} label={row.typeLabel} />
-                <span>Bijgewerkt {formatDate(row.updatedAt)}</span>
-                {row.amountLabel ? <strong>{row.amountLabel}</strong> : null}
-              </div>
-              <div className="mobile-card-actions">
-                <a className="ui-button ui-button-secondary ui-button-sm" href={row.href}>
-                  Openen
-                </a>
-              </div>
-            </div>
-          )}
-          rows={filteredRows}
-        />
-      </section>
+      <DossierSearchPanel
+        search={search}
+        onSearchChange={setSearch}
+        typeFilter={typeFilter}
+        onTypeFilterChange={handleTypeFilter}
+        isLoading={isLoading}
+        rows={filteredRows}
+      />
 
-      {canCreateDossiers ? (
-        <section className="grid two-column-even" aria-label="Nieuwe dossieracties">
-          <a className="card" href="/portal/klanten">
-            <span className="badge accent">Nieuwe aanvraag</span>
-            <h2>Klant vastleggen</h2>
-            <p className="muted">Maak een klantdossier aan wanneer iemand belt, mailt of langskomt.</p>
-          </a>
-
-          <a className="card" href="/portal/projecten">
-            <span className="badge accent">Werk starten</span>
-            <h2>Project aanmaken</h2>
-            <p className="muted">Start een project vanuit een bestaande klant voor inmeten, offerte en uitvoering.</p>
-          </a>
-        </section>
-      ) : null}
+      <DossierActions canCreateDossiers={canCreateDossiers} />
     </div>
   );
 }

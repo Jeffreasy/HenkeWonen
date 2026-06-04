@@ -167,7 +167,7 @@ if (!Array.isArray(decisions)) {
 }
 
 const client = new ConvexHttpClient(convexUrl);
-const before = await client.query(api.catalogReview.vatMappingReview, { tenantSlug });
+const before = await client.query(api.catalog.review.vatMappingReview, { tenantSlug });
 const failed = [];
 const skipped = [];
 const applied = [];
@@ -209,7 +209,7 @@ for (const decision of decisions) {
   }
 
   if (decision.vatMode === "unknown") {
-    await client.mutation(api.catalogReview.setProfileAllowUnknownVatMode, {
+    await client.mutation(api.catalog.review.setProfileAllowUnknownVatMode, {
       tenantSlug,
       actor,
       profileId: mapping.profileId,
@@ -218,7 +218,7 @@ for (const decision of decisions) {
     });
   }
 
-  await client.mutation(api.catalogReview.updateProfileVatMode, {
+  await client.mutation(api.catalog.review.updateProfileVatMode, {
     tenantSlug,
     actor,
     profileId: mapping.profileId,
@@ -239,7 +239,7 @@ for (const decision of decisions) {
 }
 
 const after = shouldApply
-  ? await client.query(api.catalogReview.vatMappingReview, { tenantSlug })
+  ? await client.query(api.catalog.review.vatMappingReview, { tenantSlug })
   : null;
 
 mkdirSync(dirname(resultPath), { recursive: true });

@@ -106,7 +106,7 @@ let toolingEnabled = false;
 try {
   await run("npx convex env set ALLOW_CONVEX_TOOLING true --deployment accomplished-kangaroo-354");
   toolingEnabled = true;
-  await run("npx convex run seed:run --deployment accomplished-kangaroo-354");
+  await run("npx convex run seed/core:run --deployment accomplished-kangaroo-354");
 } finally {
   if (toolingEnabled) {
     await run("npx convex env remove ALLOW_CONVEX_TOOLING --deployment accomplished-kangaroo-354");

@@ -36,33 +36,42 @@ function exportedQueryBlock(relativePath, name) {
 
 function allConvexWriteBlocks() {
   const convexDir = path.join(root, "convex");
-  const files = fs
-    .readdirSync(convexDir)
-    .filter((fileName) => fileName.endsWith(".ts") && !fileName.startsWith("_"));
   const blocks = [];
 
-  for (const fileName of files) {
-    const relativePath = `convex/${fileName}`;
-    const source = read(relativePath);
-    const exportPattern =
-      /export const (\w+) = (mutation|action|internalMutation|internalAction)\(\{/g;
-    let match;
+  function walk(dir) {
+    const list = fs.readdirSync(dir);
+    for (const file of list) {
+      const fullPath = path.join(dir, file);
+      const stat = fs.statSync(fullPath);
+      if (stat.isDirectory()) {
+        if (file !== "_generated" && !file.startsWith(".")) {
+          walk(fullPath);
+        }
+      } else if (file.endsWith(".ts") && !file.startsWith("_")) {
+        const relativePath = path.relative(root, fullPath).replace(/\\/g, "/");
+        const source = fs.readFileSync(fullPath, "utf8");
+        const exportPattern =
+          /export const (\w+) = (mutation|action|internalMutation|internalAction)\(\{/g;
+        let match;
 
-    while ((match = exportPattern.exec(source))) {
-      const name = match[1];
-      const start = match.index;
-      const end = source.indexOf("\n});", start);
-      const block = end === -1 ? source.slice(start) : source.slice(start, end + 4);
+        while ((match = exportPattern.exec(source))) {
+          const name = match[1];
+          const start = match.index;
+          const end = source.indexOf("\n});", start);
+          const block = end === -1 ? source.slice(start) : source.slice(start, end + 4);
 
-      blocks.push({
-        file: relativePath,
-        name,
-        type: match[2],
-        block
-      });
+          blocks.push({
+            file: relativePath,
+            name,
+            type: match[2],
+            block
+          });
+        }
+      }
     }
   }
 
+  walk(convexDir);
   return blocks;
 }
 
@@ -86,25 +95,25 @@ for (const { file, name, block } of publicMutations) {
 assert.deepEqual(
   deleteBlocks.map(({ file, name }) => `${file}:${name}`).sort(),
   [
-    "convex/catalogImport.ts:deleteProductsByCategoryChunk",
-    "convex/catalogImport.ts:deleteProductsBySupplierChunk",
-    "convex/catalogImport.ts:resetCatalogChunk",
-    "convex/measurements.ts:deleteMeasurementLine",
-    "convex/measurements.ts:deleteMeasurementRoom",
-    "convex/portal.ts:deleteProjectRoom",
-    "convex/portal.ts:deleteQuoteLine"
+    "convex/catalog/import.ts:deleteProductsByCategoryChunk",
+    "convex/catalog/import.ts:deleteProductsBySupplierChunk",
+    "convex/catalog/import.ts:resetCatalogChunk",
+    "convex/projecten/measurements.ts:deleteMeasurementLine",
+    "convex/projecten/measurements.ts:deleteMeasurementRoom",
+    "convex/projecten/core.ts:deleteProjectRoom",
+    "convex/offertes/core.ts:deleteQuoteLine"
   ].sort(),
   "Only guarded concept/correction deletes and explicit catalog reset should perform hard deletes"
 );
 
-const deleteQuoteLine = exportedMutationBlock("convex/portal.ts", "deleteQuoteLine");
+const deleteQuoteLine = exportedMutationBlock("convex/offertes/core.ts", "deleteQuoteLine");
 assert.ok(deleteQuoteLine.includes("line.tenantId !== tenant._id"));
 assert.ok(deleteQuoteLine.includes('quote.status !== "draft"'));
 assert.ok(deleteQuoteLine.includes("await ctx.db.delete(line._id);"));
 assert.ok(deleteQuoteLine.includes("await recalculateQuote(ctx, tenant._id, line.quoteId);"));
 
-for (const mutationName of ["addQuoteLine", "updateQuote", "updateQuoteLine", "updateQuoteTerms"]) {
-  const block = exportedMutationBlock("convex/portal.ts", mutationName);
+for (const mutationName of ["addQuoteLine", "updateQuote"]) {
+  const block = exportedMutationBlock("convex/offertes/core.ts", mutationName);
 
   assert.ok(
     block.includes('quote.status !== "draft"'),
@@ -112,27 +121,36 @@ for (const mutationName of ["addQuoteLine", "updateQuote", "updateQuoteLine", "u
   );
 }
 
-const legacyAddQuoteLine = exportedMutationBlock("convex/quotes.ts", "addLine");
+for (const mutationName of ["updateQuoteLine", "updateQuoteTerms"]) {
+  const block = exportedMutationBlock("convex/offertes/core.ts", mutationName);
+
+  assert.ok(
+    block.includes('quote.status !== "draft"'),
+    `${mutationName} should only allow inhoudelijke wijzigingen aan conceptoffertes`
+  );
+}
+
+const legacyAddQuoteLine = exportedMutationBlock("convex/offertes/core.ts", "addLine");
 assert.ok(legacyAddQuoteLine.includes('quote.status !== "draft"'));
 
-const deleteProjectRoom = exportedMutationBlock("convex/portal.ts", "deleteProjectRoom");
+const deleteProjectRoom = exportedMutationBlock("convex/projecten/core.ts", "deleteProjectRoom");
 assert.ok(deleteProjectRoom.includes('query("measurementRooms")'));
 assert.ok(deleteProjectRoom.includes('query("quoteLines")'));
 assert.ok(deleteProjectRoom.includes("measurementRoom || quoteLine"));
 assert.ok(deleteProjectRoom.includes("await ctx.db.delete(room._id);"));
 
-const deleteMeasurementRoom = exportedMutationBlock("convex/measurements.ts", "deleteMeasurementRoom");
+const deleteMeasurementRoom = exportedMutationBlock("convex/projecten/measurements.ts", "deleteMeasurementRoom");
 assert.ok(deleteMeasurementRoom.includes('query("measurementLines")'));
 assert.ok(deleteMeasurementRoom.includes("if (line)"));
 assert.ok(deleteMeasurementRoom.includes("await ctx.db.delete(room._id);"));
 
-const deleteMeasurementLine = exportedMutationBlock("convex/measurements.ts", "deleteMeasurementLine");
+const deleteMeasurementLine = exportedMutationBlock("convex/projecten/measurements.ts", "deleteMeasurementLine");
 assert.ok(deleteMeasurementLine.includes('line.quotePreparationStatus === "converted"'));
 assert.ok(deleteMeasurementLine.includes("line.convertedQuoteId"));
 assert.ok(deleteMeasurementLine.includes("line.convertedQuoteLineId"));
 assert.ok(deleteMeasurementLine.includes("await ctx.db.delete(line._id);"));
 
-const resetCatalogChunk = exportedMutationBlock("convex/catalogImport.ts", "resetCatalogChunk");
+const resetCatalogChunk = exportedMutationBlock("convex/catalog/import.ts", "resetCatalogChunk");
 assert.ok(resetCatalogChunk.includes('confirm: v.literal("RESET_IMPORTED_CATALOG")'));
 assert.ok(resetCatalogChunk.includes("actor: mutationActorValidator"));
 assert.ok(resetCatalogChunk.includes('["admin"]'));
@@ -143,7 +161,7 @@ assert.ok(!resetCatalogChunk.includes('"projects"'));
 assert.ok(!resetCatalogChunk.includes('"quotes"'));
 
 const deleteProductsByCategoryChunk = exportedMutationBlock(
-  "convex/catalogImport.ts",
+  "convex/catalog/import.ts",
   "deleteProductsByCategoryChunk"
 );
 assert.ok(deleteProductsByCategoryChunk.includes('confirm: v.literal("DELETE_PRODUCTS_BY_CATEGORY")'));
@@ -151,14 +169,14 @@ assert.ok(deleteProductsByCategoryChunk.includes("actor: mutationActorValidator"
 assert.ok(deleteProductsByCategoryChunk.includes('["admin"]'));
 
 const deleteProductsBySupplierChunk = exportedMutationBlock(
-  "convex/catalogImport.ts",
+  "convex/catalog/import.ts",
   "deleteProductsBySupplierChunk"
 );
 assert.ok(deleteProductsBySupplierChunk.includes('confirm: v.literal("DELETE_PRODUCTS_BY_SUPPLIER")'));
 assert.ok(deleteProductsBySupplierChunk.includes("actor: mutationActorValidator"));
 assert.ok(deleteProductsBySupplierChunk.includes('["admin"]'));
 
-const catalogStats = exportedQueryBlock("convex/catalogImport.ts", "getCatalogImportStats");
+const catalogStats = exportedQueryBlock("convex/catalog/import.ts", "getCatalogImportStats");
 assert.ok(catalogStats.includes("summaryOnly: v.optional(v.boolean())"));
 assert.ok(catalogStats.includes('source: "summary_only"'));
 assert.ok(catalogStats.includes('source: "catalog_documents"'));
@@ -189,7 +207,7 @@ assert.ok(authzSource.includes("ALLOW_DEV_AUTHZ_TOKENS"));
 assert.ok(authzSource.includes("allowsDevAuthzTokens()"));
 
 const markMeasurementLineConverted = exportedMutationBlock(
-  "convex/measurements.ts",
+  "convex/projecten/measurements.ts",
   "markMeasurementLineConverted"
 );
 assert.ok(markMeasurementLineConverted.includes('line.quotePreparationStatus !== "ready_for_quote"'));
@@ -199,7 +217,7 @@ assert.ok(markMeasurementLineConverted.includes("convertedQuoteLineId: args.quot
 assert.ok(markMeasurementLineConverted.includes("touchMeasurement"));
 
 const importMeasurementLinesToQuote = exportedMutationBlock(
-  "convex/portal.ts",
+  "convex/offertes/core.ts",
   "importMeasurementLinesToQuote"
 );
 assert.ok(importMeasurementLinesToQuote.includes("actor: mutationActorValidator"));
@@ -215,16 +233,16 @@ assert.ok(importMeasurementLinesToQuote.includes("convertedQuoteLineId: quoteLin
 assert.ok(importMeasurementLinesToQuote.includes("recalculateQuote"));
 assert.ok(importMeasurementLinesToQuote.includes("touchedMeasurementIds"));
 
-const listReadyForQuote = read("convex/measurements.ts");
+const listReadyForQuote = read("convex/projecten/measurements.ts");
 assert.ok(listReadyForQuote.includes('line.quotePreparationStatus !== "ready_for_quote"'));
 
-const portalCatalog = read("convex/catalog.ts");
+const portalCatalog = read("convex/catalog/core.ts");
 assert.ok(portalCatalog.includes("includePilotHidden"));
 assert.ok(portalCatalog.includes("pilotHiddenReason"));
 assert.ok(portalCatalog.includes("displayProductName"));
 assert.ok(portalCatalog.includes("displaySupplierName"));
 
-const updateQuoteStatus = exportedMutationBlock("convex/portal.ts", "updateQuoteStatus");
+const updateQuoteStatus = exportedMutationBlock("convex/offertes/core.ts", "updateQuoteStatus");
 assert.ok(updateQuoteStatus.includes("sentAt"));
 assert.ok(updateQuoteStatus.includes("validUntil"));
 assert.ok(updateQuoteStatus.includes("addCalendarDays(now, 30)"));
@@ -233,32 +251,32 @@ assert.ok(updateQuoteStatus.includes("addCalendarDays(now, 18)"));
 assert.ok(updateQuoteStatus.includes('"confirmation_payment"'));
 assert.ok(updateQuoteStatus.includes('"execution_call"'));
 
-const processProjectAction = exportedMutationBlock("convex/portal.ts", "processProjectAction");
+const processProjectAction = exportedMutationBlock("convex/projecten/core.ts", "processProjectAction");
 assert.ok(processProjectAction.includes("invoiceDueAt"));
 assert.ok(processProjectAction.includes('"invoice_payment"'));
 assert.ok(processProjectAction.includes("invoicePaymentTermDays"));
 assert.ok(processProjectAction.includes("addCalendarDays(now, invoiceTermDays)"));
 
-const startOrPlanMeasurement = exportedMutationBlock("convex/portal.ts", "startOrPlanMeasurement");
+const startOrPlanMeasurement = exportedMutationBlock("convex/projecten/core.ts", "startOrPlanMeasurement");
 assert.ok(startOrPlanMeasurement.includes('ctx.db.insert("measurements"'));
 assert.ok(startOrPlanMeasurement.includes("latestMeasurementForProject"));
 assert.ok(startOrPlanMeasurement.includes("hasProjectEvent"));
 assert.ok(startOrPlanMeasurement.includes('projectPatch.measurementPlannedAt = undefined'));
 assert.ok(startOrPlanMeasurement.includes('"Inmeting gestart"'));
 
-const fieldVisitTimestamp = read("convex/portal.ts").match(
-  /function fieldVisitTimestamp[\s\S]*?^}/m
+const fieldVisitTimestamp = read("convex/portalUtils.ts").match(
+  /export function fieldVisitTimestamp[\s\S]*?^}/m
 )?.[0] ?? "";
 assert.ok(fieldVisitTimestamp.includes("project.measurementDate ?? measurement?.measurementDate"));
 assert.equal(fieldVisitTimestamp.includes("project.measurementPlannedAt"), false);
 
-const addPortalQuoteLine = exportedMutationBlock("convex/portal.ts", "addQuoteLine");
-const updatePortalQuoteLine = exportedMutationBlock("convex/portal.ts", "updateQuoteLine");
+const addPortalQuoteLine = exportedMutationBlock("convex/offertes/core.ts", "addQuoteLine");
+const updatePortalQuoteLine = exportedMutationBlock("convex/offertes/core.ts", "updateQuoteLine");
 assert.ok(addPortalQuoteLine.includes("validateQuoteLineProduct"));
 assert.ok(updatePortalQuoteLine.includes("validateQuoteLineProduct"));
 
 const commitPreviewBatchChunk = exportedMutationBlock(
-  "convex/catalogImport.ts",
+  "convex/catalog/import.ts",
   "commitPreviewBatchChunk"
 );
 assert.ok(commitPreviewBatchChunk.includes("batch.unknownVatModeRows"));
@@ -269,7 +287,7 @@ assert.ok(commitPreviewBatchChunk.includes("actor: mutationActorValidator"));
 assert.ok(commitPreviewBatchChunk.includes("requireMutationRole"));
 
 const duplicateEanReview = exportedMutationBlock(
-  "convex/catalogReview.ts",
+  "convex/catalog/review.ts",
   "updateDuplicateEanIssueReview"
 );
 assert.ok(!duplicateEanReview.includes("ctx.db.delete("));
@@ -278,22 +296,47 @@ assert.ok(!duplicateEanReview.includes('ctx.db.patch(product'));
 assert.ok(duplicateEanReview.includes("reviewDecision"));
 
 const syncDuplicateEanIssues = exportedMutationBlock(
-  "convex/catalogReview.ts",
+  "convex/catalog/review.ts",
   "syncDuplicateEanIssues"
 );
 assert.ok(!syncDuplicateEanIssues.includes('ctx.db.insert("products"'));
 assert.ok(!syncDuplicateEanIssues.includes('ctx.db.delete('));
 assert.ok(syncDuplicateEanIssues.includes('ctx.db.insert("catalogDataIssues"'));
 
-const catalogReviewSource = read("convex/catalogReview.ts");
+const catalogReviewSource = read("convex/catalog/review.ts");
 assert.equal(/merge(Product|Duplicate|Ean)|combineProduct/i.test(catalogReviewSource), false);
 
-const quoteTemplateContent = exportedMutationBlock("convex/portal.ts", "updateQuoteTemplateContent");
+const quoteTemplateContent = exportedMutationBlock("convex/offertes/templates.ts", "updateQuoteTemplateContent");
 assert.ok(quoteTemplateContent.includes("ctx.db.patch(template._id"));
 assert.ok(!quoteTemplateContent.includes('query("quotes")'));
 assert.ok(!quoteTemplateContent.includes("ctx.db.patch(quote"));
 assert.ok(quoteTemplateContent.includes("actor: mutationActorValidator"));
 assert.ok(quoteTemplateContent.includes('["admin"]'));
+
+const mutationToFilePath = {
+  createCustomer: "convex/beheer/customers.ts",
+  createCustomerContact: "convex/beheer/customers.ts",
+  updateCustomer: "convex/beheer/customers.ts",
+  createProject: "convex/projecten/core.ts",
+  addProjectRoom: "convex/projecten/core.ts",
+  updateProject: "convex/projecten/core.ts",
+  updateProjectRoom: "convex/projecten/core.ts",
+  deleteProjectRoom: "convex/projecten/core.ts",
+  startOrPlanMeasurement: "convex/projecten/core.ts",
+  updateProjectStatus: "convex/projecten/core.ts",
+  processProjectAction: "convex/projecten/core.ts",
+  updateProjectTaskStatus: "convex/projecten/core.ts",
+  createWorkflowEvent: "convex/projecten/core.ts",
+  createQuote: "convex/offertes/core.ts",
+  addQuoteLine: "convex/offertes/core.ts",
+  updateQuote: "convex/offertes/core.ts",
+  createSupplier: "convex/beheer/suppliers.ts",
+  updateSupplier: "convex/beheer/suppliers.ts",
+  updateSupplierProductListStatus: "convex/beheer/suppliers.ts",
+  upsertCategory: "convex/beheer/categories.ts",
+  upsertServiceRule: "convex/beheer/serviceCostRules.ts",
+  updateQuoteTemplateContent: "convex/offertes/templates.ts"
+};
 
 const securedPortalMutations = [
   "createCustomer",
@@ -311,11 +354,7 @@ const securedPortalMutations = [
   "createWorkflowEvent",
   "createQuote",
   "addQuoteLine",
-  "deleteQuoteLine",
   "updateQuote",
-  "updateQuoteLine",
-  "updateQuoteStatus",
-  "updateQuoteTerms",
   "createSupplier",
   "updateSupplier",
   "updateSupplierProductListStatus",
@@ -324,8 +363,23 @@ const securedPortalMutations = [
   "updateQuoteTemplateContent"
 ];
 
+const securedQuotesMutations = [
+  "deleteQuoteLine",
+  "updateQuoteLine",
+  "updateQuoteStatus",
+  "updateQuoteTerms"
+];
+
 for (const mutationName of securedPortalMutations) {
-  const block = exportedMutationBlock("convex/portal.ts", mutationName);
+  const filePath = mutationToFilePath[mutationName];
+  const block = exportedMutationBlock(filePath, mutationName);
+
+  assert.ok(block.includes("actor: mutationActorValidator"), `${filePath}:${mutationName} should require an actor`);
+  assert.ok(block.includes("requireMutationRole"), `${filePath}:${mutationName} should check role`);
+}
+
+for (const mutationName of securedQuotesMutations) {
+  const block = exportedMutationBlock("convex/offertes/core.ts", mutationName);
 
   assert.ok(block.includes("actor: mutationActorValidator"), `${mutationName} should require an actor`);
   assert.ok(block.includes("requireMutationRole"), `${mutationName} should check role`);
@@ -347,7 +401,8 @@ for (const [mutationName, fields] of [
   ["updateQuote", ["validUntil", "introText", "closingText"]],
   ["updateSupplier", ["contactName", "email", "phone", "notes", "lastContactAt", "expectedAt"]]
 ]) {
-  const block = exportedMutationBlock("convex/portal.ts", mutationName);
+  const filePath = mutationToFilePath[mutationName];
+  const block = exportedMutationBlock(filePath, mutationName);
 
   for (const field of fields) {
     assert.ok(
@@ -369,22 +424,22 @@ for (const mutationName of [
   "updateMeasurementLineStatus",
   "markMeasurementLineConverted"
 ]) {
-  const block = exportedMutationBlock("convex/measurements.ts", mutationName);
+  const block = exportedMutationBlock("convex/projecten/measurements.ts", mutationName);
 
   assert.ok(block.includes("actor: mutationActorValidator"), `${mutationName} should require an actor`);
   assert.ok(block.includes("requireMutationRoleForTenantId"), `${mutationName} should check role`);
 }
 
-const updateMeasurement = exportedMutationBlock("convex/measurements.ts", "updateMeasurement");
+const updateMeasurement = exportedMutationBlock("convex/projecten/measurements.ts", "updateMeasurement");
 assert.ok(updateMeasurement.includes('hasArg(args, "measurementDate")'));
 assert.ok(updateMeasurement.includes('hasArg(args, "measuredBy")'));
 assert.ok(updateMeasurement.includes('hasArg(args, "notes")'));
 
-const createMeasurementForProject = exportedMutationBlock("convex/measurements.ts", "createForProject");
+const createMeasurementForProject = exportedMutationBlock("convex/projecten/measurements.ts", "createForProject");
 assert.ok(createMeasurementForProject.includes("const existing = await ctx.db"));
 assert.ok(createMeasurementForProject.includes("return existing._id"));
 
-const updateMeasurementRoom = exportedMutationBlock("convex/measurements.ts", "updateMeasurementRoom");
+const updateMeasurementRoom = exportedMutationBlock("convex/projecten/measurements.ts", "updateMeasurementRoom");
 for (const field of ["floor", "widthM", "lengthM", "heightM", "areaM2", "perimeterM", "notes"]) {
   assert.ok(
     updateMeasurementRoom.includes(`hasArg(args, "${field}")`),
@@ -402,12 +457,12 @@ for (const mutationName of [
   "updateMeasurementLineStatus",
   "markMeasurementLineConverted"
 ]) {
-  const block = exportedMutationBlock("convex/measurements.ts", mutationName);
+  const block = exportedMutationBlock("convex/projecten/measurements.ts", mutationName);
 
   assert.ok(block.includes("touchMeasurement"), `${mutationName} should touch parent measurement`);
 }
 
-const updateProductForPortal = exportedMutationBlock("convex/catalog.ts", "updateProductForPortal");
+const updateProductForPortal = exportedMutationBlock("convex/catalog/core.ts", "updateProductForPortal");
 assert.ok(updateProductForPortal.includes("actor: mutationActorValidator"));
 assert.ok(updateProductForPortal.includes("requireMutationRole"));
 assert.ok(updateProductForPortal.includes('["admin"]'));

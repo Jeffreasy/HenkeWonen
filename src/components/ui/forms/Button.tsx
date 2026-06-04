@@ -1,0 +1,49 @@
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { classNames } from "../utils/classNames";
+
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonSize = "sm" | "md" | "lg";
+
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  isLoading?: boolean;
+  leftIcon?: ReactNode;
+  rightIcon?: ReactNode;
+};
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = "secondary",
+    size = "md",
+    isLoading = false,
+    leftIcon,
+    rightIcon,
+    children,
+    className,
+    disabled,
+    type = "button",
+    ...props
+  },
+  ref
+) {
+  return (
+    <button
+      ref={ref}
+      className={classNames(
+        "ui-button",
+        `ui-button-${variant}`,
+        `ui-button-${size}`,
+        className
+      )}
+      disabled={disabled || isLoading}
+      type={type}
+      aria-busy={isLoading || undefined}
+      {...props}
+    >
+      {isLoading ? <span className="ui-button-spinner" aria-hidden="true" /> : leftIcon}
+      {children}
+      {rightIcon}
+    </button>
+  );
+});

@@ -3,18 +3,11 @@ import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
-import { formatProjectStatus } from "../../lib/i18n/statusLabels";
 import type { PortalCustomer, PortalProject, ProjectStatus } from "../../lib/portalTypes";
 import { Alert } from "../ui/Alert";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { Field } from "../ui/Field";
-import { FilterBar } from "../ui/FilterBar";
-import { SearchInput } from "../ui/SearchInput";
-import { SectionHeader } from "../ui/SectionHeader";
-import { Select } from "../ui/Select";
-import { StatCard } from "../ui/StatCard";
 import ProjectForm, { type ProjectFormValues } from "./ProjectForm";
-import ProjectStatusBadge from "./ProjectStatusBadge";
+import { ProjectStats } from "./ProjectStats";
+import { ProjectsTable } from "./ProjectsTable";
 
 type ProjectWorkspaceProps = {
   session: AppSession;
@@ -25,22 +18,6 @@ type PortalProjectRow = PortalProject & {
 };
 
 type StatusFilter = "all" | ProjectStatus;
-
-const statusOptions: Array<{ value: StatusFilter; label: string }> = [
-  { value: "all", label: "Alle statussen" },
-  { value: "lead", label: formatProjectStatus("lead") },
-  { value: "quote_draft", label: formatProjectStatus("quote_draft") },
-  { value: "quote_sent", label: formatProjectStatus("quote_sent") },
-  { value: "quote_accepted", label: formatProjectStatus("quote_accepted") },
-  { value: "measurement_planned", label: formatProjectStatus("measurement_planned") },
-  { value: "execution_planned", label: formatProjectStatus("execution_planned") },
-  { value: "ordering", label: formatProjectStatus("ordering") },
-  { value: "in_progress", label: formatProjectStatus("in_progress") },
-  { value: "invoiced", label: formatProjectStatus("invoiced") },
-  { value: "paid", label: formatProjectStatus("paid") },
-  { value: "closed", label: formatProjectStatus("closed") },
-  { value: "cancelled", label: formatProjectStatus("cancelled") }
-];
 
 export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
   const [customers, setCustomers] = useState<PortalCustomer[]>([]);
@@ -119,45 +96,13 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
     });
   }, [projects, search, statusFilter]);
 
-  const activeProjects = projects.filter(
-    (project) => !["closed", "cancelled", "paid"].includes(project.status)
-  );
-  const quoteProjects = projects.filter((project) => project.status.startsWith("quote"));
-
-  const columns: Array<DataTableColumn<PortalProjectRow>> = [
-    {
-      key: "project",
-      header: "Project",
-      priority: "primary",
-      render: (project) => (
-        <div className="stack-sm">
-          <a href={`/portal/projecten/${project.id}`}>
-            <strong>{project.title}</strong>
-          </a>
-          <small className="muted">{project.description ?? "Geen omschrijving"}</small>
-        </div>
-      )
-    },
-    {
-      key: "customer",
-      header: "Klant",
-      render: (project) => project.customerName ?? "-"
-    },
-    {
-      key: "status",
-      header: "Status",
-      width: "160px",
-      render: (project) => <ProjectStatusBadge status={project.status} />
-    },
-    {
-      key: "rooms",
-      header: "Ruimtes",
-      align: "right",
-      width: "90px",
-      hideOnMobile: true,
-      render: (project) => project.rooms.length
-    }
-  ];
+  const stats = useMemo(() => {
+    const activeCount = projects.filter(
+      (project) => !["closed", "cancelled", "paid"].includes(project.status)
+    ).length;
+    const quotePhaseCount = projects.filter((project) => project.status.startsWith("quote")).length;
+    return { activeCount, quotePhaseCount, total: projects.length };
+  }, [projects]);
 
   return (
     <div className="grid">
@@ -165,79 +110,22 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
         <Alert variant="danger" title="Projecten niet geladen" description={error} />
       ) : null}
 
-      <section className="grid three-column">
-        <StatCard label="Projecten" value={projects.length} tone="info" />
-        <StatCard label="Lopend" value={activeProjects.length} tone="warning" />
-        <StatCard label="In offertefase" value={quoteProjects.length} />
-      </section>
+      <ProjectStats
+        total={stats.total}
+        activeCount={stats.activeCount}
+        quotePhaseCount={stats.quotePhaseCount}
+      />
 
       <div className="grid two-column">
         {canCreateProjects ? <ProjectForm customers={customers} onCreate={createProject} /> : null}
-        <section className="grid">
-          <SectionHeader
-            compact
-            title="Lopende projectdossiers"
-            description="Scan status, klant en ruimtes zonder het projectdossier te openen."
-          />
-          <FilterBar
-            search={
-              <SearchInput
-                aria-label="Projecten zoeken"
-                placeholder="Zoek op project, klant of status"
-                value={search}
-                onChange={setSearch}
-              />
-            }
-            filters={
-              <Field label="Status" htmlFor="project-status-filter">
-                <Select
-                  id="project-status-filter"
-                  value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                >
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            }
-          />
-          <DataTable
-            ariaLabel="Projecten"
-            columns={columns}
-            density="compact"
-            emptyDescription="Maak een nieuw project aan of pas je filters aan."
-            emptyTitle="Geen projecten gevonden"
-            getRowKey={(project) => project.id}
-            loading={isLoading}
-            mobileMode="cards"
-            renderMobileCard={(project) => (
-              <div className="mobile-card-section">
-                <div className="mobile-card-header">
-                  <div className="mobile-card-title">
-                    <a href={`/portal/projecten/${project.id}`}>
-                      <strong>{project.title}</strong>
-                    </a>
-                    <small className="muted">{project.customerName ?? "Geen klant gekoppeld"}</small>
-                  </div>
-                  <ProjectStatusBadge status={project.status} />
-                </div>
-                <div className="mobile-card-meta">
-                  <span>{project.description ?? "Geen omschrijving"}</span>
-                  <span>{project.rooms.length} ruimtes</span>
-                </div>
-                <div className="mobile-card-actions">
-                  <a className="ui-button ui-button-secondary ui-button-sm" href={`/portal/projecten/${project.id}`}>
-                    Project openen
-                  </a>
-                </div>
-              </div>
-            )}
-            rows={filteredProjects}
-          />
-        </section>
+        <ProjectsTable
+          projects={filteredProjects}
+          isLoading={isLoading}
+          search={search}
+          setSearch={setSearch}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+        />
       </div>
     </div>
   );

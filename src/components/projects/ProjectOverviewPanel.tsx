@@ -1,0 +1,126 @@
+import { FileText, Pencil, Ruler, XCircle } from "lucide-react";
+import type { PortalCustomer, PortalProject } from "../../lib/portalTypes";
+import { Badge } from "../ui/Badge";
+import { Button } from "../ui/Button";
+import ProjectStatusBadge from "./ProjectStatusBadge";
+
+type ProjectOverviewPanelProps = {
+  project: PortalProject;
+  customer: PortalCustomer | null;
+  workflowEventsCount: number;
+  isStartingMeasurement: boolean;
+  onStartMeasurement: () => void;
+  onEditProject: () => void;
+  onCancelProject: () => void;
+  canEdit: boolean;
+};
+
+function dateText(value?: number) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("nl-NL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  }).format(new Date(value));
+}
+
+export function ProjectOverviewPanel({
+  project,
+  customer,
+  workflowEventsCount,
+  isStartingMeasurement,
+  onStartMeasurement,
+  onEditProject,
+  onCancelProject,
+  canEdit
+}: ProjectOverviewPanelProps) {
+  const metadata = [
+    { id: "customer", label: "Klant", value: customer?.displayName ?? "-" },
+    { id: "rooms", label: "Ruimtes", value: project.rooms.length },
+    { id: "events", label: "Momenten", value: workflowEventsCount },
+    { id: "measurement", label: "Inmeetdatum", value: dateText(project.measurementDate) },
+    { id: "execution", label: "Uitvoering", value: dateText(project.executionDate ?? project.executionPlannedAt) },
+    { id: "updated", label: "Bijgewerkt", value: dateText(project.updatedAt) }
+  ];
+
+  return (
+    <section className="panel project-overview-panel">
+      <div className="project-overview-header">
+        <div className="project-overview-copy">
+          <div className="project-overview-kicker">
+            <ProjectStatusBadge status={project.status} />
+            <span>{customer?.displayName ?? "Geen klant gekoppeld"}</span>
+          </div>
+          <h2>{project.title}</h2>
+          <p className="muted">{project.description?.trim() || "Geen projectomschrijving"}</p>
+        </div>
+        {canEdit ? (
+          <div className="project-overview-actions">
+            <Button
+              leftIcon={<Pencil size={16} aria-hidden="true" />}
+              size="sm"
+              variant="secondary"
+              onClick={onEditProject}
+            >
+              Bewerken
+            </Button>
+            <Button
+              leftIcon={<XCircle size={16} aria-hidden="true" />}
+              size="sm"
+              variant="danger"
+              onClick={onCancelProject}
+            >
+              Annuleren
+            </Button>
+          </div>
+        ) : null}
+      </div>
+
+      <dl className="project-meta-strip" aria-label="Projectgegevens">
+        {metadata.map((item) => (
+          <div className="project-meta-item" key={item.id}>
+            <dt>{item.label}</dt>
+            <dd>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {canEdit ? (
+        <div className="project-primary-actions">
+          <a className="ui-button ui-button-secondary ui-button-md" href="/portal/offertes">
+            <FileText size={17} aria-hidden="true" />
+            Offerte maken
+          </a>
+          <Button
+            isLoading={isStartingMeasurement}
+            leftIcon={<Ruler size={17} aria-hidden="true" />}
+            onClick={onStartMeasurement}
+            variant="primary"
+          >
+            Inmeting starten
+          </Button>
+        </div>
+      ) : null}
+
+      {(project.internalNotes || project.customerNotes) ? (
+        <div className="project-notes-strip" aria-label="Projectnotities">
+          {project.internalNotes ? (
+            <div className="project-note-preview">
+              <Badge variant="neutral">Intern</Badge>
+              <p>{project.internalNotes}</p>
+            </div>
+          ) : null}
+          {project.customerNotes ? (
+            <div className="project-note-preview">
+              <Badge variant="info">Klant</Badge>
+              <p>{project.customerNotes}</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}

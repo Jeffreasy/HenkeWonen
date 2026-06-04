@@ -40,12 +40,12 @@ def is_price_header(header: str) -> bool:
     return _orig_is_price_header(header)
 
 
-OUT_DIR = ROOT / "docs"
+OUT_DIR = ROOT / "docs" / "generated"
 SUMMARY_OUT = OUT_DIR / "catalog-import-summary.md"
 SUMMARY_JSON_OUT = OUT_DIR / "catalog-import-summary.json"
 SAMPLE_OUT = OUT_DIR / "catalog-import-sample.md"
 PREVIEW_JSON_OUT = OUT_DIR / "catalog-import-preview.json"
-GENERATED_DIR = OUT_DIR / "generated"
+GENERATED_DIR = OUT_DIR
 FULL_ROWS_OUT = GENERATED_DIR / "catalog-import-preview.full.jsonl"
 
 MAX_ROWS_PER_SHEET = 50000
@@ -2010,7 +2010,7 @@ def main() -> None:
     no_write = options["noWrite"]
     source_filters = options["sourceFilters"]
     if not no_write:
-        OUT_DIR.mkdir(exist_ok=True)
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
     flexcolours_files = sorted(
         path
         for path in DATA_DIR.rglob("*")

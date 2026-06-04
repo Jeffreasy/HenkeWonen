@@ -10,6 +10,7 @@ export default defineConfig({
   },
   integrations: [react()],
   vite: {
+    cacheDir: "node_modules/.vite-henke",
     ssr: {
       noExternal: ["convex"]
     }

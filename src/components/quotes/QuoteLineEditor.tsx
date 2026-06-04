@@ -108,7 +108,7 @@ export default function QuoteLineEditor({
       setProductError(null);
 
       try {
-        const result = (await client.query(api.catalog.listProductsForPortal, {
+        const result = (await client.query(api.catalog.core.listProductsForPortal, {
           tenantSlug: session.tenantId,
           search: productSearch || undefined,
           status: "active",

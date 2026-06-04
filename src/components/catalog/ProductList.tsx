@@ -1,26 +1,16 @@
-import { Archive, Pencil, RotateCcw, Save } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canManage, type AppSession } from "../../lib/auth/session";
-import type { SubmitEventLike } from "../../lib/events";
 import type { PortalProduct } from "../../lib/portalTypes";
-import { formatEuro } from "../../lib/money";
 import { createConvexHttpClient } from "../../lib/convex/client";
-import { formatStatusLabel, formatUnit } from "../../lib/i18n/statusLabels";
-import { Badge } from "../ui/Badge";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
+import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
-import { Checkbox } from "../ui/Checkbox";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { Field } from "../ui/Field";
-import { FilterBar } from "../ui/FilterBar";
-import { Input } from "../ui/Input";
-import { SearchInput } from "../ui/SearchInput";
-import { SectionHeader } from "../ui/SectionHeader";
-import { Select } from "../ui/Select";
-import { StatusBadge } from "../ui/StatusBadge";
+import { ProductFilterBar } from "./ProductFilterBar";
+import { ProductEditPanel, type ProductDraft } from "./ProductEditPanel";
+import { ProductListTable } from "./ProductListTable";
 
 type ProductListProps = {
   session: AppSession;
@@ -33,14 +23,13 @@ type CatalogResult = {
   categories: Array<{
     name: string;
     count: number;
+    truncated?: boolean;
   }>;
   isDone: boolean;
   continueCursor: string;
 };
 
 type ProductStatus = PortalProduct["status"];
-
-const productStatuses: ProductStatus[] = ["draft", "active", "inactive", "archived"];
 
 function decimalText(value?: number): string {
   if (value === undefined || value === null) {
@@ -76,17 +65,6 @@ export default function ProductList({ session }: ProductListProps) {
   const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [editingProduct, setEditingProduct] = useState<PortalProduct | null>(null);
-  const [productDraft, setProductDraft] = useState({
-    name: "",
-    articleNumber: "",
-    supplierCode: "",
-    commercialCode: "",
-    colorName: "",
-    supplierProductGroup: "",
-    packageContentM2: "",
-    piecesPerPackage: "",
-    status: "active" as ProductStatus
-  });
   const [pendingProductStatus, setPendingProductStatus] = useState<{
     product: PortalProduct;
     nextStatus: ProductStatus;
@@ -97,8 +75,6 @@ export default function ProductList({ session }: ProductListProps) {
 
   useAutoFocusPanel(Boolean(editingProduct), productEditPanelRef);
 
-  // Aparte query voor categorie-tellingen — loopt onafhankelijk van paginering
-  // zodat álle categorieën zichtbaar zijn, ook FlexColours die laat in de index staan
   useEffect(() => {
     let isActive = true;
 
@@ -107,7 +83,7 @@ export default function ProductList({ session }: ProductListProps) {
       if (!client) return;
 
       try {
-        const result = await client.query(api.catalog.listCategoryStats, {
+        const result = await client.query(api.catalog.core.listCategoryStats, {
           tenantSlug: session.tenantId,
           status: statusFilter
         });
@@ -115,7 +91,7 @@ export default function ProductList({ session }: ProductListProps) {
           setCategories(result.categories);
         }
       } catch {
-        // Stille fout — categorie-dropdown is niet-kritisch
+        // Stille fout
       }
     }
 
@@ -140,7 +116,7 @@ export default function ProductList({ session }: ProductListProps) {
 
       try {
         const isFirstPage = !cursor;
-        const result = (await client.query(api.catalog.listProductsForPortal, {
+        const result = (await client.query(api.catalog.core.listProductsForPortal, {
           tenantSlug: session.tenantId,
           search: query || undefined,
           category: category === "Alle" ? undefined : category,
@@ -155,7 +131,6 @@ export default function ProductList({ session }: ProductListProps) {
           setTotal((prev) => (isFirstPage ? result.items.length : prev + result.items.length));
           setIsDone(result.isDone);
           setContinueCursor(result.continueCursor);
-          // Categorieën komen nu altijd van listCategoryStats (aparte useEffect)
         }
       } catch (loadError) {
         console.error(loadError);
@@ -210,25 +185,8 @@ export default function ProductList({ session }: ProductListProps) {
     setProducts([]);
   }
 
-  function startEditProduct(product: PortalProduct) {
-    setEditingProduct(product);
-    setProductDraft({
-      name: product.name,
-      articleNumber: product.articleNumber ?? "",
-      supplierCode: product.supplierCode ?? "",
-      commercialCode: product.commercialCode ?? "",
-      colorName: product.colorName ?? "",
-      supplierProductGroup: product.supplierProductGroup ?? "",
-      packageContentM2: decimalText(product.packageContentM2),
-      piecesPerPackage: decimalText(product.piecesPerPackage),
-      status: product.status
-    });
-  }
-
-  async function saveProduct(event: SubmitEventLike) {
-    event.preventDefault();
-
-    if (!editingProduct || !canManageProducts || !productDraft.name.trim()) {
+  async function handleSaveProduct(draft: ProductDraft) {
+    if (!editingProduct || !canManageProducts) {
       return;
     }
 
@@ -243,19 +201,19 @@ export default function ProductList({ session }: ProductListProps) {
     setError(null);
 
     try {
-      await client.mutation(api.catalog.updateProductForPortal, {
+      await client.mutation(api.catalog.core.updateProductForPortal, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         productId: editingProduct.id,
-        name: productDraft.name.trim(),
-        articleNumber: productDraft.articleNumber.trim() || undefined,
-        supplierCode: productDraft.supplierCode.trim() || undefined,
-        commercialCode: productDraft.commercialCode.trim() || undefined,
-        colorName: productDraft.colorName.trim() || undefined,
-        supplierProductGroup: productDraft.supplierProductGroup.trim() || undefined,
-        packageContentM2: optionalNumber(productDraft.packageContentM2),
-        piecesPerPackage: optionalNumber(productDraft.piecesPerPackage),
-        status: productDraft.status
+        name: draft.name.trim(),
+        articleNumber: draft.articleNumber.trim() || undefined,
+        supplierCode: draft.supplierCode.trim() || undefined,
+        commercialCode: draft.commercialCode.trim() || undefined,
+        colorName: draft.colorName.trim() || undefined,
+        supplierProductGroup: draft.supplierProductGroup.trim() || undefined,
+        packageContentM2: optionalNumber(draft.packageContentM2),
+        piecesPerPackage: optionalNumber(draft.piecesPerPackage),
+        status: draft.status
       });
       setEditingProduct(null);
       setReloadKey((current) => current + 1);
@@ -284,7 +242,7 @@ export default function ProductList({ session }: ProductListProps) {
     setError(null);
 
     try {
-      await client.mutation(api.catalog.updateProductForPortal, {
+      await client.mutation(api.catalog.core.updateProductForPortal, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         productId: product.id,
@@ -308,129 +266,19 @@ export default function ProductList({ session }: ProductListProps) {
     }
   }
 
-  const columns: Array<DataTableColumn<PortalProduct>> = [
-    {
-      key: "product",
-      header: "Product",
-      render: (product) => (
-        <>
-          <strong>{product.displayName ?? product.name}</strong>
-          <div className="muted">
-            {[
-              product.articleNumber,
-              product.supplierCode,
-              product.commercialCode,
-              product.colorName
-            ]
-              .filter(Boolean)
-              .join(" · ") || "-"}
-          </div>
-          {product.displayName && product.displayName !== product.name ? (
-            <small className="muted">Bron: {product.name}</small>
-          ) : null}
-        </>
-      )
-    },
-    {
-      key: "category",
-      header: "Categorie",
-      width: "150px",
-      render: (product) => product.category
-    },
-    {
-      key: "supplier",
-      header: "Leverancier",
-      width: "140px",
-      render: (product) => (
-        <div className="stack-sm">
-          <span>{product.displaySupplierName ?? product.supplier}</span>
-          {product.displaySupplierName && product.displaySupplierName !== product.supplier ? (
-            <small className="muted">Bron: {product.supplier}</small>
-          ) : null}
-        </div>
-      )
-    },
-    {
-      key: "labels",
-      header: "Verkoopnamen",
-      hideOnMobile: true,
-      render: (product) =>
-        product.commercialNames?.length ? (
-          <>
-            {product.commercialNames.map((name) => (
-              <Badge variant="neutral" key={name.displayName} style={{ marginRight: 4 }}>
-                {name.displayName}
-              </Badge>
-            ))}
-          </>
-        ) : (
-          "-"
-        )
-    },
-    {
-      key: "unit",
-      header: "Eenheid",
-      width: "90px",
-      render: (product) => formatUnit(product.unit)
-    },
-    {
-      key: "price",
-      header: "Prijs excl. btw",
-      align: "right",
-      width: "120px",
-      render: (product) => formatEuro(product.priceExVat)
-    },
-    {
-      key: "status",
-      header: "Status",
-      width: "120px",
-      render: (product) => (
-        <div className="stack-sm">
-          <StatusBadge status={product.status} label={formatStatusLabel(product.status)} />
-          {product.pilotHiddenReason ? (
-            <Badge variant="warning">{product.pilotHiddenReason}</Badge>
-          ) : null}
-        </div>
-      )
-    },
-    {
-      key: "actions",
-      header: "Acties",
-      width: "180px",
-      render: (product) =>
-        canManageProducts ? (
-          <div className="toolbar">
-            <Button
-              leftIcon={<Pencil size={16} aria-hidden="true" />}
-              onClick={() => startEditProduct(product)}
-              size="sm"
-              variant="secondary"
-            >
-              Bewerken
-            </Button>
-            {product.status === "archived" ? (
-              <Button
-                leftIcon={<RotateCcw size={16} aria-hidden="true" />}
-                onClick={() => setPendingProductStatus({ product, nextStatus: "active" })}
-                size="sm"
-                variant="secondary"
-              >
-                Herstellen
-              </Button>
-            ) : (
-              <Button
-                leftIcon={<Archive size={16} aria-hidden="true" />}
-                onClick={() => setPendingProductStatus({ product, nextStatus: "archived" })}
-                size="sm"
-                variant="danger"
-              >
-                Archiveren
-              </Button>
-            )}
-          </div>
-        ) : null
-    }
-  ];
+  const initialDraft: ProductDraft | null = editingProduct
+    ? {
+        name: editingProduct.name,
+        articleNumber: editingProduct.articleNumber ?? "",
+        supplierCode: editingProduct.supplierCode ?? "",
+        commercialCode: editingProduct.commercialCode ?? "",
+        colorName: editingProduct.colorName ?? "",
+        supplierProductGroup: editingProduct.supplierProductGroup ?? "",
+        packageContentM2: decimalText(editingProduct.packageContentM2),
+        piecesPerPackage: decimalText(editingProduct.piecesPerPackage),
+        status: editingProduct.status
+      }
+    : null;
 
   return (
     <div className="grid">
@@ -455,62 +303,22 @@ export default function ProductList({ session }: ProductListProps) {
         onConfirm={() => void confirmProductStatus()}
       />
       <section className="panel">
-        <FilterBar
-          search={
-            <SearchInput
-              aria-label="Zoek in catalogus"
-              value={query}
-              placeholder="Zoek op product, artikelnummer, kleur of leverancier"
-              onChange={handleSearch}
-            />
-          }
-          filters={
-            <>
-              <Field label="Status" htmlFor="catalog-status-filter">
-                <Select
-                  id="catalog-status-filter"
-                  value={statusFilter}
-                  onChange={(event) => handleStatus(event.target.value as ProductStatus)}
-                >
-                  {productStatuses.map((status) => (
-                    <option value={status} key={status}>
-                      {formatStatusLabel(status)}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Categorie" htmlFor="catalog-category-filter">
-                <Select
-                  id="catalog-category-filter"
-                  value={category}
-                  onChange={(event) => handleCategory(event.target.value)}
-                >
-                  <option value="Alle">
-                    Alle ({categories.reduce((sum, item) => sum + item.count, 0)})
-                  </option>
-                  {categories.map((item) => (
-                    <option value={item.name} key={item.name}>
-                      {item.name} ({item.count})
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              {canManageProducts ? (
-                <Checkbox
-                  checked={includePilotHidden}
-                  label="Verborgen pilotproducten tonen"
-                  aria-label="Verborgen pilotproducten tonen"
-                  description="Alleen voor importcontrole en beheer."
-                  onChange={(event) => {
-                    setIncludePilotHidden(event.target.checked);
-                    setCursor(null);
-                    setIsDone(false);
-                    setProducts([]);
-                  }}
-                />
-              ) : null}
-            </>
-          }
+        <ProductFilterBar
+          query={query}
+          onQueryChange={handleSearch}
+          statusFilter={statusFilter}
+          onStatusFilterChange={handleStatus}
+          category={category}
+          onCategoryChange={handleCategory}
+          categories={categories}
+          includePilotHidden={includePilotHidden}
+          onIncludePilotHiddenChange={(checked) => {
+            setIncludePilotHidden(checked);
+            setCursor(null);
+            setIsDone(false);
+            setProducts([]);
+          }}
+          canManageProducts={canManageProducts}
         />
         <div className="toolbar" style={{ marginTop: 12 }}>
           <Badge>Catalogus</Badge>
@@ -532,188 +340,28 @@ export default function ProductList({ session }: ProductListProps) {
         </div>
         {error ? <div className="empty-state">{error}</div> : null}
       </section>
-      {editingProduct ? (
-        <section className="panel edit-work-panel" ref={productEditPanelRef}>
-          <SectionHeader
-            compact
-            title={`Catalogusproduct bewerken: ${editingProduct.displayName ?? editingProduct.name}`}
-            description="Je past nu dit product aan. Prijshistorie en importherkomst blijven bewaard."
-            actions={<StatusBadge status={productDraft.status} label={formatStatusLabel(productDraft.status)} />}
-          />
-          <form className="form-grid" onSubmit={saveProduct}>
-            <div className="grid two-column-even">
-              <Field htmlFor="product-edit-name" label="Productnaam" required>
-                <Input
-                  id="product-edit-name"
-                  required
-                  value={productDraft.name}
-                  onChange={(event) =>
-                    setProductDraft((current) => ({ ...current, name: event.target.value }))
-                  }
-                />
-              </Field>
-              <Field htmlFor="product-edit-status" label="Status">
-                <Select
-                  id="product-edit-status"
-                  value={productDraft.status}
-                  onChange={(event) =>
-                    setProductDraft((current) => ({
-                      ...current,
-                      status: event.target.value as ProductStatus
-                    }))
-                  }
-                >
-                  {productStatuses.map((status) => (
-                    <option value={status} key={status}>
-                      {formatStatusLabel(status)}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            <div className="grid three-column">
-              <Field htmlFor="product-edit-article" label="Artikelnummer">
-                <Input
-                  id="product-edit-article"
-                  value={productDraft.articleNumber}
-                  onChange={(event) =>
-                    setProductDraft((current) => ({ ...current, articleNumber: event.target.value }))
-                  }
-                />
-              </Field>
-              <Field htmlFor="product-edit-supplier-code" label="Leverancierscode">
-                <Input
-                  id="product-edit-supplier-code"
-                  value={productDraft.supplierCode}
-                  onChange={(event) =>
-                    setProductDraft((current) => ({ ...current, supplierCode: event.target.value }))
-                  }
-                />
-              </Field>
-              <Field htmlFor="product-edit-commercial" label="Verkoopcode">
-                <Input
-                  id="product-edit-commercial"
-                  value={productDraft.commercialCode}
-                  onChange={(event) =>
-                    setProductDraft((current) => ({ ...current, commercialCode: event.target.value }))
-                  }
-                />
-              </Field>
-            </div>
-            <div className="grid three-column">
-              <Field htmlFor="product-edit-color" label="Kleur">
-                <Input
-                  id="product-edit-color"
-                  value={productDraft.colorName}
-                  onChange={(event) =>
-                    setProductDraft((current) => ({ ...current, colorName: event.target.value }))
-                  }
-                />
-              </Field>
-              <Field htmlFor="product-edit-group" label="Leveranciersgroep">
-                <Input
-                  id="product-edit-group"
-                  value={productDraft.supplierProductGroup}
-                  onChange={(event) =>
-                    setProductDraft((current) => ({
-                      ...current,
-                      supplierProductGroup: event.target.value
-                    }))
-                  }
-                />
-              </Field>
-              <Field htmlFor="product-edit-package" label="Pakinhoud m2">
-                <Input
-                  id="product-edit-package"
-                  inputMode="decimal"
-                  value={productDraft.packageContentM2}
-                  onChange={(event) =>
-                    setProductDraft((current) => ({
-                      ...current,
-                      packageContentM2: event.target.value
-                    }))
-                  }
-                />
-              </Field>
-            </div>
-            <div className="toolbar">
-              <Button
-                isLoading={isSavingProduct}
-                leftIcon={<Save size={17} aria-hidden="true" />}
-                type="submit"
-                variant="primary"
-              >
-                Product opslaan
-              </Button>
-              <Button variant="secondary" onClick={() => setEditingProduct(null)}>
-                Annuleren
-              </Button>
-            </div>
-          </form>
-        </section>
+
+      {editingProduct && initialDraft ? (
+        <ProductEditPanel
+          displayName={editingProduct.displayName ?? editingProduct.name}
+          initialDraft={initialDraft}
+          onSave={handleSaveProduct}
+          onCancel={() => setEditingProduct(null)}
+          formRef={productEditPanelRef}
+        />
       ) : null}
-      <DataTable
-        rows={products}
-        columns={columns}
-        getRowKey={(product) => product.id}
-        loading={isLoading}
+
+      <ProductListTable
+        products={products}
+        isLoading={isLoading}
         error={error}
-        emptyTitle="Geen producten gevonden"
-        emptyDescription="Pas de zoekopdracht of categoriefilter aan."
-        density="compact"
-        mobileMode="cards"
-        renderMobileCard={(product) => (
-          <div className="mobile-card-section">
-            <div className="mobile-card-header">
-              <div className="mobile-card-title">
-                <strong>{product.displayName ?? product.name}</strong>
-                <small className="muted">
-                  {[product.articleNumber, product.supplierCode, product.colorName]
-                    .filter(Boolean)
-                    .join(" · ") || "-"}
-                </small>
-              </div>
-              <StatusBadge status={product.status} label={formatStatusLabel(product.status)} />
-            </div>
-            <div className="mobile-card-meta">
-              <span>{product.category}</span>
-              <span>{product.displaySupplierName ?? product.supplier}</span>
-              <strong>{formatEuro(product.priceExVat)}</strong>
-            </div>
-            {canManageProducts ? (
-              <div className="mobile-card-actions">
-                <Button
-                  leftIcon={<Pencil size={16} aria-hidden="true" />}
-                  onClick={() => startEditProduct(product)}
-                  size="sm"
-                  variant="secondary"
-                >
-                  Bewerken
-                </Button>
-                {product.status === "archived" ? (
-                  <Button
-                    leftIcon={<RotateCcw size={16} aria-hidden="true" />}
-                    onClick={() => setPendingProductStatus({ product, nextStatus: "active" })}
-                    size="sm"
-                    variant="secondary"
-                  >
-                    Herstellen
-                  </Button>
-                ) : (
-                  <Button
-                    leftIcon={<Archive size={16} aria-hidden="true" />}
-                    onClick={() => setPendingProductStatus({ product, nextStatus: "archived" })}
-                    size="sm"
-                    variant="danger"
-                  >
-                    Archiveren
-                  </Button>
-                )}
-              </div>
-            ) : null}
-          </div>
-        )}
-        ariaLabel="Catalogusproducten"
+        canManageProducts={canManageProducts}
+        onEditProduct={(p) => {
+          setEditingProduct(p);
+        }}
+        onChangeStatus={(product, nextStatus) => {
+          setPendingProductStatus({ product, nextStatus });
+        }}
       />
     </div>
   );

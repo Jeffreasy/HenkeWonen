@@ -1,20 +1,22 @@
-import { AlertTriangle, CheckCircle2, Clock3, FileText, Mail, MapPin, Phone, Printer, Ruler, Save } from "lucide-react";
+import { FileText, Printer, Ruler, Save } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditQuotes, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatDate } from "../../lib/dates";
-import { formatMeasurementStatus, formatProjectStatus, formatQuoteStatus } from "../../lib/i18n/statusLabels";
+import { formatQuoteStatus } from "../../lib/i18n/statusLabels";
 import type { FieldProjectWorkspaceResult, PortalQuote } from "../../lib/portalTypes";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
 import { SectionHeader } from "../ui/SectionHeader";
-import { StatusBadge } from "../ui/StatusBadge";
 import MeasurementPanel from "../projects/MeasurementPanel";
 import QuoteBuilder from "../quotes/QuoteBuilder";
 import type { QuoteLineFormValues } from "../quotes/QuoteLineEditor";
+import { FieldVisitHeader, type FieldUrgency } from "./FieldVisitHeader";
+import { FieldActionPlan } from "./FieldActionPlan";
+import { FieldProjectDetailsGrid } from "./FieldProjectDetailsGrid";
 
 type FieldProjectWorkspaceProps = {
   session: AppSession;
@@ -40,13 +42,6 @@ function pickInitialQuote(quotes: PortalQuote[]) {
     quotes[0]
   );
 }
-
-type FieldUrgency = {
-  level: "red" | "orange" | "green";
-  label: "Rood" | "Oranje" | "Groen";
-  title: string;
-  description: string;
-};
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -114,18 +109,6 @@ function visitUrgency(workspace: FieldProjectWorkspaceResult): FieldUrgency {
     title: "Rustig ingepland",
     description: "Er is nog voldoende tijd tot het meetmoment."
   };
-}
-
-function UrgencyIcon({ level }: { level: FieldUrgency["level"] }) {
-  if (level === "green") {
-    return <CheckCircle2 size={22} aria-hidden="true" />;
-  }
-
-  if (level === "orange") {
-    return <Clock3 size={22} aria-hidden="true" />;
-  }
-
-  return <AlertTriangle size={22} aria-hidden="true" />;
 }
 
 export default function FieldProjectWorkspace({ session, projectId }: FieldProjectWorkspaceProps) {
@@ -344,142 +327,27 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
     <div className="grid field-project-workspace">
       {error ? <Alert variant="danger" title="Klantbezoek niet geladen" description={error} /> : null}
 
-      <section className={`field-visit-header field-visit-header-${urgency.level}`}>
-        <div className="field-visit-title">
-          <p className="eyebrow">Klantbezoek</p>
-          <h1>{workspace.project.title}</h1>
-          <div className="field-visit-badges">
-            <StatusBadge
-              status={workspace.project.status}
-              label={formatProjectStatus(workspace.project.status)}
-            />
-            {workspace.visit.measurementStatus ? (
-              <StatusBadge
-                status={workspace.visit.measurementStatus}
-                label={formatMeasurementStatus(workspace.visit.measurementStatus)}
-              />
-            ) : null}
-          </div>
-        </div>
+      <FieldVisitHeader
+        project={workspace.project}
+        visit={workspace.visit}
+        customer={workspace.customer}
+        urgency={urgency}
+      />
 
-        <div className="field-visit-side">
-          <div className={`field-urgency-card field-urgency-${urgency.level}`}>
-            <span className="field-urgency-label">
-              <UrgencyIcon level={urgency.level} />
-              {urgency.label}
-            </span>
-            <strong>{urgency.title}</strong>
-            <p>{urgency.description}</p>
-          </div>
+      <FieldActionPlan
+        customerDisplayName={workspace.customer?.displayName ?? "Onbekende klant"}
+        address={address}
+        measurementStatus={workspace.visit.measurementStatus}
+        selectedQuoteStatus={selectedQuote?.status}
+        openTasks={openTasks}
+      />
 
-          <div className="field-visit-actions">
-            {workspace.customer?.phone ? (
-              <a className="ui-button ui-button-primary ui-button-md" href={`tel:${workspace.customer.phone}`}>
-                <Phone size={17} aria-hidden="true" />
-                <span>Bellen</span>
-              </a>
-            ) : null}
-            {workspace.customer?.email ? (
-              <a className="ui-button ui-button-secondary ui-button-md" href={`mailto:${workspace.customer.email}`}>
-                <Mail size={17} aria-hidden="true" />
-                <span>Mail</span>
-              </a>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      <section className="field-action-plan" aria-label="Werkvolgorde klantbezoek">
-        <article className="field-action-card">
-          <span>1</span>
-          <div>
-            <strong>Klant en adres</strong>
-            <p>{workspace.customer?.displayName ?? "Onbekende klant"}</p>
-            {address ? (
-              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}>
-                <MapPin size={16} aria-hidden="true" />
-                Route openen
-              </a>
-            ) : null}
-          </div>
-        </article>
-        <a className="field-action-card" href="#inmeten">
-          <span>2</span>
-          <div>
-            <strong>Inmeten</strong>
-            <p>{workspace.visit.measurementStatus ? formatMeasurementStatus(workspace.visit.measurementStatus) : "Nog te starten"}</p>
-          </div>
-        </a>
-        <a className="field-action-card" href="#conceptofferte">
-          <span>3</span>
-          <div>
-            <strong>Conceptofferte</strong>
-            <p>{selectedQuote ? formatQuoteStatus(selectedQuote.status) : "Nog niet gestart"}</p>
-          </div>
-        </a>
-      </section>
-
-      {openTasks.length > 0 ? (
-        <section className="field-action-plan" aria-label="Procesopvolging">
-          {openTasks.slice(0, 3).map((task) => (
-            <article className="field-action-card" key={task.id}>
-              <span>{task.priority.label.slice(0, 1)}</span>
-              <div>
-                <strong>
-                  {task.priority.label}: {task.title}
-                </strong>
-                <p>Deadline {formatDate(task.dueAt)}</p>
-              </div>
-            </article>
-          ))}
-        </section>
-      ) : null}
-
-      <section className="grid field-project-grid">
-        <article className="panel field-customer-card">
-          <SectionHeader compact title="Klantgegevens" description="Alles wat nodig is voor het bezoek." />
-          <dl className="field-detail-list">
-            <div>
-              <dt>Klant</dt>
-              <dd>{workspace.customer?.displayName ?? "Onbekende klant"}</dd>
-            </div>
-            <div>
-              <dt>Telefoon</dt>
-              <dd>{workspace.customer?.phone ?? "-"}</dd>
-            </div>
-            <div>
-              <dt>E-mail</dt>
-              <dd>{workspace.customer?.email ?? "-"}</dd>
-            </div>
-            <div>
-              <dt>Adres</dt>
-              <dd>{address ?? "-"}</dd>
-            </div>
-          </dl>
-        </article>
-
-        <article className="panel field-customer-card">
-          <SectionHeader compact title="Bezoekstatus" description="Meetmoment en relevante notities." />
-          <dl className="field-detail-list">
-            <div>
-              <dt>Status</dt>
-              <dd>{workspace.visit.status}</dd>
-            </div>
-            <div>
-              <dt>Meetdatum</dt>
-              <dd>{workspace.visit.visitAt ? formatDate(workspace.visit.visitAt) : "-"}</dd>
-            </div>
-            <div>
-              <dt>Projectnotitie</dt>
-              <dd>{workspace.project.customerNotes ?? workspace.project.description ?? "-"}</dd>
-            </div>
-            <div>
-              <dt>Klantnotitie</dt>
-              <dd>{workspace.customer?.notes ?? "-"}</dd>
-            </div>
-          </dl>
-        </article>
-      </section>
+      <FieldProjectDetailsGrid
+        customer={workspace.customer}
+        address={address}
+        visit={workspace.visit}
+        projectNotes={workspace.project.customerNotes ?? workspace.project.description ?? undefined}
+      />
 
       <section className="field-measurement-section" id="inmeten">
         <SectionHeader

@@ -1,28 +1,24 @@
-import { Ban, CheckCircle2, Pencil, Save, Send, Trash2, XCircle } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Ban, CheckCircle2, Pencil, Send, Trash2, XCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
-import type { SubmitEventLike } from "../../lib/events";
 import type {
   PortalCustomer,
   PortalProject,
   PortalQuote,
   PortalQuoteLine,
-  QuoteLineType,
   QuoteStatus,
   QuoteTemplate
 } from "../../lib/portalTypes";
-import { formatLineType, formatQuoteStatus, formatUnit } from "../../lib/i18n/statusLabels";
+import { formatQuoteStatus, formatUnit } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
 import { buildQuoteDocumentModel } from "../../lib/quotes/quoteDocumentModel";
 import { polishQuoteTemplateLines, polishQuoteTemplateText } from "../../lib/quoteTemplateCopy";
-import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import { Button } from "../ui/Button";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { EmptyState } from "../ui/EmptyState";
 import { Field } from "../ui/Field";
 import { IconButton } from "../ui/IconButton";
-import { Input } from "../ui/Input";
 import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
 import { StatusBadge } from "../ui/StatusBadge";
@@ -32,6 +28,7 @@ import LineTypeBadge from "./LineTypeBadge";
 import MeasurementLinePicker from "./MeasurementLinePicker";
 import QuoteDocumentPreview from "./QuoteDocumentPreview";
 import QuoteLineEditor, { type QuoteLineFormValues } from "./QuoteLineEditor";
+import { QuoteLineEditForm } from "./QuoteLineEditForm";
 import QuoteTotals from "./QuoteTotals";
 
 type QuoteBuilderProps = {
@@ -49,31 +46,6 @@ type QuoteBuilderProps = {
   onMeasurementLinesImported?: () => Promise<void> | void;
   mode?: "full" | "field";
 };
-
-type QuoteLineDraft = {
-  projectRoomId: string;
-  productId: string;
-  lineType: QuoteLineType;
-  title: string;
-  description: string;
-  quantity: string;
-  unit: string;
-  unitPriceExVat: string;
-  vatRate: string;
-  discountExVat: string;
-  sortOrder: string;
-  metadata?: Record<string, unknown>;
-};
-
-const lineTypeOptions: QuoteLineType[] = [
-  "product",
-  "service",
-  "labor",
-  "material",
-  "discount",
-  "text",
-  "manual"
-];
 
 const quoteStatusActions: Array<{
   status: QuoteStatus;
@@ -118,47 +90,6 @@ const quoteStatusActions: Array<{
     icon: Ban
   }
 ];
-
-function decimalText(value?: number): string {
-  if (value === undefined || value === null) {
-    return "";
-  }
-
-  return String(value);
-}
-
-function parseDecimal(value: string): number {
-  const parsed = Number(value.trim().replace(",", "."));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function optionalDecimal(value: string): number | undefined {
-  const normalized = value.trim();
-
-  if (!normalized) {
-    return undefined;
-  }
-
-  const parsed = parseDecimal(normalized);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function draftFromLine(line: PortalQuoteLine): QuoteLineDraft {
-  return {
-    projectRoomId: line.projectRoomId ?? "",
-    productId: line.productId ?? "",
-    lineType: line.lineType,
-    title: line.title,
-    description: line.description ?? "",
-    quantity: decimalText(line.quantity),
-    unit: line.unit,
-    unitPriceExVat: decimalText(line.unitPriceExVat),
-    vatRate: decimalText(line.vatRate),
-    discountExVat: decimalText(line.discountExVat),
-    sortOrder: decimalText(line.sortOrder),
-    metadata: line.metadata
-  };
-}
 
 function splitLines(value: string): string[] {
   return value
@@ -205,12 +136,10 @@ export default function QuoteBuilder({
   );
   const [isSavingTerms, setIsSavingTerms] = useState(false);
   const [editingLine, setEditingLine] = useState<PortalQuoteLine | null>(null);
-  const [lineDraft, setLineDraft] = useState<QuoteLineDraft | null>(null);
   const [pendingDeleteLine, setPendingDeleteLine] = useState<PortalQuoteLine | null>(null);
   const [pendingStatus, setPendingStatus] = useState<QuoteStatus | null>(null);
   const [isSavingLine, setIsSavingLine] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const lineEditPanelRef = useRef<HTMLElement>(null);
   const canEditDraftLines = canEdit && quote.status === "draft";
   const roomById = useMemo(
     () => new Map((project?.rooms ?? []).map((room) => [room.id, room.name])),
@@ -224,12 +153,9 @@ export default function QuoteBuilder({
 
   useEffect(() => {
     setEditingLine(null);
-    setLineDraft(null);
     setPendingDeleteLine(null);
     setPendingStatus(null);
   }, [quote.id]);
-
-  useAutoFocusPanel(Boolean(editingLine), lineEditPanelRef);
 
   async function saveTerms() {
     if (!onUpdateTerms || !canEditDraftLines) {
@@ -244,41 +170,15 @@ export default function QuoteBuilder({
     }
   }
 
-  function startEditLine(line: PortalQuoteLine) {
-    setEditingLine(line);
-    setLineDraft(draftFromLine(line));
-  }
-
-  async function saveLine(event: SubmitEventLike) {
-    event.preventDefault();
-
-    if (!editingLine || !lineDraft || !onUpdateLine) {
+  async function saveLine(values: QuoteLineFormValues) {
+    if (!editingLine || !onUpdateLine) {
       return;
     }
 
-    if (!lineDraft.title.trim()) {
-      return;
-    }
-
-    const isTextLine = lineDraft.lineType === "text";
     setIsSavingLine(true);
     try {
-      await onUpdateLine(editingLine.id, {
-        projectRoomId: lineDraft.projectRoomId || undefined,
-        productId: lineDraft.productId || undefined,
-        lineType: lineDraft.lineType,
-        title: lineDraft.title.trim(),
-        description: lineDraft.description.trim() || undefined,
-        quantity: isTextLine ? 0 : parseDecimal(lineDraft.quantity),
-        unit: isTextLine ? "tekst" : lineDraft.unit.trim() || editingLine.unit,
-        unitPriceExVat: isTextLine ? 0 : parseDecimal(lineDraft.unitPriceExVat),
-        vatRate: isTextLine ? 0 : parseDecimal(lineDraft.vatRate),
-        discountExVat: optionalDecimal(lineDraft.discountExVat),
-        sortOrder: Math.max(1, Math.round(parseDecimal(lineDraft.sortOrder) || editingLine.sortOrder)),
-        metadata: lineDraft.metadata
-      });
+      await onUpdateLine(editingLine.id, values);
       setEditingLine(null);
-      setLineDraft(null);
     } finally {
       setIsSavingLine(false);
     }
@@ -295,7 +195,6 @@ export default function QuoteBuilder({
       await onDeleteLine(line.id);
       if (editingLine?.id === line.id) {
         setEditingLine(null);
-        setLineDraft(null);
       }
       setPendingDeleteLine(null);
     } finally {
@@ -390,7 +289,7 @@ export default function QuoteBuilder({
             {onUpdateLine ? (
               <IconButton
                 aria-label={`Offertepost ${line.title} bewerken`}
-                onClick={() => startEditLine(line)}
+                onClick={() => setEditingLine(line)}
                 title={`Offertepost ${line.title} bewerken`}
                 variant="secondary"
                 size="sm"
@@ -411,6 +310,7 @@ export default function QuoteBuilder({
         ) : null
     }
   ];
+  
   const quoteTotals = quote.lines.reduce(
     (current, line) => ({
       subtotalExVat: current.subtotalExVat + line.lineTotalExVat,
@@ -423,6 +323,7 @@ export default function QuoteBuilder({
       totalIncVat: 0
     }
   );
+
   const lineEditor = (
     <QuoteLineEditor
       mode={mode}
@@ -434,6 +335,7 @@ export default function QuoteBuilder({
       onAdd={onAddLine}
     />
   );
+
   const measurementPicker = (
     <MeasurementLinePicker
       mode={mode}
@@ -445,183 +347,18 @@ export default function QuoteBuilder({
       onImported={onMeasurementLinesImported}
     />
   );
+
   const lineEditPanel =
-    editingLine && lineDraft && onUpdateLine && canEditDraftLines ? (
-      <section className="panel edit-work-panel" ref={lineEditPanelRef}>
-        <SectionHeader
-          compact
-          title={`Offertepost bewerken: ${editingLine.title}`}
-          description="Je bewerkt nu deze ene conceptregel. Definitieve of verzonden offertes blijven beschermd tegen losse regelwijzigingen."
-          actions={<LineTypeBadge lineType={lineDraft.lineType} />}
-        />
-        <form className="form-grid" onSubmit={saveLine}>
-          <div className="grid two-column-even">
-            <Field htmlFor="quote-line-edit-type" label="Soort post">
-              <Select
-                id="quote-line-edit-type"
-                value={lineDraft.lineType}
-                onChange={(event) =>
-                  setLineDraft((current) =>
-                    current
-                      ? { ...current, lineType: event.target.value as QuoteLineType }
-                      : current
-                  )
-                }
-              >
-                {lineTypeOptions.map((type) => (
-                  <option key={type} value={type}>
-                    {formatLineType(type)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field htmlFor="quote-line-edit-title" label="Omschrijving" required>
-              <Input
-                id="quote-line-edit-title"
-                required
-                value={lineDraft.title}
-                onChange={(event) =>
-                  setLineDraft((current) =>
-                    current ? { ...current, title: event.target.value } : current
-                  )
-                }
-              />
-            </Field>
-          </div>
-          {(project?.rooms ?? []).length > 0 ? (
-            <Field htmlFor="quote-line-edit-room" label="Ruimte">
-              <Select
-                id="quote-line-edit-room"
-                value={lineDraft.projectRoomId}
-                onChange={(event) =>
-                  setLineDraft((current) =>
-                    current ? { ...current, projectRoomId: event.target.value } : current
-                  )
-                }
-              >
-                <option value="">Geen specifieke ruimte</option>
-                {project?.rooms.map((room) => (
-                  <option value={room.id} key={room.id}>
-                    {room.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          ) : null}
-          <Field htmlFor="quote-line-edit-description" label="Beschrijving">
-            <Textarea
-              id="quote-line-edit-description"
-              rows={3}
-              value={lineDraft.description}
-              onChange={(event) =>
-                setLineDraft((current) =>
-                  current ? { ...current, description: event.target.value } : current
-                )
-              }
-            />
-          </Field>
-          <div className="grid three-column">
-            <Field htmlFor="quote-line-edit-quantity" label="Aantal">
-              <Input
-                disabled={lineDraft.lineType === "text"}
-                id="quote-line-edit-quantity"
-                inputMode="decimal"
-                value={lineDraft.quantity}
-                onChange={(event) =>
-                  setLineDraft((current) =>
-                    current ? { ...current, quantity: event.target.value } : current
-                  )
-                }
-              />
-            </Field>
-            <Field htmlFor="quote-line-edit-unit" label="Eenheid">
-              <Input
-                disabled={lineDraft.lineType === "text"}
-                id="quote-line-edit-unit"
-                value={lineDraft.unit}
-                onChange={(event) =>
-                  setLineDraft((current) =>
-                    current ? { ...current, unit: event.target.value } : current
-                  )
-                }
-              />
-            </Field>
-            <Field htmlFor="quote-line-edit-price" label="Prijs excl. btw">
-              <Input
-                disabled={lineDraft.lineType === "text"}
-                id="quote-line-edit-price"
-                inputMode="decimal"
-                value={lineDraft.unitPriceExVat}
-                onChange={(event) =>
-                  setLineDraft((current) =>
-                    current ? { ...current, unitPriceExVat: event.target.value } : current
-                  )
-                }
-              />
-            </Field>
-          </div>
-          <div className="grid three-column">
-            <Field htmlFor="quote-line-edit-vat" label="Btw %">
-              <Input
-                disabled={lineDraft.lineType === "text"}
-                id="quote-line-edit-vat"
-                inputMode="decimal"
-                value={lineDraft.vatRate}
-                onChange={(event) =>
-                  setLineDraft((current) =>
-                    current ? { ...current, vatRate: event.target.value } : current
-                  )
-                }
-              />
-            </Field>
-            <Field htmlFor="quote-line-edit-discount" label="Korting excl. btw">
-              <Input
-                disabled={lineDraft.lineType === "text"}
-                id="quote-line-edit-discount"
-                inputMode="decimal"
-                value={lineDraft.discountExVat}
-                onChange={(event) =>
-                  setLineDraft((current) =>
-                    current ? { ...current, discountExVat: event.target.value } : current
-                  )
-                }
-              />
-            </Field>
-            <Field htmlFor="quote-line-edit-sort" label="Volgorde">
-              <Input
-                id="quote-line-edit-sort"
-                inputMode="numeric"
-                value={lineDraft.sortOrder}
-                onChange={(event) =>
-                  setLineDraft((current) =>
-                    current ? { ...current, sortOrder: event.target.value } : current
-                  )
-                }
-              />
-            </Field>
-          </div>
-          <div className="toolbar">
-            <Button
-              isLoading={isSavingLine}
-              leftIcon={<Save size={17} aria-hidden="true" />}
-              type="submit"
-              variant="primary"
-            >
-              Offertepost opslaan
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setEditingLine(null);
-                setLineDraft(null);
-              }}
-            >
-              Annuleren
-            </Button>
-          </div>
-        </form>
-      </section>
+    editingLine && onUpdateLine && canEditDraftLines ? (
+      <QuoteLineEditForm
+        line={editingLine}
+        projectRooms={project?.rooms ?? []}
+        isSaving={isSavingLine}
+        onSave={saveLine}
+        onCancel={() => setEditingLine(null)}
+      />
     ) : null;
+
   const quoteLinesPanel = (
     <section className="panel">
       <SectionHeader
@@ -668,7 +405,7 @@ export default function QuoteBuilder({
                 {onUpdateLine ? (
                   <Button
                     leftIcon={<Pencil size={16} aria-hidden="true" />}
-                    onClick={() => startEditLine(line)}
+                    onClick={() => setEditingLine(line)}
                     size="sm"
                     variant="secondary"
                   >
@@ -696,6 +433,7 @@ export default function QuoteBuilder({
       ) : null}
     </section>
   );
+
   const termsContent =
     onUpdateTerms && canEditDraftLines ? (
       <div className="grid two-column-even">
@@ -744,6 +482,7 @@ export default function QuoteBuilder({
         ) : null}
       </div>
     );
+
   const termsPanel = (
     <section className="panel">
       <SectionHeader
@@ -754,6 +493,7 @@ export default function QuoteBuilder({
       {termsContent}
     </section>
   );
+
   const customerVersionContent = documentModel ? (
     <QuoteDocumentPreview model={documentModel} />
   ) : (
@@ -762,6 +502,7 @@ export default function QuoteBuilder({
       description="Klantgegevens zijn nodig om de klantversie te tonen."
     />
   );
+
   const customerVersionPanel = (
     <section className="panel">
       <SectionHeader
@@ -772,7 +513,9 @@ export default function QuoteBuilder({
       {customerVersionContent}
     </section>
   );
+
   const pendingStatusAction = quoteStatusActions.find((action) => action.status === pendingStatus);
+  
   const statusActions =
     !isFieldMode && canEdit && onUpdateStatus ? (
       <div className="toolbar">
@@ -798,6 +541,7 @@ export default function QuoteBuilder({
     ) : (
       <StatusBadge status={quote.status} label={formatQuoteStatus(quote.status)} />
     );
+
   const dialogs = (
     <>
       <ConfirmDialog

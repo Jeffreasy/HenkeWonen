@@ -127,10 +127,10 @@ export default function MeasurementLinePicker({
     setError(null);
 
     try {
-      const tenant = await client.query(api.tenants.getBySlug, { slug: tenantSlug });
+      const tenant = await client.query(api.beheer.tenants.getBySlug, { slug: tenantSlug });
       const resolvedTenantId = String(tenant?._id ?? tenantSlug);
 
-      const result = (await client.query(api.measurements.listReadyForQuoteByProject, {
+      const result = (await client.query(api.projecten.measurements.listReadyForQuoteByProject, {
         tenantId: resolvedTenantId as Id<"tenants">,
         projectId: projectId as Id<"projects">
       })) as ReadyMeasurementResult;

@@ -41,7 +41,7 @@ let iterations = 0;
 
 while (true) {
   iterations += 1;
-  const result = await client.mutation(api.catalogImport.deleteProductsBySupplierChunk, {
+  const result = await client.mutation(api.catalog.import.deleteProductsBySupplierChunk, {
     tenantSlug: toolEnv.tenantSlug,
     actor,
     supplierName: SUPPLIER_NAME,

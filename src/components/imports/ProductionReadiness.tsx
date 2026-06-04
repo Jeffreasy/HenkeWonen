@@ -71,7 +71,7 @@ export default function ProductionReadiness({ session }: ProductionReadinessProp
     setError(null);
 
     try {
-      const result = (await client.query(api.catalogReview.productionReadiness, {
+      const result = (await client.query(api.catalog.review.productionReadiness, {
         tenantSlug: session.tenantId
       })) as ProductionReadinessResult;
 

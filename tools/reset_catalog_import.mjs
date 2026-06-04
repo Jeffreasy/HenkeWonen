@@ -36,7 +36,7 @@ console.log(JSON.stringify({ ...targetSummary(toolEnv), action: "catalog reset" 
 console.log(
   JSON.stringify(
     {
-      before: await client.query(api.catalogImport.getCatalogImportStats, {
+      before: await client.query(api.catalog.import.getCatalogImportStats, {
         tenantSlug,
         summaryOnly: true,
       }),
@@ -52,7 +52,7 @@ let iterations = 0;
 while (true) {
   iterations += 1;
 
-  const result = await client.mutation(api.catalogImport.resetCatalogChunk, {
+  const result = await client.mutation(api.catalog.import.resetCatalogChunk, {
     tenantSlug,
     actor,
     confirm: "RESET_IMPORTED_CATALOG",
@@ -76,7 +76,7 @@ console.log(
       done: true,
       iterations,
       deleted: totals,
-      after: await client.query(api.catalogImport.getCatalogImportStats, {
+      after: await client.query(api.catalog.import.getCatalogImportStats, {
         tenantSlug,
         summaryOnly: true,
       }),

@@ -24,7 +24,7 @@
     "catalog:flexcolours:preview": "node tools/run_python_tool.mjs tools/parse_flexcolours_matrix.py",
     "catalog:flexcolours:preview:check": "node tools/run_python_tool.mjs tools/parse_flexcolours_matrix.py --no-write",
     "catalog:flexcolours:cleanup:dev": "node tools/cleanup_raambekleding.mjs",
-    "catalog:flexcolours:import:dev": "node tools/upload_catalog_batch_import.mjs --preview-file docs/flexcolours-import-preview.json --allow-unknown-vat",
+    "catalog:flexcolours:import:dev": "node tools/upload_catalog_batch_import.mjs --preview-file docs/generated/flexcolours-import-preview.json --allow-unknown-vat",
     "catalog:prod:bootstrap": "node tools/bootstrap_production_base.mjs --production --target=production",
     "catalog:status": "node tools/catalog_status.mjs",
     "catalog:vat:export": "node tools/export_vat_mapping_review.mjs",
