@@ -168,30 +168,197 @@ textarea {
   backdrop-filter: blur(14px);
 }
 
-.portal-topbar-context,
-.portal-topbar-session {
-  display: grid;
-  gap: 2px;
+.portal-topbar-context {
+  display: flex;
+  align-items: center;
   min-width: 0;
 }
 
-.portal-topbar-context span,
-.portal-topbar-session span {
+.portal-topbar-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.breadcrumb-group {
   color: var(--muted);
-  font-size: var(--text-xs);
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-weight: 550;
 }
 
-.portal-topbar-context strong,
-.portal-topbar-session strong {
-  min-width: 0;
-  overflow: hidden;
+.breadcrumb-separator {
+  color: var(--line-strong);
+  font-weight: 400;
+  user-select: none;
+}
+
+.breadcrumb-item {
   color: var(--ink);
+  font-weight: 950;
+}
+
+/* User Menu Dropdown */
+.portal-topbar-user-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.portal-topbar-user-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  color: var(--ink);
+  cursor: pointer;
+  padding: 4px var(--space-3) 4px var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 750;
+  transition: all 180ms ease;
+  user-select: none;
+}
+
+.portal-topbar-user-trigger:hover,
+.portal-topbar-user-trigger.active {
+  border-color: var(--line-strong);
+  background: var(--bg-subtle);
+}
+
+.portal-topbar-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: var(--text-xs);
   font-weight: 900;
+}
+
+.portal-topbar-username {
+  max-width: 160px;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chevron-icon {
+  color: var(--muted);
+  transition: transform 180ms ease;
+}
+
+.chevron-icon.rotate {
+  transform: rotate(180deg);
+}
+
+.portal-topbar-dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 50;
+  width: 240px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-3);
+  animation: dropdownFadeIn 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-user-header {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-1) var(--space-2);
+}
+
+.dropdown-user-header .user-name {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 850;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-user-header .user-email {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-role-container {
+  margin-top: var(--space-2);
+}
+
+.user-role-badge {
+  display: inline-block;
+  border-radius: var(--radius-xs);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  padding: 2px 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dropdown-divider {
+  height: 1px;
+  margin: var(--space-2) 0;
+  background: var(--line);
+}
+
+.dropdown-actions {
+  padding: var(--space-1) 0 0 0;
+}
+
+.logout-button-dropdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--danger) !important;
+  border-radius: var(--radius-md) !important;
+  background: transparent !important;
+  color: var(--danger) !important;
+  font-size: var(--text-sm) !important;
+  font-weight: 800 !important;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.logout-button-dropdown:hover,
+.logout-button-dropdown:focus-visible {
+  background: var(--danger-bg) !important;
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
+}
+
+@media (max-width: 1150px) {
+  .portal-topbar-username {
+    display: none;
+  }
 }
 
 .portal-topbar-actions {
