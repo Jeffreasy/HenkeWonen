@@ -125,10 +125,10 @@ export const listSuppliers = query({
         const [products, batches, priceLists] = await Promise.all([
           ctx.db
             .query("products")
-            .withIndex("by_supplier", (q: any) =>
-              q.eq("tenantId", tenant._id).eq("supplierId", supplier._id)
+            .withIndex("by_supplier_status", (q: any) =>
+              q.eq("tenantId", tenant._id).eq("supplierId", supplier._id).eq("status", "active")
             )
-            .collect(),
+            .take(1000),
           ctx.db
             .query("productImportBatches")
             .withIndex("by_supplier", (q: any) =>
@@ -163,8 +163,7 @@ export const listSuppliers = query({
         ).sort((left, right) => left.localeCompare(right, "nl"));
 
         supplierMetrics.set(String(supplier._id), {
-          activeProductCount: products.filter((product: Doc<"products">) => product.status === "active")
-            .length,
+          activeProductCount: products.length,
           importProfileCount,
           importBatchCount: batches.length,
           sourceFileCount: sourceFileNames.length,
