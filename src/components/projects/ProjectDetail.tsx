@@ -3,7 +3,10 @@ import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
+import { formatDate } from "../../lib/dates";
+import { formatEuro } from "../../lib/money";
 import type {
+  InvoiceStatus,
   PortalCustomer,
   PortalProject,
   PortalProjectTask,
@@ -16,6 +19,8 @@ import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
 import { LoadingState } from "../ui/LoadingState";
 import { EmptyState } from "../ui/EmptyState";
+import { SectionHeader } from "../ui/SectionHeader";
+import { SummaryList } from "../ui/SummaryList";
 import ProjectStatusBadge from "./ProjectStatusBadge";
 import ProjectWorkflowRail from "./ProjectWorkflowRail";
 import MeasurementPanel from "./MeasurementPanel";
@@ -24,6 +29,7 @@ import { ProjectEditForm } from "./ProjectEditForm";
 import { ProjectRoomsPanel } from "./ProjectRoomsPanel";
 import { ProjectTasksPanel } from "./ProjectTasksPanel";
 import { ProjectTimelinePanel } from "./ProjectTimelinePanel";
+import { InvoiceStatusBadge } from "../invoices/InvoiceStatusBadge";
 
 type ProjectDetailProps = {
   session: AppSession;
@@ -35,6 +41,14 @@ type ProjectDetailResult = {
   customer: PortalCustomer | null;
   workflowEvents?: PortalWorkflowEvent[];
   projectTasks?: PortalProjectTask[];
+  invoice?: {
+    id: string;
+    invoiceNumber: string;
+    status: InvoiceStatus | string;
+    totalIncVat: number;
+    dueDate: number;
+    paidAmount: number;
+  } | null;
 } | null;
 
 type ProjectAction =
@@ -436,6 +450,43 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
           onProcessAction={openProjectAction}
         />
       </div>
+
+      {detail.invoice ? (
+        <section className="panel">
+          <SectionHeader
+            compact
+            title="Gekoppelde factuur"
+            description="Automatisch aangemaakt bij de stap Gefactureerd."
+            actions={
+              <a
+                href={`/portal/facturen/${detail.invoice.id}`}
+                className="ui-button ui-button-secondary ui-button-sm"
+              >
+                Factuur openen
+              </a>
+            }
+          />
+          <SummaryList
+            items={[
+              { label: "Factuurnummer", value: detail.invoice.invoiceNumber },
+              {
+                label: "Status",
+                value: <InvoiceStatusBadge status={detail.invoice.status} />
+              },
+              { label: "Totaal incl. btw", value: <strong>{formatEuro(detail.invoice.totalIncVat)}</strong> },
+              { label: "Vervaldatum", value: formatDate(detail.invoice.dueDate) },
+              {
+                label: "Betaald",
+                value: formatEuro(detail.invoice.paidAmount),
+                description:
+                  detail.invoice.paidAmount >= detail.invoice.totalIncVat
+                    ? "Volledig ontvangen"
+                    : `Nog € ${(detail.invoice.totalIncVat - detail.invoice.paidAmount).toFixed(2).replace(".", ",")} te ontvangen`
+              }
+            ]}
+          />
+        </section>
+      ) : null}
 
       <div id="project-measurement">
         <MeasurementPanel

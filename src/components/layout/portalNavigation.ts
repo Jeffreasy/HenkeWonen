@@ -4,6 +4,7 @@ import {
   FileText,
   Home,
   PackageSearch,
+  Receipt,
   Ruler,
   Settings,
   type LucideIcon
@@ -50,6 +51,12 @@ export const portalNavGroups: PortalNavGroup[] = [
         ]
       },
       { href: "/portal/offertes", label: "Offertes", icon: FileText, quickbar: true },
+      {
+        href: "/portal/facturen",
+        label: "Facturen",
+        icon: Receipt,
+        matches: [{ path: "/portal/facturen" }]
+      },
       {
         href: "/portal/catalogus",
         label: "Catalogus",

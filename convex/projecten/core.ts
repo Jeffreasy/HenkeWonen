@@ -26,6 +26,23 @@ import {
   sortProjectTasks
 } from "../portalUtils";
 
+async function nextInvoiceNumber(ctx: any, tenantId: Id<"tenants">): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `FAC-${year}-`;
+  const existing = await ctx.db
+    .query("invoices")
+    .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
+    .collect();
+  const yearInvoices = existing.filter((inv: Doc<"invoices">) =>
+    inv.invoiceNumber.startsWith(prefix)
+  );
+  const highest = yearInvoices.reduce((max: number, inv: Doc<"invoices">) => {
+    const num = parseInt(inv.invoiceNumber.replace(prefix, ""), 10);
+    return isNaN(num) ? max : Math.max(max, num);
+  }, 0);
+  return `${prefix}${String(highest + 1).padStart(3, "0")}`;
+}
+
 
 export const list = query({
   args: {
@@ -368,7 +385,7 @@ export const projectDetail = query({
       return null;
     }
 
-    const [customer, workflowEvents, projectTasks] = await Promise.all([
+    const [customer, workflowEvents, projectTasks, projectInvoices] = await Promise.all([
       ctx.db.get(project.customerId),
       ctx.db
         .query("projectWorkflowEvents")
@@ -381,8 +398,19 @@ export const projectDetail = query({
         .withIndex("by_project", (q: any) =>
           q.eq("tenantId", tenant._id).eq("projectId", project._id)
         )
+        .collect(),
+      ctx.db
+        .query("invoices")
+        .withIndex("by_project", (q: any) =>
+          q.eq("tenantId", tenant._id).eq("projectId", project._id)
+        )
         .collect()
     ]);
+
+    // Meest recente factuur (doorgaans is er maar één per project)
+    const latestInvoice = projectInvoices
+      .sort((left: Doc<"invoices">, right: Doc<"invoices">) => right.createdAt - left.createdAt)
+      .at(0);
 
     return {
       project: await toProject(ctx, tenant.slug, project),
@@ -395,7 +423,17 @@ export const projectDetail = query({
         .map((event: Doc<"projectWorkflowEvents">) => toWorkflowEvent(tenant.slug, event)),
       projectTasks: sortProjectTasks(projectTasks).map((task: Doc<"projectTasks">) =>
         toProjectTask(tenant.slug, task)
-      )
+      ),
+      invoice: latestInvoice
+        ? {
+            id: String(latestInvoice._id),
+            invoiceNumber: latestInvoice.invoiceNumber,
+            status: latestInvoice.status,
+            totalIncVat: latestInvoice.totalIncVat,
+            dueDate: latestInvoice.dueDate,
+            paidAmount: latestInvoice.paidAmount
+          }
+        : null
     };
   }
 });
@@ -860,6 +898,26 @@ export const processProjectAction = mutation({
         args.invoiceDueAt ?? addCalendarDays(now, invoiceTermDays),
         externalUserId
       );
+
+      // Koppel de laatste geaccepteerde offerte voor bedragen
+      const acceptedQuote = await latestQuoteForProject(ctx, tenant._id, project._id);
+      const invoiceNumber = await nextInvoiceNumber(ctx, tenant._id);
+      await ctx.db.insert("invoices", {
+        tenantId: tenant._id,
+        projectId: project._id,
+        customerId: project.customerId,
+        quoteId: acceptedQuote?._id,
+        invoiceNumber,
+        status: "sent",
+        invoiceDate: now,
+        dueDate: args.invoiceDueAt ?? addCalendarDays(now, invoiceTermDays),
+        subtotalExVat: acceptedQuote?.subtotalExVat ?? 0,
+        vatTotal: acceptedQuote?.vatTotal ?? 0,
+        totalIncVat: acceptedQuote?.totalIncVat ?? 0,
+        paidAmount: 0,
+        createdAt: now,
+        updatedAt: now
+      });
     }
 
     if (args.action === "cancelled") {

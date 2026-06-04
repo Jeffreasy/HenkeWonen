@@ -1,6 +1,7 @@
 import type {
   CustomerStatus,
   CustomerType,
+  InvoiceStatus,
   PriceUnit,
   ProductImportRowKind,
   ProductImportRowStatus,
@@ -341,3 +342,17 @@ export function formatMeasurementCalculationType(calculationType: string): strin
 export function formatQuotePreparationStatus(status: string): string {
   return quotePreparationStatusLabels[status as QuotePreparationStatus] ?? formatStatusLabel(status);
 }
+
+const invoiceStatusLabels: Record<InvoiceStatus, string> = {
+  draft: "Concept",
+  sent: "Verzonden",
+  partially_paid: "Gedeeltelijk betaald",
+  paid: "Betaald",
+  overdue: "Te laat",
+  cancelled: "Geannuleerd"
+};
+
+export function formatInvoiceStatus(status: string): string {
+  return invoiceStatusLabels[status as InvoiceStatus] ?? formatStatusLabel(status);
+}
+

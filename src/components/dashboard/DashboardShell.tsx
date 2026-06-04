@@ -7,6 +7,7 @@ import type { PortalProject } from "../../lib/portalTypes";
 import ProductionReadiness from "../imports/ProductionReadiness";
 import { Alert } from "../ui/Alert";
 import { DashboardFocusCards } from "./DashboardFocusCards";
+import { DashboardInvoiceStrip } from "./DashboardInvoiceStrip";
 import { DashboardWorkOverview, type DashboardWorkItem } from "./DashboardWorkOverview";
 import { DashboardQuoteFollowUps, type DashboardQuoteFollowUp } from "./DashboardQuoteFollowUps";
 import { DashboardRecentProjects } from "./DashboardRecentProjects";
@@ -22,6 +23,7 @@ type DashboardData = {
   workItems: DashboardWorkItem[];
   quoteFollowUps: DashboardQuoteFollowUp[];
   projects: PortalProject[];
+  invoiceStats: { openAmount: number; overdueCount: number };
 };
 
 const emptyDashboard: DashboardData = {
@@ -30,11 +32,13 @@ const emptyDashboard: DashboardData = {
   workItemCount: 0,
   workItems: [],
   quoteFollowUps: [],
-  projects: []
+  projects: [],
+  invoiceStats: { openAmount: 0, overdueCount: 0 }
 };
 
 function normalizeDashboardData(result: Partial<DashboardData> | null | undefined): DashboardData {
   const workItems = Array.isArray(result?.workItems) ? result.workItems : [];
+  const invoiceStats = result?.invoiceStats;
 
   return {
     openQuoteCount: typeof result?.openQuoteCount === "number" ? result.openQuoteCount : 0,
@@ -43,7 +47,11 @@ function normalizeDashboardData(result: Partial<DashboardData> | null | undefine
       typeof result?.workItemCount === "number" ? result.workItemCount : workItems.length,
     workItems,
     quoteFollowUps: Array.isArray(result?.quoteFollowUps) ? result.quoteFollowUps : [],
-    projects: Array.isArray(result?.projects) ? result.projects : []
+    projects: Array.isArray(result?.projects) ? result.projects : [],
+    invoiceStats: {
+      openAmount: typeof invoiceStats?.openAmount === "number" ? invoiceStats.openAmount : 0,
+      overdueCount: typeof invoiceStats?.overdueCount === "number" ? invoiceStats.overdueCount : 0
+    }
   };
 }
 
@@ -98,6 +106,12 @@ export default function DashboardShell({ session }: DashboardShellProps) {
   return (
     <div className="grid">
       {error ? <Alert variant="danger" title="Werkoverzicht niet geladen" description={error} /> : null}
+
+      <DashboardInvoiceStrip
+        isLoading={isLoading}
+        openAmount={dashboard.invoiceStats.openAmount}
+        overdueCount={dashboard.invoiceStats.overdueCount}
+      />
 
       <DashboardFocusCards
         isLoading={isLoading}

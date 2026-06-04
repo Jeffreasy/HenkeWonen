@@ -708,3 +708,63 @@ export type ImportProfile = {
   status: "active" | "inactive";
   updatedAt: number;
 };
+
+// ---------------------------------------------------------------------------
+// Facturen
+// ---------------------------------------------------------------------------
+
+export type InvoiceStatus =
+  | "draft"
+  | "sent"
+  | "partially_paid"
+  | "paid"
+  | "overdue"
+  | "cancelled";
+
+export type PortalInvoice = {
+  id: string;
+  tenantId: string;
+  projectId: string;
+  customerId: string;
+  quoteId?: string;
+  invoiceNumber: string;
+  status: InvoiceStatus;
+  invoiceDate: number;
+  dueDate: number;
+  subtotalExVat: number;
+  vatTotal: number;
+  totalIncVat: number;
+  paidAmount: number;
+  paidAt?: number;
+  reminderSentAt?: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type PortalInvoiceRow = PortalInvoice & {
+  customerName: string;
+  projectTitle: string;
+};
+
+export type PortalInvoiceDetail = {
+  invoice: PortalInvoice;
+  customer: {
+    id: string;
+    displayName: string;
+    email?: string;
+    phone?: string;
+    type: CustomerType;
+  } | null;
+  project: {
+    id: string;
+    title: string;
+    status: ProjectStatus;
+  } | null;
+  quote: {
+    id: string;
+    quoteNumber: string;
+    title: string;
+    status: QuoteStatus;
+  } | null;
+};
+

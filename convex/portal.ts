@@ -17,11 +17,14 @@ export const dashboard = query({
         workItemCount: 0,
         workItems: [],
         quoteFollowUps: [],
-        projects: []
+        projects: [],
+        invoiceStats: { openAmount: 0, overdueCount: 0 }
       };
     }
 
-    const [customers, projects, quotes, projectTasks] = await Promise.all([
+    const invoiceStatuses = ["sent", "partially_paid", "overdue"] as const;
+
+    const [customers, projects, quotes, projectTasks, invoicesByStatus] = await Promise.all([
       ctx.db
         .query("customers")
         .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
@@ -37,8 +40,26 @@ export const dashboard = query({
       ctx.db
         .query("projectTasks")
         .withIndex("by_status", (q: any) => q.eq("tenantId", tenant._id).eq("status", "open"))
-        .collect()
+        .collect(),
+      Promise.all(
+        invoiceStatuses.map((status) =>
+          ctx.db
+            .query("invoices")
+            .withIndex("by_status", (q: any) => q.eq("tenantId", tenant._id).eq("status", status))
+            .collect()
+        )
+      )
     ]);
+
+    const allOpenInvoices: Doc<"invoices">[] = invoicesByStatus.flat();
+    const now = Date.now();
+    const openAmount = allOpenInvoices.reduce(
+      (sum, inv) => sum + (inv.totalIncVat - inv.paidAmount),
+      0
+    );
+    const overdueCount = allOpenInvoices.filter(
+      (inv) => inv.status === "overdue" || inv.dueDate < now
+    ).length;
     const customerById = new Map(
       customers.map((customer: Doc<"customers">) => [String(customer._id), customer.displayName])
     );
@@ -169,7 +190,8 @@ export const dashboard = query({
           projectTitle: project?.title
         };
       }),
-      projects: visibleProjects
+      projects: visibleProjects,
+      invoiceStats: { openAmount, overdueCount }
     };
   }
 });
@@ -207,3 +229,5 @@ export { listQuoteTemplates, updateQuoteTemplateContent } from "./offertes/templ
 export { listCategories, upsertCategory } from "./beheer/categories";
 export { listServiceRules, upsertServiceRule } from "./beheer/serviceCostRules";
 export { fieldServiceWorkspace, fieldProjectWorkspace } from "./projecten/fieldService";
+export { listInvoices, invoiceDetail, createInvoice, updateInvoiceStatus, markInvoicePaid } from "./facturen/core";
+

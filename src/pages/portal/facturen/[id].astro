@@ -1,0 +1,28 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import InvoiceDetail from "../../../components/invoices/InvoiceDetail";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+const invoiceId = Astro.params.id ?? "";
+
+const breadcrumbs = [
+  { label: "Start", href: "/portal" },
+  { label: "Facturen", href: "/portal/facturen" },
+  { label: "Factuurdetail" }
+];
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Factuurdetail" session={session}>
+  <PageHeader
+    eyebrow="Financieel"
+    title="Factuurdetail"
+    description="Bekijk factuurgegevens, registreer een betaling of markeer als te laat."
+    breadcrumbs={breadcrumbs}
+  />
+  <InvoiceDetail client:load session={session} invoiceId={invoiceId} />
+</PortalLayout>

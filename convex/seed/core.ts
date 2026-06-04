@@ -881,6 +881,44 @@ const importProfiles = [
       ]
     },
     notes: "Palletafname is prijsbron/conditie; niet dedupliceren op bestandsnaam."
+  },
+  {
+    supplierName: "Masureel",
+    name: "Masureel Behang NL NG 2026",
+    filePattern: "*NL NG*.xlsx",
+    sheetPattern: "*",
+    supportsXlsx: true,
+    supportsXls: false,
+    mapping: {
+      category: "behang",
+      productKind: "wallpaper",
+      codeColumns: ["Reference"],
+      nameColumns: ["Naam"],
+      priceColumns: [
+        {
+          header: "Aankoopprijs \u20AC excl. BTW 010526/Stuk of m",
+          priceType: "purchase",
+          priceUnit: "roll",
+          vatMode: "exclusive"
+        },
+        {
+          header: "Aanbevolen verkoopprijs \u20AC incl. BTW 010526/Stuk of m",
+          priceType: "advice_retail",
+          priceUnit: "roll",
+          vatMode: "inclusive"
+        }
+      ],
+      attributeColumns: [
+        "Rapport",
+        "Hoogte (cm)",
+        "Breedte (m)",
+        "Lengte (m)",
+        "Rol/stuk/m",
+        "Gewicht (g/m2)",
+        "Fire resistance"
+      ]
+    },
+    notes: "Masureel behang NL NG 01052026. Sheets: MASUREEL (4633 rijen), PROJECTS (1346 rijen), COLMP4 (255 rijen), ART FACTORY (8 rijen), STOFFEN (42 rijen). Aankoopprijs excl. BTW, adviesverkoop incl. BTW per rol."
   }
 ];
 

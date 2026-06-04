@@ -1,0 +1,20 @@
+---
+import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import InvoiceWorkspace from "../../../components/invoices/InvoiceWorkspace";
+import { PageHeader } from "../../../components/ui/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Facturen" session={session}>
+  <PageHeader
+    eyebrow="Financieel"
+    title="Facturen"
+    description="Overzicht van alle facturen. Registreer betalingen en volg openstaande bedragen op."
+  />
+  <InvoiceWorkspace client:load session={session} />
+</PortalLayout>
