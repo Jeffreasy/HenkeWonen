@@ -12,6 +12,7 @@ import { SummaryList } from "../ui/SummaryList";
 
 type ProductionReadinessProps = {
   session: AppSession;
+  hideWhenReady?: boolean;
 };
 
 type ProductionReadinessResult = {
@@ -53,7 +54,7 @@ function dateText(value?: number) {
   }).format(new Date(value));
 }
 
-export default function ProductionReadiness({ session }: ProductionReadinessProps) {
+export default function ProductionReadiness({ session, hideWhenReady }: ProductionReadinessProps) {
   const [readiness, setReadiness] = useState<ProductionReadinessResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +92,11 @@ export default function ProductionReadiness({ session }: ProductionReadinessProp
   const isReady = readiness?.productionImportStatus === "READY";
   const unresolvedVatMappings = readiness?.vatMappings.unresolved ?? 0;
   const duplicateEanIssues = readiness?.duplicateEanIssues.open ?? 0;
+
+  // Op het dashboard: verberg zodra status READY is of nog onbekend (laadt)
+  if (hideWhenReady && (isLoading || isReady)) {
+    return null;
+  }
 
   return (
     <section className={isReady ? "panel release-panel-ready" : "panel release-panel"}>

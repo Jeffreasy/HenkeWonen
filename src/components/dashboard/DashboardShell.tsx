@@ -137,7 +137,7 @@ export default function DashboardShell({ session }: DashboardShellProps) {
         projects={dashboard.projects}
       />
 
-      {showAdminReadiness ? <ProductionReadiness session={session} /> : null}
+      {showAdminReadiness ? <ProductionReadiness session={session} hideWhenReady /> : null}
     </div>
   );
 }
