@@ -21,131 +21,211 @@ const hasLaventeCareConnection = hasLaventeCareApi || Boolean(loginUrl);
     <link rel="icon" type="image/png" href="/favicon.png" />
     <title>Toegang | Henke Wonen</title>
   </head>
-  <body>
-    <main class="login-shell">
-      <section class="login-frame" aria-labelledby="login-title">
-        <div class="login-brand-panel">
-          <a class="login-logo" href="/" aria-label="Henke Wonen homepage">
+  <body class="lp-body">
+
+    <!-- Ambient background layers -->
+    <div class="lp-bg" aria-hidden="true">
+      <div class="lp-bg-glow lp-bg-glow--1"></div>
+      <div class="lp-bg-glow lp-bg-glow--2"></div>
+    </div>
+
+    <div class="lp-split">
+
+      <!-- ═══════════════════════════════════════════
+           LEFT — Brand panel
+      ═══════════════════════════════════════════ -->
+      <aside class="lp-brand" aria-label="Henke Wonen branding">
+        <div class="lp-brand-inner">
+
+          <!-- Logo -->
+          <a href="/" aria-label="Henke Wonen — terug naar home" class="lp-logo-wrap">
             <img
               src="/images/logo-henke-wonen.png"
               alt="Henke Wonen"
-              class="login-logo-img"
-              width="160"
-              height="52"
+              class="lp-logo-img"
+              width="180"
+              height="58"
             />
           </a>
-          <div class="login-brand-copy">
-            <p class="eyebrow">Beveiligde werkplek</p>
-            <h1 id="login-title">Toegang tot de Henke Wonen portal</h1>
-            <p>
-              Een centrale omgeving voor dossiers, offertes, klantbezoeken en de dagelijkse
-              winkelwerkzaamheden.
+
+          <!-- Tagline -->
+          <div class="lp-brand-copy">
+            <h1 class="lp-brand-headline">
+              Jouw professionele<br />werkplek voor wonen
+            </h1>
+            <p class="lp-brand-sub">
+              Alles wat Henke Wonen nodig heeft — dossiers, offertes, klantbezoeken en catalogusbeheer — op één centrale plek.
             </p>
           </div>
-          <div class="login-status-list" aria-label="Status van de omgeving">
-            <span class="login-status-pill success">Applicatie online</span>
-            <span class={`login-status-pill ${isDevAuth || hasLaventeCareConnection ? "success" : "warning"}`}>
-              {isDevAuth ? "Ontwikkeltoegang actief" : hasLaventeCareConnection ? "LaventeCare gekoppeld" : "LaventeCare wacht op koppeling"}
+
+          <!-- Feature list -->
+          <ul class="lp-features" aria-label="Functies">
+            <li class="lp-feature">
+              <span class="lp-feature-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Offerte-tool met live productcatalogus
+            </li>
+            <li class="lp-feature">
+              <span class="lp-feature-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Klantdossiers en projectbeheer
+            </li>
+            <li class="lp-feature">
+              <span class="lp-feature-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Leveranciers- en prijslijstbeheer
+            </li>
+            <li class="lp-feature">
+              <span class="lp-feature-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              Buitendienst-app voor opmeetbezoeken
+            </li>
+          </ul>
+
+          <!-- Status indicators -->
+          <div class="lp-status-row" aria-label="Systeemstatus">
+            <span class="lp-pill lp-pill--ok">
+              <span class="lp-pill-dot" aria-hidden="true"></span>
+              Systeem actief
+            </span>
+            <span class={`lp-pill ${isDevAuth || hasLaventeCareConnection ? "lp-pill--ok" : "lp-pill--warn"}`}>
+              <span class="lp-pill-dot" aria-hidden="true"></span>
+              {isDevAuth
+                ? "Ontwikkelmodus"
+                : hasLaventeCareConnection
+                  ? "LaventeCare gekoppeld"
+                  : "Koppeling wacht"}
             </span>
           </div>
+
+        </div>
+      </aside>
+
+      <!-- ═══════════════════════════════════════════
+           RIGHT — Login card
+      ═══════════════════════════════════════════ -->
+      <main class="lp-panel" id="login-main">
+        <div class="lp-card" role="region" aria-labelledby="login-heading">
+
+          <!-- Mobile-only logo -->
+          <div class="lp-mobile-logo" aria-hidden="true">
+            <img
+              src="/images/logo-henke-wonen.png"
+              alt=""
+              width="140"
+              height="45"
+            />
+          </div>
+
+          <div class="lp-card-header">
+            <p class="lp-card-eyebrow">Beveiligde toegang</p>
+            <h2 id="login-heading" class="lp-card-title">
+              {isDevAuth ? "Ontwikkelomgeving" : "Welkom terug"}
+            </h2>
+            <p class="lp-card-desc">
+              {isDevAuth
+                ? "Lokale sessie actief — alleen voor ontwikkeldoeleinden."
+                : "Log in met je LaventeCare-account om verder te gaan."}
+            </p>
+          </div>
+
+          <div class="lp-card-body">
+          {
+            isDevAuth ? (
+              <>
+                <div class="lp-dev-notice" role="status">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span>Ontwikkelomgeving — niet voor productie</span>
+                </div>
+                <a class="lp-btn lp-btn--primary" href="/portal">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                  Naar werkplek
+                </a>
+              </>
+            ) : hasLaventeCareApi ? (
+              <>
+                <form class="lp-form" data-login-form novalidate>
+                  <div class="lp-field">
+                    <label class="lp-label" for="email">E-mailadres</label>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autocomplete="username"
+                      required
+                      placeholder="naam@bedrijf.nl"
+                      class="lp-input"
+                    />
+                  </div>
+                  <div class="lp-field">
+                    <label class="lp-label" for="password">Wachtwoord</label>
+                    <input
+                      id="password"
+                      name="password"
+                      type="password"
+                      autocomplete="current-password"
+                      required
+                      class="lp-input"
+                    />
+                  </div>
+                  <p class="lp-form-msg" data-login-message hidden></p>
+                  <button class="lp-btn lp-btn--primary lp-submit" type="submit">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                    Inloggen
+                  </button>
+                </form>
+                <p class="lp-footnote">
+                  Login verloopt via het beveiligde LaventeCare-systeem.
+                </p>
+              </>
+            ) : hasLaventeCareConnection && loginUrl ? (
+              <>
+                <a class="lp-btn lp-btn--primary" href={loginUrl}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                  Inloggen via LaventeCare
+                </a>
+                <p class="lp-footnote">
+                  Je wordt veilig doorgestuurd naar LaventeCare. Daarna kom je automatisch terug.
+                </p>
+              </>
+            ) : (
+              <>
+                <div class="lp-setup-notice" role="status">
+                  <div class="lp-setup-icon" aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  </div>
+                  <div>
+                    <strong>Login nog niet geactiveerd</strong>
+                    <p>Koppeling met LaventeCare is nog niet ingesteld. Neem contact op met beheer.</p>
+                  </div>
+                </div>
+                <ol class="lp-steps" aria-label="Activatiestappen">
+                  <li>LaventeCare-koppeling activeren</li>
+                  <li>Medewerkersrechten controleren</li>
+                  <li>Portal vrijgeven voor gebruik</li>
+                </ol>
+                <button class="lp-btn lp-btn--disabled" disabled aria-disabled="true">
+                  Inloggen beschikbaar na koppeling
+                </button>
+              </>
+            )
+          }
+          </div>
+
         </div>
 
-        <div class="login-action-panel">
-          <p class="eyebrow">Inloggen</p>
-          <h2>{isDevAuth ? "Ontwikkelomgeving" : "Welkom bij Henke Wonen"}</h2>
-        {
-          isDevAuth ? (
-            <>
-              <p class="login-intro">
-                Je gebruikt een lokale ontwikkelsessie. Deze toegang is alleen bedoeld voor
-                ontwikkelwerk en staat in productie uit.
-              </p>
-              <a class="button primary" href="/portal">Naar werkplek</a>
-            </>
-          ) : hasLaventeCareApi ? (
-            <>
-              <p class="login-intro">
-                Log veilig in met je LaventeCare-account. Je sessie blijft beveiligd in de Henke
-                Wonen omgeving.
-              </p>
-              <form class="login-form" data-login-form>
-                <label class="login-field" for="email">
-                  <span>E-mailadres</span>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autocomplete="username"
-                    required
-                    placeholder="naam@bedrijf.nl"
-                  />
-                </label>
-                <label class="login-field" for="password">
-                  <span>Wachtwoord</span>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autocomplete="current-password"
-                    required
-                  />
-                </label>
-                <p class="login-form-message" data-login-message hidden></p>
-                <button class="button primary login-action-button" type="submit">
-                  Inloggen
-                </button>
-              </form>
-              <p class="login-footnote">
-                De login loopt via LaventeCare AuthSystem. Daarna wordt je Henke Wonen werkplek
-                automatisch voorbereid.
-              </p>
-            </>
-          ) : hasLaventeCareConnection && loginUrl ? (
-            <>
-              <p class="login-intro">
-                Log veilig in via LaventeCare om toegang te krijgen tot de Henke Wonen werkplek.
-              </p>
-              <a class="button primary login-action-button" href={loginUrl}>Inloggen via LaventeCare</a>
-              <p class="login-footnote">
-                Je wordt doorgestuurd naar LaventeCare. Na het inloggen kom je automatisch terug in
-                de portal.
-              </p>
-            </>
-          ) : (
-            <>
-              <p class="login-intro">
-                De portal staat klaar. De laatste stap is het koppelen van de LaventeCare-login.
-              </p>
-              <div class="login-notice" role="status">
-                <strong>Login nog niet geactiveerd</strong>
-                <p>
-                  Zodra LaventeCare is gekoppeld, kunnen medewerkers hier veilig inloggen met hun
-                  bestaande account.
-                </p>
-              </div>
-              <div class="login-next-steps" aria-label="Volgende stappen">
-                <div>
-                  <span>1</span>
-                  <p>LaventeCare-koppeling activeren</p>
-                </div>
-                <div>
-                  <span>2</span>
-                  <p>Medewerkerrechten controleren</p>
-                </div>
-                <div>
-                  <span>3</span>
-                  <p>Portal vrijgeven voor dagelijks gebruik</p>
-                </div>
-              </div>
-              <span class="login-disabled-action" aria-disabled="true">
-                Inloggen beschikbaar na koppeling
-              </span>
-            </>
-          )
-        }
-        </div>
-      </section>
-    </main>
+        <!-- Footer -->
+        <footer class="lp-footer" aria-label="Paginavoettekst">
+          <p>&copy; {new Date().getFullYear()} Henke Wonen &mdash; Alle rechten voorbehouden</p>
+        </footer>
+
+      </main>
+    </div>
+
   </body>
 </html>
 
@@ -154,10 +234,7 @@ const hasLaventeCareConnection = hasLaventeCareApi || Boolean(loginUrl);
   const message = document.querySelector<HTMLElement>("[data-login-message]");
 
   function showLoginMessage(text: string, kind: "error" | "info" = "error") {
-    if (!message) {
-      return;
-    }
-
+    if (!message) return;
     message.hidden = false;
     message.textContent = text;
     message.dataset.kind = kind;
@@ -178,15 +255,13 @@ const hasLaventeCareConnection = hasLaventeCareApi || Boolean(loginUrl);
 
     if (submitButton) {
       submitButton.disabled = true;
-      submitButton.textContent = "Inloggen...";
+      submitButton.setAttribute("data-loading", "true");
     }
 
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "content-type": "application/json"
-        },
+        headers: { "content-type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ email, password })
       });
@@ -202,7 +277,7 @@ const hasLaventeCareConnection = hasLaventeCareApi || Boolean(loginUrl);
 
       if (payload.mfa_required) {
         showLoginMessage(
-          "Deze account vraagt om extra verificatie. Rond MFA af via LaventeCare of vraag beheer om hulp.",
+          "Extra verificatie vereist. Rond MFA af via LaventeCare of neem contact op met beheer.",
           "info"
         );
         return;
@@ -218,339 +293,672 @@ const hasLaventeCareConnection = hasLaventeCareApi || Boolean(loginUrl);
     } finally {
       if (submitButton) {
         submitButton.disabled = false;
-        submitButton.textContent = "Inloggen";
+        submitButton.removeAttribute("data-loading");
       }
     }
   });
 </script>
 
 <style>
-  .login-shell {
-    display: grid;
-    width: 100%;
-    max-width: 100vw;
-    min-height: 100vh;
+  /* ──────────────────────────────────────────────
+     TOKENS
+  ────────────────────────────────────────────── */
+  :root {
+    --lp-gold:        #b8893a;
+    --lp-gold-light:  #d4aa62;
+    --lp-gold-dim:    rgba(184, 137, 58, 0.18);
+    --lp-dark:        #0d0b09;
+    --lp-dark-2:      #1a1510;
+    --lp-dark-3:      #231d16;
+    --lp-warm-white:  #f7f2ea;
+    --lp-muted:       rgba(247, 242, 234, 0.55);
+    --lp-border:      rgba(184, 137, 58, 0.16);
+    --lp-radius:      16px;
+    --lp-radius-sm:   10px;
+    --lp-shadow:      0 24px 64px rgba(0,0,0,0.48), 0 4px 16px rgba(0,0,0,0.32);
+  }
+
+  /* ──────────────────────────────────────────────
+     BASE / RESET
+  ────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  .lp-body {
+    margin: 0;
+    padding: 0;
+    min-height: 100svh;
+    background: var(--lp-dark);
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
     overflow-x: hidden;
-    place-items: center;
-    background:
-      linear-gradient(135deg, rgba(255, 253, 248, 0.86), rgba(244, 246, 242, 0.92)),
-      var(--bg);
-    padding: clamp(18px, 4vw, 48px);
   }
 
-  .login-frame {
-    display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.75fr);
-    width: min(100%, 1040px);
-    max-width: 100%;
-    min-height: 560px;
-    min-width: 0;
+  /* ──────────────────────────────────────────────
+     AMBIENT BACKGROUND
+  ────────────────────────────────────────────── */
+  .lp-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
     overflow: hidden;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md);
-    background: var(--surface-raised);
-    box-shadow: var(--shadow-md);
   }
 
-  .login-brand-panel,
-  .login-action-panel {
+  .lp-bg-glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.28;
+  }
+
+  .lp-bg-glow--1 {
+    width: 600px;
+    height: 600px;
+    top: -160px;
+    left: -100px;
+    background: radial-gradient(circle, #b8893a 0%, transparent 70%);
+    animation: lp-drift 18s ease-in-out infinite alternate;
+  }
+
+  .lp-bg-glow--2 {
+    width: 500px;
+    height: 500px;
+    bottom: -120px;
+    right: -80px;
+    background: radial-gradient(circle, #7c5a24 0%, transparent 70%);
+    animation: lp-drift 22s ease-in-out infinite alternate-reverse;
+  }
+
+  @keyframes lp-drift {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(30px, 20px) scale(1.08); }
+  }
+
+  /* ──────────────────────────────────────────────
+     SPLIT LAYOUT
+  ────────────────────────────────────────────── */
+  .lp-split {
+    position: relative;
+    z-index: 1;
     display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 100svh;
+  }
+
+  /* ──────────────────────────────────────────────
+     LEFT — BRAND PANEL
+  ────────────────────────────────────────────── */
+  .lp-brand {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(32px, 5vw, 72px);
+    background:
+      linear-gradient(160deg, var(--lp-dark-2) 0%, var(--lp-dark) 100%);
+    border-right: 1px solid var(--lp-border);
+    overflow: hidden;
+  }
+
+  .lp-brand::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 60px,
+        rgba(184, 137, 58, 0.025) 60px,
+        rgba(184, 137, 58, 0.025) 61px
+      );
+    pointer-events: none;
+  }
+
+  .lp-brand-inner {
+    position: relative;
+    display: grid;
+    gap: clamp(28px, 4vw, 48px);
+    max-width: 480px;
     width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    padding: clamp(24px, 4vw, 44px);
+    animation: lp-fade-up 0.7s ease both;
   }
 
-  .login-brand-panel {
-    align-content: space-between;
-    gap: var(--space-8);
-    background: #171511;
-    color: #fbf7ef;
-  }
-
-  .login-logo {
+  /* Logo card */
+  .lp-logo-wrap {
     display: inline-block;
-    background: #ffffff;
-    border-radius: 10px;
-    padding: 10px 16px;
     width: fit-content;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    background: #ffffff;
+    border-radius: var(--lp-radius-sm);
+    padding: 12px 20px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.32), 0 0 0 1px rgba(255,255,255,0.06);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
     text-decoration: none;
   }
 
-  .login-logo:hover {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28);
-    transform: translateY(-1px);
+  .lp-logo-wrap:hover,
+  .lp-logo-wrap:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.44), 0 0 0 1px rgba(255,255,255,0.06);
+    outline: 2px solid var(--lp-gold);
+    outline-offset: 3px;
   }
 
-  .login-logo-img {
+  .lp-logo-img {
     display: block;
-    height: 44px;
+    height: 48px;
     width: auto;
-    max-width: 180px;
+    max-width: 200px;
     object-fit: contain;
   }
 
-  .login-brand-copy {
+  /* Brand copy */
+  .lp-brand-copy {
     display: grid;
-    gap: var(--space-3);
-    min-width: 0;
-    max-width: min(100%, 620px);
+    gap: 14px;
   }
 
-  .login-brand-copy .eyebrow,
-  .login-action-panel .eyebrow {
-    color: #c98b3a;
-  }
-
-  .login-brand-copy h1 {
+  .lp-brand-headline {
     margin: 0;
-    color: #fff;
-    font-size: clamp(2rem, 4vw, 3.2rem);
-    line-height: var(--line-tight);
-    letter-spacing: 0;
-    overflow-wrap: anywhere;
-    text-wrap: balance;
+    color: var(--lp-warm-white);
+    font-size: clamp(1.6rem, 2.8vw, 2.4rem);
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
   }
 
-  .login-brand-copy p:not(.eyebrow) {
-    max-width: 58ch;
+  .lp-brand-sub {
     margin: 0;
-    color: rgba(255, 255, 255, 0.72);
-    font-size: var(--text-lg);
-    line-height: var(--line-normal);
-    overflow-wrap: anywhere;
+    color: var(--lp-muted);
+    font-size: clamp(0.9rem, 1.4vw, 1.05rem);
+    line-height: 1.65;
   }
 
-  .login-status-list {
+  /* Feature list */
+  .lp-features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+  }
+
+  .lp-feature {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .login-status-pill {
-    display: inline-flex;
     align-items: center;
-    max-width: 100%;
-    min-width: 0;
-    min-height: 30px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 999px;
-    padding: 0 var(--space-3);
-    font-size: var(--text-xs);
-    font-weight: 900;
-    overflow-wrap: anywhere;
-    text-align: center;
-    white-space: normal;
+    gap: 12px;
+    color: rgba(247, 242, 234, 0.8);
+    font-size: 0.9rem;
+    font-weight: 550;
   }
 
-  .login-status-pill.success {
-    background: rgba(22, 101, 52, 0.28);
-    color: #dcfce7;
-  }
-
-  .login-status-pill.warning {
-    background: rgba(154, 101, 7, 0.28);
-    color: #fef3c7;
-  }
-
-  .login-action-panel {
-    align-content: center;
-    gap: var(--space-4);
-    background: var(--surface);
-  }
-
-  .login-action-panel h2 {
-    margin: 0;
-    color: var(--ink);
-    font-size: clamp(1.75rem, 3vw, 2.35rem);
-    line-height: var(--line-tight);
-    letter-spacing: 0;
-    overflow-wrap: anywhere;
-  }
-
-  .login-intro,
-  .login-footnote,
-  .login-notice p,
-  .login-next-steps p {
-    margin: 0;
-    color: var(--muted);
-    line-height: var(--line-normal);
-    overflow-wrap: anywhere;
-  }
-
-  .login-action-button {
-    width: fit-content;
-    min-height: 46px;
-    padding-inline: var(--space-5);
-  }
-
-  .login-form {
-    display: grid;
-    gap: var(--space-3);
-    width: min(100%, 380px);
-    max-width: 100%;
-  }
-
-  .login-field {
-    display: grid;
-    gap: var(--space-2);
-    color: var(--ink);
-    font-size: var(--text-sm);
-    font-weight: 850;
-  }
-
-  .login-field input {
-    min-height: 44px;
-    width: 100%;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-md);
-    background: var(--surface-raised);
-    color: var(--ink);
-    font: inherit;
-    font-weight: 650;
-    padding: 0 var(--space-3);
-  }
-
-  .login-field input:focus-visible {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(185, 120, 43, 0.18);
-    outline: none;
-  }
-
-  .login-form-message {
-    margin: 0;
-    border: 1px solid rgba(153, 27, 27, 0.18);
-    border-radius: var(--radius-md);
-    background: var(--danger-bg);
-    color: var(--danger);
-    padding: var(--space-3);
-    font-size: var(--text-sm);
-    font-weight: 750;
-    line-height: var(--line-normal);
-  }
-
-  .login-form-message[data-kind="info"] {
-    border-color: rgba(154, 101, 7, 0.24);
-    background: var(--warning-bg);
-    color: #7c4a03;
-  }
-
-  .login-notice {
-    display: grid;
-    gap: var(--space-2);
-    max-width: 100%;
-    min-width: 0;
-    border: 1px solid rgba(154, 101, 7, 0.24);
-    border-left: 5px solid var(--warning);
-    border-radius: var(--radius-md);
-    background: var(--warning-bg);
-    padding: var(--space-4);
-  }
-
-  .login-notice strong {
-    color: #7c4a03;
-  }
-
-  .login-next-steps {
-    display: grid;
-    gap: var(--space-3);
-    max-width: 100%;
-    min-width: 0;
-    border-top: 1px solid var(--line);
-    padding-top: var(--space-4);
-  }
-
-  .login-next-steps div {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: var(--space-3);
-    align-items: center;
-  }
-
-  .login-next-steps span {
+  .lp-feature-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     width: 28px;
     height: 28px;
-    border-radius: 999px;
-    background: var(--accent-soft);
-    color: var(--accent-strong);
-    font-size: var(--text-sm);
-    font-weight: 900;
+    border-radius: 8px;
+    background: var(--lp-gold-dim);
+    color: var(--lp-gold-light);
+    border: 1px solid rgba(184,137,58,0.3);
   }
 
-  .login-disabled-action {
+  /* Status pills */
+  .lp-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .lp-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 30px;
+    border-radius: 999px;
+    padding: 0 12px;
+    font-size: 0.73rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border: 1px solid;
+  }
+
+  .lp-pill--ok {
+    background: rgba(22, 101, 52, 0.2);
+    border-color: rgba(74,222,128,0.2);
+    color: #86efac;
+  }
+
+  .lp-pill--warn {
+    background: rgba(120, 80, 10, 0.28);
+    border-color: rgba(251,191,36,0.2);
+    color: #fde68a;
+  }
+
+  .lp-pill-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: lp-pulse 2s ease infinite;
+  }
+
+  @keyframes lp-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+
+  /* ──────────────────────────────────────────────
+     RIGHT — PANEL + CARD
+  ────────────────────────────────────────────── */
+  .lp-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100svh;
+    padding: clamp(24px, 5vw, 64px) clamp(20px, 4vw, 56px);
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(184,137,58,0.06) 0%, transparent 60%),
+      var(--surface, #f8f6f3);
+    gap: 24px;
+  }
+
+  .lp-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--surface-raised, #fff);
+    border-radius: var(--lp-radius);
+    border: 1px solid var(--line, #e5e0d8);
+    box-shadow: var(--lp-shadow);
+    padding: clamp(28px, 5vw, 44px);
+    display: grid;
+    gap: 28px;
+    animation: lp-fade-up 0.6s 0.1s ease both;
+  }
+
+  /* Mobile-only logo (hidden on desktop) */
+  .lp-mobile-logo {
+    display: none;
+    justify-content: center;
+    padding-bottom: 4px;
+  }
+
+  .lp-mobile-logo img {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+  }
+
+  /* Card header */
+  .lp-card-header {
+    display: grid;
+    gap: 8px;
+  }
+
+  .lp-card-eyebrow {
+    margin: 0;
+    color: var(--lp-gold);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .lp-card-title {
+    margin: 0;
+    color: var(--ink, #1a1510);
+    font-size: clamp(1.5rem, 2.5vw, 2rem);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+
+  .lp-card-desc {
+    margin: 0;
+    color: var(--muted, #6b6456);
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  /* Card body */
+  .lp-card-body {
+    display: grid;
+    gap: 16px;
+  }
+
+  /* Form */
+  .lp-form {
+    display: grid;
+    gap: 16px;
+  }
+
+  .lp-field {
+    display: grid;
+    gap: 6px;
+  }
+
+  .lp-label {
+    color: var(--ink, #1a1510);
+    font-size: 0.82rem;
+    font-weight: 750;
+  }
+
+  .lp-input {
+    height: 46px;
+    width: 100%;
+    border: 1.5px solid var(--line-strong, #d0c9be);
+    border-radius: var(--lp-radius-sm);
+    background: var(--surface-raised, #fff);
+    color: var(--ink, #1a1510);
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 550;
+    padding: 0 14px;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .lp-input:focus-visible {
+    outline: none;
+    border-color: var(--lp-gold);
+    box-shadow: 0 0 0 3px rgba(184, 137, 58, 0.16);
+  }
+
+  .lp-input::placeholder {
+    color: var(--muted, #9d9082);
+    font-weight: 450;
+  }
+
+  /* Buttons */
+  .lp-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: fit-content;
-    min-height: 42px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md);
-    background: var(--surface-muted);
-    color: var(--muted);
-    padding: 0 var(--space-4);
-    font-weight: 800;
+    gap: 8px;
+    min-height: 48px;
+    width: 100%;
+    border: none;
+    border-radius: var(--lp-radius-sm);
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 750;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
   }
 
-  @media (max-width: 860px) {
-    .login-frame {
+  .lp-btn--primary {
+    background: linear-gradient(135deg, #c4953f 0%, #9c7228 100%);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(155, 100, 25, 0.36);
+  }
+
+  .lp-btn--primary:hover,
+  .lp-btn--primary:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(155, 100, 25, 0.48);
+    outline: 2px solid var(--lp-gold);
+    outline-offset: 2px;
+  }
+
+  .lp-btn--primary:active {
+    transform: translateY(0);
+  }
+
+  .lp-btn--primary[data-loading="true"] {
+    opacity: 0.7;
+    cursor: wait;
+  }
+
+  .lp-btn--disabled {
+    background: var(--surface-muted, #f0ede8);
+    color: var(--muted, #9d9082);
+    border: 1px solid var(--line, #e5e0d8);
+    cursor: not-allowed;
+  }
+
+  /* Form message */
+  .lp-form-msg {
+    margin: 0;
+    border-radius: var(--lp-radius-sm);
+    padding: 12px 14px;
+    font-size: 0.85rem;
+    font-weight: 650;
+    line-height: 1.5;
+    border: 1px solid;
+    background: var(--danger-bg, #fef2f2);
+    border-color: rgba(153, 27, 27, 0.18);
+    color: var(--danger, #991b1b);
+  }
+
+  .lp-form-msg[data-kind="info"] {
+    background: #fefce8;
+    border-color: rgba(154,101,7,0.24);
+    color: #7c4a03;
+  }
+
+  /* Dev notice */
+  .lp-dev-notice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    border-radius: var(--lp-radius-sm);
+    background: rgba(184,137,58,0.08);
+    border: 1px solid rgba(184,137,58,0.24);
+    color: #7c5a24;
+    font-size: 0.85rem;
+    font-weight: 650;
+  }
+
+  /* Setup notice */
+  .lp-setup-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px;
+    border-radius: var(--lp-radius-sm);
+    background: #fefce8;
+    border: 1px solid rgba(154,101,7,0.24);
+    border-left: 4px solid #d97706;
+  }
+
+  .lp-setup-icon {
+    flex-shrink: 0;
+    color: #d97706;
+    margin-top: 2px;
+  }
+
+  .lp-setup-notice strong {
+    display: block;
+    color: #7c4a03;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+  }
+
+  .lp-setup-notice p {
+    margin: 0;
+    color: #92521a;
+    font-size: 0.83rem;
+    line-height: 1.5;
+  }
+
+  /* Steps list */
+  .lp-steps {
+    margin: 0;
+    padding: 0 0 0 20px;
+    display: grid;
+    gap: 8px;
+    color: var(--muted, #6b6456);
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  /* Footnote */
+  .lp-footnote {
+    margin: 0;
+    color: var(--muted, #9d9082);
+    font-size: 0.78rem;
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  /* Footer */
+  .lp-footer {
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    animation: lp-fade-up 0.6s 0.2s ease both;
+  }
+
+  .lp-footer p {
+    margin: 0;
+    color: var(--muted, #9d9082);
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+
+  /* ──────────────────────────────────────────────
+     ANIMATION
+  ────────────────────────────────────────────── */
+  @keyframes lp-fade-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ──────────────────────────────────────────────
+     RESPONSIVE — TABLET (≤ 960px)
+  ────────────────────────────────────────────── */
+  @media (max-width: 960px) {
+    .lp-split {
+      grid-template-columns: 1fr 1.1fr;
+    }
+
+    .lp-brand-headline {
+      font-size: clamp(1.3rem, 3vw, 1.8rem);
+    }
+
+    .lp-features {
+      display: none;
+    }
+  }
+
+  /* ──────────────────────────────────────────────
+     RESPONSIVE — MOBILE (≤ 720px)
+  ────────────────────────────────────────────── */
+  @media (max-width: 720px) {
+    .lp-split {
       grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+    }
+
+    /* Brand panel becomes compact top bar */
+    .lp-brand {
+      position: relative;
+      height: auto;
       min-height: 0;
+      padding: 24px 20px;
+      border-right: none;
+      border-bottom: 1px solid var(--lp-border);
     }
 
-    .login-brand-panel {
-      gap: var(--space-8);
+    .lp-brand-inner {
+      gap: 16px;
+    }
+
+    .lp-logo-wrap {
+      padding: 9px 14px;
+    }
+
+    .lp-logo-img {
+      height: 36px;
+    }
+
+    .lp-brand-headline {
+      font-size: 1.25rem;
+    }
+
+    .lp-brand-sub {
+      font-size: 0.85rem;
+      display: none; /* Hide on mobile to keep compact */
+    }
+
+    .lp-features {
+      display: none;
+    }
+
+    .lp-status-row {
+      padding-top: 0;
+      border-top: none;
+    }
+
+    /* Show mobile logo in card */
+    .lp-mobile-logo {
+      display: flex;
+    }
+
+    /* Panel fills remaining space */
+    .lp-panel {
+      min-height: 0;
+      justify-content: flex-start;
+      padding: 28px 20px 40px;
+    }
+
+    .lp-card {
+      max-width: 100%;
     }
   }
 
-  @media (max-width: 560px) {
-    .login-shell {
-      align-items: stretch;
-      display: block;
-      overflow-x: hidden;
-      padding: var(--space-3);
+  /* ──────────────────────────────────────────────
+     RESPONSIVE — SMALL MOBILE (≤ 480px)
+  ────────────────────────────────────────────── */
+  @media (max-width: 480px) {
+    .lp-brand {
+      padding: 18px 16px;
     }
 
-    .login-frame {
-      width: 100%;
-      max-width: calc(100vw - 24px);
-      margin: 0 auto;
+    /* On very small screens, collapse brand to logo only */
+    .lp-brand-headline,
+    .lp-status-row {
+      display: none;
     }
 
-    .login-brand-panel,
-    .login-action-panel {
-      padding: var(--space-4);
+    .lp-panel {
+      padding: 20px 16px 36px;
     }
 
-    .login-brand-copy h1 {
-      font-size: clamp(1.75rem, 8vw, 2.05rem);
+    .lp-card {
+      padding: 24px 20px;
+      border-radius: 12px;
     }
 
-    .login-brand-copy p:not(.eyebrow) {
-      font-size: var(--text-md);
+    .lp-btn {
+      font-size: 0.9rem;
+    }
+  }
+
+  /* ──────────────────────────────────────────────
+     REDUCED MOTION
+  ────────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .lp-brand-inner,
+    .lp-card,
+    .lp-footer {
+      animation: none;
     }
 
-    .login-status-list {
-      display: grid;
-      grid-template-columns: 1fr;
+    .lp-bg-glow--1,
+    .lp-bg-glow--2 {
+      animation: none;
     }
 
-    .login-status-pill {
-      justify-content: center;
-      width: 100%;
-    }
-
-    .login-action-button,
-    .login-disabled-action {
-      width: 100%;
-    }
-
-    .login-form {
-      width: 100%;
+    .lp-pill-dot {
+      animation: none;
     }
   }
 </style>
