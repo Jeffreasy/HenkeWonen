@@ -53,10 +53,16 @@ export default function Sidebar({ session, pathname }: SidebarProps) {
     <>
       <aside className="sidebar" aria-label="Hoofdnavigatie">
         <div className="sidebar-mobile-topbar">
-          <div>
-            <p className="brand-kicker">Henke Wonen</p>
-            <p className="mobile-active-route">{activeItem?.label ?? "Start"}</p>
-          </div>
+          <a href="/portal" aria-label="Henke Wonen - ga naar dashboard" className="sidebar-logo-link">
+            <img
+              src="/images/logo-henke-wonen.png"
+              alt="Henke Wonen"
+              className="sidebar-logo-mobile"
+              width="120"
+              height="38"
+            />
+          </a>
+          <p className="mobile-active-route">{activeItem?.label ?? "Start"}</p>
           <button
             aria-controls="portal-mobile-navigation"
             aria-expanded={isMenuOpen}
@@ -75,8 +81,15 @@ export default function Sidebar({ session, pathname }: SidebarProps) {
           id="portal-mobile-navigation"
         >
           <div className="sidebar-desktop-brand">
-            <p className="brand-kicker">Henke Wonen</p>
-            <h1 className="brand-title">Winkel</h1>
+            <a href="/portal" aria-label="Henke Wonen - ga naar dashboard" className="sidebar-logo-link">
+              <img
+                src="/images/logo-henke-wonen.png"
+                alt="Henke Wonen"
+                className="sidebar-logo"
+                width="148"
+                height="48"
+              />
+            </a>
           </div>
 
           <SidebarNav

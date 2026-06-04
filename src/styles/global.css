@@ -678,6 +678,28 @@ textarea {
   display: none;
 }
 
+.sidebar-logo-link {
+  display: inline-block;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.sidebar-logo {
+  display: block;
+  height: 48px;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
+}
+
+.sidebar-logo-mobile {
+  display: block;
+  height: 32px;
+  width: auto;
+  max-width: 130px;
+  object-fit: contain;
+}
+
 .sidebar-nav-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -4878,6 +4900,27 @@ select.ui-control {
 
   .sidebar-desktop-brand {
     display: none;
+  }
+
+  .sidebar-logo-link {
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  .sidebar-logo {
+    display: block;
+    height: 48px;
+    width: auto;
+    max-width: 160px;
+    object-fit: contain;
+  }
+
+  .sidebar-logo-mobile {
+    display: block;
+    height: 32px;
+    width: auto;
+    max-width: 120px;
+    object-fit: contain;
   }
 
   .sidebar-nav-panel {
