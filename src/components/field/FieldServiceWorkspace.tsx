@@ -16,7 +16,7 @@ import { FieldPrioritySummary } from "./FieldPrioritySummary";
 import { FieldPageTabs } from "./FieldPageTabs";
 import { FieldCardSection, type FieldSection } from "./FieldCardSection";
 import { FieldIntakeForm, type IntakeFormValues } from "./FieldIntakeForm";
-import { cardUrgency } from "./FieldCard";
+import { cardUrgency, type CardActionPreference, type CardUrgency } from "./FieldCard";
 
 type FieldServiceWorkspaceProps = {
   session: AppSession;
@@ -24,13 +24,6 @@ type FieldServiceWorkspaceProps = {
 };
 
 export type FieldServiceView = "today" | "measure" | "quote";
-type CardActionPreference = "measure" | "quote";
-
-type CardUrgency = {
-  level: "red" | "orange" | "green";
-  label: "Rood" | "Oranje" | "Groen";
-};
-
 type PriorityCounts = Record<CardUrgency["level"], number>;
 
 const fieldPages: Array<{
