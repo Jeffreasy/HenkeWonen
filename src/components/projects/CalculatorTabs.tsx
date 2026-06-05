@@ -30,6 +30,8 @@ export type CalcTab = {
   fields: ReactNode;
   /** Computed result display (right column) */
   result: ReactNode;
+  /** Primitive key derived from the computed result — triggers flash animation when it changes */
+  resultKey: string | number;
   /** True when at least one field has been filled in */
   hasInput: boolean;
   validationError?: string;
@@ -60,20 +62,19 @@ const INDICATIVE_TEXT =
 // ─── Result highlight hook ─────────────────────────────────────────────────────
 
 /**
- * Returns a key that increments whenever the ReactNode result "changes" (shallow).
- * Used to re-mount and replay the flash animation.
+ * Increments a counter whenever `resultKey` changes.
+ * `resultKey` must be a primitive (string/number) derived from calculation output.
  */
-function useFlashKey(result: ReactNode): number {
+function useFlashKey(resultKey: string | number): number {
   const [key, setKey] = useState(0);
-  const prev = useRef<string>("");
-  const current = JSON.stringify(result);
+  const prev = useRef<string | number | null>(null);
 
   useEffect(() => {
-    if (prev.current !== "" && prev.current !== current) {
+    if (prev.current !== null && prev.current !== resultKey) {
       setKey((k) => k + 1);
     }
-    prev.current = current;
-  }, [current]);
+    prev.current = resultKey;
+  }, [resultKey]);
 
   return key;
 }
@@ -81,7 +82,7 @@ function useFlashKey(result: ReactNode): number {
 // ─── Single tab panel ─────────────────────────────────────────────────────────
 
 function TabPanel({ tab }: { tab: CalcTab }) {
-  const flashKey = useFlashKey(tab.result);
+  const flashKey = useFlashKey(tab.resultKey);
 
   return (
     <form
