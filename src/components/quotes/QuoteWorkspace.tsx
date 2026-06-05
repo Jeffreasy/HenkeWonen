@@ -16,7 +16,7 @@ import { Alert } from "../ui/Alert";
 import { EmptyState } from "../ui/EmptyState";
 import { FormModal } from "../ui/overlays/FormModal";
 import QuoteBuilder from "./QuoteBuilder";
-import type { QuoteLineFormValues } from "./QuoteLineEditor";
+import type { QuoteLineFormValues } from "./quote/quoteTypes";
 import { QuoteStats } from "./QuoteStats";
 import { CreateQuoteForm } from "./CreateQuoteForm";
 import { QuotesTable } from "./QuotesTable";

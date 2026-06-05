@@ -11,7 +11,8 @@ import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
 import { Textarea } from "../ui/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
-import type { QuoteLineFormValues } from "./QuoteLineEditor";
+import { LINE_TYPE_OPTIONS, parseDecimal } from "./quote/quoteConstants";
+import type { QuoteLineFormValues } from "./quote/quoteTypes";
 
 type QuoteLineEditFormProps = {
   line: PortalQuoteLine;
@@ -21,28 +22,13 @@ type QuoteLineEditFormProps = {
   onCancel: () => void;
 };
 
-const lineTypeOptions: QuoteLineType[] = [
-  "product",
-  "service",
-  "labor",
-  "material",
-  "discount",
-  "text",
-  "manual"
-];
-
-function parseDecimal(value: string): number {
-  const parsed = Number(value.trim().replace(",", "."));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
 function optionalDecimal(value: string): number | undefined {
   const normalized = value.trim();
   if (!normalized) {
     return undefined;
   }
   const parsed = parseDecimal(normalized);
-  return Number.isFinite(parsed) ? parsed : undefined;
+  return parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined;
 }
 
 export function QuoteLineEditForm({
@@ -92,12 +78,12 @@ export function QuoteLineEditForm({
       lineType,
       title: title.trim(),
       description: description.trim() || undefined,
-      quantity: isTextLine ? 0 : parseDecimal(quantity),
+      quantity: isTextLine ? 0 : (parseDecimal(quantity) ?? 0),
       unit: isTextLine ? "tekst" : unit.trim() || line.unit,
-      unitPriceExVat: isTextLine ? 0 : parseDecimal(unitPriceExVat),
-      vatRate: isTextLine ? 0 : parseDecimal(vatRate),
+      unitPriceExVat: isTextLine ? 0 : (parseDecimal(unitPriceExVat) ?? 0),
+      vatRate: isTextLine ? 0 : (parseDecimal(vatRate) ?? 0),
       discountExVat: optionalDecimal(discountExVat),
-      sortOrder: Math.max(1, Math.round(parseDecimal(sortOrder) || line.sortOrder)),
+      sortOrder: Math.max(1, Math.round((parseDecimal(sortOrder) ?? 0) || line.sortOrder)),
       metadata: line.metadata
     });
   }
@@ -118,7 +104,7 @@ export function QuoteLineEditForm({
               value={lineType}
               onChange={(event) => setLineType(event.target.value as QuoteLineType)}
             >
-              {lineTypeOptions.map((type) => (
+              {LINE_TYPE_OPTIONS.map((type) => (
                 <option key={type} value={type}>
                   {formatLineType(type)}
                 </option>

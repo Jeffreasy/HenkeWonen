@@ -18,21 +18,11 @@ import { Select } from "../ui/Select";
 import { Textarea } from "../ui/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
 import WallpaperCalculator from "./WallpaperCalculator";
+import { LINE_TYPE_OPTIONS } from "./quote/quoteConstants";
+import type { QuoteLineFormValues } from "./quote/quoteTypes";
 
-export type QuoteLineFormValues = {
-  projectRoomId?: string;
-  productId?: string;
-  lineType: QuoteLineType;
-  title: string;
-  description?: string;
-  quantity: number;
-  unit: string;
-  unitPriceExVat: number;
-  vatRate: number;
-  discountExVat?: number;
-  sortOrder: number;
-  metadata?: Record<string, unknown>;
-};
+// Re-export voor backwards compatibiliteit — importeer liever direct van ./quote/quoteTypes
+export type { QuoteLineFormValues } from "./quote/quoteTypes";
 
 type QuoteLineEditorProps = {
   sortOrder: number;
@@ -43,16 +33,6 @@ type QuoteLineEditorProps = {
   mode?: "full" | "field";
   surface?: "panel" | "plain";
 };
-
-const lineTypes: QuoteLineType[] = [
-  "product",
-  "service",
-  "labor",
-  "material",
-  "discount",
-  "text",
-  "manual"
-];
 
 export default function QuoteLineEditor({
   sortOrder,
@@ -300,7 +280,7 @@ export default function QuoteLineEditor({
             value={lineType}
             onChange={(event) => setLineType(event.target.value as QuoteLineType)}
           >
-            {lineTypes.map((type) => (
+            {LINE_TYPE_OPTIONS.map((type) => (
               <option value={type} key={type}>
                 {formatLineType(type)}
               </option>

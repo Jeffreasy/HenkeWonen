@@ -27,9 +27,10 @@ import { Textarea } from "../ui/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
 import MeasurementLinePicker from "./MeasurementLinePicker";
 import QuoteDocumentPreview from "./QuoteDocumentPreview";
-import QuoteLineEditor, { type QuoteLineFormValues } from "./QuoteLineEditor";
+import QuoteLineEditor from "./QuoteLineEditor";
 import { QuoteLineEditForm } from "./QuoteLineEditForm";
 import QuoteTotals from "./QuoteTotals";
+import type { QuoteLineFormValues } from "./quote/quoteTypes";
 
 type QuoteBuilderProps = {
   quote: PortalQuote;
