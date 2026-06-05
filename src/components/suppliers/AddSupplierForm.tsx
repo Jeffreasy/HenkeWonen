@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { Card, SectionHeader, Field, Input, Select, Textarea, Button } from "../ui";
 import { formatProductListStatus } from "../../lib/i18n/statusLabels";
 import type { ProductListStatus } from "../../lib/portalTypes";
+import { PRODUCT_LIST_STATUSES, fromDateInputValue } from "./supplier/supplierUtils";
 
 type AddSupplierFormProps = {
   onCreateSupplier: (data: {
@@ -17,22 +18,6 @@ type AddSupplierFormProps = {
   }) => Promise<void>;
   isSaving: boolean;
 };
-
-const PRODUCT_LIST_STATUSES: ProductListStatus[] = [
-  "unknown",
-  "requested",
-  "received",
-  "download_available",
-  "not_available",
-  "manual_only"
-];
-
-function fromDateInputValue(value: string): number | undefined {
-  if (!value) {
-    return undefined;
-  }
-  return new Date(`${value}T12:00:00`).getTime();
-}
 
 export function AddSupplierForm({ onCreateSupplier, isSaving }: AddSupplierFormProps) {
   const [name, setName] = useState("");

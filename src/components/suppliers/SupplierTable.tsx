@@ -18,8 +18,7 @@ import {
   formatImportStatus
 } from "../../lib/i18n/statusLabels";
 import type { PortalSupplier, ProductListStatus } from "../../lib/portalTypes";
-
-type SupplierStatus = NonNullable<PortalSupplier["status"]>;
+import { type SupplierStatus, PRODUCT_LIST_STATUSES, SUPPLIER_STATUSES, dateText } from "./supplier/supplierUtils";
 
 type SupplierTableProps = {
   suppliers: PortalSupplier[];
@@ -38,29 +37,6 @@ type SupplierTableProps = {
   isLoading: boolean;
   error: string | null;
 };
-
-const PRODUCT_LIST_STATUSES: ProductListStatus[] = [
-  "unknown",
-  "requested",
-  "received",
-  "download_available",
-  "not_available",
-  "manual_only"
-];
-
-const SUPPLIER_STATUSES: SupplierStatus[] = ["active", "inactive", "archived"];
-
-function dateText(value?: number) {
-  if (!value) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("nl-NL", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric"
-  }).format(new Date(value));
-}
 
 function productListTone(status: ProductListStatus) {
   if (status === "received") {

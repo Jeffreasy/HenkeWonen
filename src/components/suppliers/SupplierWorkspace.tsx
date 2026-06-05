@@ -12,12 +12,11 @@ import { SupplierStats } from "./SupplierStats";
 import { AddSupplierForm } from "./AddSupplierForm";
 import { EditSupplierForm } from "./EditSupplierForm";
 import { SupplierTable } from "./SupplierTable";
+import { type SupplierStatus } from "./supplier/supplierUtils";
 
 type SupplierWorkspaceProps = {
   session: AppSession;
 };
-
-type SupplierStatus = NonNullable<PortalSupplier["status"]>;
 
 function isFollowUpStatus(status: ProductListStatus) {
   return status === "unknown" || status === "requested";

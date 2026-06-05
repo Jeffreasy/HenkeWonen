@@ -4,8 +4,7 @@ import { Card, SectionHeader, StatusBadge, Field, Input, Select, Textarea, Butto
 import { formatStatusLabel, formatProductListStatus } from "../../lib/i18n/statusLabels";
 import type { PortalSupplier, ProductListStatus } from "../../lib/portalTypes";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
-
-type SupplierStatus = NonNullable<PortalSupplier["status"]>;
+import { type SupplierStatus, PRODUCT_LIST_STATUSES, SUPPLIER_STATUSES, fromDateInputValue } from "./supplier/supplierUtils";
 
 type EditSupplierFormProps = {
   supplier: PortalSupplier;
@@ -23,24 +22,6 @@ type EditSupplierFormProps = {
   onCancel: () => void;
   isSaving: boolean;
 };
-
-const PRODUCT_LIST_STATUSES: ProductListStatus[] = [
-  "unknown",
-  "requested",
-  "received",
-  "download_available",
-  "not_available",
-  "manual_only"
-];
-
-const SUPPLIER_STATUSES: SupplierStatus[] = ["active", "inactive", "archived"];
-
-function fromDateInputValue(value: string): number | undefined {
-  if (!value) {
-    return undefined;
-  }
-  return new Date(`${value}T12:00:00`).getTime();
-}
 
 function toDateInputValue(value?: number): string {
   if (!value) {
