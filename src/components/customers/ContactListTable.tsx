@@ -1,12 +1,15 @@
+import { Plus } from "lucide-react";
 import { useMemo } from "react";
 import type { PortalCustomerContact } from "../../lib/portalTypes";
 import { NoteVisibilityBadge } from "../common/NoteVisibilityBadge";
 import { Badge } from "../ui/Badge";
+import { Button } from "../ui/Button";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { SectionHeader } from "../ui/SectionHeader";
 
 type ContactListTableProps = {
   contacts: PortalCustomerContact[];
+  onNew?: () => void;
 };
 
 function dateText(value?: number) {
@@ -34,7 +37,7 @@ function contactTypeLabel(type: PortalCustomerContact["type"]) {
   return labels[type];
 }
 
-export function ContactListTable({ contacts }: ContactListTableProps) {
+export function ContactListTable({ contacts, onNew }: ContactListTableProps) {
   const contactColumns = useMemo<Array<DataTableColumn<PortalCustomerContact>>>(
     () => [
       {
@@ -82,6 +85,18 @@ export function ContactListTable({ contacts }: ContactListTableProps) {
         compact
         title="Contactmomenten"
         description="Interne notities, afspraken en klantcontacten."
+        actions={
+          onNew ? (
+            <Button
+              leftIcon={<Plus size={16} aria-hidden="true" />}
+              onClick={onNew}
+              size="sm"
+              variant="primary"
+            >
+              Toevoegen
+            </Button>
+          ) : null
+        }
       />
       <DataTable
         ariaLabel="Contactmomenten"

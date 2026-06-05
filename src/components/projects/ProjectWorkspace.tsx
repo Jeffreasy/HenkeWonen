@@ -5,6 +5,7 @@ import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { PortalCustomer, PortalProject, ProjectStatus } from "../../lib/portalTypes";
+import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { FormModal } from "../ui/overlays/FormModal";
@@ -68,20 +69,25 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
       return;
     }
 
-    await client.mutation(api.portal.createProject, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      customerId: project.customerId,
-      title: project.title,
-      description: project.description,
-      createdByExternalUserId: session.userId
-    });
-    await loadProjects();
-    setIsModalOpen(false);
+    try {
+      await client.mutation(api.portal.createProject, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        customerId: project.customerId,
+        title: project.title,
+        description: project.description,
+        createdByExternalUserId: session.userId
+      });
+      await loadProjects();
+      setIsModalOpen(false);
+      showToast({ title: "Project gestart", description: project.title, tone: "success" });
+    } catch {
+      showToast({ title: "Project aanmaken mislukt", tone: "error" });
+    }
   }
 
   const filteredProjects = useMemo(() => {

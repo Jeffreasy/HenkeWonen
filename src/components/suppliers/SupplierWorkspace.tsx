@@ -4,8 +4,10 @@ import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { PortalSupplier, ProductListStatus } from "../../lib/portalTypes";
+import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/Alert";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { FormModal } from "../ui/overlays/FormModal";
 import { SupplierStats } from "./SupplierStats";
 import { AddSupplierForm } from "./AddSupplierForm";
 import { EditSupplierForm } from "./EditSupplierForm";
@@ -45,12 +47,12 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [savingSupplierId, setSavingSupplierId] = useState<string | null>(null);
   const [editingSupplier, setEditingSupplier] = useState<PortalSupplier | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [pendingSupplierStatus, setPendingSupplierStatus] = useState<{
     supplier: PortalSupplier;
     nextStatus: SupplierStatus;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const loadSuppliers = useCallback(async () => {
     const client = createConvexHttpClient();
@@ -137,7 +139,6 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await client.mutation(api.portal.createSupplier, {
@@ -145,11 +146,12 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
         actor: mutationActorFromSession(session),
         ...data
       });
-      setNotice("Leverancier opgeslagen.");
+      showToast({ title: "Leverancier opgeslagen", description: data.name, tone: "success" });
+      setIsAddModalOpen(false);
       await loadSuppliers();
     } catch (saveError) {
       console.error(saveError);
-      setError("Leverancier kon niet worden opgeslagen.");
+      showToast({ title: "Leverancier kon niet worden opgeslagen", tone: "error" });
       throw saveError;
     } finally {
       setIsSaving(false);
@@ -180,7 +182,6 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
 
     setSavingSupplierId(editingSupplier.id);
     setError(null);
-    setNotice(null);
 
     try {
       await client.mutation(api.portal.updateSupplier, {
@@ -189,12 +190,12 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
         supplierId: editingSupplier.id,
         ...data
       });
-      setNotice(`Leverancier ${data.name.trim()} bijgewerkt.`);
+      showToast({ title: `${data.name.trim()} bijgewerkt`, tone: "success" });
       setEditingSupplier(null);
       await loadSuppliers();
     } catch (saveError) {
       console.error(saveError);
-      setError("Leverancier kon niet worden bijgewerkt.");
+      showToast({ title: "Leverancier kon niet worden bijgewerkt", tone: "error" });
     } finally {
       setSavingSupplierId(null);
     }
@@ -214,7 +215,6 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
 
     setSavingSupplierId(supplier.id);
     setError(null);
-    setNotice(null);
 
     try {
       await client.mutation(api.portal.updateSupplierProductListStatus, {
@@ -223,11 +223,11 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
         supplierId: supplier.id,
         productListStatus: nextStatus
       });
-      setNotice(`Prijslijststatus bijgewerkt voor ${supplier.name}.`);
+      showToast({ title: `Prijslijststatus bijgewerkt`, description: supplier.name, tone: "success" });
       await loadSuppliers();
     } catch (saveError) {
       console.error(saveError);
-      setError("Prijslijststatus kon niet worden bijgewerkt.");
+      showToast({ title: "Status kon niet worden bijgewerkt", tone: "error" });
     } finally {
       setSavingSupplierId(null);
     }
@@ -248,7 +248,6 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
 
     setSavingSupplierId(supplier.id);
     setError(null);
-    setNotice(null);
 
     try {
       await client.mutation(api.portal.updateSupplier, {
@@ -265,16 +264,15 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
         expectedAt: supplier.expectedAt,
         status: nextStatus
       });
-      setNotice(
-        nextStatus === "archived"
-          ? `Leverancier ${supplier.name} gearchiveerd.`
-          : `Leverancier ${supplier.name} hersteld.`
-      );
+      showToast({
+        title: nextStatus === "archived" ? `${supplier.name} gearchiveerd` : `${supplier.name} hersteld`,
+        tone: nextStatus === "archived" ? "warning" : "success"
+      });
       setPendingSupplierStatus(null);
       await loadSuppliers();
     } catch (saveError) {
       console.error(saveError);
-      setError("Leverancierstatus kon niet worden bijgewerkt.");
+      showToast({ title: "Leverancierstatus kon niet worden bijgewerkt", tone: "error" });
     } finally {
       setSavingSupplierId(null);
     }
@@ -311,7 +309,6 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
         sourceFiles={summary.sourceFiles}
       />
 
-      {notice ? <Alert variant="success" description={notice} /> : null}
       {error ? <Alert variant="danger" description={error} /> : null}
 
       {editingSupplier ? (
@@ -320,13 +317,6 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
           isSaving={savingSupplierId === editingSupplier.id}
           onCancel={() => setEditingSupplier(null)}
           onSaveSupplier={handleSaveSupplier}
-        />
-      ) : null}
-
-      {!editingSupplier ? (
-        <AddSupplierForm
-          isSaving={isSaving}
-          onCreateSupplier={handleCreateSupplier}
         />
       ) : null}
 
@@ -339,6 +329,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
         supplierStatusFilter={supplierStatusFilter}
         setSupplierStatusFilter={setSupplierStatusFilter}
         onEdit={setEditingSupplier}
+        onNew={() => setIsAddModalOpen(true)}
         onArchive={(supplier) => setPendingSupplierStatus({ supplier, nextStatus: "archived" })}
         onRestore={(supplier) => setPendingSupplierStatus({ supplier, nextStatus: "active" })}
         onChangeProductListStatus={handleChangeProductListStatus}
@@ -346,6 +337,19 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
         isLoading={isLoading}
         error={error}
       />
+
+      <FormModal
+        open={isAddModalOpen}
+        title="Nieuwe leverancier toevoegen"
+        description="Vul de leveranciersgegevens in en sla op om te beginnen."
+        size="lg"
+        onClose={() => setIsAddModalOpen(false)}
+      >
+        <AddSupplierForm
+          isSaving={isSaving}
+          onCreateSupplier={handleCreateSupplier}
+        />
+      </FormModal>
     </div>
   );
 }

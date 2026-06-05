@@ -3,6 +3,7 @@ import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canManage, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
+import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/Alert";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { ServiceRuleForm } from "./ServiceRuleForm";
@@ -43,7 +44,6 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
     nextStatus: ServiceRuleStatus;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const canManageRules = canManage(session.role);
 
   useEffect(() => {
@@ -108,7 +108,6 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await client.mutation(api.portal.upsertServiceRule, {
@@ -118,12 +117,12 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
         ...data,
         description: data.description || undefined
       });
-      setNotice(editingRule ? "Werkzaamheid bijgewerkt." : "Werkzaamheid toegevoegd.");
+      showToast({ title: editingRule ? "Werkzaamheid bijgewerkt" : "Werkzaamheid toegevoegd", description: data.name, tone: "success" });
       setEditingRule(null);
       setReloadKey((current) => current + 1);
     } catch (saveError) {
       console.error(saveError);
-      setError("Werkzaamheid kon niet worden opgeslagen.");
+      showToast({ title: "Werkzaamheid kon niet worden opgeslagen", tone: "error" });
       throw saveError;
     } finally {
       setIsSaving(false);
@@ -145,7 +144,6 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await client.mutation(api.portal.upsertServiceRule, {
@@ -160,11 +158,11 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
         status: nextStatus
       });
       setPendingRuleStatus(null);
-      setNotice(nextStatus === "inactive" ? "Werkzaamheid gearchiveerd." : "Werkzaamheid hersteld.");
+      showToast({ title: nextStatus === "inactive" ? "Werkzaamheid gearchiveerd" : "Werkzaamheid hersteld", description: rule.name, tone: nextStatus === "inactive" ? "warning" : "success" });
       setReloadKey((current) => current + 1);
     } catch (saveError) {
       console.error(saveError);
-      setError("Werkzaamheidstatus kon niet worden bijgewerkt.");
+      showToast({ title: "Werkzaamheidstatus kon niet worden bijgewerkt", tone: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -192,7 +190,6 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
         onCancel={() => setPendingRuleStatus(null)}
         onConfirm={() => void confirmRuleStatus()}
       />
-      {notice ? <Alert variant="success" description={notice} /> : null}
       {error ? <Alert variant="danger" description={error} /> : null}
 
       {canManageRules ? (

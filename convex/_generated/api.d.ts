@@ -23,6 +23,7 @@ import type * as catalog_productionAudit from "../catalog/productionAudit.js";
 import type * as catalog_reconciliation from "../catalog/reconciliation.js";
 import type * as catalog_review from "../catalog/review.js";
 import type * as catalog_validation from "../catalog/validation.js";
+import type * as facturen_core from "../facturen/core.js";
 import type * as offertes_core from "../offertes/core.js";
 import type * as offertes_templates from "../offertes/templates.js";
 import type * as portal from "../portal.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   "catalog/reconciliation": typeof catalog_reconciliation;
   "catalog/review": typeof catalog_review;
   "catalog/validation": typeof catalog_validation;
+  "facturen/core": typeof facturen_core;
   "offertes/core": typeof offertes_core;
   "offertes/templates": typeof offertes_templates;
   portal: typeof portal;

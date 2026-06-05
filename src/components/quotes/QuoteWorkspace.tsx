@@ -11,6 +11,7 @@ import type {
   QuoteTemplate
 } from "../../lib/portalTypes";
 import { formatEuro } from "../../lib/money";
+import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/Alert";
 import { EmptyState } from "../ui/EmptyState";
 import { FormModal } from "../ui/overlays/FormModal";
@@ -85,23 +86,28 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
       return;
     }
 
-    const newQuoteId = String(
-      await client.mutation(api.portal.createQuote, {
-        tenantSlug: session.tenantId,
-        actor: mutationActorFromSession(session),
-        projectId,
-        title: title.trim(),
-        createdByExternalUserId: session.userId
-      })
-    );
+    try {
+      const newQuoteId = String(
+        await client.mutation(api.portal.createQuote, {
+          tenantSlug: session.tenantId,
+          actor: mutationActorFromSession(session),
+          projectId,
+          title: title.trim(),
+          createdByExternalUserId: session.userId
+        })
+      );
 
-    await loadWorkspace();
-    setSelectedQuoteId(newQuoteId);
-    setIsNewQuoteModalOpen(false);
+      await loadWorkspace();
+      setSelectedQuoteId(newQuoteId);
+      setIsNewQuoteModalOpen(false);
+      showToast({ title: "Offerte aangemaakt", description: title.trim(), tone: "success" });
+    } catch {
+      showToast({ title: "Offerte aanmaken mislukt", tone: "error" });
+    }
   }
 
   async function addQuoteLine(line: QuoteLineFormValues): Promise<string | void> {

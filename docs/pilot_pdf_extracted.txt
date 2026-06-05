@@ -1,0 +1,78 @@
+﻿python : Could not get FontBBox from font descriptor because None cannot be parsed as 4 floats
+At line:1 char:1
++ python -c "
++ ~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Could not get F...sed as 4 floats:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Could not get FontBBox from font descriptor because None cannot be parsed as 4 floats
+Aantal paginas: 3
+=== PAGINA 1 ===
+LAVENTECARE PILOT WERKWIJZE & SCOPE | BEDRIJFSPORTAL - INTERNE PROCESSEN
+PILOT SYSTEM INTEGRATION
+Pilot Werkwijze &
+Scopeafbakening
+HenkeWonen┬À Versie: Pilotfase 1
+KLANT / OPDRACHTGEVER SYSTEEM / PORTAL
+HenkeWonen Bedrijfsportal - interne processen
+EVALUATIE-INTERVAL TECHNISCH CONTACTPERSOON
+Vrij - Via whatsapp of Teams Jeffrey Lavente ┬À LaventeCare
+01 Doel van de pilot
+Deze pilot is bedoeld om de eerste werkende versie van het HenkeWonen-platform in de praktijk te testen. Het systeem is op dit
+moment ingericht rondom de belangrijkste bedrijfsflow: Klant ÔåÆ Project ÔåÆ Catalogus ÔåÆ Offerte.
+Tijdens de pilot kijken we vooral of deze workflow logisch, bruikbaar en betrouwbaar genoeg is voor dagelijks gebruik. De pilot is
+dus geen eindoplevering, maar een gecontroleerde testfase waarin we samen bepalen wat goed werkt, wat aangepast moet
+worden en welke onderdelen in een volgende fase verder worden uitgebreid.
+02 Wat is er nu beschikbaar?
+ONDERDEEL STATUS DOEL / TOELICHTING
+Dashboard Beschikbaar Centraal startpunt met overzicht.
+Klantenbeheer Beschikbaar Klanten aanmaken, inzien, bewerken.
+Projectbeheer Beschikbaar Projecten koppelen en status volgen.
+Productcatalogus Beschikbaar Producten, prijzen en eenheden inzien.
+Offertebeheer Beschikbaar Offertes opstellen vanuit projectregels.
+PRIMAIRE TESTFLOW BINNEN DEZE PILOT:
+Nieuwe klant aanmaken ÔåÆ Project aanmaken ÔåÆ Producten selecteren ÔåÆ Offerte opstellen ÔåÆ Offerte opslaan.
+Web: laventecare.nl Mail: jeffrey@laventecare.nl KvK: 88162710 Pagina 1 van 3
+=== PAGINA 2 ===
+LAVENTECARE PILOT WERKWIJZE & SCOPE | BEDRIJFSPORTAL - INTERNE PROCESSEN
+03 Wat valt binnen de pilot? (Testscope)
+Klanten Projecten
+Klantgegevens correct invoeren Project koppelen aan een klant
+Klanten snel terugvinden Projectdetails beheren
+Klantgegevens bewerken/updaten Projectstatusflow updaten
+Productcatalogus Offertes
+Productgegevens & prijzen inzien Offerte opstellen uit project
+Producten zoeken/filteren Productregels toevoegen
+Controleren op missende items Aantallen en prijzen berekenen
+04 Wat valt nog niet binnen deze pilot?
+ONDERDEEL STATUS OPMERKING
+Facturatie In testfase / mock Handmatige controle vereist.
+Boekhoudkoppeling Nog niet actief Wordt in vervolgfase ingericht.
+Automatische klantmails Nog niet leidend Voorkomt testmails naar klanten.
+Planning & monteurs Vervolgmodule Geprogrammeerd na akkoord basis.
+Mobiele optimalisatie Later verfijnen Focus ligt nu op desktop portal.
+05 Bekende aandachtspunten
+Tijdens deze fase kunnen er kleine inconsistenties of foutmeldingen optreden, zoals:
+Productnamen die afwijken van verwachting; Categorie-indelingen die scherper moeten;
+Ontbrekende productgroepen; Kleine interfacefoutjes of laadvertragingen;
+Velden die in de praktijk toch nodig blijken.
+Web: laventecare.nl Mail: jeffrey@laventecare.nl KvK: 88162710 Pagina 2 van 3
+=== PAGINA 3 ===
+LAVENTECARE PILOT WERKWIJZE & SCOPE | BEDRIJFSPORTAL - INTERNE PROCESSEN
+06Gebruik van data 08Feedbackkanaal
+Gebruik bij voorkeur een beperkt aantal echte voorbeeldcases of Kleine vragen of snelle opmerkingen: via WhatsApp
+herkenbare testsituaties. Vermijd onnodige invoer van gevoelige Belangrijke bugs of verbeterpunten: verzamelen in ├®├®n centrale lijst
+klantgegevens als dit niet nodig is voor de test. Geef duidelijk aan Grotere wensen: noteren voor de evaluatie na de pilot
+welke gegevens naderhand verwijderd of bewaard moeten blijven.
+07Feedback structuur
+Lever feedback bij voorkeur als volgt aan: Locatie ÔÇó Actie ÔÇó Resultaat ÔÇó Verwachting.
+ÔÇ£Op de offertepagina wilde ik een product toevoegen. Ik kon het product wel vinden, maar ik wist niet zeker welke eenheid gebruikt werd.
+Verwachting: toon duidelijker of het om m┬▓, stuk of meter gaat.ÔÇØ
+09Bugs vs. Wensen
+Bug (fout) ÔåÆ Prioriteit Wens ÔåÆ Backlog
+Systeem werkt niet zoals ontworpen. Bijv. knop reageert niet, Systeem werkt wel, maar uitbreiding is gewenst. Bijv. nieuw
+rekenfout in de prijs, of data wordt niet opgeslagen. databaseveld, andere volgorde stappen, of rapportages.
+DOMEIN & KLANTCOMMUNICATIE (BELANGRIJK)
+De e-mail- en domeinintegratie met het offici├½le domein is in deze pilotfase nog bewust inactief. Het systeem gebruikt nu uitsluitend
+interne testadressen. Dit voorkomt dat er per ongeluk testberichten of conceptoffertes naar echte klanten worden verzonden.
+Web: laventecare.nl Mail: jeffrey@laventecare.nl KvK: 88162710 Pagina 3 van 3

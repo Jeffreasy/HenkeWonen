@@ -9,10 +9,12 @@ import type {
   PortalCustomerContact,
   PortalProject
 } from "../../lib/portalTypes";
+import { showToast } from "../../lib/toast";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { EmptyState } from "../ui/EmptyState";
 import { ErrorState } from "../ui/ErrorState";
 import { LoadingState } from "../ui/LoadingState";
+import { FormModal } from "../ui/overlays/FormModal";
 
 import { CustomerDetailStats } from "./CustomerDetailStats";
 import { CustomerInfoPanel } from "./CustomerInfoPanel";
@@ -38,6 +40,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingCustomer, setEditingCustomer] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [pendingCustomerStatus, setPendingCustomerStatus] =
     useState<PortalCustomer["status"] | null>(null);
   const customerEditFormRef = useRef<HTMLFormElement>(null);
@@ -142,21 +145,27 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
       return;
     }
 
-    await client.mutation(api.portal.createCustomerContact, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      customerId,
-      type: values.type,
-      title: values.title,
-      loanedItemName: values.loanedItemName,
-      visibleToCustomer: false,
-      createdByExternalUserId: session.userId
-    });
-    await loadDetail();
+    try {
+      await client.mutation(api.portal.createCustomerContact, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        customerId,
+        type: values.type,
+        title: values.title,
+        loanedItemName: values.loanedItemName,
+        visibleToCustomer: false,
+        createdByExternalUserId: session.userId
+      });
+      await loadDetail();
+      setIsContactModalOpen(false);
+      showToast({ title: "Contactmoment toegevoegd", tone: "success" });
+    } catch {
+      showToast({ title: "Contactmoment kon niet worden toegevoegd", tone: "error" });
+    }
   }
 
   if (isLoading) {
@@ -236,9 +245,24 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       ) : null}
 
       <div className="grid two-column">
-        <ContactListTable contacts={contacts} />
+        <ContactListTable
+          contacts={contacts}
+          onNew={canAddContact ? () => setIsContactModalOpen(true) : undefined}
+        />
         <LoanedItemsList loanedItems={loanedItems} />
       </div>
+
+      {canAddContact ? (
+        <FormModal
+          open={isContactModalOpen}
+          title="Contactmoment toevoegen"
+          description="Registreer een notitie, afspraak of geleend artikel."
+          size="sm"
+          onClose={() => setIsContactModalOpen(false)}
+        >
+          <AddContactForm onSubmit={handleAddContact} />
+        </FormModal>
+      ) : null}
     </div>
   );
 }

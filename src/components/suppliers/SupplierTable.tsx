@@ -1,4 +1,4 @@
-import { Pencil, Archive, RotateCcw } from "lucide-react";
+import { Pencil, Archive, RotateCcw, Plus } from "lucide-react";
 import { useMemo } from "react";
 import {
   Card,
@@ -30,6 +30,7 @@ type SupplierTableProps = {
   supplierStatusFilter: SupplierStatus | "all";
   setSupplierStatusFilter: (val: SupplierStatus | "all") => void;
   onEdit: (supplier: PortalSupplier) => void;
+  onNew: () => void;
   onArchive: (supplier: PortalSupplier) => void;
   onRestore: (supplier: PortalSupplier) => void;
   onChangeProductListStatus: (supplier: PortalSupplier, nextStatus: ProductListStatus) => Promise<void>;
@@ -90,6 +91,7 @@ export function SupplierTable({
   supplierStatusFilter,
   setSupplierStatusFilter,
   onEdit,
+  onNew,
   onArchive,
   onRestore,
   onChangeProductListStatus,
@@ -264,6 +266,16 @@ export function SupplierTable({
         compact
         title="Leveranciersoverzicht"
         description="Zoek, filter en volg prijslijsten per leverancier."
+        actions={
+          <Button
+            leftIcon={<Plus size={16} aria-hidden="true" />}
+            onClick={onNew}
+            size="sm"
+            variant="primary"
+          >
+            Nieuwe leverancier
+          </Button>
+        }
       />
       <FilterBar
         search={

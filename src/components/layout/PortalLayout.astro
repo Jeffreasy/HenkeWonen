@@ -3,6 +3,7 @@ import "../../styles/global.css";
 import Sidebar from "./Sidebar";
 import PortalTopbar from "./PortalTopbar";
 import { ShellLoadingController } from "./ShellLoadingController";
+import { ToastContainer } from "../ui/overlays/ToastContainer";
 import type { AppSession } from "../../lib/auth/session";
 
 type Props = {
@@ -32,5 +33,7 @@ const pathname = Astro.url.pathname;
       </main>
       <ShellLoadingController client:load />
     </div>
+    <!-- Toast container — always present, renders above all overlays (z-index 1500) -->
+    <ToastContainer client:load />
   </body>
 </html>

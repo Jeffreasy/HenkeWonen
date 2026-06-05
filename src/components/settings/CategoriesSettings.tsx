@@ -3,6 +3,7 @@ import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canManage, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
+import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/Alert";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { CategoryForm } from "./CategoryForm";
@@ -32,7 +33,6 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
     nextStatus: CategoryRow["status"];
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const canManageCategories = canManage(session.role);
 
   useEffect(() => {
@@ -99,7 +99,6 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await client.mutation(api.portal.upsertCategory, {
@@ -108,12 +107,12 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
         categoryId: editingCategory?.id,
         ...data
       });
-      setNotice(editingCategory ? "Productgroep bijgewerkt." : "Productgroep toegevoegd.");
+      showToast({ title: editingCategory ? "Productgroep bijgewerkt" : "Productgroep toegevoegd", description: data.name, tone: "success" });
       setEditingCategory(null);
       setReloadKey((current) => current + 1);
     } catch (saveError) {
       console.error(saveError);
-      setError("Productgroep kon niet worden opgeslagen.");
+      showToast({ title: "Productgroep kon niet worden opgeslagen", tone: "error" });
       throw saveError;
     } finally {
       setIsSaving(false);
@@ -135,7 +134,6 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await client.mutation(api.portal.upsertCategory, {
@@ -148,11 +146,11 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
         status: nextStatus
       });
       setPendingCategoryStatus(null);
-      setNotice(nextStatus === "inactive" ? "Productgroep gearchiveerd." : "Productgroep hersteld.");
+      showToast({ title: nextStatus === "inactive" ? "Productgroep gearchiveerd" : "Productgroep hersteld", description: category.name, tone: nextStatus === "inactive" ? "warning" : "success" });
       setReloadKey((current) => current + 1);
     } catch (saveError) {
       console.error(saveError);
-      setError("Productgroepstatus kon niet worden bijgewerkt.");
+      showToast({ title: "Productgroepstatus kon niet worden bijgewerkt", tone: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -180,7 +178,6 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
         onCancel={() => setPendingCategoryStatus(null)}
         onConfirm={() => void confirmCategoryStatus()}
       />
-      {notice ? <Alert variant="success" description={notice} /> : null}
       {error ? <Alert variant="danger" description={error} /> : null}
 
       {canManageCategories ? (

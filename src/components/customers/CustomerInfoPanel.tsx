@@ -3,6 +3,7 @@ import { formatCustomerStatus } from "../../lib/i18n/statusLabels";
 import type { PortalCustomer } from "../../lib/portalTypes";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
+import { CopyButton } from "../ui/forms/CopyButton";
 import { SectionHeader } from "../ui/SectionHeader";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SummaryList } from "../ui/SummaryList";
@@ -72,8 +73,26 @@ export function CustomerInfoPanel({
       />
       <SummaryList
         items={[
-          { id: "email", label: "E-mail", value: customer.email ?? "-" },
-          { id: "phone", label: "Telefoon", value: customer.phone ?? "-" },
+          {
+            id: "email",
+            label: "E-mail",
+            value: customer.email ? (
+              <>
+                {customer.email}
+                <CopyButton value={customer.email} label="E-mailadres kopiëren" />
+              </>
+            ) : "-"
+          },
+          {
+            id: "phone",
+            label: "Telefoon",
+            value: customer.phone ? (
+              <>
+                {customer.phone}
+                <CopyButton value={customer.phone} label="Telefoonnummer kopiëren" />
+              </>
+            ) : "-"
+          },
           {
             id: "address",
             label: "Adres",

@@ -5,6 +5,7 @@ import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { PortalCustomer } from "../../lib/portalTypes";
+import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { FormModal } from "../ui/overlays/FormModal";
@@ -58,17 +59,22 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
       return;
     }
 
-    await client.mutation(api.portal.createCustomer, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      ...customer
-    });
-    await loadCustomers();
-    setIsModalOpen(false);
+    try {
+      await client.mutation(api.portal.createCustomer, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        ...customer
+      });
+      await loadCustomers();
+      setIsModalOpen(false);
+      showToast({ title: "Klant aangemaakt", description: customer.displayName, tone: "success" });
+    } catch {
+      showToast({ title: "Klant aanmaken mislukt", tone: "error" });
+    }
   }
 
   return (
