@@ -974,6 +974,7 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number()
   })
+    .index("by_tenant", ["tenantId"])
     .index("by_project", ["tenantId", "projectId"])
     .index("by_customer", ["tenantId", "customerId"])
     .index("by_invoice_number", ["tenantId", "invoiceNumber"])
