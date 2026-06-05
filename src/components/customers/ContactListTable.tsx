@@ -6,23 +6,12 @@ import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { SectionHeader } from "../ui/SectionHeader";
+import { dateText } from "../projects/measurement/measurementUtils";
 
 type ContactListTableProps = {
   contacts: PortalCustomerContact[];
   onNew?: () => void;
 };
-
-function dateText(value?: number) {
-  if (!value) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("nl-NL", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric"
-  }).format(new Date(value));
-}
 
 function contactTypeLabel(type: PortalCustomerContact["type"]) {
   const labels: Record<PortalCustomerContact["type"], string> = {
