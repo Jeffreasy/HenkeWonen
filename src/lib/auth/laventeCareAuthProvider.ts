@@ -114,7 +114,7 @@ export async function refreshLaventeCareSession(
       headers: {
         accept: "application/json",
         "content-type": "application/json",
-        cookie: `refresh_token=${encodeURIComponent(refreshToken)}`,
+        cookie: `refresh_token=${refreshToken}`,
         "X-Tenant-ID": authTenantId
       },
       redirect: "manual"
