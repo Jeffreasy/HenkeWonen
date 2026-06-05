@@ -1,0 +1,216 @@
+﻿.quote-print-root {
+  display: none;
+}
+
+@page {
+  size: A4;
+  margin: 14mm;
+}
+
+@media print {
+  html,
+  body {
+    width: auto;
+    height: auto;
+    min-height: auto;
+    margin: 0;
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  body.quote-print-active > :not(.quote-print-root),
+  .no-print,
+  .no-print *,
+  .quote-document-actions,
+  .quote-document-actions * {
+    display: none !important;
+  }
+
+  body.quote-print-active .quote-print-root {
+    display: block !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .quote-document-preview {
+    position: static;
+    width: 100%;
+    border: 0;
+    border-radius: 0;
+    background: #fff !important;
+    box-shadow: none;
+    color: #111 !important;
+    gap: 12pt;
+    padding: 0;
+  }
+
+  .quote-document-preview-header,
+  .quote-document-cover,
+  .quote-document-letterhead,
+  .quote-document-meta-grid,
+  .quote-document-terms {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quote-document-preview-header h2 {
+    font-size: 20pt;
+  }
+
+  .quote-document-preview-badges {
+    justify-content: flex-end;
+  }
+
+  .quote-document-letterhead {
+    border-color: #bbb;
+  }
+
+  .quote-document-cover {
+    background: #fff !important;
+    border-color: #bbb;
+  }
+
+  .quote-document-total-card {
+    background: #f1f1f1 !important;
+    border: 1px solid #888;
+    color: #111 !important;
+  }
+
+  .quote-document-total-card span,
+  .quote-document-total-card small {
+    color: #333 !important;
+  }
+
+  .quote-document-table-wrap {
+    break-before: avoid;
+    overflow: visible;
+    border-color: #bbb;
+    page-break-before: avoid;
+  }
+
+  .quote-document-table {
+    min-width: 0;
+    font-size: 9pt;
+    table-layout: fixed;
+  }
+
+  .quote-document-table thead {
+    display: table-header-group;
+  }
+
+  .quote-document-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .quote-document-table th,
+  .quote-document-table td {
+    border-color: #ccc;
+    overflow-wrap: anywhere;
+    padding: 6pt;
+  }
+
+  .quote-document-table th:nth-child(1),
+  .quote-document-table td:nth-child(1) {
+    width: 10%;
+  }
+
+  .quote-document-table th:nth-child(2),
+  .quote-document-table td:nth-child(2) {
+    width: 10%;
+  }
+
+  .quote-document-table th:nth-child(3),
+  .quote-document-table td:nth-child(3) {
+    width: 34%;
+  }
+
+  .quote-document-table th:nth-child(4),
+  .quote-document-table td:nth-child(4) {
+    width: 16%;
+  }
+
+  .quote-document-table th:nth-child(5),
+  .quote-document-table td:nth-child(5) {
+    width: 10%;
+  }
+
+  .quote-document-table th:nth-child(6),
+  .quote-document-table td:nth-child(6) {
+    width: 20%;
+  }
+
+  .quote-document-table th {
+    background: #f1f1f1 !important;
+    color: #333 !important;
+  }
+
+  .quote-document-table td:nth-child(3) span {
+    min-width: 0;
+  }
+
+  .quote-document-review-warning {
+    color: #7a4310 !important;
+    font-weight: 800;
+  }
+
+  .quote-document-section h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .print-keep-together,
+  .print-page-break-avoid,
+  .quote-document-section,
+  .quote-document-totals,
+  .quote-document-terms,
+  .quote-document-terms > div,
+  .quote-document-closing {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .quote-document-section {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .quote-document-totals {
+    break-before: avoid;
+    width: 84mm;
+    border-color: #888;
+    page-break-before: avoid;
+  }
+
+  .quote-document-total-row {
+    border-color: #bbb;
+  }
+
+  .ui-alert,
+  .ui-badge {
+    border-color: #bbb !important;
+    background: #fff !important;
+    color: #111 !important;
+    box-shadow: none !important;
+  }
+
+  .muted,
+  .quote-document-meta-grid span,
+  .quote-document-letterhead span,
+  .quote-document-closing span,
+  .quote-document-copy p,
+  .quote-document-totals p,
+  .quote-document-closing p,
+  .quote-document-text-list {
+    color: #333 !important;
+  }
+}

@@ -1,0 +1,162 @@
+﻿.issue-workbench {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.issue-workbench-attention {
+  border-color: rgba(154, 101, 7, 0.24);
+  background:
+    linear-gradient(180deg, rgba(254, 243, 199, 0.34), rgba(255, 253, 248, 0.94)),
+    var(--surface);
+}
+
+.issue-workbench-titlebar {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.issue-workbench-title {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-2xl);
+  line-height: var(--line-tight);
+}
+
+.issue-workbench-copy {
+  margin: var(--space-2) 0 0;
+}
+
+.issue-overview-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(260px, 0.8fr);
+  gap: var(--space-4);
+}
+
+.issue-focus-block {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-4);
+}
+
+.issue-focus-block strong {
+  font-size: var(--text-xl);
+  line-height: var(--line-tight);
+  overflow-wrap: anywhere;
+}
+
+.issue-focus-block p {
+  margin: 0;
+}
+
+.issue-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.issue-summary-item {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.54);
+  padding: var(--space-3);
+}
+
+.issue-summary-item span {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  line-height: var(--line-tight);
+  text-transform: uppercase;
+}
+
+.issue-summary-item strong {
+  font-size: var(--text-2xl);
+  line-height: var(--line-tight);
+}
+
+.issue-summary-warning {
+  border-color: rgba(154, 101, 7, 0.24);
+}
+
+.issue-summary-success {
+  border-color: rgba(22, 101, 52, 0.22);
+}
+
+.issue-summary-info {
+  border-color: rgba(29, 78, 137, 0.22);
+}
+
+.issue-signal-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.issue-tabs {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.issue-tabs .tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.issue-table-panel {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.issue-table-heading {
+  justify-content: space-between;
+}
+
+.issue-table-heading h2 {
+  margin: var(--space-1) 0 0;
+}
+
+.issue-table-panel .data-table {
+  min-width: 1120px;
+}
+
+.issue-table-panel .data-table th {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+.issue-table-panel .data-table td {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  vertical-align: top;
+}
+
+.issue-signal-cell,
+.issue-source-list {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.issue-ean-code {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.issue-source-list > * {
+  overflow-wrap: anywhere;
+}
+
+.import-workbench {
+  display: grid;
+  gap: var(--space-4);
+}

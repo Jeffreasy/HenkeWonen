@@ -1,0 +1,137 @@
+﻿.timeline {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.timeline-item:not(:last-child)::before {
+  position: absolute;
+  top: 18px;
+  bottom: -14px;
+  left: 6px;
+  width: 2px;
+  background: var(--line);
+  content: "";
+}
+
+.timeline-marker {
+  position: relative;
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  border: 3px solid var(--surface);
+  border-radius: 999px;
+  background: var(--line-strong);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.timeline-item-info .timeline-marker {
+  background: var(--info);
+}
+
+.timeline-item-success .timeline-marker {
+  background: var(--success);
+}
+
+.timeline-item-warning .timeline-marker {
+  background: var(--warning);
+}
+
+.timeline-item-danger .timeline-marker {
+  background: var(--danger);
+}
+
+.timeline-content {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  padding: var(--space-3);
+}
+
+.timeline-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.timeline-content p,
+.timeline-content small {
+  margin: 0;
+}
+
+.workflow-rail {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.workflow-rail-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.workflow-steps {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: center;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.workflow-step-done {
+  color: var(--success);
+}
+
+.workflow-step-current {
+  color: var(--accent-strong);
+}
+
+.workflow-step-current span {
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  padding: 2px 7px;
+}
+
+.workflow-step-stopped {
+  color: var(--danger);
+}
+
+.project-workspace-top {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  align-items: start;
+}
