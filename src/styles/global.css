@@ -2,65 +2,43 @@
  * global.css – Entry point / Import chain
  *
  * Volgorde is intentioneel (cascade: tokens → layout → components → features → responsive → print).
- * Gesplitst op: 2026-06-05 | Origineel: 6418 regels | Nu: 17 layers in src/styles/layers/
+ * Gesplitst op: 2026-06-05 | Origineel: 6418 regels | 17 layers in src/styles/layers/
+ *
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │  01  tokens          Design tokens, CSS custom properties    │
+ * │  02  portal-layout   Frames, topbar, sidebar, shell loading  │
+ * │  03  utilities       Grid, page-header, breadcrumbs, cards   │
+ * │  04  features-field  Buitendienst pages, tabs, calc-tabs     │
+ * │  05  legacy-ui       Pre-ui-system classes (button, badge)   │
+ * │  06  ui-components   ui-* system, DataTable, filter-bar      │
+ * │  07  overlays        Modals, Skeleton, Toast, ShortcutHelp   │
+ * │  08  shared          SummaryList, Checklist, CopyButton       │
+ * │  09  features-vat    VAT mapping workbench                    │
+ * │  10  features-catalog Data issue workbench                   │
+ * │  11  features-imports Import batch workbench                 │
+ * │  12  timeline        Timeline + Workflow rail                 │
+ * │  13  features-projects Projects, Dossier                     │
+ * │  14  features-quotes Quotes, wallpaper calc, product compare  │
+ * │  15  keyframes       Global @keyframes                        │
+ * │  16  responsive      @media (max-width) breakpoints           │
+ * │  17  print           @media print                             │
+ * └─────────────────────────────────────────────────────────────┘
  */
 
-/* ─── Design Tokens + Reset (L1-134) ─────────────────────────────────────── */
-@import "./layers/00-tokens.css";
-
-/* ─── Portal layout: frame, topbar, user-menu, field sidebar/topbar,
-       portal sidebar, shell loading (L135-1021) ──────────────────────────── */
-@import "./layers/01-portal-layout.css";
-
-/* ─── Layout utilities: page-header, breadcrumbs, muted, grid, stack,
-       dashboard, invoice-strip, card/panel base (L1022-1333) ───────────── */
+@import "./layers/01-tokens.css";
+@import "./layers/02-portal-layout.css";
 @import "./layers/03-utilities.css";
-
-/* ─── Feature: Buitendienst — field pages, tabs, intake, work-cards,
-       measurement, quote-flow, calculator-tabs (L1334-2268) ────────────── */
-@import "./layers/11-features-field.css";
-
-/* ─── Legacy UI: form-action-cell, field, input, button, badge, table,
-       tabs, quote-lines, empty-state (L2269-2489) ──────────────────────── */
-@import "./layers/06-legacy-ui.css";
-
-/* ─── UI Components: ui-button, ui-badge, ui-card, ui-field, ui-alert,
-       ui-stat-card, DataTable, mobile-cards, filter-bar, search, pagination
-       (L2490-3156) ────────────────────────────────────────────────────────── */
-@import "./layers/04-ui-components.css";
-
-/* ─── Overlays: ConfirmDialog, FormModal, Skeleton, ShortcutHelp, Toast
-       (L3157-3657) ─────────────────────────────────────────────────────────── */
-@import "./layers/05-overlays.css";
-
-/* ─── Shared: CopyButton, edit-panel, quote-product-picker,
-       summary-list, checklist, inline-help, release-panel (L3658-3830) ─── */
-@import "./layers/06-shared.css";
-
-/* ─── Feature: VAT workbench (L3831-4163) ───────────────────────────────── */
-@import "./layers/07-vat-workbench.css";
-
-/* ─── Feature: Catalog — data issue workbench (L4164-4325) ─────────────── */
-@import "./layers/08-features-catalog.css";
-
-/* ─── Feature: Import workbench (batch imports) (L4326-4689) ────────────── */
-@import "./layers/07-features-imports.css";
-
-/* ─── Shared: Timeline + Workflow rail (L4690-4826) ─────────────────────── */
-@import "./layers/09-timeline.css";
-
-/* ─── Feature: Projects + Dossier (L4827-5001) ──────────────────────────── */
-@import "./layers/09-features-projects.css";
-
-/* ─── Feature: Quotes + wallpaper calculator + product compare + suppliers
-       (L5002-5529) ─────────────────────────────────────────────────────────── */
-@import "./layers/10-features-quotes.css";
-
-/* ─── Global keyframes: ui-spin, shell-progress-slide (L5530-5566) ──────── */
-@import "./layers/00-keyframes.css";
-
-/* ─── Responsive breakpoints (max-width: 980px, 720px) (L5567-6201) ─────── */
-@import "./layers/13-responsive.css";
-
-/* ─── Print styles (L6202-end) ───────────────────────────────────────────── */
-@import "./layers/14-print.css";
+@import "./layers/04-features-field.css";
+@import "./layers/05-legacy-ui.css";
+@import "./layers/06-ui-components.css";
+@import "./layers/07-overlays.css";
+@import "./layers/08-shared.css";
+@import "./layers/09-features-vat.css";
+@import "./layers/10-features-catalog.css";
+@import "./layers/11-features-imports.css";
+@import "./layers/12-timeline.css";
+@import "./layers/13-features-projects.css";
+@import "./layers/14-features-quotes.css";
+@import "./layers/15-keyframes.css";
+@import "./layers/16-responsive.css";
+@import "./layers/17-print.css";
