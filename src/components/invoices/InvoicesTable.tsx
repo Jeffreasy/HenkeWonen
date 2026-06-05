@@ -10,7 +10,7 @@ import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
 
-type StatusFilter = "all" | InvoiceStatus;
+export type StatusFilter = "all" | InvoiceStatus;
 
 const statusOptions: Array<{ value: StatusFilter; label: string }> = [
   { value: "all", label: "Alle statussen" },

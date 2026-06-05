@@ -6,13 +6,11 @@ import { formatEuro } from "../../lib/money";
 import type { InvoiceStatus, PortalInvoiceRow } from "../../lib/portalTypes";
 import { Alert } from "../ui/Alert";
 import { StatCard } from "../ui/StatCard";
-import { InvoicesTable } from "./InvoicesTable";
+import { InvoicesTable, type StatusFilter } from "./InvoicesTable";
 
 type InvoiceWorkspaceProps = {
   session: AppSession;
 };
-
-type StatusFilter = "all" | InvoiceStatus;
 
 export default function InvoiceWorkspace({ session }: InvoiceWorkspaceProps) {
   const [invoices, setInvoices] = useState<PortalInvoiceRow[]>([]);
