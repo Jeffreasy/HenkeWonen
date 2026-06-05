@@ -48,182 +48,24 @@ import { StatCard } from "../ui/StatCard";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SummaryList } from "../ui/SummaryList";
 import { Textarea } from "../ui/Textarea";
-
-type MeasurementPanelProps = {
-  tenantId: string;
-  projectId: string;
-  customerId: string;
-  projectRooms: PortalRoom[];
-  session: AppSession;
-  mode?: "full" | "field";
-};
-
-type MeasurementDoc = {
-  _id: string;
-  status: MeasurementStatus;
-  measurementDate?: number;
-  measuredBy?: string;
-  notes?: string;
-  createdAt: number;
-  updatedAt: number;
-};
-
-type MeasurementRoomDoc = {
-  _id: string;
-  projectRoomId?: string;
-  name: string;
-  floor?: string;
-  widthM?: number;
-  lengthM?: number;
-  heightM?: number;
-  areaM2?: number;
-  perimeterM?: number;
-  notes?: string;
-  sortOrder: number;
-};
-
-type MeasurementLineDoc = {
-  _id: string;
-  roomId?: string;
-  productGroup: MeasurementProductGroup;
-  calculationType: MeasurementCalculationType;
-  input: Record<string, unknown>;
-  result: Record<string, unknown>;
-  wastePercent?: number;
-  quantity: number;
-  unit: string;
-  notes?: string;
-  quoteLineType: QuoteLineType;
-  quotePreparationStatus: QuotePreparationStatus;
-};
-
-type WasteProfileDoc = {
-  _id: string;
-  productGroup: MeasurementProductGroup;
-  name: string;
-  defaultWastePercent: number;
-  description?: string;
-};
-
-type MeasurementData = {
-  measurement: MeasurementDoc | null;
-  rooms: MeasurementRoomDoc[];
-  lines: MeasurementLineDoc[];
-  wasteProfiles: WasteProfileDoc[];
-};
-
-type CalculatorFormProps = {
-  title: string;
-  description: string;
-  toolId?: FieldMeasureTool;
-  children: ReactNode;
-  result?: ReactNode;
-  validationError?: string;
-  onSubmit: (event: SubmitEventLike) => void;
-  isSaving: boolean;
-};
-
-type FieldMeasureTool =
-  | "flooring"
-  | "plinths"
-  | "wallpaper"
-  | "wall_panels"
-  | "stairs"
-  | "manual";
-
-const INDICATIVE_TEXT =
-  "Indicatief. Controleer altijd inmeting, legrichting, patroon, productafmetingen en snijverlies.";
-
-const PRODUCT_GROUP_OPTIONS: MeasurementProductGroup[] = [
-  "flooring",
-  "plinths",
-  "wallpaper",
-  "wall_panels",
-  "curtains",
-  "rails",
-  "stairs",
-  "other"
-];
-
-const QUOTE_LINE_TYPE_OPTIONS: QuoteLineType[] = [
-  "product",
-  "service",
-  "labor",
-  "material",
-  "text",
-  "manual"
-];
-
-const FIELD_MEASURE_TOOLS: Array<{
-  id: FieldMeasureTool;
-  label: string;
-  description: string;
-}> = [
-  { id: "flooring", label: "Vloer", description: "m2 en snijverlies" },
-  { id: "plinths", label: "Plinten", description: "meters langs de muur" },
-  { id: "wallpaper", label: "Behang", description: "rollen en patroon" },
-  { id: "wall_panels", label: "Wandpanelen", description: "panelen per wand" },
-  { id: "stairs", label: "Trap", description: "treden en stootborden" },
-  { id: "manual", label: "Vrije regel", description: "ramen, rails of maatwerk" }
-];
-
-function parseDecimal(value: string): number | undefined {
-  const normalized = value.trim().replace(",", ".");
-
-  if (!normalized) {
-    return undefined;
-  }
-
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function decimalText(value?: number): string {
-  if (value === undefined || value === null) {
-    return "";
-  }
-
-  return String(value);
-}
-
-function formatNumber(value?: number, suffix = "") {
-  if (value === undefined || value === null) {
-    return "-";
-  }
-
-  return `${new Intl.NumberFormat("nl-NL", {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: value % 1 === 0 ? 0 : 2
-  }).format(value)}${suffix}`;
-}
-
-function dateText(value?: number) {
-  if (!value) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("nl-NL", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric"
-  }).format(new Date(value));
-}
-
-function toDateInputValue(value?: number): string {
-  if (!value) {
-    return "";
-  }
-
-  return new Date(value).toISOString().slice(0, 10);
-}
-
-function fromDateInputValue(value: string): number | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  return new Date(`${value}T12:00:00`).getTime();
-}
+import type {
+  FieldMeasureTool,
+  MeasurementData,
+  MeasurementDoc,
+  MeasurementLineDoc,
+  MeasurementRoomDoc,
+  MeasurementPanelProps,
+  WasteProfileDoc
+} from "./measurement/measurementTypes";
+import { PRODUCT_GROUP_OPTIONS, QUOTE_LINE_TYPE_OPTIONS } from "./measurement/measurementTypes";
+import {
+  dateText,
+  decimalText,
+  formatNumber,
+  fromDateInputValue,
+  parseDecimal,
+  toDateInputValue
+} from "./measurement/measurementUtils";
 
 
 export default function MeasurementPanel({
