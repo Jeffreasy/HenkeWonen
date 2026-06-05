@@ -12,7 +12,7 @@ import type {
 import { formatQuoteStatus, formatUnit } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
 import { buildQuoteDocumentModel } from "../../lib/quotes/quoteDocumentModel";
-import { polishQuoteTemplateLines, polishQuoteTemplateText } from "../../lib/quoteTemplateCopy";
+import { polishQuoteTemplateLines, polishQuoteTemplateText } from "../../lib/quotes/quoteTemplateCopy";
 import { Button } from "../ui/Button";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";

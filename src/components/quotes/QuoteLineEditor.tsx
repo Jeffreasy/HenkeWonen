@@ -7,7 +7,7 @@ import type { SubmitEventLike } from "../../lib/events";
 import { formatLineType } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
 import type { PortalProduct, PortalRoom, QuoteLineType, QuoteTemplateLine } from "../../lib/portalTypes";
-import { polishQuoteTemplateText } from "../../lib/quoteTemplateCopy";
+import { polishQuoteTemplateText } from "../../lib/quotes/quoteTemplateCopy";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { Field } from "../ui/Field";

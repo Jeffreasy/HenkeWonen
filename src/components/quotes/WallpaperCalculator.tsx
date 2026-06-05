@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import {
   calculateWallpaperRolls,
   type WallpaperCalculationResult
-} from "../../lib/wallpaperCalculator";
+} from "../../lib/calculators/wallpaperCalculator";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { Field } from "../ui/Field";

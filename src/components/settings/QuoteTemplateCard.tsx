@@ -2,7 +2,7 @@ import { Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { formatLineType, formatStatusLabel, formatUnit } from "../../lib/i18n/statusLabels";
 import type { QuoteTemplate } from "../../lib/portalTypes";
-import { polishQuoteTemplateLines, polishQuoteTemplateText } from "../../lib/quoteTemplateCopy";
+import { polishQuoteTemplateLines, polishQuoteTemplateText } from "../../lib/quotes/quoteTemplateCopy";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
