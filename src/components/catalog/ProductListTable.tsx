@@ -7,8 +7,8 @@ import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { StatusBadge } from "../ui/StatusBadge";
+import { type ProductStatus } from "./catalog/catalogTypes";
 
-type ProductStatus = PortalProduct["status"];
 
 type ProductListTableProps = {
   products: PortalProduct[];

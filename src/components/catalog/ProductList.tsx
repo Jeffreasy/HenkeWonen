@@ -11,6 +11,8 @@ import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { ProductFilterBar } from "./ProductFilterBar";
 import { ProductEditPanel, type ProductDraft } from "./ProductEditPanel";
 import { ProductListTable } from "./ProductListTable";
+import { type ProductStatus } from "./catalog/catalogTypes";
+import { decimalText } from "./catalog/catalogUtils";
 
 type ProductListProps = {
   session: AppSession;
@@ -28,16 +30,6 @@ type CatalogResult = {
   isDone: boolean;
   continueCursor: string;
 };
-
-type ProductStatus = PortalProduct["status"];
-
-function decimalText(value?: number): string {
-  if (value === undefined || value === null) {
-    return "";
-  }
-
-  return String(value);
-}
 
 function optionalNumber(value: string): number | undefined {
   const normalized = value.trim().replace(",", ".");

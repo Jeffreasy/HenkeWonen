@@ -8,10 +8,8 @@ import { Input } from "../ui/Input";
 import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
 import { StatusBadge } from "../ui/StatusBadge";
+import { type ProductStatus, PRODUCT_STATUSES } from "./catalog/catalogTypes";
 
-type ProductStatus = PortalProduct["status"];
-
-const productStatuses: ProductStatus[] = ["draft", "active", "inactive", "archived"];
 
 export type ProductDraft = {
   name: string;
@@ -88,7 +86,7 @@ export function ProductEditPanel({
                 }))
               }
             >
-              {productStatuses.map((status) => (
+              {PRODUCT_STATUSES.map((status) => (
                 <option value={status} key={status}>
                   {formatStatusLabel(status)}
                 </option>

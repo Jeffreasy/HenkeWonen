@@ -3,13 +3,8 @@ import { Alert } from "../ui/Alert";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { LoadingState } from "../ui/LoadingState";
-
-type DuplicateEanIssue = {
-  supplier: string;
-  ean: string;
-  products: Array<{ productId: string }>;
-};
-
+import { numberText } from "./catalog/catalogUtils";
+import type { DuplicateEanIssue } from "./DataIssuesTable";
 type DuplicateEanReview = {
   duplicateProductCount: number;
   duplicateGroupCount: number;
@@ -38,9 +33,6 @@ type DataIssuesHeaderProps = {
   onSync: () => void | Promise<void>;
 };
 
-function numberText(value: number) {
-  return new Intl.NumberFormat("nl-NL").format(value);
-}
 
 export function DataIssuesHeader({
   isLoading,

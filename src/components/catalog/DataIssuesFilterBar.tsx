@@ -5,6 +5,8 @@ import { FilterBar } from "../ui/FilterBar";
 import { SearchInput } from "../ui/SearchInput";
 import { Select } from "../ui/Select";
 import { formatRecommendation } from "../../lib/i18n/statusLabels";
+import { numberText } from "./catalog/catalogUtils";
+import { STATUS_FILTERS } from "./catalog/catalogTypes";
 
 export type IssueStatusFilter = "all" | "open" | "reviewed" | "accepted" | "resolved";
 
@@ -23,17 +25,6 @@ type DataIssuesFilterBarProps = {
   filteredGroupsCount: number;
 };
 
-const statusFilters: Array<{ value: IssueStatusFilter; label: string }> = [
-  { value: "open", label: "Te beoordelen" },
-  { value: "reviewed", label: "Beoordeeld" },
-  { value: "accepted", label: "Bewust toegestaan" },
-  { value: "resolved", label: "Opgelost" },
-  { value: "all", label: "Alle" }
-];
-
-function numberText(value: number) {
-  return new Intl.NumberFormat("nl-NL").format(value);
-}
 
 export function DataIssuesFilterBar({
   searchQuery,
@@ -63,7 +54,7 @@ export function DataIssuesFilterBar({
         <>
           <Badge icon={<Filter size={14} aria-hidden="true" />}>Weergave</Badge>
           <div className="tabs issue-tabs">
-            {statusFilters.map((item) => (
+            {STATUS_FILTERS.map((item) => (
               <button
                 className={statusFilter === item.value ? "tab active" : "tab"}
                 key={item.value}

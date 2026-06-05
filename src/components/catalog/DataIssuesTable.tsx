@@ -7,6 +7,7 @@ import { Field } from "../ui/Field";
 import { Select } from "../ui/Select";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Textarea } from "../ui/Textarea";
+import { numberText, dateTimeText } from "./catalog/catalogUtils";
 
 export type DuplicateEanDecision =
   | "keep_separate"
@@ -92,20 +93,6 @@ const decisions: Array<{ value: DuplicateEanDecision; label: string; helpText: s
   }
 ];
 
-function numberText(value: number) {
-  return new Intl.NumberFormat("nl-NL").format(value);
-}
-
-function dateText(value?: number) {
-  if (!value) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("nl-NL", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(new Date(value));
-}
 
 function statusVariant(status: DuplicateEanIssue["issueStatus"]): BadgeVariant {
   if (status === "resolved" || status === "accepted") {
@@ -341,7 +328,7 @@ export function DataIssuesTable({
                   , dan kun je direct beoordelen.
                 </span>
               ) : issue.reviewedAt ? (
-                `Beoordeeld ${dateText(issue.reviewedAt)}`
+                `Beoordeeld ${dateTimeText(issue.reviewedAt)}`
               ) : (
                 "Nog niet beoordeeld"
               )}

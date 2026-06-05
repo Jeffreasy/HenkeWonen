@@ -1,14 +1,10 @@
-import type { PortalProduct } from "../../lib/portalTypes";
 import { formatStatusLabel } from "../../lib/i18n/statusLabels";
 import { Checkbox } from "../ui/Checkbox";
 import { Field } from "../ui/Field";
 import { FilterBar } from "../ui/FilterBar";
 import { SearchInput } from "../ui/SearchInput";
 import { Select } from "../ui/Select";
-
-type ProductStatus = PortalProduct["status"];
-
-const productStatuses: ProductStatus[] = ["draft", "active", "inactive", "archived"];
+import { type ProductStatus, PRODUCT_STATUSES } from "./catalog/catalogTypes";
 
 type CategoryStat = {
   name: string;
@@ -70,7 +66,7 @@ export function ProductFilterBar({
               value={statusFilter}
               onChange={(event) => onStatusFilterChange(event.target.value as ProductStatus)}
             >
-              {productStatuses.map((status) => (
+              {PRODUCT_STATUSES.map((status) => (
                 <option value={status} key={status}>
                   {formatStatusLabel(status)}
                 </option>
