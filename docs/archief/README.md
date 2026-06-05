@@ -1,17 +1,13 @@
 # Archief
 
-Deze map bevat oudere versies van documenten die hun actuele status verloren hebben,
-maar bewaard worden als historische referentie.
+Historische referentiedocumentatie — bewaard maar niet meer actueel.
+Gebruik [`docs/technisch/`](../technisch/README.md) en [`docs/release-readiness/`](../release-readiness/README.md) voor de actuele stand.
 
-## BTW-mapping versies
+## Wat staat hier
 
-Actuele stand staat in [`docs/release-readiness/vat-mapping/`](../release-readiness/vat-mapping/).
-
-| Gearchiveerd bestand | Datum | Reden |
+| Map | Inhoud | Periode |
 | --- | --- | --- |
-| `vat-mapping/vat-mapping-current-state-2026-04-30.md` | 2026-04-30 | Overschreven door 2026-06-01 versie |
-| `vat-mapping/vat-mapping-current-state-2026-04-30.json` | 2026-04-30 | Overschreven door 2026-06-01 versie |
-| `vat-mapping/vat-mapping-current-state-2026-05-08.md` | 2026-05-08 | Overschreven door 2026-06-01 versie |
-| `vat-mapping/vat-mapping-current-state-2026-05-08.json` | 2026-05-08 | Overschreven door 2026-06-01 versie |
-| `vat-mapping/vat-mapping-human-decision-table-2026-04-30.md` | 2026-04-30 | Vervangen door 2026-06-01 versie |
-| `vat-mapping/vat-mapping-human-decision-table-2026-05-08.md` | 2026-05-08 | Vervangen door 2026-06-01 versie |
+| [audits/](./audits/) | Data-, UI/UX-, workflow-, reconciliatie- en pagina-audits | apr–mei 2026 |
+| [implementation/](./implementation/) | Faseverslagen design-system, inmeetmodule, offertes, PDF-export | apr–mei 2026 |
+| [releases/](./releases/) | Release notes | mei 2026 |
+| [vat-mapping/](./vat-mapping/) | Verouderde btw-mapping versies (apr + mei 2026) | apr–mei 2026 |
