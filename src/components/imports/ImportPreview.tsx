@@ -11,6 +11,8 @@ import { ImportWorkbench } from "./ImportWorkbench";
 import { StartImportForm } from "./StartImportForm";
 import { ImportBatchesTable } from "./ImportBatchesTable";
 import { ImportDetailPanel } from "./ImportDetailPanel";
+import { type BatchStatusFilter, type DetailTab, type RowKindFilter, type RowStatusFilter } from "./import/importTypes";
+import { numberText, dateText, normalizedText } from "./import/importUtils";
 
 type ImportPreviewProps = {
   session: AppSession;
@@ -21,11 +23,6 @@ type BatchDetail = {
   batch: ProductImportBatch;
   rows: ProductImportRow[];
 };
-
-type BatchStatusFilter = "all" | ProductImportBatch["status"];
-type DetailTab = "summary" | "rows" | "warnings" | "reconciliation";
-type RowKindFilter = "all" | ProductImportRow["rowKind"];
-type RowStatusFilter = "all" | ProductImportRow["status"];
 
 const sourceFiles = [
   "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
@@ -49,24 +46,6 @@ const sourceFiles = [
 
 function fileTypeFor(fileName: string) {
   return fileName.toLowerCase().endsWith(".xls") ? "xls" : "xlsx";
-}
-
-function numberText(value: number) {
-  return new Intl.NumberFormat("nl-NL").format(value);
-}
-
-function dateText(value?: number) {
-  if (!value) {
-    return "-";
-  }
-  return new Intl.DateTimeFormat("nl-NL", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(new Date(value));
-}
-
-function normalizedText(value?: string) {
-  return (value ?? "").toLocaleLowerCase("nl-NL");
 }
 
 function batchMatchesSearch(batch: ProductImportBatch, searchQuery: string) {

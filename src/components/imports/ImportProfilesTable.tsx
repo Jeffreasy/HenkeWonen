@@ -8,8 +8,7 @@ import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { FilterBar } from "../ui/FilterBar";
 import { SearchInput } from "../ui/SearchInput";
 import { StatusBadge } from "../ui/StatusBadge";
-
-type ProfileStatusFilter = "all" | "active" | "archived";
+import { type ProfileStatusFilter } from "./import/importTypes";
 
 type ImportProfilesTableProps = {
   visibleProfiles: ImportProfileSummary[];

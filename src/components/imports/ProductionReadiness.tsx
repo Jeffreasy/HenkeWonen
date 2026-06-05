@@ -9,6 +9,7 @@ import { Button } from "../ui/Button";
 import { Checklist } from "../ui/Checklist";
 import { StatCard } from "../ui/StatCard";
 import { SummaryList } from "../ui/SummaryList";
+import { numberText } from "./import/importUtils";
 
 type ProductionReadinessProps = {
   session: AppSession;
@@ -38,10 +39,6 @@ type ProductionReadinessResult = {
   };
   productionImportStatus: "BLOCKED" | "READY";
 };
-
-function numberText(value: number) {
-  return new Intl.NumberFormat("nl-NL").format(value);
-}
 
 function dateText(value?: number) {
   if (!value || value === Number.MAX_SAFE_INTEGER) {

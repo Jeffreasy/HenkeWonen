@@ -8,6 +8,7 @@ import { Checkbox } from "../ui/Checkbox";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { InlineHelp } from "../ui/InlineHelp";
 import { Select } from "../ui/Select";
+import { numberText, rowKey, progressPercentage } from "./import/importUtils";
 
 type VatMappingGroupsProps = {
   groupedProfiles: Array<{
@@ -30,14 +31,6 @@ type VatMappingGroupsProps = {
   isSaving: boolean;
 };
 
-function numberText(value: number) {
-  return new Intl.NumberFormat("nl-NL").format(value);
-}
-
-function rowKey(row: VatMappingReviewRow) {
-  return `${row.profileId}::${row.sourceColumnIndex}::${row.sourceColumnName}`;
-}
-
 function confidenceVariant(confidence: VatMappingReviewRow["confidence"]): BadgeVariant {
   if (confidence === "high") {
     return "success";
@@ -48,12 +41,6 @@ function confidenceVariant(confidence: VatMappingReviewRow["confidence"]): Badge
   return "danger";
 }
 
-function progressPercentage(done: number, total: number) {
-  if (total <= 0) {
-    return 100;
-  }
-  return Math.round((done / total) * 100);
-}
 
 function shortReason(value: string) {
   return value.length > 96 ? `${value.slice(0, 94).trim()}...` : value;

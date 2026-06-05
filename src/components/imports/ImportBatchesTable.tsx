@@ -2,14 +2,14 @@ import { Archive, Filter, RotateCcw } from "lucide-react";
 import { useMemo } from "react";
 import type { ProductImportBatch } from "../../lib/portalTypes";
 import { formatImportStatus } from "../../lib/i18n/statusLabels";
-import { Badge, type BadgeVariant } from "../ui/Badge";
+import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { FilterBar } from "../ui/FilterBar";
 import { SearchInput } from "../ui/SearchInput";
 import { StatusBadge } from "../ui/StatusBadge";
-
-type BatchStatusFilter = "all" | ProductImportBatch["status"];
+import { type BatchStatusFilter } from "./import/importTypes";
+import { numberText, dateText, batchStatusVariant, lifecycleText, archiveActionFor } from "./import/importUtils";
 
 const batchStatusFilters: Array<{ value: BatchStatusFilter; label: string }> = [
   { value: "failed", label: "Aandacht nodig" },
@@ -34,67 +34,6 @@ type ImportBatchesTableProps = {
   setPendingBatchStatus: (value: { batch: ProductImportBatch; nextStatus: ProductImportBatch["status"] } | null) => void;
 };
 
-function numberText(value: number) {
-  return new Intl.NumberFormat("nl-NL").format(value);
-}
-
-function dateText(value?: number) {
-  if (!value) {
-    return "-";
-  }
-  return new Intl.DateTimeFormat("nl-NL", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(new Date(value));
-}
-
-function batchStatusVariant(batch: ProductImportBatch): BadgeVariant {
-  if (batch.status === "failed") {
-    return "danger";
-  }
-  if (batch.status === "needs_mapping") {
-    return "warning";
-  }
-  if (batch.status === "ready_to_import" || batch.status === "imported") {
-    return "success";
-  }
-  if (batch.unknownVatModeRows > 0) {
-    return "warning";
-  }
-  if (batch.status === "importing" || batch.status === "analyzing") {
-    return "info";
-  }
-  return "neutral";
-}
-
-function lifecycleText(batch: ProductImportBatch) {
-  if (batch.status === "archived") {
-    return batch.archivedAt ? `gearchiveerd ${dateText(batch.archivedAt)}` : "gearchiveerd";
-  }
-  if (batch.failedAt) {
-    return `mislukt ${dateText(batch.failedAt)}`;
-  }
-  if (batch.committedAt) {
-    return `verwerkt ${dateText(batch.committedAt)}`;
-  }
-  return `aangemaakt ${dateText(batch.createdAt)}`;
-}
-
-function archiveActionFor(batch: ProductImportBatch) {
-  return batch.status === "archived"
-    ? {
-        label: "Terugzetten",
-        nextStatus: batch.archivedFromStatus ?? ("uploaded" as ProductImportBatch["status"]),
-        icon: <RotateCcw size={16} aria-hidden="true" />,
-        variant: "secondary" as const
-      }
-    : {
-        label: "Archiveren",
-        nextStatus: "archived" as ProductImportBatch["status"],
-        icon: <Archive size={16} aria-hidden="true" />,
-        variant: "danger" as const
-      };
-}
 
 export function ImportBatchesTable({
   filteredBatches,

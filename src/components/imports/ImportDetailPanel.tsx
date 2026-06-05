@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { ProductImportBatch, ProductImportRow } from "../../lib/portalTypes";
 import { formatImportStatus, formatRowKind, formatRowStatus } from "../../lib/i18n/statusLabels";
 import { Alert } from "../ui/Alert";
-import { Badge, type BadgeVariant } from "../ui/Badge";
+import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Checkbox } from "../ui/Checkbox";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
@@ -14,10 +14,8 @@ import { Select } from "../ui/Select";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SummaryList } from "../ui/SummaryList";
 import ImportWarnings from "./ImportWarnings";
-
-type DetailTab = "summary" | "rows" | "warnings" | "reconciliation";
-type RowKindFilter = "all" | ProductImportRow["rowKind"];
-type RowStatusFilter = "all" | ProductImportRow["status"];
+import { type DetailTab, type RowKindFilter, type RowStatusFilter } from "./import/importTypes";
+import { numberText, dateText, batchStatusVariant, lifecycleText, archiveActionFor } from "./import/importUtils";
 
 type ImportDetailPanelProps = {
   selectedBatch: ProductImportBatch;
@@ -45,68 +43,6 @@ type ImportDetailPanelProps = {
   rowKindOptions: string[];
   rowStatusOptions: string[];
 };
-
-function numberText(value: number) {
-  return new Intl.NumberFormat("nl-NL").format(value);
-}
-
-function dateText(value?: number) {
-  if (!value) {
-    return "-";
-  }
-  return new Intl.DateTimeFormat("nl-NL", {
-    dateStyle: "short",
-    timeStyle: "short"
-  }).format(new Date(value));
-}
-
-function batchStatusVariant(batch: ProductImportBatch): BadgeVariant {
-  if (batch.status === "failed") {
-    return "danger";
-  }
-  if (batch.status === "needs_mapping") {
-    return "warning";
-  }
-  if (batch.status === "ready_to_import" || batch.status === "imported") {
-    return "success";
-  }
-  if (batch.unknownVatModeRows > 0) {
-    return "warning";
-  }
-  if (batch.status === "importing" || batch.status === "analyzing") {
-    return "info";
-  }
-  return "neutral";
-}
-
-function lifecycleText(batch: ProductImportBatch) {
-  if (batch.status === "archived") {
-    return batch.archivedAt ? `gearchiveerd ${dateText(batch.archivedAt)}` : "gearchiveerd";
-  }
-  if (batch.failedAt) {
-    return `mislukt ${dateText(batch.failedAt)}`;
-  }
-  if (batch.committedAt) {
-    return `verwerkt ${dateText(batch.committedAt)}`;
-  }
-  return `aangemaakt ${dateText(batch.createdAt)}`;
-}
-
-function archiveActionFor(batch: ProductImportBatch) {
-  return batch.status === "archived"
-    ? {
-        label: "Terugzetten",
-        nextStatus: batch.archivedFromStatus ?? ("uploaded" as ProductImportBatch["status"]),
-        icon: <RotateCcw size={16} aria-hidden="true" />,
-        variant: "secondary" as const
-      }
-    : {
-        label: "Archiveren",
-        nextStatus: "archived" as ProductImportBatch["status"],
-        icon: <Archive size={16} aria-hidden="true" />,
-        variant: "danger" as const
-      };
-}
 
 export function ImportDetailPanel({
   selectedBatch,

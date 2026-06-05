@@ -14,6 +14,8 @@ import { FilterBar } from "../ui/FilterBar";
 import { VatWorkbenchHeader } from "./VatWorkbenchHeader";
 import { ImportProfilesTable } from "./ImportProfilesTable";
 import { VatMappingGroups } from "./VatMappingGroups";
+import { type ProfileStatusFilter } from "./import/importTypes";
+import { numberText, normalizedText, rowKey, progressPercentage } from "./import/importUtils";
 
 type ImportProfilesProps = {
   session: AppSession;
@@ -21,7 +23,6 @@ type ImportProfilesProps = {
 
 export type VatMode = "inclusive" | "exclusive" | "unknown";
 export type MappingFilter = "all" | "unresolved" | "inclusive" | "exclusive" | "unknown" | "allowUnknown";
-type ProfileStatusFilter = "all" | "active" | "archived";
 
 export type VatMappingReviewRow = {
   profileId: string;
@@ -91,14 +92,6 @@ const filters: Array<{ value: MappingFilter; label: string }> = [
   { value: "all", label: "Alle" }
 ];
 
-function numberText(value: number) {
-  return new Intl.NumberFormat("nl-NL").format(value);
-}
-
-function rowKey(row: VatMappingReviewRow) {
-  return `${row.profileId}::${row.sourceColumnIndex}::${row.sourceColumnName}`;
-}
-
 function filterRow(row: VatMappingReviewRow, filter: MappingFilter) {
   if (filter === "all") {
     return true;
@@ -114,10 +107,6 @@ function filterRow(row: VatMappingReviewRow, filter: MappingFilter) {
 
 function countRowsForFilter(rows: VatMappingReviewRow[], filter: MappingFilter) {
   return rows.filter((row) => filterRow(row, filter)).length;
-}
-
-function normalizedText(value?: string) {
-  return (value ?? "").toLocaleLowerCase("nl-NL");
 }
 
 function rowMatchesSearch(row: VatMappingReviewRow, searchQuery: string) {
@@ -149,13 +138,6 @@ function profileMatchesSearch(profile: ImportProfileSummary, searchQuery: string
     profile.supportsXlsx ? "xlsx" : "",
     profile.supportsXls ? "xls" : ""
   ].some((value) => normalizedText(value).includes(searchQuery));
-}
-
-function progressPercentage(done: number, total: number) {
-  if (total <= 0) {
-    return 100;
-  }
-  return Math.round((done / total) * 100);
 }
 
 export default function ImportProfiles({ session }: ImportProfilesProps) {

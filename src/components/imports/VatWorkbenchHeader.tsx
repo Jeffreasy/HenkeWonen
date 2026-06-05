@@ -1,4 +1,5 @@
 import type { VatMappingReview } from "./ImportProfiles";
+import { numberText } from "./import/importUtils";
 
 type VatWorkbenchHeaderProps = {
   isLoading: boolean;
@@ -13,10 +14,6 @@ type VatWorkbenchHeaderProps = {
   review: VatMappingReview | null;
   completionPercentage: number;
 };
-
-function numberText(value: number) {
-  return new Intl.NumberFormat("nl-NL").format(value);
-}
 
 export function VatWorkbenchHeader({
   isLoading,
