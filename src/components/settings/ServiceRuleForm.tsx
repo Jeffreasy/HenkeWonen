@@ -10,26 +10,7 @@ import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Textarea } from "../ui/Textarea";
-
-type ServiceRuleStatus = "active" | "inactive";
-type ServiceRuleCalculationType =
-  | "fixed"
-  | "per_m2"
-  | "per_meter"
-  | "per_roll"
-  | "per_side"
-  | "per_staircase"
-  | "manual";
-
-type ServiceRuleRow = {
-  id: string;
-  name: string;
-  description?: string;
-  calculationType: ServiceRuleCalculationType;
-  priceExVat: number;
-  vatRate: number;
-  status: ServiceRuleStatus;
-};
+import { type ServiceRuleStatus, type ServiceRuleCalculationType, type ServiceRuleRow } from "./settings/settingsTypes";
 
 const calculationTypes: ServiceRuleCalculationType[] = [
   "fixed",

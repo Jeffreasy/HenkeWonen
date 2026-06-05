@@ -4,26 +4,7 @@ import { formatEuro } from "../../lib/money";
 import { Button } from "../ui/Button";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { StatusBadge } from "../ui/StatusBadge";
-
-type ServiceRuleStatus = "active" | "inactive";
-type ServiceRuleCalculationType =
-  | "fixed"
-  | "per_m2"
-  | "per_meter"
-  | "per_roll"
-  | "per_side"
-  | "per_staircase"
-  | "manual";
-
-type ServiceRuleRow = {
-  id: string;
-  name: string;
-  description?: string;
-  calculationType: ServiceRuleCalculationType;
-  priceExVat: number;
-  vatRate: number;
-  status: ServiceRuleStatus;
-};
+import { type ServiceRuleStatus, type ServiceRuleCalculationType, type ServiceRuleRow } from "./settings/settingsTypes";
 
 type ServiceRulesTableProps = {
   rules: ServiceRuleRow[];

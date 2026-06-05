@@ -3,15 +3,7 @@ import { formatStatusLabel } from "../../lib/i18n/statusLabels";
 import { Button } from "../ui/Button";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { StatusBadge } from "../ui/StatusBadge";
-
-type CategoryRow = {
-  id: string;
-  tenantId: string;
-  name: string;
-  slug: string;
-  sortOrder: number;
-  status: "active" | "inactive";
-};
+import { type CategoryRow } from "./settings/settingsTypes";
 
 type CategoriesTableProps = {
   categories: CategoryRow[];

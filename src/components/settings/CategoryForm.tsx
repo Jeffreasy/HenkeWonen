@@ -9,15 +9,7 @@ import { Input } from "../ui/Input";
 import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
 import { StatusBadge } from "../ui/StatusBadge";
-
-type CategoryRow = {
-  id: string;
-  tenantId: string;
-  name: string;
-  slug: string;
-  sortOrder: number;
-  status: "active" | "inactive";
-};
+import { type CategoryRow } from "./settings/settingsTypes";
 
 type CategoryFormProps = {
   category: CategoryRow | null;

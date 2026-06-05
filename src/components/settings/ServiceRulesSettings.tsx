@@ -8,29 +8,10 @@ import { Alert } from "../ui/Alert";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { ServiceRuleForm } from "./ServiceRuleForm";
 import { ServiceRulesTable } from "./ServiceRulesTable";
+import { type ServiceRuleStatus, type ServiceRuleCalculationType, type ServiceRuleRow } from "./settings/settingsTypes";
 
 type ServiceRulesSettingsProps = {
   session: AppSession;
-};
-
-type ServiceRuleStatus = "active" | "inactive";
-type ServiceRuleCalculationType =
-  | "fixed"
-  | "per_m2"
-  | "per_meter"
-  | "per_roll"
-  | "per_side"
-  | "per_staircase"
-  | "manual";
-
-type ServiceRuleRow = {
-  id: string;
-  name: string;
-  description?: string;
-  calculationType: ServiceRuleCalculationType;
-  priceExVat: number;
-  vatRate: number;
-  status: ServiceRuleStatus;
 };
 
 export default function ServiceRulesSettings({ session }: ServiceRulesSettingsProps) {

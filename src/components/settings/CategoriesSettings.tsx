@@ -8,18 +8,10 @@ import { Alert } from "../ui/Alert";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { CategoryForm } from "./CategoryForm";
 import { CategoriesTable } from "./CategoriesTable";
+import { type CategoryRow } from "./settings/settingsTypes";
 
 type CategoriesSettingsProps = {
   session: AppSession;
-};
-
-type CategoryRow = {
-  id: string;
-  tenantId: string;
-  name: string;
-  slug: string;
-  sortOrder: number;
-  status: "active" | "inactive";
 };
 
 export default function CategoriesSettings({ session }: CategoriesSettingsProps) {
