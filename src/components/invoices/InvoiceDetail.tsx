@@ -12,10 +12,10 @@ import { EmptyState } from "../ui/EmptyState";
 import { ErrorState } from "../ui/ErrorState";
 import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
-import { LoadingState } from "../ui/LoadingState";
 import { SectionHeader } from "../ui/SectionHeader";
 import { SummaryList } from "../ui/SummaryList";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
+import { InvoiceDetailSkeleton } from "./InvoiceDetailSkeleton";
 
 type InvoiceDetailProps = {
   session: AppSession;
@@ -129,7 +129,7 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
   }
 
   if (isLoading) {
-    return <LoadingState title="Factuur laden" description="Factuurgegevens ophalen." />;
+    return <InvoiceDetailSkeleton />;
   }
 
   if (error) {

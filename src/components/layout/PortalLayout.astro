@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import PortalTopbar from "./PortalTopbar";
 import { ShellLoadingController } from "./ShellLoadingController";
 import { ToastContainer } from "../ui/overlays/ToastContainer";
+import { KeyboardShortcutController } from "./KeyboardShortcutController";
 import type { AppSession } from "../../lib/auth/session";
 
 type Props = {
@@ -35,5 +36,7 @@ const pathname = Astro.url.pathname;
     </div>
     <!-- Toast container — always present, renders above all overlays (z-index 1500) -->
     <ToastContainer client:load />
+    <!-- Keyboard shortcut controller — registers global shortcuts + help modal -->
+    <KeyboardShortcutController client:load />
   </body>
 </html>

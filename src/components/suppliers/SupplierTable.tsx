@@ -272,6 +272,7 @@ export function SupplierTable({
             onClick={onNew}
             size="sm"
             variant="primary"
+            data-shortcut="new-supplier"
           >
             Nieuwe leverancier
           </Button>

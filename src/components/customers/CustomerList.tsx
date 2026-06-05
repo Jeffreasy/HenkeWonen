@@ -98,6 +98,7 @@ export default function CustomerList({ customers, isLoading = false }: CustomerL
             placeholder="Zoek op naam, mail, telefoon of plaats"
             value={search}
             onChange={setSearch}
+            data-searchbar
           />
         }
         filters={

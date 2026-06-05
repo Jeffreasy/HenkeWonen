@@ -21,6 +21,7 @@ import { LoadingState } from "../ui/LoadingState";
 import { EmptyState } from "../ui/EmptyState";
 import { SectionHeader } from "../ui/SectionHeader";
 import { SummaryList } from "../ui/SummaryList";
+import { ProjectDetailSkeleton } from "./ProjectDetailSkeleton";
 import ProjectStatusBadge from "./ProjectStatusBadge";
 import ProjectWorkflowRail from "./ProjectWorkflowRail";
 import MeasurementPanel from "./MeasurementPanel";
@@ -341,7 +342,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   }
 
   if (isLoading) {
-    return <LoadingState title="Project laden" description="Projectgegevens ophalen." />;
+    return <ProjectDetailSkeleton />;
   }
 
   if (error) {

@@ -109,6 +109,7 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
                 onClick={() => setIsModalOpen(true)}
                 size="sm"
                 variant="primary"
+                data-shortcut="new-customer"
               >
                 Nieuwe klant
               </Button>

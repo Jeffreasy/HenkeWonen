@@ -99,6 +99,7 @@ export function ProjectsTable({
               onClick={onNew}
               size="sm"
               variant="primary"
+              data-shortcut="new-project"
             >
               Nieuw project
             </Button>
@@ -112,6 +113,7 @@ export function ProjectsTable({
             placeholder="Zoek op project, klant of status"
             value={search}
             onChange={setSearch}
+            data-searchbar
           />
         }
         filters={

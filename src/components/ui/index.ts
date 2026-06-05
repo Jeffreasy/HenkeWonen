@@ -24,6 +24,8 @@ export * from "./feedback/Alert";
 export * from "./feedback/EmptyState";
 export * from "./feedback/ErrorState";
 export * from "./feedback/LoadingState";
+export * from "./feedback/Skeleton";
+export * from "./feedback/SkeletonGroup";
 export * from "./feedback/InlineHelp";
 
 // Layout

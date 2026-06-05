@@ -105,6 +105,7 @@ export function QuotesTable({
               onClick={onNew}
               size="sm"
               variant="primary"
+              data-shortcut="new-quote"
             >
               Nieuwe offerte
             </Button>
@@ -118,6 +119,7 @@ export function QuotesTable({
             placeholder="Zoek op nummer, titel of klant"
             value={search}
             onChange={setSearch}
+            data-searchbar
           />
         }
         filters={

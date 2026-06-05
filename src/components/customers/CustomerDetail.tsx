@@ -13,8 +13,8 @@ import { showToast } from "../../lib/toast";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { EmptyState } from "../ui/EmptyState";
 import { ErrorState } from "../ui/ErrorState";
-import { LoadingState } from "../ui/LoadingState";
 import { FormModal } from "../ui/overlays/FormModal";
+import { CustomerDetailSkeleton } from "./CustomerDetailSkeleton";
 
 import { CustomerDetailStats } from "./CustomerDetailStats";
 import { CustomerInfoPanel } from "./CustomerInfoPanel";
@@ -182,7 +182,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
   }
 
   if (isLoading) {
-    return <LoadingState title="Klantdossier laden" description="Klantgegevens ophalen." />;
+    return <CustomerDetailSkeleton />;
   }
 
   if (error) {
