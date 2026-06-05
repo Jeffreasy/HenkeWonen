@@ -9,8 +9,6 @@ import type {
   QuoteLineType,
   QuotePreparationStatus
 } from "../../../lib/portalTypes";
-import type { SubmitEventLike } from "../../../lib/events";
-import type { ReactNode } from "react";
 import type { AppSession } from "../../../lib/auth/session";
 import type { PortalRoom } from "../../../lib/portalTypes";
 
@@ -91,18 +89,6 @@ export type FieldMeasureTool =
   | "stairs"
   | "manual";
 
-/** @deprecated Niet meer gebruikt na CalculatorTabs migratie */
-export type CalculatorFormProps = {
-  title: string;
-  description: string;
-  toolId?: FieldMeasureTool;
-  children: ReactNode;
-  result?: ReactNode;
-  validationError?: string;
-  onSubmit: (event: SubmitEventLike) => void;
-  isSaving: boolean;
-};
-
 // ─── Constanten ───────────────────────────────────────────────────────────────
 
 export const PRODUCT_GROUP_OPTIONS: MeasurementProductGroup[] = [
@@ -124,21 +110,3 @@ export const QUOTE_LINE_TYPE_OPTIONS: QuoteLineType[] = [
   "text",
   "manual"
 ];
-
-/** @deprecated Niet meer gebruikt na CalculatorTabs migratie (tool-selector grid is verwijderd) */
-export const FIELD_MEASURE_TOOLS: Array<{
-  id: FieldMeasureTool;
-  label: string;
-  description: string;
-}> = [
-  { id: "flooring", label: "Vloer", description: "m2 en snijverlies" },
-  { id: "plinths", label: "Plinten", description: "meters langs de muur" },
-  { id: "wallpaper", label: "Behang", description: "rollen en patroon" },
-  { id: "wall_panels", label: "Wandpanelen", description: "panelen per wand" },
-  { id: "stairs", label: "Trap", description: "treden en stootborden" },
-  { id: "manual", label: "Vrije regel", description: "ramen, rails of maatwerk" }
-];
-
-/** @deprecated Niet meer gebruikt na CalculatorTabs migratie */
-export const INDICATIVE_TEXT =
-  "Indicatief. Controleer altijd inmeting, legrichting, patroon, productafmetingen en snijverlies.";
