@@ -21,7 +21,6 @@ type DataIssuesHeaderProps = {
   hasOpenIssues: boolean;
   review: DuplicateEanReview | null;
   error: string | null;
-  notice: string | null;
   summary: {
     total: number;
     open: number;
@@ -49,7 +48,6 @@ export function DataIssuesHeader({
   hasOpenIssues,
   review,
   error,
-  notice,
   summary,
   nextOpenIssue,
   supplierOptionsCount,
@@ -123,14 +121,6 @@ export function DataIssuesHeader({
           variant="danger"
           title="Productcontrole niet geladen"
           description={error}
-          style={{ marginTop: 16 }}
-        />
-      ) : null}
-      {notice ? (
-        <Alert
-          variant="success"
-          title="Wijziging opgeslagen"
-          description={notice}
           style={{ marginTop: 16 }}
         />
       ) : null}

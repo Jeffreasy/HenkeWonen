@@ -4,6 +4,7 @@ import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatRecommendation } from "../../lib/i18n/statusLabels";
+import { showToast } from "../../lib/toast";
 import { DataIssuesHeader } from "./DataIssuesHeader";
 import { DataIssuesFilterBar, type IssueStatusFilter } from "./DataIssuesFilterBar";
 import { DataIssuesTable, type DuplicateEanIssue, type IssueDraft } from "./DataIssuesTable";
@@ -101,7 +102,6 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const orderedGroups = useMemo(
     () =>
@@ -199,7 +199,6 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
 
     setIsLoading(true);
     setError(null);
-    setNotice(null);
 
     try {
       const result = (await client.query(api.catalog.review.duplicateEanReview, {
@@ -242,7 +241,6 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       const result = (await client.mutation(api.catalog.review.syncDuplicateEanIssues, {
@@ -250,7 +248,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
         actor: mutationActorFromSession(session)
       })) as DuplicateEanSyncResult;
       await loadReview();
-      setNotice(result.message ?? "Dubbele EAN-waarschuwingen zijn bijgewerkt.");
+      showToast({ title: "EAN-waarschuwingen bijgewerkt", description: result.message, tone: "success" });
     } catch (syncError) {
       console.error(syncError);
       setError("Dubbele EAN-waarschuwingen konden niet worden bijgewerkt.");
@@ -276,7 +274,6 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await client.mutation(api.catalog.review.updateDuplicateEanIssueReview, {
@@ -288,7 +285,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
         reviewedByExternalUserId: session.userId
       });
       await loadReview();
-      setNotice(`Beoordeling voor EAN ${issue.ean} is opgeslagen.`);
+      showToast({ title: `Beoordeling EAN ${issue.ean} opgeslagen`, tone: "success" });
     } catch (saveError) {
       console.error(saveError);
       setError("Beoordeling kon niet worden opgeslagen.");
@@ -321,7 +318,6 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
           hasOpenIssues={hasOpenIssues}
           review={review}
           error={error}
-          notice={notice}
           summary={summary}
           nextOpenIssue={nextOpenIssue}
           supplierOptionsCount={supplierOptions.length}

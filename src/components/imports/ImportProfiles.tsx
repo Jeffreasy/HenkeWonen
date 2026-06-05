@@ -5,6 +5,7 @@ import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canManage, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatVatMode } from "../../lib/i18n/statusLabels";
+import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/Alert";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
@@ -165,7 +166,6 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
   const [profileSearchTerm, setProfileSearchTerm] = useState("");
   const [profileStatusFilter, setProfileStatusFilter] = useState<ProfileStatusFilter>("all");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [notice, setNotice] = useState<string | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [pendingProfileStatus, setPendingProfileStatus] = useState<{
     profile: ImportProfileSummary;
@@ -424,9 +424,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
         }
         return next;
       });
-      setNotice(
-        `${selectedRows.length} prijskolommen zijn op ${formatVatMode(vatMode).toLowerCase()} gezet.`
-      );
+      showToast({ title: `${selectedRows.length} prijskolommen bijgewerkt naar ${formatVatMode(vatMode).toLowerCase()}`, tone: "success" });
       await loadReview();
     } catch (saveError) {
       console.error(saveError);
@@ -491,11 +489,12 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
         allowUnknownVatMode,
         updatedByExternalUserId: session.userId
       });
-      setNotice(
-        allowUnknownVatMode
-          ? "Onbekende btw-keuze is toegestaan voor deze prijslijstcontrole."
-          : "Onbekende btw-keuze is niet meer toegestaan voor deze prijslijstcontrole."
-      );
+      showToast({
+        title: allowUnknownVatMode
+          ? "Onbekende btw-keuze toegestaan"
+          : "Onbekende btw-keuze niet meer toegestaan",
+        tone: "info"
+      });
       await loadReview();
     } catch (saveError) {
       console.error(saveError);
@@ -526,11 +525,13 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
         profileId: pendingProfileStatus.profile.id,
         status: pendingProfileStatus.nextStatus
       });
-      setNotice(
-        pendingProfileStatus.nextStatus === "inactive"
-          ? "Importprofiel gearchiveerd."
-          : "Importprofiel opnieuw actief gemaakt."
-      );
+      showToast({
+        title: pendingProfileStatus.nextStatus === "inactive"
+          ? "Importprofiel gearchiveerd"
+          : "Importprofiel opnieuw actief gemaakt",
+        description: pendingProfileStatus.profile.name,
+        tone: pendingProfileStatus.nextStatus === "inactive" ? "warning" : "success"
+      });
       setPendingProfileStatus(null);
       await loadReview();
     } catch (saveError) {
@@ -649,14 +650,6 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
           variant="danger"
           title="Btw-keuzes niet geladen"
           description={error}
-          style={{ marginTop: 16 }}
-        />
-      ) : null}
-      {notice ? (
-        <Alert
-          variant="success"
-          title="Wijziging opgeslagen"
-          description={notice}
           style={{ marginTop: 16 }}
         />
       ) : null}

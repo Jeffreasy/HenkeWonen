@@ -16,6 +16,7 @@ import type {
   MeasurementProductGroup,
   QuoteLineType
 } from "../../lib/portalTypes";
+import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
@@ -112,7 +113,6 @@ export default function MeasurementLinePicker({
   const [isOpen, setIsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const loadReadyLines = useCallback(async () => {
     const client = createConvexHttpClient();
@@ -242,7 +242,6 @@ export default function MeasurementLinePicker({
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await client.mutation(api.portal.importMeasurementLinesToQuote, {
@@ -255,7 +254,7 @@ export default function MeasurementLinePicker({
 
       setSelectedIds([]);
       setConfirmOpen(false);
-      setNotice("Inmeetregels toegevoegd aan de offerte.");
+      showToast({ title: "Inmeetregels toegevoegd aan de offerte", tone: "success" });
       await loadReadyLines();
       await onImported?.();
     } catch (saveError) {
@@ -294,7 +293,6 @@ export default function MeasurementLinePicker({
         }
       />
 
-      {notice ? <Alert variant="success" description={notice} /> : null}
       {error ? <Alert variant="danger" description={error} /> : null}
 
       {isOpen ? (

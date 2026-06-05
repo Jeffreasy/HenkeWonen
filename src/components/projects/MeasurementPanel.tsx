@@ -13,6 +13,7 @@ import {
 } from "../../lib/calculators";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { SubmitEventLike } from "../../lib/events";
+import { showToast } from "../../lib/toast";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import {
   formatLineType,
@@ -276,7 +277,6 @@ export default function MeasurementPanel({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const canEditMeasurement = canEditDossiers(session.role);
   const isFieldMode = mode === "field";
   const [activeFieldTool, setActiveFieldTool] = useState<FieldMeasureTool>("flooring");
@@ -561,7 +561,6 @@ export default function MeasurementPanel({
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await client.mutation(api.projecten.measurements.createForProject, {
@@ -572,7 +571,7 @@ export default function MeasurementPanel({
         measuredBy: session.name ?? session.email,
         createdByExternalUserId: session.userId
       });
-      setNotice("Inmeting gestart.");
+      showToast({ title: "Inmeting gestart", tone: "success" });
       await loadMeasurement();
     } catch (saveError) {
       console.error(saveError);
@@ -598,7 +597,6 @@ export default function MeasurementPanel({
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await context.client.mutation(api.projecten.measurements.updateMeasurement, {
@@ -610,7 +608,7 @@ export default function MeasurementPanel({
         measuredBy: measuredBy.trim(),
         notes: measurementNotes.trim()
       });
-      setNotice("Inmeting bijgewerkt.");
+      showToast({ title: "Inmeting bijgewerkt", tone: "success" });
       await loadMeasurement();
     } catch (saveError) {
       console.error(saveError);
@@ -641,7 +639,6 @@ export default function MeasurementPanel({
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await context.client.mutation(api.projecten.measurements.addMeasurementRoom, {
@@ -667,7 +664,7 @@ export default function MeasurementPanel({
       setRoomAreaM2("");
       setRoomPerimeterM("");
       setRoomNotes("");
-      setNotice("Ruimte toegevoegd aan de inmeting.");
+      showToast({ title: "Ruimte toegevoegd aan de inmeting", tone: "success" });
       await loadMeasurement();
     } catch (saveError) {
       console.error(saveError);
@@ -714,7 +711,6 @@ export default function MeasurementPanel({
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await context.client.mutation(api.projecten.measurements.addMeasurementLine, {
@@ -732,7 +728,7 @@ export default function MeasurementPanel({
         notes: line.notes,
         quoteLineType: line.quoteLineType
       });
-      setNotice(line.successMessage);
+      showToast({ title: line.successMessage, tone: "success" });
       await loadMeasurement();
     } catch (saveError) {
       console.error(saveError);
@@ -756,7 +752,6 @@ export default function MeasurementPanel({
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await context.client.mutation(api.projecten.measurements.updateMeasurementLineStatus, {
@@ -765,7 +760,7 @@ export default function MeasurementPanel({
         lineId: lineId as Id<"measurementLines">,
         quotePreparationStatus: "ready_for_quote"
       });
-      setNotice("Inmeetregel klaargezet voor de offerte.");
+      showToast({ title: "Inmeetregel klaargezet voor de offerte", tone: "success" });
       await loadMeasurement();
     } catch (saveError) {
       console.error(saveError);
@@ -804,7 +799,6 @@ export default function MeasurementPanel({
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await context.client.mutation(api.projecten.measurements.updateMeasurementRoom, {
@@ -820,7 +814,7 @@ export default function MeasurementPanel({
         perimeterM: parseDecimal(roomCorrectionDraft.perimeterM),
         notes: roomCorrectionDraft.notes.trim() || undefined
       });
-      setNotice("Meetruimte bijgewerkt.");
+      showToast({ title: "Meetruimte bijgewerkt", tone: "success" });
       setEditingRoomId(null);
       await loadMeasurement();
     } catch (saveError) {
@@ -844,7 +838,6 @@ export default function MeasurementPanel({
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await context.client.mutation(api.projecten.measurements.deleteMeasurementRoom, {
@@ -852,7 +845,7 @@ export default function MeasurementPanel({
         actor: mutationActorFromSession(session),
         roomId: pendingRoomDelete._id as Id<"measurementRooms">
       });
-      setNotice("Meetruimte verwijderd.");
+      showToast({ title: "Meetruimte verwijderd", tone: "warning" });
       setPendingRoomDelete(null);
       await loadMeasurement();
     } catch (deleteError) {
@@ -895,7 +888,6 @@ export default function MeasurementPanel({
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await context.client.mutation(api.projecten.measurements.updateMeasurementLine, {
@@ -918,7 +910,7 @@ export default function MeasurementPanel({
         quoteLineType: line.quoteLineType,
         quotePreparationStatus: lineCorrectionDraft.quotePreparationStatus
       });
-      setNotice("Meetregel bijgewerkt.");
+      showToast({ title: "Meetregel bijgewerkt", tone: "success" });
       setEditingLineId(null);
       await loadMeasurement();
     } catch (saveError) {
@@ -942,7 +934,6 @@ export default function MeasurementPanel({
 
     setIsSaving(true);
     setError(null);
-    setNotice(null);
 
     try {
       await context.client.mutation(api.projecten.measurements.deleteMeasurementLine, {
@@ -950,7 +941,7 @@ export default function MeasurementPanel({
         actor: mutationActorFromSession(session),
         lineId: pendingLineDelete._id as Id<"measurementLines">
       });
-      setNotice("Meetregel verwijderd.");
+      showToast({ title: "Meetregel verwijderd", tone: "warning" });
       setPendingLineDelete(null);
       await loadMeasurement();
     } catch (deleteError) {
@@ -1251,9 +1242,6 @@ export default function MeasurementPanel({
         />
       ) : null}
 
-      {notice ? (
-        <Alert variant="success" description={notice} style={{ marginTop: 12 }} />
-      ) : null}
       {error ? <Alert variant="danger" description={error} style={{ marginTop: 12 }} /> : null}
 
       {!measurement ? (

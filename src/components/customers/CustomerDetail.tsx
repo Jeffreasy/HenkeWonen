@@ -87,27 +87,32 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
       return;
     }
 
-    await client.mutation(api.portal.updateCustomer, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      customerId,
-      type: detail.customer.type,
-      status: detail.customer.status,
-      displayName: draft.displayName.trim(),
-      email: draft.email.trim() || undefined,
-      phone: draft.phone.trim() || undefined,
-      street: draft.street.trim() || undefined,
-      houseNumber: draft.houseNumber.trim() || undefined,
-      postalCode: draft.postalCode.trim() || undefined,
-      city: draft.city.trim() || undefined,
-      notes: draft.notes.trim() || undefined
-    });
-    setEditingCustomer(false);
-    await loadDetail();
+    try {
+      await client.mutation(api.portal.updateCustomer, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        customerId,
+        type: detail.customer.type,
+        status: detail.customer.status,
+        displayName: draft.displayName.trim(),
+        email: draft.email.trim() || undefined,
+        phone: draft.phone.trim() || undefined,
+        street: draft.street.trim() || undefined,
+        houseNumber: draft.houseNumber.trim() || undefined,
+        postalCode: draft.postalCode.trim() || undefined,
+        city: draft.city.trim() || undefined,
+        notes: draft.notes.trim() || undefined
+      });
+      setEditingCustomer(false);
+      await loadDetail();
+      showToast({ title: "Klantgegevens opgeslagen", tone: "success" });
+    } catch {
+      showToast({ title: "Opslaan mislukt", tone: "error" });
+    }
   }
 
   async function confirmCustomerStatus() {
@@ -118,27 +123,35 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     const client = createConvexHttpClient();
 
     if (!client) {
-      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
       return;
     }
 
-    await client.mutation(api.portal.updateCustomer, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      customerId,
-      type: detail.customer.type,
-      displayName: detail.customer.displayName,
-      email: detail.customer.email,
-      phone: detail.customer.phone,
-      street: detail.customer.street,
-      houseNumber: detail.customer.houseNumber,
-      postalCode: detail.customer.postalCode,
-      city: detail.customer.city,
-      notes: detail.customer.notes,
-      status: pendingCustomerStatus
-    });
-    setPendingCustomerStatus(null);
-    await loadDetail();
+    try {
+      await client.mutation(api.portal.updateCustomer, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        customerId,
+        type: detail.customer.type,
+        displayName: detail.customer.displayName,
+        email: detail.customer.email,
+        phone: detail.customer.phone,
+        street: detail.customer.street,
+        houseNumber: detail.customer.houseNumber,
+        postalCode: detail.customer.postalCode,
+        city: detail.customer.city,
+        notes: detail.customer.notes,
+        status: pendingCustomerStatus
+      });
+      setPendingCustomerStatus(null);
+      await loadDetail();
+      showToast({
+        title: pendingCustomerStatus === "archived" ? "Klant gearchiveerd" : "Klant hersteld",
+        tone: pendingCustomerStatus === "archived" ? "warning" : "success"
+      });
+    } catch {
+      showToast({ title: "Status kon niet worden bijgewerkt", tone: "error" });
+    }
   }
 
   async function handleAddContact(values: AddContactFormValues) {
@@ -238,10 +251,6 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
           onCancel={() => setEditingCustomer(false)}
           formRef={customerEditFormRef}
         />
-      ) : null}
-
-      {canAddContact ? (
-        <AddContactForm onSubmit={handleAddContact} />
       ) : null}
 
       <div className="grid two-column">
