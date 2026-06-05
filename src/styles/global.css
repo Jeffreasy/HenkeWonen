@@ -780,6 +780,7 @@ textarea {
 
 .nav-list {
   display: grid;
+  align-content: start;
   gap: var(--space-5);
   min-height: 0;
   overflow-y: auto;
