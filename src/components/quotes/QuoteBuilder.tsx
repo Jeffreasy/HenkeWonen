@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, Pencil, Send, Trash2, XCircle } from "lucide-react";
+import { Ban, CheckCircle2, FileText, Pencil, Send, Trash2, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
 import type {
@@ -44,6 +44,7 @@ type QuoteBuilderProps = {
   onUpdateStatus?: (status: QuoteStatus) => Promise<void> | void;
   onUpdateTerms?: (terms: string[], paymentTerms: string[]) => Promise<void> | void;
   onMeasurementLinesImported?: () => Promise<void> | void;
+  onCreateInvoice?: () => Promise<string | null>;
   mode?: "full" | "field";
 };
 
@@ -111,6 +112,7 @@ export default function QuoteBuilder({
   onUpdateStatus,
   onUpdateTerms,
   onMeasurementLinesImported,
+  onCreateInvoice,
   mode = "full"
 }: QuoteBuilderProps) {
   const isFieldMode = mode === "field";
@@ -138,6 +140,8 @@ export default function QuoteBuilder({
   const [editingLine, setEditingLine] = useState<PortalQuoteLine | null>(null);
   const [pendingDeleteLine, setPendingDeleteLine] = useState<PortalQuoteLine | null>(null);
   const [pendingStatus, setPendingStatus] = useState<QuoteStatus | null>(null);
+  const [pendingCreateInvoice, setPendingCreateInvoice] = useState(false);
+  const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [isSavingLine, setIsSavingLine] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const canEditDraftLines = canEdit && quote.status === "draft";
@@ -213,6 +217,20 @@ export default function QuoteBuilder({
       setPendingStatus(null);
     } finally {
       setIsUpdatingStatus(false);
+    }
+  }
+
+  async function confirmCreateInvoice() {
+    if (!onCreateInvoice) return;
+    setIsCreatingInvoice(true);
+    try {
+      const invoiceId = await onCreateInvoice();
+      setPendingCreateInvoice(false);
+      if (invoiceId) {
+        window.location.href = `/portal/facturen/${invoiceId}`;
+      }
+    } finally {
+      setIsCreatingInvoice(false);
     }
   }
 
@@ -537,6 +555,16 @@ export default function QuoteBuilder({
             </Button>
           );
         })}
+        {!isFieldMode && quote.status === "accepted" && onCreateInvoice ? (
+          <Button
+            leftIcon={<FileText size={16} aria-hidden="true" />}
+            onClick={() => setPendingCreateInvoice(true)}
+            size="sm"
+            variant="primary"
+          >
+            Factuur aanmaken
+          </Button>
+        ) : null}
       </div>
     ) : (
       <StatusBadge status={quote.status} label={formatQuoteStatus(quote.status)} />
@@ -571,6 +599,16 @@ export default function QuoteBuilder({
         isBusy={isUpdatingStatus}
         onCancel={() => setPendingStatus(null)}
         onConfirm={() => void confirmStatusUpdate()}
+      />
+      <ConfirmDialog
+        open={pendingCreateInvoice}
+        title="Factuur aanmaken?"
+        description={`Er wordt een conceptfactuur aangemaakt op basis van offerte ${quote.quoteNumber}. Het totaal bedraagt ${new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(quote.totalIncVat)} incl. btw. De vervaldatum wordt standaard 30 dagen na vandaag ingesteld.`}
+        confirmLabel="Factuur aanmaken"
+        tone="warning"
+        isBusy={isCreatingInvoice}
+        onCancel={() => setPendingCreateInvoice(false)}
+        onConfirm={() => void confirmCreateInvoice()}
       />
     </>
   );

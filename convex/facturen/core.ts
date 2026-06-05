@@ -213,7 +213,93 @@ export const createInvoice = mutation({
       updatedAt: now
     });
 
-    return { invoiceId, invoiceNumber };
+    return { invoiceId: String(invoiceId), invoiceNumber };
+  }
+});
+
+export const createInvoiceFromQuote = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    quoteId: v.string(),
+    dueDate: v.number()
+  },
+  handler: async (ctx, args) => {
+    const tenant = await requireTenant(ctx, args.tenantSlug);
+
+    await requireMutationRoleForTenantId(ctx, tenant._id, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+
+    const quoteId = ctx.db.normalizeId("quotes", args.quoteId);
+
+    if (!quoteId) {
+      throw new Error("Offerte niet gevonden.");
+    }
+
+    const quote = await ctx.db.get(quoteId);
+
+    if (!quote || quote.tenantId !== tenant._id) {
+      throw new Error("Offerte niet gevonden.");
+    }
+
+    if (quote.status !== "accepted") {
+      throw new Error("Factuur kan alleen worden aangemaakt voor een geaccepteerde offerte.");
+    }
+
+    // Voorkom dubbele factuur voor dezelfde offerte
+    const existing = await ctx.db
+      .query("invoices")
+      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+      .filter((q: any) => q.eq(q.field("quoteId"), quoteId))
+      .first();
+
+    if (existing) {
+      return {
+        invoiceId: String(existing._id),
+        invoiceNumber: existing.invoiceNumber,
+        alreadyExists: true
+      };
+    }
+
+    const invoiceNumber = await nextInvoiceNumber(ctx, tenant._id);
+    const now = Date.now();
+
+    const invoiceId = await ctx.db.insert("invoices", {
+      tenantId: tenant._id,
+      projectId: quote.projectId,
+      customerId: quote.customerId,
+      quoteId,
+      invoiceNumber,
+      status: "draft",
+      invoiceDate: now,
+      dueDate: args.dueDate,
+      subtotalExVat: quote.subtotalExVat,
+      vatTotal: quote.vatTotal,
+      totalIncVat: quote.totalIncVat,
+      paidAmount: 0,
+      createdAt: now,
+      updatedAt: now
+    });
+
+    // Projectstatus → gefactureerd
+    const project = await ctx.db.get(quote.projectId);
+
+    if (project && project.tenantId === tenant._id) {
+      await ctx.db.patch(quote.projectId, {
+        status: "invoiced",
+        invoicedAt: now,
+        updatedAt: now
+      });
+    }
+
+    return {
+      invoiceId: String(invoiceId),
+      invoiceNumber,
+      alreadyExists: false
+    };
   }
 });
 

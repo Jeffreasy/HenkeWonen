@@ -197,6 +197,31 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     await loadWorkspace();
   }
 
+  async function handleCreateInvoice(): Promise<string | null> {
+    if (!selectedQuoteId) {
+      return null;
+    }
+
+    const client = createConvexHttpClient();
+
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return null;
+    }
+
+    // Standaard vervaldatum: 30 dagen vanaf nu
+    const dueDate = Date.now() + 30 * 24 * 60 * 60 * 1000;
+
+    const result = await client.mutation(api.portal.createInvoiceFromQuote, {
+      tenantSlug: session.tenantId,
+      actor: mutationActorFromSession(session),
+      quoteId: selectedQuoteId,
+      dueDate
+    }) as { invoiceId: string; invoiceNumber: string; alreadyExists: boolean };
+
+    return result.invoiceId;
+  }
+
   const selectedQuote = quotes.find((quote) => quote.id === selectedQuoteId) ?? null;
   const customerById = useMemo(
     () => new Map(customers.map((customer) => [customer.id, customer])),
@@ -278,6 +303,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
           onUpdateStatus={updateQuoteStatus}
           onMeasurementLinesImported={loadWorkspace}
           onUpdateTerms={updateQuoteTerms}
+          onCreateInvoice={handleCreateInvoice}
         />
       ) : (
         <EmptyState
