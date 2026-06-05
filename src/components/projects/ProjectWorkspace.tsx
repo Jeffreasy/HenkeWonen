@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -5,6 +6,8 @@ import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { PortalCustomer, PortalProject, ProjectStatus } from "../../lib/portalTypes";
 import { Alert } from "../ui/Alert";
+import { Button } from "../ui/Button";
+import { FormModal } from "../ui/overlays/FormModal";
 import ProjectForm, { type ProjectFormValues } from "./ProjectForm";
 import { ProjectStats } from "./ProjectStats";
 import { ProjectsTable } from "./ProjectsTable";
@@ -26,6 +29,7 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const canCreateProjects = canEditDossiers(session.role);
 
   const loadProjects = useCallback(async () => {
@@ -77,6 +81,7 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
       createdByExternalUserId: session.userId
     });
     await loadProjects();
+    setIsModalOpen(false);
   }
 
   const filteredProjects = useMemo(() => {
@@ -116,17 +121,27 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
         quotePhaseCount={stats.quotePhaseCount}
       />
 
-      <div className="grid two-column">
-        {canCreateProjects ? <ProjectForm customers={customers} onCreate={createProject} /> : null}
-        <ProjectsTable
-          projects={filteredProjects}
-          isLoading={isLoading}
-          search={search}
-          setSearch={setSearch}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-        />
-      </div>
+      <ProjectsTable
+        projects={filteredProjects}
+        isLoading={isLoading}
+        onNew={canCreateProjects ? () => setIsModalOpen(true) : undefined}
+        search={search}
+        setSearch={setSearch}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+      />
+
+      {canCreateProjects ? (
+        <FormModal
+          open={isModalOpen}
+          title="Nieuw project starten"
+          description="Koppel een klant en geef het project een naam om te beginnen."
+          size="sm"
+          onClose={() => setIsModalOpen(false)}
+        >
+          <ProjectForm customers={customers} onCreate={createProject} />
+        </FormModal>
+      ) : null}
     </div>
   );
 }

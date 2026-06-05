@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import { formatQuoteStatus } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
 import type { PortalCustomer, PortalQuote, QuoteStatus } from "../../lib/portalTypes";
@@ -24,7 +25,7 @@ const statusOptions: Array<{ value: StatusFilter; label: string }> = [
 
 type QuotesTableProps = {
   quotes: PortalQuote[];
-  selectedQuoteId: string;
+  selectedQuoteId: string | null;
   search: string;
   setSearch: (value: string) => void;
   statusFilter: StatusFilter;
@@ -32,6 +33,7 @@ type QuotesTableProps = {
   isLoading: boolean;
   onSelectQuote: (quoteId: string) => void;
   customerById: Map<string, PortalCustomer>;
+  onNew?: () => void;
 };
 
 export function QuotesTable({
@@ -43,7 +45,8 @@ export function QuotesTable({
   setStatusFilter,
   isLoading,
   onSelectQuote,
-  customerById
+  customerById,
+  onNew
 }: QuotesTableProps) {
   const columns: Array<DataTableColumn<PortalQuote>> = [
     {
@@ -95,6 +98,18 @@ export function QuotesTable({
         compact
         title="Offertes"
         description="Selecteer een offerte om posten, voorwaarden en totaal te bekijken."
+        actions={
+          onNew ? (
+            <Button
+              leftIcon={<Plus size={16} aria-hidden="true" />}
+              onClick={onNew}
+              size="sm"
+              variant="primary"
+            >
+              Nieuwe offerte
+            </Button>
+          ) : null
+        }
       />
       <FilterBar
         search={

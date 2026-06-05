@@ -13,6 +13,7 @@ import type {
 import { formatEuro } from "../../lib/money";
 import { Alert } from "../ui/Alert";
 import { EmptyState } from "../ui/EmptyState";
+import { FormModal } from "../ui/overlays/FormModal";
 import QuoteBuilder from "./QuoteBuilder";
 import type { QuoteLineFormValues } from "./QuoteLineEditor";
 import { QuoteStats } from "./QuoteStats";
@@ -38,11 +39,12 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
   const [projects, setProjects] = useState<PortalProject[]>([]);
   const [quotes, setQuotes] = useState<PortalQuote[]>([]);
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
-  const [selectedQuoteId, setSelectedQuoteId] = useState(quoteId ?? "");
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(quoteId ?? null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [isNewQuoteModalOpen, setIsNewQuoteModalOpen] = useState(false);
   const canEditQuote = canEditQuotes(session.role);
 
   const loadWorkspace = useCallback(async () => {
@@ -87,16 +89,19 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       return;
     }
 
-    const newQuoteId = await client.mutation(api.portal.createQuote, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      projectId,
-      title: title.trim(),
-      createdByExternalUserId: session.userId
-    });
+    const newQuoteId = String(
+      await client.mutation(api.portal.createQuote, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        projectId,
+        title: title.trim(),
+        createdByExternalUserId: session.userId
+      })
+    );
 
-    setSelectedQuoteId(String(newQuoteId));
     await loadWorkspace();
+    setSelectedQuoteId(newQuoteId);
+    setIsNewQuoteModalOpen(false);
   }
 
   async function addQuoteLine(line: QuoteLineFormValues): Promise<string | void> {
@@ -270,13 +275,6 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
         totalValue={stats.totalValue}
       />
 
-      {canEditQuote ? (
-        <CreateQuoteForm
-          projects={projects}
-          onCreateQuote={handleCreateQuote}
-        />
-      ) : null}
-
       <QuotesTable
         quotes={filteredQuotes}
         selectedQuoteId={selectedQuoteId}
@@ -285,9 +283,25 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
         statusFilter={statusFilter}
         setStatusFilter={setStatusFilter}
         isLoading={isLoading}
+        onNew={canEditQuote ? () => setIsNewQuoteModalOpen(true) : undefined}
         onSelectQuote={setSelectedQuoteId}
         customerById={customerById}
       />
+
+      {canEditQuote ? (
+        <FormModal
+          open={isNewQuoteModalOpen}
+          title="Nieuwe offerte starten"
+          description="Selecteer een project en geef de offerte een naam."
+          size="sm"
+          onClose={() => setIsNewQuoteModalOpen(false)}
+        >
+          <CreateQuoteForm
+            projects={projects}
+            onCreateQuote={handleCreateQuote}
+          />
+        </FormModal>
+      ) : null}
 
       {selectedQuote ? (
         <QuoteBuilder

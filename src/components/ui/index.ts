@@ -33,6 +33,7 @@ export * from "./layout/FilterBar";
 
 // Overlays
 export * from "./overlays/ConfirmDialog";
+export * from "./overlays/FormModal";
 
 // Utils
 export * from "./utils/classNames";

@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -5,6 +6,8 @@ import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { PortalCustomer } from "../../lib/portalTypes";
 import { Alert } from "../ui/Alert";
+import { Button } from "../ui/Button";
+import { FormModal } from "../ui/overlays/FormModal";
 import { SectionHeader } from "../ui/SectionHeader";
 import { StatCard } from "../ui/StatCard";
 import CustomerForm, { type CustomerFormValues } from "./CustomerForm";
@@ -18,6 +21,7 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
   const [customers, setCustomers] = useState<PortalCustomer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const canCreateCustomers = canEditDossiers(session.role);
 
   const loadCustomers = useCallback(async () => {
@@ -64,6 +68,7 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
       ...customer
     });
     await loadCustomers();
+    setIsModalOpen(false);
   }
 
   return (
@@ -86,17 +91,38 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
         />
       </section>
 
-      <div className="grid two-column">
-        {canCreateCustomers ? <CustomerForm onCreate={createCustomer} /> : null}
-        <section className="grid">
-          <SectionHeader
-            compact
-            title="Klantdossiers"
-            description="Zoek klanten, open dossiers en controleer contactgegevens."
-          />
-          <CustomerList customers={customers} isLoading={isLoading} />
-        </section>
-      </div>
+      <section className="grid">
+        <SectionHeader
+          compact
+          title="Klantdossiers"
+          description="Zoek klanten, open dossiers en controleer contactgegevens."
+          actions={
+            canCreateCustomers ? (
+              <Button
+                leftIcon={<Plus size={16} aria-hidden="true" />}
+                onClick={() => setIsModalOpen(true)}
+                size="sm"
+                variant="primary"
+              >
+                Nieuwe klant
+              </Button>
+            ) : null
+          }
+        />
+        <CustomerList customers={customers} isLoading={isLoading} />
+      </section>
+
+      {canCreateCustomers ? (
+        <FormModal
+          open={isModalOpen}
+          title="Klant of lead toevoegen"
+          description="Leg snel een klant of lead vast vanuit winkelcontact."
+          size="md"
+          onClose={() => setIsModalOpen(false)}
+        >
+          <CustomerForm onCreate={createCustomer} />
+        </FormModal>
+      ) : null}
     </div>
   );
 }
