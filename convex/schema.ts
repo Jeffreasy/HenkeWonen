@@ -1,6 +1,48 @@
+/**
+ * Convex database schema — Henke Wonen Portal
+ *
+ * Tabel-overzicht:
+ * ┌─────────────────────────┬──────────────────────────────────────────────────────┐
+ * │ Tabel                   │ Beschrijving                                         │
+ * ├─────────────────────────┼──────────────────────────────────────────────────────┤
+ * │ tenants                 │ Multi-tenant root — elke installatie is een tenant    │
+ * │ users                   │ Portaalgebruikers gekoppeld aan een tenant            │
+ * │ customers               │ Klantdossiers (privé + zakelijk)                     │
+ * │ customerContacts        │ Contactmomenten per klant (bezoek, afspraak, leen)   │
+ * │ categories              │ Productindeling (boomstructuur met parentCategoryId)  │
+ * │ suppliers               │ Leveranciers + prijslijststatus                      │
+ * │ brands                  │ Merken, gekoppeld aan supplier + categorie            │
+ * │ productCollections      │ Collecties per merk/leverancier                      │
+ * │ products                │ Catalogusproducten met uitgebreide productattributen  │
+ * │ priceLists              │ Leveranciersdocumenten (Excel, CSV) als bron          │
+ * │ productPrices           │ Individuele prijsregels per product + priceType       │
+ * │ productImportBatches    │ Import-runs met statistieken en status                │
+ * │ productImportRows       │ Individuele rijen per import-batch                    │
+ * │ importProfiles          │ Herbruikbare import-configuraties per leverancier     │
+ * │ importProfileColumns    │ Kolomdefinities per importprofiel                     │
+ * │ serviceCostRules        │ Vaste werktarieven (per m², per meter, etc.)          │
+ * │ projects                │ Klantprojecten met volledige statusmachine            │
+ * │ projectRooms            │ Ruimtes per project voor inmeting en offerte          │
+ * │ measurements            │ Inmeetbezoeken (buitendienst)                        │
+ * │ measurementRooms        │ Gemeten ruimtes per inmeetbezoek                     │
+ * │ measurementLines        │ Calculatielijnen per ruimte (vloer, gordijn, etc.)    │
+ * │ wasteProfiles           │ Materialeverliesnormen per productgroep               │
+ * │ quotes                  │ Offertes met totalen en status                       │
+ * │ quoteLines              │ Offerteregels (product, dienst, tekst, korting)       │
+ * │ quoteTemplates          │ Herbruikbare offertetemplates met standaardteksten    │
+ * │ invoices                │ Facturen gekoppeld aan project + quote                │
+ * │ projectTasks            │ Opvolgingstaken per project (workflow-triggers)       │
+ * │ projectWorkflowEvents   │ Audit trail van projectstatusovergangen               │
+ * │ fieldServiceVisits      │ Buitendienstbezoeken (agenda + afhandeling)           │
+ * └─────────────────────────┴──────────────────────────────────────────────────────┘
+ *
+ * Alle tabellen bevatten `tenantId` als eerste veld — queries filteren altijd hierop.
+ * Timestamps zijn Unix milliseconden (`v.number()`).
+ */
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+/** Gebruikersrollen — viewer < user < editor < admin */
 const role = v.union(
   v.literal("viewer"),
   v.literal("user"),
@@ -8,6 +50,7 @@ const role = v.union(
   v.literal("admin")
 );
 
+/** Portaalwerkplek: "general" = winkel/kantoor, "field" = buitendienst */
 const workspaceMode = v.union(v.literal("general"), v.literal("field"));
 
 const statusActive = v.union(v.literal("active"), v.literal("inactive"));
@@ -61,12 +104,17 @@ const priceUnit = v.union(
   v.literal("custom")
 );
 
+/**
+ * BTW-modus per prijskolom.
+ * `unknown` = nog niet beoordeeld — blokkeert productie-import.
+ */
 const vatMode = v.union(
   v.literal("exclusive"),
   v.literal("inclusive"),
   v.literal("unknown")
 );
 
+/** Type offerteregel — bepaalt hoe de regel gepresenteerd en berekend wordt */
 const quoteLineType = v.union(
   v.literal("product"),
   v.literal("service"),
@@ -77,6 +125,7 @@ const quoteLineType = v.union(
   v.literal("manual")
 );
 
+/** Status van een inmeetbezoek — doorloopt draft → measured → reviewed → converted_to_quote */
 const measurementStatus = v.union(
   v.literal("draft"),
   v.literal("measured"),
@@ -84,6 +133,7 @@ const measurementStatus = v.union(
   v.literal("converted_to_quote")
 );
 
+/** Productgroep per inmeetlijn — bepaalt welke calculator (flooring, wallpaper, etc.) gebruikt wordt */
 const measurementProductGroup = v.union(
   v.literal("flooring"),
   v.literal("plinths"),

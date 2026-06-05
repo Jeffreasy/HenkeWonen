@@ -27,9 +27,11 @@ De map is geconsolideerd: klantdocumentatie staat apart, actuele technische same
 | [klant](./klant/README.md) | Handleiding en quickstart voor Henke Wonen-medewerkers |
 | [technisch](./technisch/README.md) | Actuele technische samenvattingen en workflowmapping |
 | [release-readiness](./release-readiness/README.md) | Btw-mapping, productieblokkades en datakwaliteitsreviews |
+| [generated](./generated/README.md) | Automatisch gegenereerde import- en auditbestanden |
 | [implementation](./implementation/README.md) | Faseverslagen en implementatiegeschiedenis |
 | [audits](./audits/README.md) | Data-, import-, UI-, pagina- en documentatieaudits |
-| [artifacts](./artifacts/README.md) | QA-screenshots en overige artefacten |
+| [archief](./archief/README.md) | Gearchiveerde oudere versies van documenten |
+| [artifacts](./artifacts/README.md) | QA-screenshots, pilot-documenten en overige artefacten |
 
 ## Actuele gegenereerde bestanden
 
@@ -55,10 +57,11 @@ Alle automatisch gegenereerde review- en previewbestanden zijn georganiseerd in 
 
 Deze bestanden zijn gekoppeld aan de verwerkings- en importscripts:
 
-- `docs/generated/catalog-import-summary.md`
-- `docs/generated/catalog-import-summary.json`
-- `docs/generated/catalog-import-sample.md`
-- `docs/generated/catalog-import-preview.json`
-- `docs/audits/reconciliation/02_source_inventory.md` (Gegenereerd door reconciliatiescript)
-- `docs/release-readiness/vat-mapping/vat-mapping-decisions.json`
-- `docs/release-readiness/vat-mapping/vat-mapping-current-state-2026-04-30.json`
+- `docs/generated/catalog-import-summary.md` — primaire output catalog-preview
+- `docs/generated/catalog-import-summary.json` — machine-readable output
+- `docs/generated/catalog-import-sample.md` — sample output
+- `docs/generated/catalog-import-preview.json` — batch-import input
+- `docs/audits/reconciliation/02_source_inventory.md` — gegenereerd door reconciliatiescript
+- `docs/release-readiness/vat-mapping/vat-mapping-decisions.json` — input voor apply-script
+
+Zie [docs/generated/README.md](./generated/README.md) voor volledige details.
