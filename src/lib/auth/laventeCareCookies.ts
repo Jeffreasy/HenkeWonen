@@ -62,7 +62,7 @@ function authCookieNames() {
 }
 
 function portalSessionCookieNames() {
-  return new Set(["access_token", "id_token", "token", sessionCookieName()]);
+  return new Set(["access_token", "refresh_token", "id_token", "token", sessionCookieName()]);
 }
 
 function isPortalSessionCookie(name: string) {
