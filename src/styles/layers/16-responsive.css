@@ -1,4 +1,4 @@
-﻿@media (max-width: 980px) {
+@media (max-width: 980px) {
   .portal-topbar {
     display: none;
   }
@@ -110,7 +110,7 @@
     gap: var(--space-1);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
-    background: rgba(255, 253, 248, 0.96);
+    background: var(--topbar-bg);
     padding: var(--space-2);
     box-shadow: var(--shadow-md);
     backdrop-filter: blur(14px);
@@ -222,7 +222,7 @@
     gap: var(--space-1);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
-    background: rgba(255, 253, 248, 0.96);
+    background: var(--topbar-bg);
     padding: var(--space-2);
     box-shadow: var(--shadow-md);
     backdrop-filter: blur(14px);

@@ -1,9 +1,7 @@
-﻿
+
 .import-workbench-attention {
   border-color: rgba(154, 101, 7, 0.24);
-  background:
-    linear-gradient(180deg, rgba(254, 243, 199, 0.32), rgba(255, 253, 248, 0.94)),
-    var(--surface);
+  background: var(--import-workbench-attention-bg);
 }
 
 .import-workbench-titlebar {
@@ -63,7 +61,7 @@
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.54);
+  background: var(--surface-raised);
   padding: var(--space-3);
 }
 
@@ -118,9 +116,7 @@
 
 .import-start-panel {
   border: 1px solid rgba(154, 101, 7, 0.2);
-  background:
-    linear-gradient(180deg, rgba(255, 253, 248, 0.94), rgba(247, 242, 233, 0.56)),
-    var(--surface);
+  background: var(--import-start-panel-bg);
 }
 
 .import-start-form {
@@ -173,7 +169,7 @@
 .import-list-filters {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface);
   padding: var(--space-3);
   min-width: 0;
 }
@@ -342,12 +338,12 @@
 
 .import-gate-ready {
   border-color: rgba(22, 101, 52, 0.24);
-  background: rgba(220, 252, 231, 0.32);
+  background: var(--success-bg);
 }
 
 .import-gate-blocked {
   border-color: rgba(154, 101, 7, 0.24);
-  background: rgba(254, 243, 199, 0.34);
+  background: var(--warning-bg);
 }
 
 .import-gate-actions {

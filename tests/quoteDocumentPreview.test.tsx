@@ -107,6 +107,8 @@ const model: QuoteDocumentModel = {
 
 const html = renderToStaticMarkup(React.createElement(QuoteDocumentPreview, { model }));
 const globalCss = fs.readFileSync(path.join(process.cwd(), "src/styles/global.css"), "utf8");
+const printCss = fs.readFileSync(path.join(process.cwd(), "src/styles/layers/17-print.css"), "utf8");
+const combinedCss = globalCss + "\n" + printCss;
 
 assert.ok(html.length > 0);
 assert.ok(html.includes('class="quote-document-preview"'));
@@ -130,15 +132,15 @@ assert.ok(html.includes("Product, prijs en btw moeten nog handmatig worden gecon
 assert.ok(html.includes("Ruimtes leeg en bezemschoon opleveren."));
 assert.ok(html.includes("50% bij akkoord."));
 
-assert.ok(globalCss.includes(".quote-print-root"));
-assert.ok(globalCss.includes("body.quote-print-active > :not(.quote-print-root)"));
-assert.ok(globalCss.includes("body.quote-print-active .quote-print-root"));
-assert.ok(globalCss.includes("position: static;"));
-assert.ok(globalCss.includes(".quote-document-section h3"));
-assert.ok(globalCss.includes("break-after: avoid;"));
-assert.ok(globalCss.includes("break-before: avoid;"));
-assert.ok(!globalCss.includes("body * {\n    visibility: hidden"));
-assert.ok(!globalCss.includes("body:has(.quote-document-preview)"));
+assert.ok(combinedCss.includes(".quote-print-root"));
+assert.ok(combinedCss.includes("body.quote-print-active > :not(.quote-print-root)"));
+assert.ok(combinedCss.includes("body.quote-print-active .quote-print-root"));
+assert.ok(combinedCss.includes("position: static;"));
+assert.ok(combinedCss.includes(".quote-document-section h3"));
+assert.ok(combinedCss.includes("break-after: avoid;"));
+assert.ok(combinedCss.includes("break-before: avoid;"));
+assert.ok(!combinedCss.includes("body * {\n    visibility: hidden"));
+assert.ok(!combinedCss.includes("body:has(.quote-document-preview)"));
 
 const formattedCurrency = formatCurrencyEUR(1234.5);
 assert.ok(formattedCurrency.includes("€"));

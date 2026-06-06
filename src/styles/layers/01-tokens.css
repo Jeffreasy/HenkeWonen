@@ -1,17 +1,17 @@
-﻿:root {
+:root {
   color-scheme: light;
 
   /* Design tokens */
-  --color-bg: #f6f2ea;
-  --color-bg-subtle: #efe7da;
-  --color-surface: #fffdf8;
-  --color-surface-raised: #ffffff;
-  --color-surface-muted: #f1eadf;
-  --color-text: #211f1c;
-  --color-text-muted: #6d655b;
-  --color-text-subtle: #8a8073;
-  --color-border: #d8d0c3;
-  --color-border-strong: #bfb3a2;
+  --color-bg: #e6d7bc;
+  --color-bg-subtle: #dbcbac;
+  --color-surface: #f3e8d3;
+  --color-surface-raised: #f8f0de;
+  --color-surface-muted: #ded0b2;
+  --color-text: #2c241b;
+  --color-text-muted: #6e5f4d;
+  --color-text-subtle: #8a7966;
+  --color-border: #cab998;
+  --color-border-strong: #ad9a77;
   --color-accent: #9a5f1b;
   --color-accent-strong: #7a4310;
   --color-accent-soft: #f4e6cf;
@@ -80,7 +80,80 @@
   --sidebar: #171511;
   --sidebar-line: rgba(255, 255, 255, 0.12);
   --radius: var(--radius-md);
+  --quote-cover-bg: linear-gradient(135deg, var(--color-surface) 0%, #dbcbac 100%);
+  --quote-control-bg: #f3e8d3;
+  --topbar-bg: rgba(230, 215, 188, 0.94);
+  --field-tab-active-bg: #dcfce7;
+  --field-tab-active-color: #14532d;
+  --field-intake-bg: linear-gradient(180deg, rgba(240, 253, 244, 0.78), rgba(243, 232, 211, 0.96)), var(--surface-raised);
+  --invoice-strip-bg: linear-gradient(135deg, rgba(254, 243, 199, 0.6), rgba(243, 232, 211, 0.95));
+  --release-panel-bg: linear-gradient(180deg, rgba(254, 226, 226, 0.34), rgba(243, 232, 211, 0.92));
+  --release-panel-ready-bg: linear-gradient(180deg, rgba(220, 252, 231, 0.34), rgba(243, 232, 211, 0.92));
+  --vat-workbench-blocked-bg: linear-gradient(180deg, rgba(254, 226, 226, 0.28), rgba(243, 232, 211, 0.92));
+  --edit-work-panel-bg: linear-gradient(180deg, rgba(240, 253, 244, 0.78), rgba(243, 232, 211, 0.98)), var(--surface-raised);
+  --import-workbench-attention-bg: linear-gradient(180deg, rgba(254, 243, 199, 0.32), rgba(243, 232, 211, 0.94));
+  --import-start-panel-bg: linear-gradient(180deg, rgba(243, 232, 211, 0.94), rgba(247, 242, 233, 0.56));
+  --issue-workbench-attention-bg: linear-gradient(180deg, rgba(254, 243, 199, 0.34), rgba(243, 232, 211, 0.94));
   font-family: var(--font-sans);
+}
+
+/* Warm Dark Mode */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Achtergrond & Oppervlakken (diep warm koffiebruin/antraciet) */
+  --color-bg: #151311;
+  --color-bg-subtle: #1c1a17;
+  --color-surface: #221f1c;
+  --color-surface-raised: #2a2723;
+  --color-surface-muted: #1e1b19;
+
+  /* Typografie (zand- en crème-wit) */
+  --color-text: #f5f1ea;
+  --color-text-muted: #ad9e8d;
+  --color-text-subtle: #8d8172;
+
+  /* Randen & Lijnen */
+  --color-border: #3c3831;
+  --color-border-strong: #544e45;
+
+  /* Accenten (warmer zand/goud-oranje) */
+  --color-accent: #dca052;
+  --color-accent-strong: #f6b566;
+  --color-accent-soft: #2d2417;
+
+  /* Systeemsignalen */
+  --color-success: #4ade80;
+  --color-success-bg: #052e16;
+  --color-warning: #facc15;
+  --color-warning-bg: #422006;
+  --color-danger: #f87171;
+  --color-danger-bg: #450a0a;
+  --color-info: #60a5fa;
+  --color-info-bg: #172554;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 6px 16px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 12px 28px rgba(0, 0, 0, 0.7);
+
+  /* Quote variables overrides */
+  --quote-cover-bg: linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg-subtle) 100%);
+  --quote-control-bg: var(--color-info-bg);
+
+  /* Layout and field-mode overrides */
+  --topbar-bg: rgba(21, 19, 17, 0.94);
+  --field-tab-active-bg: var(--color-success-bg);
+  --field-tab-active-color: var(--color-success);
+  --field-intake-bg: linear-gradient(180deg, rgba(5, 46, 22, 0.4), rgba(21, 19, 17, 0.96)), var(--surface-raised);
+  --invoice-strip-bg: linear-gradient(135deg, rgba(66, 32, 6, 0.4), rgba(21, 19, 17, 0.95));
+  --release-panel-bg: linear-gradient(180deg, rgba(69, 10, 10, 0.4), var(--color-surface));
+  --release-panel-ready-bg: linear-gradient(180deg, rgba(5, 46, 22, 0.4), var(--color-surface));
+  --vat-workbench-blocked-bg: linear-gradient(180deg, rgba(69, 10, 10, 0.3), var(--color-surface));
+  --edit-work-panel-bg: linear-gradient(180deg, rgba(5, 46, 22, 0.4), var(--color-surface-raised));
+  --import-workbench-attention-bg: linear-gradient(180deg, rgba(66, 32, 6, 0.4), var(--color-surface));
+  --import-start-panel-bg: linear-gradient(180deg, rgba(66, 32, 6, 0.3), var(--color-bg-subtle));
+  --issue-workbench-attention-bg: linear-gradient(180deg, rgba(66, 32, 6, 0.4), var(--color-surface));
 }
 
 * {

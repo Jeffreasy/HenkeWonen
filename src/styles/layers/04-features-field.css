@@ -1,4 +1,4 @@
-﻿.two-column {
+.two-column {
   grid-template-columns: minmax(320px, 0.8fr) minmax(420px, 1.2fr);
 }
 
@@ -188,8 +188,8 @@
 .field-page-tab:focus-visible,
 .field-page-tab.active {
   border-color: rgba(21, 128, 61, 0.34);
-  background: #dcfce7;
-  color: #14532d;
+  background: var(--field-tab-active-bg);
+  color: var(--field-tab-active-color);
 }
 
 .field-page-tab span {
@@ -205,9 +205,14 @@
   min-width: 32px;
   min-height: 28px;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--ink);
+  background: var(--surface-muted);
+  color: var(--muted);
   font-size: var(--text-sm);
+}
+
+.field-page-tab.active strong {
+  background: var(--field-tab-active-color);
+  color: var(--field-tab-active-bg);
 }
 
 .field-section,
@@ -222,9 +227,7 @@
 .field-intake-panel {
   border-left-width: 5px;
   border-left-color: #15803d;
-  background:
-    linear-gradient(180deg, rgba(240, 253, 244, 0.78), rgba(255, 255, 255, 0.96)),
-    var(--surface-raised);
+  background: var(--field-intake-bg);
 }
 
 .field-intake-form {
@@ -417,20 +420,20 @@
 
 .field-urgency-red {
   border-color: rgba(185, 28, 28, 0.28);
-  background: #fee2e2;
-  color: #7f1d1d;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .field-urgency-orange {
   border-color: rgba(217, 119, 6, 0.28);
-  background: #ffedd5;
-  color: #7c2d12;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .field-urgency-green {
   border-color: rgba(21, 128, 61, 0.28);
-  background: #dcfce7;
-  color: #14532d;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .field-visit-badges {
@@ -462,8 +465,8 @@
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  background: #dcfce7;
-  color: #14532d;
+  background: var(--color-success-bg);
+  color: var(--color-success);
   font-weight: 900;
 }
 
@@ -518,7 +521,7 @@
 
 .field-customer-version {
   min-height: 40px;
-  color: #166534;
+  color: var(--color-success);
   font-weight: 900;
 }
 
@@ -549,7 +552,7 @@
 .field-quote-tab:hover,
 .field-quote-tab:focus-visible {
   border-color: rgba(22, 101, 52, 0.28);
-  background: #edf4ea;
+  background: var(--color-bg-subtle);
 }
 
 .field-quote-workbench {
@@ -603,7 +606,7 @@
 
 .field-quote-disclosure[open] summary {
   border-bottom: 1px solid var(--line);
-  background: #f8faf6;
+  background: var(--color-bg-subtle);
 }
 
 .field-quote-disclosure[open] summary::after {
@@ -636,7 +639,7 @@
   gap: var(--space-4);
   border: 1px solid rgba(35, 52, 35, 0.14);
   border-radius: var(--radius-md);
-  background: #f8faf6;
+  background: var(--color-bg-subtle);
   padding: var(--space-4);
 }
 
@@ -673,7 +676,8 @@
 .field-measure-tool:hover,
 .field-measure-tool:focus-visible {
   border-color: rgba(22, 101, 52, 0.32);
-  background: #dcfce7;
+  background: var(--field-tab-active-bg);
+  color: var(--field-tab-active-color);
 }
 
 /* Field-mode: CalculatorTabs takes full width, no grid needed */

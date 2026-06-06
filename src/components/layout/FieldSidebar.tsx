@@ -2,6 +2,7 @@ import { X, type LucideIcon } from "lucide-react";
 import type { AppSession } from "../../lib/auth/session";
 import { classNames } from "../ui/classNames";
 import { LogoutButton } from "./LogoutButton";
+import { ThemeToggle } from "../ui/ThemeToggle";
 
 export type FieldNavItem = {
   href: string;
@@ -81,7 +82,10 @@ export function FieldSidebar({
         <div className="field-sidebar-session">
           <p>{session.name ?? session.email}</p>
           <p>{roleLabel}</p>
-          <LogoutButton className="logout-button-field-sidebar" />
+          <div style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center" }}>
+            <LogoutButton className="logout-button-field-sidebar" />
+            <ThemeToggle />
+          </div>
         </div>
       </aside>
 

@@ -1,8 +1,6 @@
-﻿.release-panel-ready {
+.release-panel-ready {
   border-color: rgba(22, 101, 52, 0.2);
-  background:
-    linear-gradient(180deg, rgba(220, 252, 231, 0.34), rgba(255, 253, 248, 0.92)),
-    var(--surface);
+  background: var(--release-panel-ready-bg);
 }
 
 .release-block {
@@ -19,9 +17,7 @@
 
 .vat-workbench-blocked {
   border-color: rgba(185, 28, 28, 0.2);
-  background:
-    linear-gradient(180deg, rgba(254, 226, 226, 0.28), rgba(255, 253, 248, 0.92)),
-    var(--surface);
+  background: var(--vat-workbench-blocked-bg);
 }
 
 .vat-workbench-titlebar {
@@ -110,7 +106,7 @@
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.52);
+  background: var(--surface-raised);
   padding: var(--space-3);
 }
 

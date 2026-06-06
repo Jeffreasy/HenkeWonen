@@ -11,13 +11,28 @@ type Props = {
 
 const { title, session } = Astro.props;
 const pathname = Astro.url.pathname;
+const theme = Astro.cookies.get("theme")?.value || "light";
 ---
 
-<html lang="nl">
+<html lang="nl" data-theme={theme}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title} | Henke Wonen Buitendienst</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <script is:inline>
+      (function() {
+        const storedTheme = localStorage.getItem("theme");
+        if (storedTheme) {
+          document.documentElement.setAttribute("data-theme", storedTheme);
+          return;
+        }
+        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", systemTheme);
+      })();
+    </script>
   </head>
   <body>
     <div class="portal-frame field-frame">

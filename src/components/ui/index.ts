@@ -42,3 +42,6 @@ export * from "./overlays/ToastContainer";
 // Utils
 export * from "./utils/classNames";
 export * from "./utils/TableState";
+
+// Theme
+export * from "./ThemeToggle";

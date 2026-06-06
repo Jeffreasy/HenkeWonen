@@ -1,13 +1,11 @@
-﻿.issue-workbench {
+.issue-workbench {
   display: grid;
   gap: var(--space-4);
 }
 
 .issue-workbench-attention {
   border-color: rgba(154, 101, 7, 0.24);
-  background:
-    linear-gradient(180deg, rgba(254, 243, 199, 0.34), rgba(255, 253, 248, 0.94)),
-    var(--surface);
+  background: var(--issue-workbench-attention-bg);
 }
 
 .issue-workbench-titlebar {
@@ -61,7 +59,7 @@
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.54);
+  background: var(--surface-raised);
   padding: var(--space-3);
 }
 

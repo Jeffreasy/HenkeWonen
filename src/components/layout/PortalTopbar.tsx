@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Ruler } from "lucide-react";
 import type { AppSession } from "../../lib/auth/session";
 import { LogoutButton } from "./LogoutButton";
+import { ThemeToggle } from "../ui/ThemeToggle";
 import {
   activePortalNavGroup,
   activePortalNavItem,
@@ -53,6 +54,8 @@ export default function PortalTopbar({ session, pathname }: PortalTopbarProps) {
           <Ruler size={16} aria-hidden="true" />
           <span>Buitendienst</span>
         </a>
+
+        <ThemeToggle />
 
         <div className="portal-topbar-user-menu" ref={dropdownRef}>
           <button
