@@ -1,10 +1,10 @@
 import { CalendarClock, Pencil, Plus, Ruler, Save, Trash2 } from "lucide-react";
 import { CALC_TAB_ICONS, CalculatorTabs, type CalcTab, type CalcTabId } from "./CalculatorTabs";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
-import { canEditDossiers, type AppSession } from "../../lib/auth/session";
+import { canEditDossiers } from "../../lib/auth/session";
 import {
   calculateFlooring,
   calculatePlinths,
@@ -28,7 +28,6 @@ import type {
   MeasurementCalculationType,
   MeasurementProductGroup,
   MeasurementStatus,
-  PortalRoom,
   QuoteLineType,
   QuotePreparationStatus
 } from "../../lib/portalTypes";
@@ -51,7 +50,6 @@ import { Textarea } from "../ui/Textarea";
 import type {
   FieldMeasureTool,
   MeasurementData,
-  MeasurementDoc,
   MeasurementLineDoc,
   MeasurementRoomDoc,
   MeasurementPanelProps,

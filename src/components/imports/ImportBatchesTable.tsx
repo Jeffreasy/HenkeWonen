@@ -1,4 +1,4 @@
-import { Archive, Filter, RotateCcw } from "lucide-react";
+import { Filter } from "lucide-react";
 import { useMemo } from "react";
 import type { ProductImportBatch } from "../../lib/portalTypes";
 import { formatImportStatus } from "../../lib/i18n/statusLabels";
@@ -9,7 +9,7 @@ import { FilterBar } from "../ui/FilterBar";
 import { SearchInput } from "../ui/SearchInput";
 import { StatusBadge } from "../ui/StatusBadge";
 import { type BatchStatusFilter } from "./import/importTypes";
-import { numberText, dateText, batchStatusVariant, lifecycleText, archiveActionFor } from "./import/importUtils";
+import { numberText, batchStatusVariant, lifecycleText, archiveActionFor } from "./import/importUtils";
 
 const batchStatusFilters: Array<{ value: BatchStatusFilter; label: string }> = [
   { value: "failed", label: "Aandacht nodig" },

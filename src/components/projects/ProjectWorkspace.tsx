@@ -1,4 +1,3 @@
-import { Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -7,7 +6,6 @@ import { createConvexHttpClient } from "../../lib/convex/client";
 import type { PortalCustomer, PortalProject, ProjectStatus } from "../../lib/portalTypes";
 import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/Alert";
-import { Button } from "../ui/Button";
 import { FormModal } from "../ui/overlays/FormModal";
 import ProjectForm, { type ProjectFormValues } from "./ProjectForm";
 import { ProjectStats } from "./ProjectStats";

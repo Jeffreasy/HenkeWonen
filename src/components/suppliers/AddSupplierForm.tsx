@@ -1,5 +1,5 @@
 import { Save } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import { Card, SectionHeader, Field, Input, Select, Textarea, Button } from "../ui";
 import { formatProductListStatus } from "../../lib/i18n/statusLabels";
 import type { ProductListStatus } from "../../lib/portalTypes";
@@ -29,7 +29,7 @@ export function AddSupplierForm({ onCreateSupplier, isSaving }: AddSupplierFormP
   const [expectedDate, setExpectedDate] = useState("");
   const [notes, setNotes] = useState("");
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!name.trim()) {
       return;

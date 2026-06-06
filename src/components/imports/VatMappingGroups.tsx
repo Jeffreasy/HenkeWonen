@@ -27,7 +27,6 @@ type VatMappingGroupsProps = {
   onBulkSetVatMode: (profileName: string, rows: VatMappingReviewRow[], vatMode: "inclusive" | "exclusive") => void;
   onMarkReviewed: (rows: VatMappingReviewRow[]) => void;
   onAllowUnknown: (profileId: string, profileName: string, allowUnknownVatMode: boolean) => void;
-  canManageProfiles: boolean;
   isSaving: boolean;
 };
 
@@ -71,7 +70,6 @@ export function VatMappingGroups({
   onBulkSetVatMode,
   onMarkReviewed,
   onAllowUnknown,
-  canManageProfiles,
   isSaving
 }: VatMappingGroupsProps) {
   function selectedRowsForProfile(rows: VatMappingReviewRow[]) {

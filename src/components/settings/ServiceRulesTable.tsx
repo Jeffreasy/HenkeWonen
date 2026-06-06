@@ -4,7 +4,7 @@ import { formatEuro } from "../../lib/money";
 import { Button } from "../ui/Button";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { StatusBadge } from "../ui/StatusBadge";
-import { type ServiceRuleStatus, type ServiceRuleCalculationType, type ServiceRuleRow } from "./settings/settingsTypes";
+import { type ServiceRuleRow } from "./settings/settingsTypes";
 
 type ServiceRulesTableProps = {
   rules: ServiceRuleRow[];

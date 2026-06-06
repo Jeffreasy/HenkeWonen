@@ -24,7 +24,7 @@ export function AddContactForm({ onSubmit }: AddContactFormProps) {
   const [loanedItemName, setLoanedItemName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!contactTitle.trim()) {
       return;

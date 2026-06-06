@@ -5,8 +5,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
 import {
   loadCatalogToolEnv,
-  requireCatalogToolTarget,
-  targetSummary
+  requireCatalogToolTarget
 } from "./catalog_tooling_env.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");

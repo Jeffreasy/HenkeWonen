@@ -20,7 +20,6 @@ import { EmptyState } from "../ui/EmptyState";
 import { Field } from "../ui/Field";
 import { IconButton } from "../ui/IconButton";
 import { SectionHeader } from "../ui/SectionHeader";
-import { Select } from "../ui/Select";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SummaryList } from "../ui/SummaryList";
 import { Textarea } from "../ui/Textarea";

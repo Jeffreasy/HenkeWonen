@@ -1,5 +1,5 @@
 import { Save } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import { Card, SectionHeader, StatusBadge, Field, Input, Select, Textarea, Button } from "../ui";
 import { formatStatusLabel, formatProductListStatus } from "../../lib/i18n/statusLabels";
 import type { PortalSupplier, ProductListStatus } from "../../lib/portalTypes";
@@ -56,7 +56,7 @@ export function EditSupplierForm({ supplier, onSaveSupplier, onCancel, isSaving 
     setNotes(supplier.notes ?? "");
   }, [supplier]);
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!name.trim()) {
       return;

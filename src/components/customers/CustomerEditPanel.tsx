@@ -33,7 +33,7 @@ export function CustomerEditPanel({
   const [draft, setDraft] = useState<CustomerDraft>(initialDraft);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!draft.displayName.trim()) {
       return;

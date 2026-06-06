@@ -3,7 +3,6 @@
  * Vervangt type-duplicaten verspreid over BatchesTable, DetailPanel, Preview, Profiles en ProfilesTable.
  */
 import type { ProductImportBatch, ProductImportRow } from "../../../lib/portalTypes";
-import type { VatMappingReviewRow } from "../ImportProfiles";
 
 // ─── Batch filters ─────────────────────────────────────────────────────────────
 

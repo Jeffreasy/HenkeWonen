@@ -1,7 +1,6 @@
 import { Save } from "lucide-react";
 import { useState } from "react";
 import { formatStatusLabel } from "../../lib/i18n/statusLabels";
-import type { PortalProduct } from "../../lib/portalTypes";
 import { Button } from "../ui/Button";
 import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
@@ -41,7 +40,7 @@ export function ProductEditPanel({
   const [draft, setDraft] = useState<ProductDraft>(initialDraft);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!draft.name.trim()) {
       return;

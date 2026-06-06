@@ -1,4 +1,4 @@
-import { RefreshCw, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -8,7 +8,6 @@ import { formatVatMode } from "../../lib/i18n/statusLabels";
 import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/Alert";
 import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { FilterBar } from "../ui/FilterBar";
 import { VatWorkbenchHeader } from "./VatWorkbenchHeader";
@@ -295,14 +294,6 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
           (row.confidence === "low" || row.needsReview)
       ).length,
     [review?.rows]
-  );
-
-  const nextOpenProfile = useMemo(
-    () =>
-      groupedProfiles.find((profile) =>
-        profile.rows.some((row) => row.currentVatMode === "unknown" && !row.allowUnknownVatMode)
-      ),
-    [groupedProfiles]
   );
 
   const hasUnresolvedVatChoices = useMemo(
@@ -696,7 +687,6 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
             onBulkSetVatMode={requestBulkVatMode}
             onMarkReviewed={markReviewed}
             onAllowUnknown={requestAllowUnknown}
-            canManageProfiles={canManageProfiles}
             isSaving={isSaving}
           />
         </>

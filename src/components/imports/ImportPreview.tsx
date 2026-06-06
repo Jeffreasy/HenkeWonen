@@ -12,7 +12,7 @@ import { StartImportForm } from "./StartImportForm";
 import { ImportBatchesTable } from "./ImportBatchesTable";
 import { ImportDetailPanel } from "./ImportDetailPanel";
 import { type BatchStatusFilter, type DetailTab, type RowKindFilter, type RowStatusFilter } from "./import/importTypes";
-import { numberText, dateText, normalizedText } from "./import/importUtils";
+import { numberText, normalizedText } from "./import/importUtils";
 
 type ImportPreviewProps = {
   session: AppSession;

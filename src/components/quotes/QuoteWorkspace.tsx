@@ -10,7 +10,6 @@ import type {
   QuoteStatus,
   QuoteTemplate
 } from "../../lib/portalTypes";
-import { formatEuro } from "../../lib/money";
 import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/Alert";
 import { EmptyState } from "../ui/EmptyState";

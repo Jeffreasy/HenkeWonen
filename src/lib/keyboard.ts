@@ -60,7 +60,7 @@ export function isTypingTarget(event: KeyboardEvent): boolean {
 export function formatShortcutKeys(shortcut: Shortcut): string[] {
   if (shortcut.displayKeys) return shortcut.displayKeys;
   const isMac =
-    typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+    typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/i.test(navigator.userAgent || "");
   const keys: string[] = [];
   if (shortcut.ctrl) keys.push(isMac ? "⌘" : "Ctrl");
   if (shortcut.shift) keys.push(isMac ? "⇧" : "Shift");

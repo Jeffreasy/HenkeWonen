@@ -5,8 +5,7 @@ import {
   LayoutDashboard,
   Menu,
   Printer,
-  Ruler,
-  type LucideIcon
+  Ruler
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";

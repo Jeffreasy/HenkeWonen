@@ -73,7 +73,7 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
   const publicMutations = writeBlocks.filter(({ type }) => type === "mutation");
 
   it("should enforce authentication or explicit tooling gates on all public mutations", () => {
-    for (const { file, name, block } of publicMutations) {
+    for (const { block } of publicMutations) {
       const actorSecured =
         block.includes("actor: mutationActorValidator") &&
         (block.includes("requireMutationRole") || block.includes("requireMutationRoleForTenantId"));

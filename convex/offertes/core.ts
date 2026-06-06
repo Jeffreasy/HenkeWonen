@@ -6,12 +6,10 @@ import { pilotHiddenReason } from "../catalog/pilot";
 import {
   toQuote,
   toCustomer,
-  toQuoteSummary,
   toQuoteTemplate,
   requireTenant,
   quoteLineType,
   toProject,
-  toQuoteLine,
   importedMeasurementLineTitle,
   importedMeasurementLineDescription,
   calculateLineTotals
@@ -261,7 +259,6 @@ async function recalculateQuote(ctx: any, tenantId: any, quoteId: any) {
   });
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 function addCalendarDays(timestamp: number, days: number) {
   const date = new Date(timestamp);

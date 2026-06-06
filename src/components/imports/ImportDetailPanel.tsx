@@ -1,4 +1,4 @@
-import { Archive, CheckCircle2, RotateCcw, Save, ShieldAlert } from "lucide-react";
+import { CheckCircle2, Save, ShieldAlert } from "lucide-react";
 import { useMemo } from "react";
 import type { ProductImportBatch, ProductImportRow } from "../../lib/portalTypes";
 import { formatImportStatus, formatRowKind, formatRowStatus } from "../../lib/i18n/statusLabels";
@@ -15,7 +15,7 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { SummaryList } from "../ui/SummaryList";
 import ImportWarnings from "./ImportWarnings";
 import { type DetailTab, type RowKindFilter, type RowStatusFilter } from "./import/importTypes";
-import { numberText, dateText, batchStatusVariant, lifecycleText, archiveActionFor } from "./import/importUtils";
+import { numberText, batchStatusVariant, lifecycleText, archiveActionFor } from "./import/importUtils";
 
 type ImportDetailPanelProps = {
   selectedBatch: ProductImportBatch;

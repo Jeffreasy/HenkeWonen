@@ -58,7 +58,7 @@ export function FieldIntakeForm({ onSubmit, onClose, isSaving, error }: FieldInt
     setProjectTitle("");
   }
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!leadName.trim()) return;
 
