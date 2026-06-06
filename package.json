@@ -23,7 +23,9 @@
     "catalog:import:legacy": "node tools/upload_catalog_import.mjs",
     "catalog:flexcolours:preview": "node tools/run_python_tool.mjs tools/parse_flexcolours_matrix.py",
     "catalog:flexcolours:preview:check": "node tools/run_python_tool.mjs tools/parse_flexcolours_matrix.py --no-write",
-    "catalog:flexcolours:cleanup:dev": "node tools/cleanup_raambekleding.mjs",
+    "catalog:flexcolours:cleanup:dev": "node tools/cleanup_catalog.mjs --category raambekleding",
+    "catalog:cleanup:pvc:dev": "node tools/cleanup_catalog.mjs --category pvc-click",
+    "catalog:cleanup:roots:dev": "node tools/cleanup_catalog.mjs --supplier Roots",
     "catalog:flexcolours:import:dev": "node tools/upload_catalog_batch_import.mjs --preview-file docs/generated/flexcolours-import-preview.json --allow-unknown-vat",
     "catalog:prod:bootstrap": "node tools/bootstrap_production_base.mjs --production --target=production",
     "catalog:status": "node tools/catalog_status.mjs",
@@ -31,12 +33,8 @@
     "catalog:vat:apply": "node tools/apply_vat_mapping_decisions.mjs",
     "catalog:duplicates:sync": "node tools/sync_duplicate_ean_issues_from_preview.mjs",
     "portal:demo-seed": "node tools/seed_demo_portal_data.mjs",
-    "test:portal": "node tools/test_portal_routes_with_dev_auth.mjs",
-    "test:portal:routes": "node tools/test_portal_routes.mjs",
-    "test:a11y": "node tools/test_portal_routes_with_dev_auth.mjs tools/test_portal_a11y.mjs",
-    "test:calculators": "node tools/test_calculators.mjs",
-    "test:quote-document": "node tools/test_quote_document_model.mjs",
-    "test:workflow-guardrails": "node tools/test_workflow_mutation_guardrails.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy"
   },
@@ -56,7 +54,8 @@
     "typescript": "5.9.3"
   },
   "devDependencies": {
-    "tailwindcss": "4.3.0"
+    "tailwindcss": "4.3.0",
+    "vitest": "^3.2.6"
   },
   "overrides": {
     "path-to-regexp": "6.3.0",

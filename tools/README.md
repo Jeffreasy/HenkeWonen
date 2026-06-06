@@ -30,26 +30,28 @@ Node.js en Python scripts voor catalogusbeheer, BTW-mapping, reconciliatie en sm
 | `sync_duplicate_ean_issues_from_preview.mjs` | Synchroniseert EAN-duplicaten van preview naar Convex review |
 | `catalog_status.mjs` | Toont actuele importstatus van alle batches |
 
-## Cleanup-scripts (leverancierspecifiek)
+## Catalogusopschoning
 
 | Script | Gebruik |
 | --- | --- |
-| `cleanup_pvc_click.mjs` | Verwijdert PVC/click-flooring duplicaten |
-| `cleanup_raambekleding.mjs` | Opruimen raambekleding-categorisatie |
-| `cleanup_roots_supplier.mjs` | Roots leverancier opschoning |
+| `cleanup_catalog.mjs` | Verwijdert producten/prijzen op basis van categorie (`--category`) of leverancier (`--supplier`) |
 
-## Smoke-tests
+## Vitest Test-infrastructuur (in `tests/`)
 
-| Script | Gebruik |
-| --- | --- |
-| `test_portal_routes.mjs` | Test alle portalroutes op HTTP 200/302 |
-| `test_portal_routes_with_dev_auth.mjs` | Idem, met dev-auth sessie |
-| `test_portal_a11y.mjs` | Toegankelijkheidstest via Playwright |
-| `test_calculators.mjs` | Unit-tests voor alle inmeet-calculators |
-| `test_workflow_mutation_guardrails.mjs` | Test Convex-mutatiebeveiligingen |
-| `test_quote_document_model.mjs` | Test offerte-documentmodel |
+Alle tests zijn gemigreerd naar Vitest en zijn te vinden in de top-level `tests/` directory:
+*   `tests/calculators.test.ts`: Unit-tests voor de inmeet-calculators.
+*   `tests/quoteDocumentModel.test.ts` & `quoteDocumentPreview.test.tsx`: Unit-tests voor het offertemodel en preview-rendering.
+*   `tests/workflowGuardrails.test.ts`: Statische beveiligingslinter voor Convex mutaties en cookie-handelingen.
+*   `tests/portalRoutes.test.ts`: Smoke-tests voor alle 20 portalpagina's.
+*   `tests/portalA11y.test.ts`: Toegankelijkheids- en locale-controles op de portalroutes.
 
-## Overig
+Gebruik:
+```bash
+npm run test          # Draait alle tests eenmalig (inclusief server start/stop)
+npm run test:watch    # Draait tests in watch-modus
+```
+
+## Overig en libraries (in `tools/lib/` of `tools/`)
 
 | Script | Gebruik |
 | --- | --- |

@@ -1,0 +1,61 @@
+name: Astro & Vitest CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript & Astro Check
+        run: npm run check
+
+      - name: Run Vitest Suites
+        run: npm run test
+        env:
+          CONVEX_DEPLOYMENT: dev:test-ci
+          PUBLIC_CONVEX_URL: https://test-ci.convex.cloud
+          PUBLIC_CONVEX_HTTP_ACTIONS_URL: https://test-ci.convex.site
+          CONVEX_SITE_URL: https://test-ci.convex.site
+          AUTH_MODE: dev
+          PUBLIC_AUTH_MODE: dev
+          ALLOW_DEV_AUTH: "true"
+          ALLOW_DEV_AUTHZ_TOKENS: "true"
+          AUTHZ_TOKEN_SECRET: E74388313CE8A1B78693EA2424781D88387CE6B3C03C1ADF223A134880AAFFB7
+          LAVENTECARE_API_URL: https://test-ci.laventecare.nl/api/v1
+          LAVENTECARE_TENANT_ID: test-tenant-slug
+          HENKE_TENANT_SLUG: henke-wonen
+          AUTH_TENANT_NAME: Henke Wonen
+
+      - name: Validate Production Build
+        run: npm run build
+        env:
+          CONVEX_DEPLOYMENT: dev:test-ci
+          PUBLIC_CONVEX_URL: https://test-ci.convex.cloud
+          PUBLIC_CONVEX_HTTP_ACTIONS_URL: https://test-ci.convex.site
+          CONVEX_SITE_URL: https://test-ci.convex.site
+          AUTH_MODE: dev
+          PUBLIC_AUTH_MODE: dev
+          ALLOW_DEV_AUTH: "true"
+          ALLOW_DEV_AUTHZ_TOKENS: "true"
+          AUTHZ_TOKEN_SECRET: E74388313CE8A1B78693EA2424781D88387CE6B3C03C1ADF223A134880AAFFB7
+          LAVENTECARE_API_URL: https://test-ci.laventecare.nl/api/v1
+          LAVENTECARE_TENANT_ID: test-tenant-slug
+          HENKE_TENANT_SLUG: henke-wonen
+          AUTH_TENANT_NAME: Henke Wonen

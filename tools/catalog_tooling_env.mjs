@@ -16,7 +16,9 @@ const VALUE_OPTIONS = new Set([
   "--preview-file",
   "--result-file",
   "--target",
-  "--tenant"
+  "--tenant",
+  "--category",
+  "--supplier"
 ]);
 
 export function parseToolArgs(argv) {

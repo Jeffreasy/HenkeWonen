@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import React from "react";
@@ -44,7 +44,7 @@ const model: QuoteDocumentModel = {
           quantity: 42.5,
           unit: "m2",
           description:
-            "PVC vloer geleverd en gelegd inclusief egaliseren, snijverlies en aansluiting op bestaande plinten in woonkamer, keuken en hal.",
+            "PVC vloer geleverd en gelegd inclusief egaliseren, snijverlies and aansluiting op bestaande plinten in woonkamer, keuken en hal.",
           unitPriceExVat: 38.75,
           vatRate: 21,
           lineTotalIncVat: 1992.72
@@ -105,49 +105,55 @@ const model: QuoteDocumentModel = {
   paymentTerms: ["50% bij akkoord.", "50% bij oplevering.", "Betalingstermijn 8 dagen."]
 };
 
-const html = renderToStaticMarkup(React.createElement(QuoteDocumentPreview, { model }));
-const globalCss = fs.readFileSync(path.join(process.cwd(), "src/styles/global.css"), "utf8");
-const printCss = fs.readFileSync(path.join(process.cwd(), "src/styles/layers/17-print.css"), "utf8");
-const combinedCss = globalCss + "\n" + printCss;
+describe("Quote Document Preview", () => {
+  const html = renderToStaticMarkup(React.createElement(QuoteDocumentPreview, { model }));
+  const globalCss = fs.readFileSync(path.join(process.cwd(), "src/styles/global.css"), "utf8");
+  const printCss = fs.readFileSync(path.join(process.cwd(), "src/styles/layers/17-print.css"), "utf8");
+  const combinedCss = globalCss + "\n" + printCss;
 
-assert.ok(html.length > 0);
-assert.ok(html.includes('class="quote-document-preview"'));
-assert.ok(html.includes('class="quote-document-actions no-print"'));
-assert.ok(html.includes('class="quote-document-totals print-keep-together"'));
-assert.ok(html.includes("Klantversie"));
-assert.ok(html.includes("Concept"));
-assert.ok(html.includes("Klantversie printen"));
-assert.ok(html.includes("Alleen bekijken"));
-assert.ok(!html.includes("draft"));
-assert.ok(html.includes("Btw wordt berekend op basis van de offerteregels."));
-assert.ok(!html.includes("Prijzen zijn inclusief 21% btw."));
-assert.ok(html.includes("Controleer product, prijs en btw."));
-assert.ok(html.includes("Project familie Jansen - benedenverdieping en raambekleding"));
-assert.ok(html.includes("OFF-2026-014"));
-assert.ok(html.includes("Vloeren"));
-assert.ok(html.includes("Montage en afwerking"));
-assert.ok(html.includes("Raambekleding"));
-assert.ok(html.includes("PVC vloer geleverd en gelegd inclusief egaliseren"));
-assert.ok(html.includes("Product, prijs en btw moeten nog handmatig worden gecontroleerd."));
-assert.ok(html.includes("Ruimtes leeg en bezemschoon opleveren."));
-assert.ok(html.includes("50% bij akkoord."));
+  it("should render the preview HTML document correctly", () => {
+    expect(html.length).toBeGreaterThan(0);
+    expect(html).toContain('class="quote-document-preview"');
+    expect(html).toContain('class="quote-document-actions no-print"');
+    expect(html).toContain('class="quote-document-totals print-keep-together"');
+    expect(html).toContain("Klantversie");
+    expect(html).toContain("Concept");
+    expect(html).toContain("Klantversie printen");
+    expect(html).toContain("Alleen bekijken");
+    expect(html).not.toContain("draft");
+    expect(html).toContain("Btw wordt berekend op basis van de offerteregels.");
+    expect(html).not.toContain("Prijzen zijn inclusief 21% btw.");
+    expect(html).toContain("Controleer product, prijs en btw.");
+    expect(html).toContain("Project familie Jansen - benedenverdieping en raambekleding");
+    expect(html).toContain("OFF-2026-014");
+    expect(html).toContain("Vloeren");
+    expect(html).toContain("Montage en afwerking");
+    expect(html).toContain("Raambekleding");
+    expect(html).toContain("PVC vloer geleverd en gelegd inclusief egaliseren");
+    expect(html).toContain("Product, prijs en btw moeten nog handmatig worden gecontroleerd.");
+    expect(html).toContain("Ruimtes leeg en bezemschoon opleveren.");
+    expect(html).toContain("50% bij akkoord.");
+  });
 
-assert.ok(combinedCss.includes(".quote-print-root"));
-assert.ok(combinedCss.includes("body.quote-print-active > :not(.quote-print-root)"));
-assert.ok(combinedCss.includes("body.quote-print-active .quote-print-root"));
-assert.ok(combinedCss.includes("position: static;"));
-assert.ok(combinedCss.includes(".quote-document-section h3"));
-assert.ok(combinedCss.includes("break-after: avoid;"));
-assert.ok(combinedCss.includes("break-before: avoid;"));
-assert.ok(!combinedCss.includes("body * {\n    visibility: hidden"));
-assert.ok(!combinedCss.includes("body:has(.quote-document-preview)"));
+  it("should verify CSS classes and rules are defined", () => {
+    expect(combinedCss).toContain(".quote-print-root");
+    expect(combinedCss).toContain("body.quote-print-active > :not(.quote-print-root)");
+    expect(combinedCss).toContain("body.quote-print-active .quote-print-root");
+    expect(combinedCss).toContain("position: static;");
+    expect(combinedCss).toContain(".quote-document-section h3");
+    expect(combinedCss).toContain("break-after: avoid;");
+    expect(combinedCss).toContain("break-before: avoid;");
+    expect(combinedCss).not.toContain("body * {\n    visibility: hidden");
+    expect(combinedCss).not.toContain("body:has(.quote-document-preview)");
+  });
 
-const formattedCurrency = formatCurrencyEUR(1234.5);
-assert.ok(formattedCurrency.includes("€"));
-assert.ok(formattedCurrency.includes("1.234,50"));
-assert.equal(formatQuantity(12.3456), "12,346");
-assert.equal(formatVatRate(9.5), "9,5%");
-assert.equal(formatDateNL(new Date(Date.UTC(2026, 4, 1))), "01-05-2026");
-assert.equal(formatDateNL("01-05-2026"), "01-05-2026");
-
-console.log("Quote document preview tests passed.");
+  it("should format quote attributes correctly", () => {
+    const formattedCurrency = formatCurrencyEUR(1234.5);
+    expect(formattedCurrency).toContain("€");
+    expect(formattedCurrency).toContain("1.234,50");
+    expect(formatQuantity(12.3456)).toBe("12,346");
+    expect(formatVatRate(9.5)).toBe("9,5%");
+    expect(formatDateNL(new Date(Date.UTC(2026, 4, 1)))).toBe("01-05-2026");
+    expect(formatDateNL("01-05-2026")).toBe("01-05-2026");
+  });
+});
