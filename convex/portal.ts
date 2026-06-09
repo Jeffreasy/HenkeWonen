@@ -230,4 +230,5 @@ export { listCategories, upsertCategory } from "./beheer/categories";
 export { listServiceRules, upsertServiceRule } from "./beheer/serviceCostRules";
 export { fieldServiceWorkspace, fieldProjectWorkspace } from "./projecten/fieldService";
 export { listInvoices, invoiceDetail, createInvoice, createInvoiceFromQuote, updateInvoiceStatus, markInvoicePaid } from "./facturen/core";
+export { clearTenantData } from "./beheer/clearTenantData";
 

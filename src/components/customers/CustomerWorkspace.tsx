@@ -22,7 +22,10 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
   const [customers, setCustomers] = useState<PortalCustomer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // ?open=nieuw opent de modal direct (FAB-navigatie)
+  const [isModalOpen, setIsModalOpen] = useState(
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("open") === "nieuw"
+  );
   const canCreateCustomers = canEditDossiers(session.role);
 
   const loadCustomers = useCallback(async () => {

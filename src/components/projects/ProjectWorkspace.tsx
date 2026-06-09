@@ -28,7 +28,10 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // ?open=nieuw opent de modal direct (FAB-navigatie)
+  const [isModalOpen, setIsModalOpen] = useState(
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("open") === "nieuw"
+  );
   const canCreateProjects = canEditDossiers(session.role);
 
   const loadProjects = useCallback(async () => {

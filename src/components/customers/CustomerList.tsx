@@ -8,6 +8,7 @@ import { FilterBar } from "../ui/FilterBar";
 import { SearchInput } from "../ui/SearchInput";
 import { Select } from "../ui/Select";
 import { StatusBadge } from "../ui/StatusBadge";
+import { dateText } from "../projects/measurement/measurementUtils";
 
 type CustomerListProps = {
   customers: PortalCustomer[];
@@ -86,6 +87,13 @@ export default function CustomerList({ customers, isLoading = false }: CustomerL
       width: "140px",
       hideOnMobile: true,
       render: (customer) => customer.city ?? "-"
+    },
+    {
+      key: "registered",
+      header: "Vastgelegd op",
+      width: "120px",
+      hideOnMobile: true,
+      render: (customer) => dateText(customer.createdAt)
     }
   ];
 

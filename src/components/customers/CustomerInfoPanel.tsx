@@ -90,6 +90,7 @@ export function CustomerInfoPanel({
                 .filter(Boolean)
                 .join(" ") || "-"
           },
+          { id: "registered", label: "Vastgelegd op", value: dateText(customer.createdAt) },
           { id: "updated", label: "Bijgewerkt", value: dateText(customer.updatedAt) }
         ]}
       />

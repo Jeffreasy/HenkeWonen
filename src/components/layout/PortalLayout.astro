@@ -5,6 +5,7 @@ import PortalTopbar from "./PortalTopbar";
 import { ShellLoadingController } from "./ShellLoadingController";
 import { ToastContainer } from "../ui/overlays/ToastContainer";
 import { KeyboardShortcutController } from "./KeyboardShortcutController";
+import { QuickActionFab } from "./QuickActionFab";
 import type { AppSession } from "../../lib/auth/session";
 
 type Props = {
@@ -51,6 +52,8 @@ const theme = Astro.cookies.get("theme")?.value || "light";
     </div>
     <!-- Toast container — always present, renders above all overlays (z-index 1500) -->
     <ToastContainer client:load />
+    <!-- Quick Action FAB — rechts onderin, boven toast -->
+    <QuickActionFab client:load session={session} />
     <!-- Keyboard shortcut controller — registers global shortcuts + help modal -->
     <KeyboardShortcutController client:load />
   </body>

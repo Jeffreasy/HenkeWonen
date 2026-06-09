@@ -37,6 +37,7 @@ export function ContactListTable({ contacts, onNew }: ContactListTableProps) {
           <div className="stack-sm">
             <strong>{contact.title}</strong>
             {contact.description ? <small className="muted">{contact.description}</small> : null}
+            <small className="muted">{dateText(contact.createdAt)}</small>
           </div>
         )
       },
@@ -61,7 +62,6 @@ export function ContactListTable({ contacts, onNew }: ContactListTableProps) {
         key: "date",
         header: "Datum",
         width: "110px",
-        hideOnMobile: true,
         render: (contact) => dateText(contact.createdAt)
       }
     ],

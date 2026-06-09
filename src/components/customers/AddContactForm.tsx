@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { CalendarDays, Save } from "lucide-react";
 import { useState } from "react";
 import type { PortalCustomerContact } from "../../lib/portalTypes";
 import { Button } from "../ui/Button";
@@ -6,6 +6,7 @@ import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
 import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
+import { dateText } from "../projects/measurement/measurementUtils";
 
 export type AddContactFormValues = {
   type: PortalCustomerContact["type"];
@@ -83,6 +84,14 @@ export function AddContactForm({ onSubmit }: AddContactFormProps) {
             value={loanedItemName}
             onChange={(event) => setLoanedItemName(event.target.value)}
           />
+        </Field>
+        {/* Automatische datum indicator */}
+        <Field htmlFor="contact-date" label="Datum contact">
+          <div className="contact-date-indicator" id="contact-date">
+            <CalendarDays size={14} aria-hidden="true" />
+            <span>{dateText(Date.now())}</span>
+            <small className="muted">(automatisch vastgelegd bij opslaan)</small>
+          </div>
         </Field>
         <Button
           isLoading={isSaving}
