@@ -56,6 +56,9 @@
     overflow-y: auto;
     border-top: 1px solid var(--sidebar-line);
     padding-top: var(--space-3);
+    /* Scroll-indicator: subtiele fade-out aan de onderkant */
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
   }
 
   .sidebar-nav-panel.open {
@@ -64,6 +67,12 @@
 
   .session-card {
     display: grid;
+  }
+
+  /* ThemeToggle tonen in session card op mobiel
+     (portal-topbar is verborgen op dit breekpunt) */
+  .session-card-actions .ui-icon-button {
+    display: inline-flex;
   }
 
   .nav-list {
@@ -500,6 +509,21 @@
     justify-self: stretch;
   }
 }
+/* ---------------------------------------------------------------------------
+   760px — Data-tabel kaartmodus (iets voor 720px om dead zone te voorkomen)
+   --------------------------------------------------------------------------- */
+@media (max-width: 760px) {
+  /* Kaartmodus iets eerder inschakelen zodat er geen "dead zone"
+     is waarbij de tabel scrolbaar is maar de kaartmodus nog niet actief */
+  .data-table-wrap-card-mode {
+    display: none;
+  }
+
+  .data-table-mobile-cards {
+    display: grid;
+    gap: var(--space-3);
+  }
+}
 
 @media (max-width: 720px) {
   .portal-main {
@@ -541,13 +565,14 @@
   .project-primary-actions,
   .project-action-row {
     align-items: stretch;
+    flex-direction: column;
     width: 100%;
   }
 
   .project-overview-actions .ui-button,
   .project-primary-actions .ui-button,
   .project-action-row .ui-button {
-    flex: 1 1 140px;
+    width: 100%;
   }
 
   .project-meta-item,
@@ -601,15 +626,6 @@
     padding: var(--space-4) var(--space-3) 92px;
   }
 
-  .data-table-wrap-card-mode {
-    display: none;
-  }
-
-  .data-table-mobile-cards {
-    display: grid;
-    gap: var(--space-3);
-  }
-
   .nav-group-items {
     grid-template-columns: 1fr;
   }
@@ -633,4 +649,96 @@
     width: 100%;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   480px — Kleine smartphones (iPhone SE 375px, Galaxy A-serie 360px)
+   --------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .portal-main,
+  .field-main {
+    padding: 12px 12px 88px;
+  }
+
+  /* Iets kleinere headings op kleine schermen */
+  .ui-page-header h1,
+  .page-header h1,
+  .section-title {
+    font-size: clamp(1.4rem, 7vw, 1.7rem);
+  }
+
+  /* Quickbar items meer ruimte op 360px */
+  .mobile-quickbar,
+  .field-quickbar {
+    gap: 2px;
+    padding: var(--space-1) var(--space-2);
+  }
+
+  /* Filter dropdowns volledig stapelen */
+  .filter-bar-filters {
+    grid-template-columns: 1fr;
+  }
+
+  /* Timeline knoppen volledige breedte */
+  .project-action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .project-action-row .ui-button {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* Stat cards 1 kolom op zeer klein scherm */
+  .four-column,
+  .three-column {
+    grid-template-columns: 1fr;
+  }
+
+  /* Modal als bottom-sheet op kleine telefoons */
+  .form-modal-backdrop {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .form-modal,
+  .form-modal--sm,
+  .form-modal--md,
+  .form-modal--lg {
+    width: 100%;
+    max-height: 90dvh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
+    animation: modalSlideUp 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Dashboard focus cards 1 per rij */
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Project meta 1 kolom */
+  .project-meta-strip {
+    grid-template-columns: 1fr;
+  }
+
+  /* Summary strip 1 kolom */
+  .vat-summary-strip,
+  .issue-summary-strip,
+  .import-summary-strip {
+    grid-template-columns: 1fr;
+  }
+
+  /* Sidebar nav panel ruimte */
+  .sidebar-nav-panel {
+    max-height: min(80vh, 560px);
+  }
+
+  /* Pagination volledig gecentreerd */
+  .pagination {
+    justify-content: center;
+  }
+}
+
 

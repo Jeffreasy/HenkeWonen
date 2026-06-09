@@ -779,6 +779,25 @@
   background: rgba(255, 255, 255, 0.14);
 }
 
+/* Session card actie-rij: ThemeToggle + Uitloggen naast elkaar */
+.session-card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ThemeToggle in session card is verborgen op desktop
+   (staat al in de topbar) — zichtbaar op mobiel (topbar verborgen) */
+.session-card-actions .ui-icon-button {
+  display: none;
+  flex-shrink: 0;
+}
+
+/* Uitloggen neemt resterende breedte */
+.session-card-logout {
+  flex: 1;
+}
+
 .mobile-quickbar {
   display: none;
 }

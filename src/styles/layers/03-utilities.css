@@ -280,7 +280,7 @@
 }
 
 .invoice-strip-amount {
-  font-size: var(--text-2xl);
+  font-size: clamp(1.1rem, 3.5vw, 1.5rem); /* Was vaste 1.5rem — schaalt nu mee */
   font-weight: 850;
   color: var(--ink);
   line-height: var(--line-tight);
