@@ -8,15 +8,18 @@ type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   "aria-label": string;
   variant?: IconButtonVariant;
   size?: IconButtonSize;
+  isLoading?: boolean;
   children: ReactNode;
 };
 
 export function IconButton({
   variant = "ghost",
   size = "md",
+  isLoading = false,
   children,
   className,
   type = "button",
+  disabled,
   ...props
 }: IconButtonProps) {
   return (
@@ -28,9 +31,15 @@ export function IconButton({
         className
       )}
       type={type}
+      disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
       {...props}
     >
-      {children}
+      {isLoading ? (
+        <span className="ui-button-spinner" aria-hidden="true" />
+      ) : (
+        children
+      )}
     </button>
   );
 }

@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { Save , X} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { SubmitEventLike } from "../../lib/events";
 import type { PortalProject } from "../../lib/portalTypes";
@@ -145,7 +145,7 @@ export function ProjectEditForm({ project, onSave, onCancel }: ProjectEditFormPr
           >
             Projectgegevens opslaan
           </Button>
-          <Button variant="secondary" onClick={onCancel}>
+          <Button variant="secondary" leftIcon={<X size={15} aria-hidden="true" />} onClick={onCancel}>
             Annuleren
           </Button>
         </div>

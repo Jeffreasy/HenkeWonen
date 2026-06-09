@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { Save , X} from "lucide-react";
 import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import { Card, SectionHeader, StatusBadge, Field, Input, Select, Textarea, Button } from "../ui";
 import { formatStatusLabel, formatProductListStatus } from "../../lib/i18n/statusLabels";
@@ -187,7 +187,7 @@ export function EditSupplierForm({ supplier, onSaveSupplier, onCancel, isSaving 
           >
             Leverancier opslaan
           </Button>
-          <Button variant="secondary" onClick={onCancel}>
+          <Button variant="secondary" leftIcon={<X size={15} aria-hidden="true" />} onClick={onCancel}>
             Annuleren
           </Button>
         </div>

@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, FileText, Pencil, Send, Trash2, XCircle } from "lucide-react";
+import { Ban, CheckCircle2, FileText, Pencil, Save, Send, Trash2, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
 import type {
@@ -480,7 +480,7 @@ export default function QuoteBuilder({
           />
         </Field>
         <div className="quote-terms-action">
-          <Button isLoading={isSavingTerms} onClick={() => void saveTerms()} variant="secondary">
+          <Button isLoading={isSavingTerms} onClick={() => void saveTerms()} variant="primary" leftIcon={<Save size={16} aria-hidden="true" />}>
             Voorwaarden opslaan
           </Button>
         </div>

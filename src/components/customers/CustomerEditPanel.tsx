@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { Save , X} from "lucide-react";
 import { useState } from "react";
 import { Button } from "../ui/Button";
 import { Field } from "../ui/Field";
@@ -144,7 +144,7 @@ export function CustomerEditPanel({
           >
             {isSaving ? "Opslaan..." : "Klantgegevens opslaan"}
           </Button>
-          <Button variant="secondary" onClick={onCancel}>
+          <Button variant="secondary" leftIcon={<X size={15} aria-hidden="true" />} onClick={onCancel}>
             Annuleren
           </Button>
         </div>

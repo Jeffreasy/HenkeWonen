@@ -14,6 +14,7 @@
   --color-border-strong: #ad9a77;
   --color-accent: #9a5f1b;
   --color-accent-strong: #7a4310;
+  --color-accent-hover: #68380e; /* Primary knop hover */
   --color-accent-soft: #f4e6cf;
   --color-success: #166534;
   --color-success-bg: #dcfce7;
@@ -21,6 +22,7 @@
   --color-warning-bg: #fef3c7;
   --color-danger: #b91c1c;
   --color-danger-bg: #fee2e2;
+  --color-danger-hover: #991b1b; /* Danger knop hover */
   --color-info: #1d4e89;
   --color-info-bg: #dbeafe;
 
@@ -120,6 +122,7 @@ html[data-theme="dark"] {
   /* Accenten (warmer zand/goud-oranje) */
   --color-accent: #dca052;
   --color-accent-strong: #f6b566;
+  --color-accent-hover: #e8b270; /* Primary knop hover dark */
   --color-accent-soft: #2d2417;
 
   /* Systeemsignalen */
@@ -129,6 +132,7 @@ html[data-theme="dark"] {
   --color-warning-bg: #422006;
   --color-danger: #f87171;
   --color-danger-bg: #450a0a;
+  --color-danger-hover: #ef4444; /* Danger knop hover dark */
   --color-info: #60a5fa;
   --color-info-bg: #172554;
 

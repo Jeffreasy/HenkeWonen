@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { Save , X} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { SubmitEventLike } from "../../lib/events";
 import type { PortalRoom } from "../../lib/portalTypes";
@@ -127,7 +127,7 @@ export function RoomEditForm({ room, onSave, onCancel }: RoomEditFormProps) {
         >
           Ruimte opslaan
         </Button>
-        <Button variant="secondary" onClick={onCancel}>
+        <Button variant="secondary" leftIcon={<X size={15} aria-hidden="true" />} onClick={onCancel}>
           Annuleren
         </Button>
       </div>

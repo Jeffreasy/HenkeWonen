@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { Save , X} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { SubmitEventLike } from "../../lib/events";
 import { formatStatusLabel } from "../../lib/i18n/statusLabels";
@@ -183,7 +183,7 @@ export function ServiceRuleForm({ rule, isSaving, onSave, onCancel }: ServiceRul
             Werkzaamheid opslaan
           </Button>
           {rule ? (
-            <Button variant="secondary" onClick={onCancel}>
+            <Button variant="secondary" leftIcon={<X size={15} aria-hidden="true" />} onClick={onCancel}>
               Annuleren
             </Button>
           ) : null}

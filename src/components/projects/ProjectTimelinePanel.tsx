@@ -1,3 +1,4 @@
+import { Archive, CheckCircle, FileText, Send, ShoppingCart } from "lucide-react";
 import type { PortalWorkflowEvent } from "../../lib/portalTypes";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
@@ -65,20 +66,45 @@ export function ProjectTimelinePanel({
         actions={
           canEdit ? (
             <div className="project-action-row">
-              <Button onClick={() => onProcessAction("quote_accepted")} size="sm" variant="secondary">
-                Akkoord
+              <Button
+                onClick={() => onProcessAction("quote_accepted")}
+                size="sm"
+                variant="secondary"
+                leftIcon={<CheckCircle size={14} aria-hidden="true" />}
+              >
+                Offerte akkoord
               </Button>
-              <Button onClick={() => onProcessAction("supplier_order_created")} size="sm" variant="secondary">
-                Bestellen
+              <Button
+                onClick={() => onProcessAction("supplier_order_created")}
+                size="sm"
+                variant="secondary"
+                leftIcon={<ShoppingCart size={14} aria-hidden="true" />}
+              >
+                Leverancier bestellen
               </Button>
-              <Button onClick={() => onProcessAction("invoice_created")} size="sm" variant="secondary">
-                Factuur
+              <Button
+                onClick={() => onProcessAction("invoice_created")}
+                size="sm"
+                variant="secondary"
+                leftIcon={<FileText size={14} aria-hidden="true" />}
+              >
+                Factuur aanmaken
               </Button>
-              <Button onClick={() => onProcessAction("bookkeeper_export_sent")} size="sm" variant="secondary">
-                Boekhouder
+              <Button
+                onClick={() => onProcessAction("bookkeeper_export_sent")}
+                size="sm"
+                variant="secondary"
+                leftIcon={<Send size={14} aria-hidden="true" />}
+              >
+                Export boekhouder
               </Button>
-              <Button onClick={() => onProcessAction("closed")} size="sm" variant="secondary">
-                Sluiten
+              <Button
+                onClick={() => onProcessAction("closed")}
+                size="sm"
+                variant="ghost"
+                leftIcon={<Archive size={14} aria-hidden="true" />}
+              >
+                Project afsluiten
               </Button>
             </div>
           ) : null

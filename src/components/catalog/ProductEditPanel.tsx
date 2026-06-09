@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { Save , X} from "lucide-react";
 import { useState } from "react";
 import { formatStatusLabel } from "../../lib/i18n/statusLabels";
 import { Button } from "../ui/Button";
@@ -167,7 +167,7 @@ export function ProductEditPanel({
           >
             Product opslaan
           </Button>
-          <Button variant="secondary" onClick={onCancel}>
+          <Button variant="secondary" leftIcon={<X size={15} aria-hidden="true" />} onClick={onCancel}>
             Annuleren
           </Button>
         </div>

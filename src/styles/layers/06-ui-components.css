@@ -1,4 +1,4 @@
-﻿.ui-button,
+.ui-button,
 .ui-icon-button {
   display: inline-flex;
   align-items: center;
@@ -26,7 +26,7 @@
 }
 
 .ui-button-sm {
-  min-height: 34px;
+  min-height: 38px; /* Touch-vriendelijk minimum (was 34px — te klein voor tablet/telefoon) */
   padding: 0 var(--space-3);
   font-size: var(--text-sm);
 }
@@ -65,7 +65,7 @@
 
 .ui-button-primary:not(:disabled):not([aria-disabled="true"]):hover,
 .ui-icon-button-primary:not(:disabled):not([aria-disabled="true"]):hover {
-  background: #68380e;
+  background: var(--color-accent-hover, #68380e);
 }
 
 .ui-button-secondary,
@@ -101,7 +101,7 @@
 
 .ui-button-danger:not(:disabled):not([aria-disabled="true"]):hover,
 .ui-icon-button-danger:not(:disabled):not([aria-disabled="true"]):hover {
-  background: #991b1b;
+  background: var(--color-danger-hover, #991b1b);
 }
 
 .ui-button-spinner,
@@ -462,7 +462,8 @@ select.ui-control {
 }
 
 .data-table tbody tr:hover {
-  background: rgba(244, 230, 207, 0.34);
+  /* Gebruik token i.p.v. hardcoded lichtbeige — zichtbaar in beide light/dark modes */
+  background: var(--surface-muted);
 }
 
 .data-table tbody tr:last-child td {
