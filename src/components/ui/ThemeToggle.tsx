@@ -3,11 +3,15 @@ import { Sun, Moon, Monitor } from "lucide-react";
 import { getTheme, applyTheme, type Theme } from "../../lib/theme";
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("system");
+  // Lazy initializer: leest direct localStorage zodat de eerste render altijd klopt.
+  // Zonder dit start de state altijd op "system" en moet je 2x klikken.
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "system";
+    return getTheme();
+  });
 
   useEffect(() => {
-    setTheme(getTheme());
-
+    // Synchroniseer bij externe wijzigingen (andere tab, systeem OS-thema)
     const handleThemeChange = () => {
       setTheme(getTheme());
     };
@@ -19,7 +23,7 @@ export function ThemeToggle() {
     };
 
     window.addEventListener("themechange", handleThemeChange);
-    
+
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     mediaQuery.addEventListener("change", handleSystemThemeChange);
 
