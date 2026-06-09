@@ -2,6 +2,7 @@
 import "../../styles/global.css";
 import FieldNavigation from "./FieldNavigation";
 import { ShellLoadingController } from "./ShellLoadingController";
+import { FieldFab } from "../field/FieldFab";
 import type { AppSession } from "../../lib/auth/session";
 
 type Props = {
@@ -43,6 +44,8 @@ const theme = Astro.cookies.get("theme")?.value || "light";
         </div>
       </main>
       <ShellLoadingController client:load />
+      <!-- Field FAB — contextgevoelig: lijstscherm vs. projectscherm -->
+      <FieldFab client:load session={session} pathname={pathname} />
     </div>
   </body>
 </html>

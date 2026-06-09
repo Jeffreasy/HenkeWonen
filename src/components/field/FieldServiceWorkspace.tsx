@@ -197,6 +197,19 @@ export default function FieldServiceWorkspace({
   const [error, setError] = useState<string | null>(null);
   const canCreateFieldLead = canEditDossiers(session.role);
 
+  // Detecteer ?open=nieuw URL-param (FAB-actie vanuit FieldFab)
+  useEffect(() => {
+    if (typeof window === "undefined" || !canCreateFieldLead) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("open") === "nieuw") {
+      setIsIntakeOpen(true);
+      // Verwijder param uit URL zonder pagina reload
+      const url = new URL(window.location.href);
+      url.searchParams.delete("open");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [canCreateFieldLead]);
+
   const loadWorkspace = useCallback(async () => {
     const client = createConvexHttpClient();
 
