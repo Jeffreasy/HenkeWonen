@@ -78,7 +78,8 @@
 .field-hero-panel h1,
 .field-visit-title h1 {
   margin: var(--space-2) 0 0;
-  color: #1d321d;
+  /* Gebruik token zodat dit correct werkt in dark mode */
+  color: var(--color-text);
   font-size: var(--text-3xl);
   line-height: var(--line-tight);
 }
@@ -937,3 +938,53 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Dark mode overrides — buitendienst
+   Hardcoded lichtmode-kleuren corrigeren voor dark theme
+   --------------------------------------------------------------------------- */
+html[data-theme="dark"] .field-next-action {
+  /* #166534 (donkergroen) is onleesbaar op donkere achtergrond */
+  color: var(--color-success);
+}
+
+html[data-theme="dark"] .field-action-card a {
+  /* Route-link: donkergroen → lichtgroen in dark mode */
+  color: var(--color-success);
+}
+
+html[data-theme="dark"] .field-quote-disclosure summary::after {
+  /* Expansie "+" / "-" indicator: donkergroen → lichtgroen */
+  color: var(--color-success);
+}
+
+html[data-theme="dark"] .field-quote-disclosure[open] summary {
+  /* Geopende summary: lichte achtergrond vervangen door donker token */
+  background: var(--color-surface-muted);
+}
+
+html[data-theme="dark"] .field-measure-tool.active,
+html[data-theme="dark"] .field-measure-tool:hover,
+html[data-theme="dark"] .field-measure-tool:focus-visible {
+  /* Actieve meetgereedschap-knop: gebruik de dark-mode tab tokens */
+  background: var(--field-tab-active-bg);
+  color: var(--field-tab-active-color);
+}
+
+html[data-theme="dark"] .field-page-tab:hover,
+html[data-theme="dark"] .field-page-tab:focus-visible,
+html[data-theme="dark"] .field-page-tab.active {
+  /* Actieve tab in dark mode */
+  background: var(--field-tab-active-bg);
+  color: var(--field-tab-active-color);
+}
+
+html[data-theme="dark"] .field-hero-panel,
+html[data-theme="dark"] .field-visit-header,
+html[data-theme="dark"] .field-work-card,
+html[data-theme="dark"] .field-section,
+html[data-theme="dark"] .field-intake-panel,
+html[data-theme="dark"] .field-measurement-section,
+html[data-theme="dark"] .field-quote-section {
+  /* Paneel-randen worden zichtbaarder in dark mode */
+  border-color: var(--color-border);
+}

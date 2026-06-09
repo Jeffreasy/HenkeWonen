@@ -237,7 +237,8 @@
   .field-quickbar-link:hover,
   .field-quickbar-link:focus-visible,
   .field-quickbar-link.active {
-    background: #dcfce7;
+    background: var(--field-tab-active-bg);
+    color: var(--field-tab-active-color);
   }
 
   .field-hero-panel,
