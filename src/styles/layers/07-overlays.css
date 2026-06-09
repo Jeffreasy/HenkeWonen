@@ -205,6 +205,19 @@
 
 .skeleton-stat-row-4 {
   grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+
+/* Skeleton rows schalen mee met het echte content-grid */
+@media (max-width: 980px) {
+  .skeleton-stat-row { grid-template-columns: repeat(2, 1fr); }
+  .skeleton-stat-row-4 { grid-template-columns: repeat(2, 1fr); }
+  .skeleton-two-col { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .skeleton-stat-row,
+  .skeleton-stat-row-4 { grid-template-columns: 1fr; }
 }
 
 .skeleton-stat-card {
@@ -394,6 +407,16 @@
   pointer-events: none;
 }
 
+/* Op mobiel: boven de mobile quickbar (~67px) zodat toasts zichtbaar zijn */
+@media (max-width: 980px) {
+  .toast-container {
+    bottom: 96px;
+    right: var(--space-3);
+    left: var(--space-3);
+    width: auto;
+  }
+}
+
 .toast {
   display: flex;
   align-items: flex-start;
@@ -482,11 +505,11 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  margin-top: 1px;
+  width: 32px;   /* Was 20px — vergroot naar touch-aanvaardbaar formaat */
+  height: 32px;
+  margin: -6px -4px -6px 0; /* Negatieve marges compenseren visuele grootte */
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: currentColor;
   opacity: 0.6;
@@ -593,7 +616,8 @@
     0 3px 10px rgba(0, 0, 0, 0.1);
   outline: 3px solid rgba(154, 95, 27, 0.34);
   outline-offset: 2px;
-  transform: translateY(-1px);
+  /* Geen transform op focus-visible — voorkomt onnodige layout-shift
+     bij toetsenbordnavigatie en is niet zichtbaar op touch */
 }
 
 /* Icoon pill per actie */
@@ -772,6 +796,20 @@ html[data-theme="dark"] .quick-action-fab:hover {
     padding: 0;
     justify-content: center;
     gap: 0;
+  }
+}
+
+/* Klein mobiel (480px): menu overflow bescherming */
+@media (max-width: 480px) {
+  .quick-action-menu {
+    max-height: calc(100dvh - 140px);
+    overflow-y: auto;
+  }
+
+  .quick-action-item {
+    min-height: 48px;
+    min-width: 0;
+    width: calc(100vw - 40px);
   }
 }
 

@@ -48,8 +48,8 @@
 }
 
 .ui-icon-button-sm {
-  width: 34px;
-  height: 34px;
+  width: 38px;  /* Was 34px — vergroot naar touch-veilig minimum */
+  height: 38px; /* Lijnt uit met ui-button-sm min-height: 38px */
 }
 
 .ui-icon-button-md {
@@ -268,11 +268,18 @@
 .field select,
 select.ui-control {
   appearance: none;
+  /* Light mode: warm donkergrijs chevron */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236d655b' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-position: right 14px center;
   background-repeat: no-repeat;
   background-size: 16px 16px;
   padding-right: 42px;
+}
+
+/* Dark mode: chevron in lichtere sandkleur zodat hij zichtbaar blijft */
+html[data-theme="dark"] .field select,
+html[data-theme="dark"] select.ui-control {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23ad9e8d' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 .ui-control:focus-visible {
@@ -643,7 +650,7 @@ select.ui-control {
   display: grid;
   gap: var(--space-3);
   width: min(100%, 540px);
-  max-height: calc(100vh - var(--space-6));
+  max-height: calc(100dvh - var(--space-6)); /* dvh = dynamic viewport height, correct op mobiel */
   max-width: 100%;
   min-width: 0;
   overflow: auto;
@@ -666,3 +673,28 @@ select.ui-control {
   gap: var(--space-3);
 }
 
+/* Bottom-sheet stijl op kleine smartphones (480px) */
+@media (max-width: 480px) {
+  .confirm-dialog-backdrop {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .confirm-dialog {
+    width: 100%;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
+    max-height: 85dvh;
+  }
+
+  /* Annuleer + bevestigen knoppen volledige breedte op klein scherm */
+  .confirm-dialog-actions {
+    flex-direction: column;
+  }
+
+  .confirm-dialog-actions .ui-button {
+    width: 100%;
+  }
+}
