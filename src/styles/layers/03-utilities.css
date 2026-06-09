@@ -310,3 +310,27 @@
   font-weight: 700;
 }
 
+/* ---------------------------------------------------------------------------
+   Spacing utilities — vervangt inline style={{ marginTop: 16 }} patronen
+   --------------------------------------------------------------------------- */
+.mt-1 { margin-top: var(--space-1); }
+.mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); } /* 16px — meest voorkomend */
+.mt-5 { margin-top: var(--space-5); }
+.mt-6 { margin-top: var(--space-6); }
+
+.mb-1 { margin-bottom: var(--space-1); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+
+/* ---------------------------------------------------------------------------
+   Text-color utilities — vervangt inline style={{ color: "var(--...)" }}
+   --------------------------------------------------------------------------- */
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger  { color: var(--danger); }
+.text-info    { color: var(--info); }
+.text-accent  { color: var(--accent); }
+/* .text-muted al aanwezig via .muted alias */

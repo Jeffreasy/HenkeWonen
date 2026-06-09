@@ -60,7 +60,7 @@
 
 .breadcrumb-item {
   color: var(--ink);
-  font-weight: 950;
+  font-weight: 900; /* Was 950 — buiten CSS-spec, browsers ronden af naar 900 */
 }
 
 /* User Menu Dropdown */
@@ -82,7 +82,11 @@
   padding: 4px var(--space-3) 4px var(--space-2);
   font-size: var(--text-sm);
   font-weight: 750;
-  transition: all 180ms ease;
+  /* Specifieke properties i.p.v. 'all' — voorkomt onnodige repaints */
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease;
   user-select: none;
 }
 
@@ -204,21 +208,25 @@
   justify-content: center;
   width: 100%;
   min-height: 38px;
-  border: 1px solid var(--danger) !important;
-  border-radius: var(--radius-md) !important;
-  background: transparent !important;
-  color: var(--danger) !important;
-  font-size: var(--text-sm) !important;
-  font-weight: 800 !important;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--danger);
+  font-size: var(--text-sm);
+  font-weight: 800;
   cursor: pointer;
-  transition: all 180ms ease;
+  /* Specifieke properties i.p.v. 'all' — geen !important nodig */
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
 }
 
 .logout-button-dropdown:hover,
 .logout-button-dropdown:focus-visible {
-  background: var(--danger-bg) !important;
-  border-color: var(--danger) !important;
-  color: var(--danger) !important;
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 @media (max-width: 1150px) {

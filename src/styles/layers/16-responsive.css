@@ -140,7 +140,9 @@
   .portal-main {
     margin-left: 0;
     padding: 18px 18px 92px;
-    overflow-x: hidden;
+    /* clip i.p.v. hidden: blokkeert horizontale scroll zonder nieuwe scroll-context
+       te creëren — position: sticky van descendants blijft werken */
+    overflow-x: clip;
   }
 
   .portal-content {

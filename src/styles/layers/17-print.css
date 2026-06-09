@@ -1,4 +1,4 @@
-﻿.quote-print-root {
+.quote-print-root {
   display: none;
 }
 
@@ -52,6 +52,8 @@
     color: #111 !important;
     gap: 12pt;
     padding: 0;
+    orphans: 3; /* Minimaal 3 regels onderaan pagina voor typografische kwaliteit */
+    widows: 3;  /* Minimaal 3 regels bovenaan volgende pagina */
   }
 
   .quote-document-preview-header,
