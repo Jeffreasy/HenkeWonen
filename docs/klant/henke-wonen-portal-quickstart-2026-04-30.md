@@ -1,6 +1,7 @@
 # Henke Wonen portal - quickstart
 
 Datum: 30 april 2026  
+Laatst gecontroleerd: 10 juni 2026<br>
 Doel: snel starten met de dagelijkse basisflow
 
 ## Dagelijkse basisflow
@@ -105,7 +106,7 @@ Controleer in de offerte:
 
 Pas teksten aan als deze offerte afwijkt van de standaard.
 
-### 10. Offerte afronden
+### 10. Offerte afronden en opvolgen
 
 Controleer:
 
@@ -115,7 +116,7 @@ Controleer:
 - voorwaarden
 - betalingsafspraken
 
-Daarna kan de offerte verder gebruikt worden in het klantproces.
+Zet de offerte daarna vanuit de offertebuilder op **Verzonden** of **Geaccepteerd** wanneer dat echt aan de orde is. De projectactie **Offerte akkoord** werkt alleen als er al een echte offerte bij het project bestaat. Een factuur kan alleen worden aangemaakt vanuit of op basis van een geaccepteerde offerte.
 
 ## Snel naar opvolging
 
@@ -129,14 +130,14 @@ Ga naar **Leveranciers**.
 
 ### Productie-import controleren
 
-Ga naar **Dashboard** of **Importprofielen**.
+Ga naar **Start/Dashboard** of **Btw controle**.
 
 - Staat productie-import op **Geblokkeerd**?
 - Los dan eerst de open btw-mappings op.
 
 ### Dubbele EAN controleren
 
-Ga naar **Catalogus -> Datakwaliteit**.
+Ga naar **Productcontrole**.
 
 - Bekijk open dubbele EAN-waarschuwingen.
 - Kies een reviewbeslissing.
@@ -148,6 +149,7 @@ Producten worden nooit automatisch samengevoegd.
 
 - Inmeting = hoeveelheden en omschrijvingen.
 - Offerte = product, prijs, btw en totalen.
+- Akkoord/factuur = alleen na een echte offerte.
 - Import = pas verwerken na controle.
 - Btw-mapping = verplicht voor productie-import.
 - Dubbele EAN = waarschuwing, geen automatische merge.

@@ -1,13 +1,13 @@
 # Klantdocumentatie Henke Wonen portal
 
-Deze map bevat de documenten die bedoeld zijn voor Henke Wonen-medewerkers in winkel en backoffice.
+Deze map bevat de documenten die bedoeld zijn voor Henke Wonen-medewerkers in winkel, backoffice, buitendienst en beheer.
 
 ## Documenten
 
 | Document | Gebruik |
 | --- | --- |
 | [Workflowhandleiding](./henke-wonen-portal-workflow-handleiding-2026-04-30.md) | Volledige uitleg van de dagelijkse portalworkflow |
-| [Quickstart](./henke-wonen-portal-quickstart-2026-04-30.md) | Korte startgids voor de basisflow klant -> project -> inmeting -> offerte |
+| [Quickstart](./henke-wonen-portal-quickstart-2026-04-30.md) | Korte startgids voor de basisflow klant -> project -> inmeting -> offerte -> akkoord/factuur |
 | [Pilot Handleiding](./henke-wonen-portal-pilot-handleiding-2026-06-10.md) | Handleiding en checklists specifiek voor de pilot-start en buitendienst |
 | [Vrijgave- & Datakwaliteitgids](./henke-wonen-portal-vrijgave-en-datakwaliteit-2026-06-10.md) | Toelichting op de btw-mappings, dubbele EAN-barcodes en omgevingsstatus |
 
@@ -16,6 +16,7 @@ Deze map bevat de documenten die bedoeld zijn voor Henke Wonen-medewerkers in wi
 - De portal helpt met overzicht, klanten, projecten, inmetingen, offertes, catalogus en opvolging.
 - Inmetingen bereiden hoeveelheden en omschrijvingen voor.
 - Product, prijs en btw worden later in de offerte gecontroleerd.
+- Offerte akkoord en factuur aanmaken vereisen een echte offerte in de portal.
 - Productie-import blijft geblokkeerd zolang verplichte btw-mappings openstaan.
 - Dubbele EAN-waarschuwingen worden nooit automatisch samengevoegd.
 

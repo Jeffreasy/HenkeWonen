@@ -1,6 +1,7 @@
 # Henke Wonen portal - workflowhandleiding
 
 Datum: 30 april 2026  
+Laatst gecontroleerd: 10 juni 2026<br>
 Doelgroep: Henke Wonen medewerkers  
 Status: gebaseerd op de huidige portalfunctionaliteit
 
@@ -20,21 +21,25 @@ Belangrijk:
 - Product, prijs en btw controleer je later in de offerte.
 - Catalogusimport wordt geblokkeerd zolang verplichte btw-mappings ontbreken.
 - Dubbele EAN-waarschuwingen worden nooit automatisch samengevoegd.
-- Factuur/PDF/boekhouding zijn nog geen volledige uitgewerkte flows in de portal.
+- Facturen en een printbare klantversie van offertes zijn beschikbaar. Boekhoudexport is op dit moment een dossiermoment; er is geen automatische koppeling met een boekhoudpakket.
 
 ## 2. Hoofdnavigatie
 
 De portal heeft deze hoofdonderdelen:
 
-- **Dashboard**: overzicht, pipeline en productiegereedheid.
+- **Dashboard / Start**: overzicht, pipeline, facturenstrip en productiegereedheid.
+- **Dossiers**: zoeken over klanten, projecten en offertes.
 - **Klanten**: klanten zoeken, aanmaken en klantdossiers openen.
 - **Projecten**: projecten aanmaken, volgen en inmetingen beheren.
 - **Offertes**: offertes maken, offerteposten beheren en totalen controleren.
+- **Facturen**: facturen bekijken en opvolgen.
 - **Catalogus**: producten zoeken en prijsinformatie raadplegen.
+- **Buitendienst**: mobiele werkplek voor vandaag, inmeten en conceptoffertes.
 - **Leveranciers**: leveranciers en productlijststatussen opvolgen.
-- **Imports**: importbatches en importcontrole bekijken.
-- **Importprofielen**: btw-mappings per prijskolom beoordelen.
-- **Instellingen**: werkzaamheden, categorieen en offertesjablonen.
+- **Prijslijsten**: importbatches en importcontrole bekijken.
+- **Btw controle**: btw-mappings per prijskolom beoordelen.
+- **Productcontrole**: datakwaliteitsissues zoals dubbele EAN beoordelen.
+- **Instellingen**: werkzaamheden, productgroepen en offerteteksten.
 
 ## 3. Dashboard
 
@@ -128,12 +133,12 @@ Gebruik zoeken en statusfilter om projecten terug te vinden.
 Projecten kunnen onder andere deze statussen hebben:
 
 - Lead
+- Inmeting gepland
 - Offerteconcept
 - Offerte verzonden
 - Offerte akkoord
-- Inmeting gepland
-- Uitvoering gepland
 - Bestellen
+- Uitvoering gepland
 - In uitvoering
 - Gefactureerd
 - Betaald
@@ -158,12 +163,12 @@ Bij een ruimte kun je oppervlakte en omtrek invullen. Deze projectruimte kan lat
 
 Projectdetail bevat snelle acties voor werkprocesmomenten, zoals:
 
-- akkoord
+- akkoord op offerte
 - bestelling aangemaakt
 - factuur aangemaakt
 - export naar boekhouder
 
-Let op: dit zijn dossiermomenten. Een volledige factuur- of boekhoudflow is nog niet gebouwd.
+Let op: **akkoord op offerte** kan alleen als er al een echte offerte bij het project bestaat. **Factuur aangemaakt** kan alleen als er een geaccepteerde offerte is. Export naar boekhouder is een dossiermoment; er is geen automatische boekhoudkoppeling.
 
 ## 6. Inmeten
 
@@ -397,9 +402,15 @@ De totalen tonen:
 
 Controleer altijd of de regels, prijzen, btw en kortingen kloppen voordat je een offerte verstuurt.
 
-## 8. Offertesjablonen
+### Offertestatus en factuur
 
-Ga naar **Instellingen -> Offertesjablonen** om het standaard offertesjabloon te bekijken.
+Vanuit de offertebuilder kun je de status aanpassen naar bijvoorbeeld **Verzonden** of **Geaccepteerd**. Als een offerte wordt geaccepteerd, legt de portal dit ook vast op het gekoppelde project. Daarna kan er een factuur worden aangemaakt op basis van die geaccepteerde offerte.
+
+De projectknop **Offerte akkoord** is dus geen vervanging voor een offerte. Zonder offerte wordt deze actie geblokkeerd.
+
+## 8. Offerteteksten
+
+Ga naar **Instellingen -> Offerteteksten** om het standaard offertesjabloon te bekijken.
 
 Het belangrijkste sjabloon is:
 
@@ -480,9 +491,9 @@ In het overzicht kun je per leverancier de productlijststatus aanpassen.
 
 De pagina maakt duidelijk welke leveranciers opvolging nodig hebben.
 
-## 11. Imports
+## 11. Prijslijsten
 
-Imports zijn bedoeld om product- en prijslijstdata veilig te controleren voordat data definitief verwerkt wordt.
+Prijslijsten zijn bedoeld om product- en importdata veilig te controleren voordat data definitief verwerkt wordt.
 
 Je ziet:
 
@@ -519,7 +530,7 @@ De import blijft geblokkeerd bij:
 - dubbele bronsleutels
 - onbekende btw-modus zonder bewuste uitzondering
 
-## 12. Importprofielen en btw-mapping
+## 12. Btw controle en importprofielen
 
 Een importprofiel beschrijft hoe een bepaald leveranciersbestand gelezen moet worden.
 
@@ -536,7 +547,7 @@ Waarom dit belangrijk is:
 
 ### Open mappings oplossen
 
-1. Ga naar **Importprofielen**.
+1. Ga naar **Btw controle**.
 2. Filter op **Te beoordelen**.
 3. Bekijk bronkolom, prijstype, eenheid, voorstel en reden.
 4. Kies **Inclusief btw** of **Exclusief btw**.
@@ -548,7 +559,7 @@ Gebruik dit alleen als bewuste uitzondering. Dit moet zichtbaar blijven als risi
 
 ## 13. Dubbele EAN-waarschuwingen
 
-Ga naar **Catalogus -> Datakwaliteit** voor dubbele EAN-waarschuwingen.
+Ga naar **Productcontrole** voor dubbele EAN-waarschuwingen.
 
 Belangrijk:
 
@@ -576,10 +587,10 @@ Deze controle helpt de cataloguskwaliteit, maar blokkeert de productie-import ni
 Onder **Instellingen** staan:
 
 - **Werkzaamheden**: overzicht van werkzaamheden en prijzen excl. btw.
-- **Categorieen**: overzicht van cataloguscategorieen.
-- **Offertesjablonen**: sjabloonregels, voorwaarden en betalingsafspraken.
+- **Productgroepen**: overzicht van cataloguscategorieen.
+- **Offerteteksten**: sjabloonregels, voorwaarden en betalingsafspraken.
 
-Werkzaamheden en categorieen zijn in de huidige UI vooral raadpleegschermen. Offertesjablonen kunnen deels beheerd worden via voorwaarden en betalingsafspraken.
+Werkzaamheden en productgroepen zijn in de huidige UI vooral raadpleegschermen. Offerteteksten kunnen deels beheerd worden via voorwaarden en betalingsafspraken.
 
 ## 15. Veelvoorkomende situaties
 
@@ -626,7 +637,7 @@ Werkzaamheden en categorieen zijn in de huidige UI vooral raadpleegschermen. Off
 
 ### Productie-import is geblokkeerd door btw-mapping
 
-1. Ga naar **Importprofielen**.
+1. Ga naar **Btw controle**.
 2. Filter op **Te beoordelen**.
 3. Beoordeel de prijskolommen.
 4. Zet iedere kolom op inclusief of exclusief btw.
@@ -634,7 +645,7 @@ Werkzaamheden en categorieen zijn in de huidige UI vooral raadpleegschermen. Off
 
 ### Dubbele EAN-waarschuwing staat open
 
-1. Ga naar **Catalogus -> Datakwaliteit**.
+1. Ga naar **Productcontrole**.
 2. Open de waarschuwing.
 3. Vergelijk producten.
 4. Kies een reviewbeslissing.
@@ -650,7 +661,7 @@ Voor een specifieke offerte:
 
 Voor nieuwe offertes:
 
-1. Ga naar **Instellingen -> Offertesjablonen**.
+1. Ga naar **Instellingen -> Offerteteksten**.
 2. Pas voorwaarden of betalingsafspraken aan.
 3. Sla op.
 
@@ -662,9 +673,10 @@ Gebruik deze controles voordat je een offerte of import afrondt:
 - Controleer altijd product, prijs en btw.
 - Gebruik interne notities voor bijzonderheden.
 - Zet meetregels pas klaar voor offerte na controle.
-- Verwerk imports pas na controle van waarschuwingen en btw-mappings.
+- Verwerk prijslijsten pas na controle van waarschuwingen en btw-mappings.
 - Voeg producten met dezelfde EAN niet automatisch samen.
 - Controleer voorwaarden en betalingsafspraken per offerte.
+- Zet een project pas op offerte akkoord als de offerte zelf bestaat en door de klant is geaccepteerd.
 
 ## 17. Wat doet het systeem bewust niet automatisch?
 
@@ -676,7 +688,8 @@ De portal doet bewust niet automatisch:
 - producten samenvoegen op EAN
 - bestaande offertes aanpassen als een sjabloon wijzigt
 - productie-import verwerken als btw-mappings openstaan
-- volledige factuur/PDF/boekhoudflow uitvoeren
+- automatisch een factuur maken zonder geaccepteerde offerte
+- automatisch exporteren naar een boekhoudpakket
 
 Dit is bedoeld om zakelijke controle bij Henke Wonen te houden.
 

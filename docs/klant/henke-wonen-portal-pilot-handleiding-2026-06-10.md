@@ -8,10 +8,10 @@ Status: Definitieve pilot-documentatie
 
 ## 1. Inleiding & Doel van de Pilot
 
-Welkom bij de pilotfase van de **Henke Wonen Portal**. Deze portal is ontworpen om de dagelijkse workflow van klantcontact tot uiteindelijke offerte en facturatie te stroomlijnen. Het systeem koppelt backoffice-taken (zoals productimport en offertesjablonen) naadloos aan buitendienst-taken (zoals inmetingen op locatie).
+Welkom bij de pilotfase van de **Henke Wonen Portal**. Deze portal is ontworpen om de dagelijkse workflow van klantcontact tot uiteindelijke offerte en facturatie te stroomlijnen. Het systeem koppelt backoffice-taken (zoals prijslijsten, btw-controle en offerteteksten) naadloos aan buitendienst-taken (zoals inmetingen op locatie).
 
 Tijdens deze pilot testen we de volledige keten:
-$$\text{Klant} \rightarrow \text{Project} \rightarrow \text{Inmeting} \rightarrow \text{Conceptofferte} \rightarrow \text{Definitieve Offerte}$$
+$$\text{Klant} \rightarrow \text{Project} \rightarrow \text{Inmeting} \rightarrow \text{Conceptofferte} \rightarrow \text{Klantversie} \rightarrow \text{Akkoord} \rightarrow \text{Factuur}$$
 
 ---
 
@@ -21,7 +21,7 @@ De portal is opgesplitst in twee werkplekken die elk zijn geoptimaliseerd voor h
 
 1. **Winkel & Backoffice (Desktop)**:  
    * **URL**: `/portal` (of direct na inloggen).
-   * **Doel**: Volledig beheer van klanten, projecten, catalogus, importprofielen en offertesjablonen.
+   * **Doel**: Volledig beheer van klanten, projecten, catalogus, prijslijsten, btw-controle en offerteteksten.
 2. **Buitendienst Werkplek (Mobiel & Tablet)**:  
    * **URL**: `/portal/buitendienst/vandaag`
    * **Doel**: Geoptimaliseerd voor gebruik onderweg of bij de klant thuis. Geen afleiding door complexe catalogus- of beheersinstellingen. Zorgt voor snelle invoer van metingen, routebepaling en direct overleg met de klant.
@@ -50,7 +50,9 @@ Rechtsonder in de hoek van de desktop-portal bevindt zich de paarse **Actie-knop
 
 ### 3.4 Projecten & Statusworkflow
 Een project bundelt alle documenten en acties van een specifieke klantvraag (bijv. "PVC benedenverdieping"). Het doorloopt de volgende statussen via de statusbalk bovenin:
-`Lead` $\rightarrow$ `Offerteconcept` $\rightarrow$ `Offerte verzonden` $\rightarrow$ `Offerte akkoord` $\rightarrow$ `Inmeting gepland` $\rightarrow$ `Uitvoering gepland` $\rightarrow$ `Bestellen` $\rightarrow$ `In uitvoering` $\rightarrow$ `Gefactureerd` $\rightarrow$ `Betaald` $\rightarrow$ `Gesloten`.
+`Lead` $\rightarrow$ `Inmeting gepland` $\rightarrow$ `Offerteconcept` $\rightarrow$ `Offerte verzonden` $\rightarrow$ `Offerte akkoord` $\rightarrow$ `Bestellen` $\rightarrow$ `Uitvoering gepland` / `In uitvoering` $\rightarrow$ `Gefactureerd` $\rightarrow$ `Betaald` $\rightarrow$ `Gesloten`.
+
+Belangrijk: **Offerte akkoord** is geen losse tekstnotitie. De portal verwerkt deze stap alleen als er al een echte offerte bij het project bestaat. **Factuur aanmaken** kan alleen als die offerte geaccepteerd is.
 
 ---
 
@@ -62,7 +64,7 @@ De mobiele weergave is ontworpen om snel en zonder ruis op een telefoon of table
 In de buitendienst wissel je snel tussen drie weergaven:
 * **Vandaag**: Je geplande bezoeken van vandaag en eventuele directe opvolgdeadlines.
 * **Inmeten**: Alle lopende inmeetdossiers waarvoor metingen moeten worden ingevoerd.
-* **Conceptoffertes**: Dossiers waarvoor de metingen zijn afgerond en een conceptofferte klaarstaat om met de klant te bespreken.
+* **Conceptoffertes**: Dossiers waarin meetregels of een conceptofferte klaarstaan om om te zetten naar een nette klantversie.
 
 ### 4.2 De Buitendienst FAB (Snelle Acties)
 Op de mobiele weergave past de FAB zich aan je locatie in de app aan:
@@ -88,11 +90,12 @@ Binnen de inmeetsectie voeg je ruimtes toe (woonkamer, gang, trap, etc.). Gebrui
 Zodra een meetregel is gecontroleerd en klopt, klik je op **Klaarzetten voor offerte**. De status van de regel verandert van *Concept* naar *Klaar voor offerte*. De medewerker in de winkel of jijzelf kunt deze regels vervolgens in de offerte laden.
 
 ### 4.5 Conceptoffertes in het Veld
-Als er minimaal één meetregel klaarstaat, kun je via de knop **Conceptofferte maken** direct een offerte-ontwerp genereren. 
-1. Klik op **Uit inmeting laden**.
+Gebruik **Conceptofferte maken** om een echte offerte bij het project aan te maken. Daarna kun je meetregels die op **Klaar voor offerte** staan overnemen.
+1. Klik in de offerte op **Uit inmeting laden**.
 2. Selecteer de meetregels.
 3. Bevestig de invoer. De meetregels worden omgezet naar offerteposten.
 4. **PRIJS- EN BTW-CONTROLE**: Omdat meetregels geen prijzen bevatten, moet je nu per regel het juiste product koppelen, de verkoopprijs controleren/invoeren en het btw-percentage toewijzen.
+5. Pas de offertestatus pas aan naar **Geaccepteerd** nadat de klant akkoord heeft gegeven. Pas daarna kan er een factuur worden aangemaakt.
 
 ---
 
@@ -103,12 +106,12 @@ Om fouten in offertes en bestellingen te voorkomen, kent de portal een aantal st
 ### 5.1 Btw-mapping (Harde blokkade)
 Wanneer een leverancier een nieuwe prijslijst aanlevert, is de btw-status van sommige kolommen soms onbekend (bijv. staat er "prijs" zonder vermelding incl./excl. btw).
 * **Blokkade**: De portal blokkeert de productie-import van de catalogus zolang er openstaande btw-mappings zijn.
-* **Oplossing**: Ga in de backoffice naar **Importprofielen** $\rightarrow$ **Te beoordelen** en specificeer per kolom handmatig of de prijzen inclusief of exclusief btw zijn. Zodra alle mappings op `READY` staan, wordt de import vrijgegeven.
+* **Oplossing**: Ga in de backoffice naar **Btw controle** $\rightarrow$ **Te beoordelen** en specificeer per kolom handmatig of de prijzen inclusief of exclusief btw zijn. Zodra alle mappings op `READY` staan, wordt de import vrijgegeven.
 
 ### 5.2 Dubbele EAN-nummers (Waarschuwing)
 Soms gebruiken leveranciers hetzelfde EAN-nummer voor verschillende varianten of producten. 
 * **Regel**: De portal voegt producten met hetzelfde EAN-nummer **nooit** automatisch samen om dataverlies te voorkomen.
-* **Beoordeling**: Onder **Catalogus $\rightarrow$ Datakwaliteit** staan alle openstaande EAN-waarschuwingen. Je kunt hier handmatig bepalen of producten gescheiden moeten blijven, of dat er sprake is van een bronfout.
+* **Beoordeling**: Onder **Productcontrole** staan alle openstaande EAN-waarschuwingen. Je kunt hier handmatig bepalen of producten gescheiden moeten blijven, of dat er sprake is van een bronfout.
 
 ### 5.3 PVC-Click Uitsluiting & Selectieve Verberging
 * **Automatische Uitsluiting**: Alle producten die onder de categorie of het type `pvc-click` vallen worden tijdens import genegeerd (`ignored`) en niet getoond.
@@ -128,8 +131,8 @@ Voorafgaand aan de officiële start van de pilot is het wenselijk om alle testda
 
 ### Wat wordt bewaard?
 * De volledige productcatalogus (leveranciers, merken, producten en prijzen).
-* Instellingen (categorieën, standaardtarieven/werkzaamheden en offertesjablonen).
-* Importprofielen en btw-mappings.
+* Instellingen (productgroepen, standaardtarieven/werkzaamheden en offerteteksten).
+* Btw controle en importprofielen.
 
 ### Wat wordt verwijderd?
 * Alle klanten (`customers`) en contactmomenten (`customerContacts`).
