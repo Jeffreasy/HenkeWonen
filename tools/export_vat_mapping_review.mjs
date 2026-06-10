@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
+import { withToolActor } from "./authz_actor.mjs";
 import {
   loadCatalogToolEnv,
   optionValue,
@@ -277,8 +278,14 @@ function buildHumanDecisionMarkdown(rows) {
 
 const convexUrl = toolEnv.convexUrl;
 const client = new ConvexHttpClient(convexUrl);
-const review = await client.query(api.catalog.review.vatMappingReview, { tenantSlug });
-const readiness = await client.query(api.catalog.review.productionReadiness, { tenantSlug });
+const review = await client.query(
+  api.catalog.review.vatMappingReview,
+  withToolActor(tenantSlug, { tenantSlug })
+);
+const readiness = await client.query(
+  api.catalog.review.productionReadiness,
+  withToolActor(tenantSlug, { tenantSlug })
+);
 const rows = enrichRows(review.rows);
 const currentState = {
   tenantSlug,

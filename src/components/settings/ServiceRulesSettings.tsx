@@ -29,7 +29,7 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
 
   useEffect(() => {
     let isActive = true;
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -81,7 +81,7 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
@@ -116,7 +116,7 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
     }
 
     const { rule, nextStatus } = pendingRuleStatus;
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");

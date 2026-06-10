@@ -1,6 +1,13 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { mutationActorValidator, requireMutationRole, requireMutationRoleForTenantId } from "../authz";
+import {
+  mutationActorValidator,
+  readActorValidator,
+  requireMutationRole,
+  requireMutationRoleForTenantId,
+  requireQueryRole,
+  requireQueryRoleForTenantId
+} from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   displayProductName,
@@ -123,10 +130,13 @@ const pricePriority = [
 export const listProducts = query({
   args: {
     tenantId: v.id("tenants"),
+    actor: readActorValidator,
     status: v.optional(productStatus),
     categoryId: v.optional(v.id("categories"))
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
+
     if (args.categoryId) {
       return await ctx.db
         .query("products")
@@ -160,17 +170,16 @@ export const listProducts = query({
 
 export const getProductCount = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await ctx.db
-      .query("tenants")
-      .withIndex("by_slug", (q) => q.eq("slug", args.tenantSlug))
-      .first();
-
-    if (!tenant) {
-      return 0;
-    }
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
 
     let count = 0;
     let scanned = 0;
@@ -295,17 +304,16 @@ function productMatchesPortalFilters({
 export const listCategoryStats = query({
   args: {
     tenantSlug: v.string(),
+    actor: readActorValidator,
     status: v.optional(productStatus)
   },
   handler: async (ctx, args) => {
-    const tenant = await ctx.db
-      .query("tenants")
-      .withIndex("by_slug", (q) => q.eq("slug", args.tenantSlug))
-      .first();
-
-    if (!tenant) {
-      return { categories: [] };
-    }
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
 
     const categories = await ctx.db
       .query("categories")
@@ -352,6 +360,7 @@ export const listCategoryStats = query({
 export const listProductsForPortal = query({
   args: {
     tenantSlug: v.string(),
+    actor: readActorValidator,
     search: v.optional(v.string()),
     category: v.optional(v.string()),
     status: v.optional(productStatus),
@@ -360,21 +369,12 @@ export const listProductsForPortal = query({
     cursor: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    const tenant = await ctx.db
-      .query("tenants")
-      .withIndex("by_slug", (q) => q.eq("slug", args.tenantSlug))
-      .first();
-
-    if (!tenant) {
-      return {
-        items: [],
-        total: 0,
-        limit: args.limit ?? 300,
-        categories: [],
-        isDone: true,
-        continueCursor: ""
-      };
-    }
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
 
     // Categorieën en leveranciers zijn kleine tabellen — altijd veilig om te collecten
     const [categories, suppliers] = await Promise.all([
@@ -580,9 +580,12 @@ export const updateProductForPortal = mutation({
 export const listCollections = query({
   args: {
     tenantId: v.id("tenants"),
+    actor: readActorValidator,
     supplierId: v.optional(v.id("suppliers"))
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
+
     if (args.supplierId) {
       return await ctx.db
         .query("productCollections")

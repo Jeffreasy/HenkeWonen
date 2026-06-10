@@ -67,10 +67,57 @@ function allConvexWriteBlocks() {
   return blocks;
 }
 
+function allConvexQueryBlocks() {
+  const convexDir = path.join(root, "convex");
+  const blocks: Array<{ file: string, name: string, block: string }> = [];
+
+  function walk(dir: string) {
+    const list = fs.readdirSync(dir);
+    for (const file of list) {
+      const fullPath = path.join(dir, file);
+      const stat = fs.statSync(fullPath);
+      if (stat.isDirectory()) {
+        if (file !== "_generated" && !file.startsWith(".")) {
+          walk(fullPath);
+        }
+      } else if (file.endsWith(".ts") && !file.startsWith("_")) {
+        const relativePath = path.relative(root, fullPath).replace(/\\/g, "/");
+        const source = fs.readFileSync(fullPath, "utf8");
+        const exportPattern = /export const (\w+) = query\(\{/g;
+        let match;
+
+        while ((match = exportPattern.exec(source))) {
+          const name = match[1];
+          const start = match.index;
+          const end = source.indexOf("\n});", start);
+          const block = end === -1 ? source.slice(start) : source.slice(start, end + 4);
+
+          blocks.push({
+            file: relativePath,
+            name,
+            block
+          });
+        }
+      }
+    }
+  }
+
+  walk(convexDir);
+  return blocks;
+}
+
 describe("Workflow Mutation Guardrails & Security Policies", () => {
   const writeBlocks = allConvexWriteBlocks();
+  const queryBlocks = allConvexQueryBlocks();
   const deleteBlocks = writeBlocks.filter(({ block }) => block.includes("ctx.db.delete("));
   const publicMutations = writeBlocks.filter(({ type }) => type === "mutation");
+
+  it("should enforce actor authorization on all public queries", () => {
+    for (const { block } of queryBlocks) {
+      expect(block).toContain("actor: readActorValidator");
+      expect(block).toMatch(/requireQueryRole(?:ForTenantId)?\(/);
+    }
+  });
 
   it("should enforce authentication or explicit tooling gates on all public mutations", () => {
     for (const { block } of publicMutations) {
@@ -173,6 +220,17 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(catalogStats).toContain("summaryOnly: v.optional(v.boolean())");
     expect(catalogStats).toContain('source: "summary_only"');
     expect(catalogStats).toContain('source: "catalog_documents"');
+  });
+
+  it("should use slug-scoped invoice action mutations for portal invoices", () => {
+    const updateInvoiceStatus = exportedMutationBlock("convex/facturen/core.ts", "updateInvoiceStatus");
+    const markInvoicePaid = exportedMutationBlock("convex/facturen/core.ts", "markInvoicePaid");
+    const invoiceDetail = read("src/components/invoices/InvoiceDetail.tsx");
+
+    expect(updateInvoiceStatus).toContain("tenantSlug: v.string()");
+    expect(markInvoicePaid).toContain("tenantSlug: v.string()");
+    expect(invoiceDetail).toContain("tenantSlug: session.tenantId");
+    expect(invoiceDetail).not.toContain("tenantId: detail.invoice.tenantId as any");
   });
 
   it("should define required search indexes on catalog tables", () => {

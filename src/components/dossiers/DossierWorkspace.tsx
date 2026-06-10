@@ -81,7 +81,7 @@ export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
 
   useEffect(() => {
     let isActive = true;
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");

@@ -35,7 +35,7 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
   const canCreateProjects = canEditDossiers(session.role);
 
   const loadProjects = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -67,7 +67,7 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
   }, [loadProjects]);
 
   async function createProject(project: ProjectFormValues) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });

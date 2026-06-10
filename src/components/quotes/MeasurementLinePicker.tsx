@@ -115,7 +115,7 @@ export default function MeasurementLinePicker({
   const [error, setError] = useState<string | null>(null);
 
   const loadReadyLines = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -233,7 +233,7 @@ export default function MeasurementLinePicker({
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");

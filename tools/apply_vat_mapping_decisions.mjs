@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
-import { createToolMutationActor } from "./authz_actor.mjs";
+import { createToolMutationActor, withToolActor } from "./authz_actor.mjs";
 import {
   loadCatalogToolEnv,
   optionValue,
@@ -167,7 +167,10 @@ if (!Array.isArray(decisions)) {
 }
 
 const client = new ConvexHttpClient(convexUrl);
-const before = await client.query(api.catalog.review.vatMappingReview, { tenantSlug });
+const before = await client.query(
+  api.catalog.review.vatMappingReview,
+  withToolActor(tenantSlug, { tenantSlug })
+);
 const failed = [];
 const skipped = [];
 const applied = [];
@@ -239,7 +242,7 @@ for (const decision of decisions) {
 }
 
 const after = shouldApply
-  ? await client.query(api.catalog.review.vatMappingReview, { tenantSlug })
+  ? await client.query(api.catalog.review.vatMappingReview, withToolActor(tenantSlug, { tenantSlug }))
   : null;
 
 mkdirSync(dirname(resultPath), { recursive: true });

@@ -1,5 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { readActorValidator, requireQueryRole } from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -22,23 +23,6 @@ function taskPriority(dueAt: number, now = Date.now()) {
   }
 
   return { level: "green" as const, label: "Groen" as const, tone: "success" as const, rank: 2 };
-}
-
-async function getTenant(ctx: any, tenantSlug: string): Promise<Doc<"tenants"> | null> {
-  return await ctx.db
-    .query("tenants")
-    .withIndex("by_slug", (q: any) => q.eq("slug", tenantSlug))
-    .first();
-}
-
-async function requireTenant(ctx: any, tenantSlug: string): Promise<Doc<"tenants">> {
-  const tenant = await getTenant(ctx, tenantSlug);
-
-  if (!tenant) {
-    throw new Error("Tenant not found");
-  }
-
-  return tenant;
 }
 
 function toCustomer(tenantSlug: string, customer: Doc<"customers">) {
@@ -329,10 +313,16 @@ function fieldNextAction(bucket: "today" | "measure" | "quote" | "followUp") {
 
 export const fieldServiceWorkspace = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await requireTenant(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
 
     const allowedStatuses = [
       "lead",
@@ -486,10 +476,16 @@ export const fieldServiceWorkspace = query({
 export const fieldProjectWorkspace = query({
   args: {
     tenantSlug: v.string(),
-    projectId: v.string()
+    projectId: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await requireTenant(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
     const projectId = normalizeProjectId(ctx, args.projectId);
 
     if (!projectId) {

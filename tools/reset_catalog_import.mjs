@@ -2,7 +2,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
-import { createToolMutationActor } from "./authz_actor.mjs";
+import { createToolMutationActor, withToolActor } from "./authz_actor.mjs";
 import {
   hasFlag,
   loadCatalogToolEnv,
@@ -37,7 +37,7 @@ console.log(
   JSON.stringify(
     {
       before: await client.query(api.catalog.import.getCatalogImportStats, {
-        tenantSlug,
+        ...withToolActor(tenantSlug, { tenantSlug }),
         summaryOnly: true,
       }),
     },
@@ -77,7 +77,7 @@ console.log(
       iterations,
       deleted: totals,
       after: await client.query(api.catalog.import.getCatalogImportStats, {
-        tenantSlug,
+        ...withToolActor(tenantSlug, { tenantSlug }),
         summaryOnly: true,
       }),
     },

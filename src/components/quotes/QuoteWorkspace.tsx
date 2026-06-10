@@ -48,7 +48,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
   const canEditQuote = canEditQuotes(session.role);
 
   const loadWorkspace = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -82,7 +82,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
   }, [loadWorkspace]);
 
   async function handleCreateQuote(projectId: string, title: string) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
@@ -114,7 +114,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -132,7 +132,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
   }
 
   async function deleteQuoteLine(lineId: string) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -148,7 +148,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
   }
 
   async function updateQuoteLine(lineId: string, line: QuoteLineFormValues) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -169,7 +169,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -191,7 +191,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -212,7 +212,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       return null;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");

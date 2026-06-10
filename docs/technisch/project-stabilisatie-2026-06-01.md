@@ -36,13 +36,9 @@ Alle controles zijn uitgevoerd met de project-lokale Node 24 runtime.
 
 | Controle | Resultaat |
 | --- | --- |
-| `npm run check` | Geslaagd, 182 files, 0 errors, 0 warnings, 0 hints |
+| `npm run check` | Geslaagd, Astro/TypeScript-checks zonder errors |
 | `npm run build` | Geslaagd, Vercel server output gebouwd |
-| `npm run test:calculators` | Geslaagd |
-| `npm run test:quote-document` | Geslaagd |
-| `npm run test:workflow-guardrails` | Geslaagd |
-| `npm run test:portal` | Geslaagd, 20 routes HTTP 200 |
-| `npm run test:a11y` | Geslaagd, lichte route/copy/a11y smoke |
+| `npm test` | Geslaagd, volledige Vitest-suite inclusief calculators, offertedocumenten, workflow-guardrails, route smoke en a11y smoke |
 | `npm audit --omit=dev` | 0 vulnerabilities |
 
 Browser smoke:

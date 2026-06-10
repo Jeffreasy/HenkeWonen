@@ -1,6 +1,13 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { mutationActorValidator, requireMutationRole, requireMutationRoleForTenantId } from "../authz";
+import {
+  mutationActorValidator,
+  readActorValidator,
+  requireMutationRole,
+  requireMutationRoleForTenantId,
+  requireQueryRole,
+  requireQueryRoleForTenantId
+} from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   toProject,
@@ -8,7 +15,6 @@ import {
   toWorkflowEvent,
   toProjectTask,
   toQuoteSummary,
-  requireTenant,
   projectStatus,
   workflowEventType,
   projectTaskStatus,
@@ -47,9 +53,17 @@ async function nextInvoiceNumber(ctx: any, tenantId: Id<"tenants">): Promise<str
 export const list = query({
   args: {
     tenantId: v.id("tenants"),
+    actor: readActorValidator,
     status: v.optional(projectStatus)
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
+
     if (args.status) {
       return await ctx.db
         .query("projects")
@@ -71,9 +85,16 @@ export const list = query({
 export const get = query({
   args: {
     tenantId: v.id("tenants"),
-    projectId: v.id("projects")
+    projectId: v.id("projects"),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
@@ -222,10 +243,16 @@ export const updateStatus = mutation({
 
 export const listProjects = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await requireTenant(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
     const [customers, projects] = await Promise.all([
       ctx.db
         .query("customers")
@@ -252,10 +279,16 @@ export const listProjects = query({
 
 export const dossierWorkspace = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await requireTenant(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
     const [customers, projects, quotes] = await Promise.all([
       ctx.db
         .query("customers")
@@ -369,10 +402,16 @@ export const updateProject = mutation({
 export const projectDetail = query({
   args: {
     tenantSlug: v.string(),
-    projectId: v.string()
+    projectId: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await requireTenant(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
     const projectId = normalizeProjectId(ctx, args.projectId);
 
     if (!projectId) {

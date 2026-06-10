@@ -1,14 +1,24 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { mutationActorValidator, requireMutationRoleForTenantId, requireMutationRole } from "../authz";
+import {
+  mutationActorValidator,
+  readActorValidator,
+  requireMutationRoleForTenantId,
+  requireMutationRole,
+  requireQueryRole,
+  requireQueryRoleForTenantId
+} from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
-import { requireTenant, activeStatus } from "../portalUtils";
+import { activeStatus } from "../portalUtils";
 
 export const list = query({
   args: {
-    tenantId: v.id("tenants")
+    tenantId: v.id("tenants"),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
+
     return await ctx.db
       .query("categories")
       .withIndex("by_tenant", (q) => q.eq("tenantId", args.tenantId))
@@ -60,10 +70,11 @@ export const create = mutation({
 
 export const listCategories = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await requireTenant(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const categories = await ctx.db
       .query("categories")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))

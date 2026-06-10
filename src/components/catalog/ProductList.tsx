@@ -71,7 +71,7 @@ export default function ProductList({ session }: ProductListProps) {
     let isActive = true;
 
     async function loadCategoryStats() {
-      const client = createConvexHttpClient();
+      const client = createConvexHttpClient(session);
       if (!client) return;
 
       try {
@@ -98,7 +98,7 @@ export default function ProductList({ session }: ProductListProps) {
       setIsLoading(true);
       setError(null);
 
-      const client = createConvexHttpClient();
+      const client = createConvexHttpClient(session);
 
       if (!client) {
         setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -182,7 +182,7 @@ export default function ProductList({ session }: ProductListProps) {
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -223,7 +223,7 @@ export default function ProductList({ session }: ProductListProps) {
     }
 
     const { product, nextStatus } = pendingProductStatus;
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");

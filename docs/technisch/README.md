@@ -21,6 +21,7 @@ Actuele technische samenvattingen. Domeinspecifieke documentatie staat **naast d
 | --- | --- |
 | [Projectstabilisatie 2026-06-01](./project-stabilisatie-2026-06-01.md) | Actuele baseline, Node 24 workflow en catalogusreleasepunten |
 | [Vooronderzoek rapport](./vooronderzoek-rapport.md) | Technisch vooronderzoek en architectuurkeuzes |
+| [Codebase Audit Rapport 2026-06-10](./codebase-audit-rapport-2026-06-10.md) | Grondige codebase-audit en verificatie van alle modules voor de pilot-start |
 
 ## Historisch (archief)
 

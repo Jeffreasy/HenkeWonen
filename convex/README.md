@@ -6,8 +6,8 @@ Convex serverless backend voor het Henke Wonen portal. Zie [`schema.ts`](schema.
 
 | Map / Bestand | Functie |
 | --- | --- |
-| `schema.ts` | Volledig datamodel — 28 tabellen met indexen |
-| `authz.ts` | Mutatiebeveiliging: actor-token validatie, rol-checks |
+| `schema.ts` | Volledig datamodel — 30 tabellen met indexen |
+| `authz.ts` | Query- en mutatiebeveiliging: actor-token validatie, rol-checks |
 | `portal.ts` | Gecombineerde portalqueries (dashboard, dossiers) |
 | `portalUtils.ts` | Gedeelde utiliteiten voor Convex functies |
 | `beheer/` | Tenant-, gebruiker-, categorie- en leveranciersbeheer |
@@ -26,9 +26,9 @@ Elke query en mutatie filtert altijd op `tenantId`. Er is geen cross-tenant data
 tenants → users, customers, categories, suppliers, products, ...
 ```
 
-## Mutatiebeveiliging
+## Query- en mutatiebeveiliging
 
-Alle schrijfoperaties gaan via `convex/authz.ts`:
+Alle tenantgebonden publieke queries en alle schrijfoperaties gaan via `convex/authz.ts`:
 1. Actor-token valideren (gedeelde `AUTHZ_TOKEN_SECRET` met Astro)
 2. Tenant-ID verifiëren
 3. Gebruiker opzoeken in `users`-tabel

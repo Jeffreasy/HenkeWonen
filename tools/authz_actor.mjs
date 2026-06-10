@@ -37,3 +37,10 @@ export function createToolMutationActor(tenantSlug) {
     authzToken: createAuthzToken("actor", tenantSlug, externalUserId)
   };
 }
+
+export function withToolActor(tenantSlug, args = {}) {
+  return {
+    ...args,
+    actor: createToolMutationActor(tenantSlug)
+  };
+}

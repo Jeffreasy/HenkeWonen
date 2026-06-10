@@ -1,9 +1,15 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { mutationActorValidator, requireMutationRoleForTenantId, requireMutationRole } from "../authz";
+import {
+  mutationActorValidator,
+  readActorValidator,
+  requireMutationRoleForTenantId,
+  requireMutationRole,
+  requireQueryRole,
+  requireQueryRoleForTenantId
+} from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
-  requireTenant,
   toSupplier,
   findSupplierByName,
   supplierStatus,
@@ -22,9 +28,12 @@ const productListStatus = v.union(
 export const list = query({
   args: {
     tenantId: v.id("tenants"),
+    actor: readActorValidator,
     status: v.optional(productListStatus)
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
+
     if (args.status) {
       return await ctx.db
         .query("suppliers")
@@ -96,10 +105,11 @@ export const updateProductListStatus = mutation({
 
 export const listSuppliers = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await requireTenant(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const suppliers = await ctx.db
       .query("suppliers")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))

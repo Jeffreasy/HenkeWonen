@@ -57,7 +57,7 @@ export default function ProductionReadiness({ session, hideWhenReady }: Producti
   const [error, setError] = useState<string | null>(null);
 
   const loadReadiness = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");

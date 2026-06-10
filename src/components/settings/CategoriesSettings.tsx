@@ -29,7 +29,7 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
 
   useEffect(() => {
     let isActive = true;
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -83,7 +83,7 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
@@ -117,7 +117,7 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
     }
 
     const { category, nextStatus } = pendingCategoryStatus;
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");

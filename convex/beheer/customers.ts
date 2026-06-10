@@ -1,12 +1,18 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { mutationActorValidator, requireMutationRole, requireMutationRoleForTenantId } from "../authz";
+import {
+  mutationActorValidator,
+  readActorValidator,
+  requireMutationRole,
+  requireMutationRoleForTenantId,
+  requireQueryRole,
+  requireQueryRoleForTenantId
+} from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   toCustomer,
   toContact,
   toProject,
-  requireTenant,
   customerType,
   customerStatus,
   customerContactType
@@ -16,9 +22,17 @@ import {
 export const list = query({
   args: {
     tenantId: v.id("tenants"),
+    actor: readActorValidator,
     status: v.optional(customerStatus)
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
+
     if (args.status) {
       return await ctx.db
         .query("customers")
@@ -40,9 +54,16 @@ export const list = query({
 export const get = query({
   args: {
     tenantId: v.id("tenants"),
-    customerId: v.id("customers")
+    customerId: v.id("customers"),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
     const customer = await ctx.db.get(args.customerId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
@@ -132,9 +153,17 @@ export const updateStatus = mutation({
 export const listContacts = query({
   args: {
     tenantId: v.id("tenants"),
-    customerId: v.id("customers")
+    customerId: v.id("customers"),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
+
     return await ctx.db
       .query("customerContacts")
       .withIndex("by_customer", (q) =>
@@ -225,10 +254,16 @@ export const markLoanedItemReturned = mutation({
 
 export const listCustomers = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await requireTenant(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
     const customers = await ctx.db
       .query("customers")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
@@ -331,10 +366,16 @@ export const updateCustomer = mutation({
 export const customerDetail = query({
   args: {
     tenantSlug: v.string(),
-    customerId: v.string()
+    customerId: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await requireTenant(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
     const customer = await ctx.db.get(args.customerId as Id<"customers">);
 
     if (!customer || customer.tenantId !== tenant._id) {

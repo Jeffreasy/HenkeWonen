@@ -1,5 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { readActorValidator, requireQueryRole } from "../authz";
 
 function idString(value: unknown): string {
   return String(value ?? "");
@@ -48,20 +49,11 @@ function pushSample<T>(samples: T[], sample: T, maxSamples = 25) {
 
 export const validateCatalog = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await ctx.db
-      .query("tenants")
-      .withIndex("by_slug", (q) => q.eq("slug", args.tenantSlug))
-      .first();
-
-    if (!tenant) {
-      return {
-        tenantSlug: args.tenantSlug,
-        exists: false
-      };
-    }
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
 
     const [products, prices, priceLists, suppliers, categories, batches] = await Promise.all([
       ctx.db

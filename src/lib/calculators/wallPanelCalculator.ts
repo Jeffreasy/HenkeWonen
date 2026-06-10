@@ -36,6 +36,10 @@ export function calculateWallPanels(
     return invalidWallPanelResult("panelHeightM must be greater than 0.");
   }
 
+  if (input.panelHeightM < input.wallHeightM) {
+    return invalidWallPanelResult("panelHeightM must be greater than or equal to wallHeightM.");
+  }
+
   if (!isValidNumber(input.wastePercent) || input.wastePercent < 0) {
     return invalidWallPanelResult("wastePercent must be 0 or greater.");
   }

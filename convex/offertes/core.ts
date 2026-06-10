@@ -1,13 +1,19 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { mutationActorValidator, requireMutationRoleForTenantId, requireMutationRole } from "../authz";
+import {
+  mutationActorValidator,
+  readActorValidator,
+  requireMutationRoleForTenantId,
+  requireMutationRole,
+  requireQueryRole,
+  requireQueryRoleForTenantId
+} from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
 import { pilotHiddenReason } from "../catalog/pilot";
 import {
   toQuote,
   toCustomer,
   toQuoteTemplate,
-  requireTenant,
   quoteLineType,
   toProject,
   importedMeasurementLineTitle,
@@ -42,9 +48,17 @@ function roundMoney(value: number): number {
 
 export const list = query({
   args: {
-    tenantId: v.id("tenants")
+    tenantId: v.id("tenants"),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
+
     return await ctx.db
       .query("quotes")
       .withIndex("by_tenant", (q) => q.eq("tenantId", args.tenantId))
@@ -56,9 +70,16 @@ export const list = query({
 export const get = query({
   args: {
     tenantId: v.id("tenants"),
-    quoteId: v.id("quotes")
+    quoteId: v.id("quotes"),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
     const quote = await ctx.db.get(args.quoteId);
 
     if (!quote || quote.tenantId !== args.tenantId) {
@@ -717,10 +738,16 @@ export const updateQuoteStatus = mutation({
 
 export const listQuotesWorkspace = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await requireTenant(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
     const [customers, projects, quotes, templates] = await Promise.all([
       ctx.db
         .query("customers")

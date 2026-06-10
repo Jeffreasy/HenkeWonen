@@ -112,7 +112,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   const canEditProject = canEditDossiers(session.role);
 
   const loadProject = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -156,7 +156,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   }
 
   async function handleAddRoom(name: string, areaM2?: number, perimeterMeter?: number) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client || !detail?.project) {
       return;
     }
@@ -182,7 +182,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   }
 
   async function startMeasurementWorkflow() {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
@@ -216,7 +216,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     internalNotes?: string;
     customerNotes?: string;
   }) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client || !detail?.project) {
       return;
     }
@@ -247,7 +247,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       notes?: string;
     }
   ) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       return;
     }
@@ -270,7 +270,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       return;
     }
@@ -298,7 +298,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   }
 
   async function processProjectAction(action: ProjectAction) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       return;
     }
@@ -319,7 +319,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     task: PortalProjectTask,
     status: PortalProjectTask["status"]
   ) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de taak nu niet bijwerken.");
       return;

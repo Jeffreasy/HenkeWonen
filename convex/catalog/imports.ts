@@ -1,6 +1,12 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { mutationActorValidator, requireMutationRoleForTenantId } from "../authz";
+import {
+  mutationActorValidator,
+  readActorValidator,
+  requireMutationRoleForTenantId,
+  requireQueryRole,
+  requireQueryRoleForTenantId
+} from "../authz";
 import type { Id } from "../_generated/dataModel";
 
 const batchStatus = v.union(
@@ -121,9 +127,12 @@ function toPortalBatch(tenantSlug: string, batch: any, supplier?: any, profile?:
 export const listBatches = query({
   args: {
     tenantId: v.id("tenants"),
+    actor: readActorValidator,
     status: v.optional(batchStatus)
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
+
     if (args.status) {
       return await ctx.db
         .query("productImportBatches")
@@ -145,9 +154,11 @@ export const listBatches = query({
 export const getBatch = query({
   args: {
     tenantId: v.id("tenants"),
-    batchId: v.id("productImportBatches")
+    batchId: v.id("productImportBatches"),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
     const batch = await ctx.db.get(args.batchId);
 
     if (!batch || batch.tenantId !== args.tenantId) {
@@ -297,9 +308,12 @@ export const addPreviewRow = mutation({
 
 export const listProfiles = query({
   args: {
-    tenantId: v.id("tenants")
+    tenantId: v.id("tenants"),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
+
     return await ctx.db
       .query("importProfiles")
       .withIndex("by_tenant", (q) => q.eq("tenantId", args.tenantId))
@@ -407,10 +421,11 @@ export const upsertProfile = mutation({
 
 export const listBatchesForPortal = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const [batches, suppliers, profiles] = await Promise.all([
       ctx.db
         .query("productImportBatches")
@@ -444,10 +459,11 @@ export const getBatchForPortal = query({
   args: {
     tenantSlug: v.string(),
     batchId: v.string(),
+    actor: readActorValidator,
     rowLimit: v.optional(v.number())
   },
   handler: async (ctx, args) => {
-    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const batch: any = await ctx.db.get(args.batchId as any);
 
     if (!batch || batch.tenantId !== tenant._id) {
@@ -537,10 +553,11 @@ export const updateBatchStatusForPortal = mutation({
 
 export const listProfilesForPortal = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const profiles = await ctx.db
       .query("importProfiles")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))

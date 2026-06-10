@@ -211,7 +211,7 @@ export default function FieldServiceWorkspace({
   }, [canCreateFieldLead]);
 
   const loadWorkspace = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de buitendienstgegevens nu niet bereiken.");
@@ -243,7 +243,7 @@ export default function FieldServiceWorkspace({
   async function handleCreateFieldLead(values: IntakeFormValues) {
     const displayName = values.displayName;
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setIntakeError("Kan de klant nu niet vastleggen.");

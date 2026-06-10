@@ -53,6 +53,19 @@ describe("Measurements Calculators", () => {
     expect(wallPanels.quoteQuantityPieces).toBe(8);
   });
 
+  it("should reject wall panels shorter than the wall height", () => {
+    const wallPanels = calculateWallPanels({
+      wallWidthM: 4,
+      wallHeightM: 2.5,
+      panelWidthM: 0.6,
+      panelHeightM: 2.4,
+      wastePercent: 10
+    });
+
+    expect(wallPanels.validationError).toBe("panelHeightM must be greater than or equal to wallHeightM.");
+    expect(wallPanels.totalPanels).toBe(0);
+  });
+
   it("should calculate stairs values correctly", () => {
     const stairs = calculateStairs({
       stairType: "closed",

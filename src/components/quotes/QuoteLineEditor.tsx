@@ -77,7 +77,7 @@ export default function QuoteLineEditor({
     let isActive = true;
 
     async function loadProducts() {
-      const client = createConvexHttpClient();
+      const client = createConvexHttpClient(session);
 
       if (!client) {
         setProductError("Kan de catalogus nu niet bereiken.");

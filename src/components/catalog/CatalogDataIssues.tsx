@@ -189,7 +189,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
   const hasOpenIssues = Boolean(review && summary.open > 0);
 
   const loadReview = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -232,7 +232,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
   }, [loadReview]);
 
   async function syncIssues() {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -258,7 +258,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
   }
 
   async function saveIssue(issue: DuplicateEanIssue) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");

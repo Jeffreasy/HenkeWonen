@@ -1,6 +1,11 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { mutationActorValidator, requireMutationRoleForTenantId } from "../authz";
+import {
+  mutationActorValidator,
+  readActorValidator,
+  requireMutationRoleForTenantId,
+  requireQueryRoleForTenantId
+} from "../authz";
 
 const measurementStatus = v.union(
   v.literal("draft"),
@@ -83,9 +88,16 @@ async function getActiveWasteProfiles(ctx: any, tenantId: any, productGroupArg?:
 export const getForProject = query({
   args: {
     tenantId: v.id("tenants"),
-    projectId: v.id("projects")
+    projectId: v.id("projects"),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
@@ -135,9 +147,16 @@ export const getForProject = query({
 export const listReadyForQuoteByProject = query({
   args: {
     tenantId: v.id("tenants"),
-    projectId: v.id("projects")
+    projectId: v.id("projects"),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
@@ -721,9 +740,17 @@ export const markMeasurementLineConverted = mutation({
 export const listWasteProfiles = query({
   args: {
     tenantId: v.id("tenants"),
+    actor: readActorValidator,
     productGroup: v.optional(productGroup)
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
+
     return await getActiveWasteProfiles(ctx, args.tenantId, args.productGroup);
   }
 });

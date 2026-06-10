@@ -1,6 +1,6 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { mutationActorValidator, requireMutationRole } from "../authz";
+import { mutationActorValidator, readActorValidator, requireMutationRole, requireQueryRole } from "../authz";
 
 function slugify(value: string): string {
   return value
@@ -30,13 +30,6 @@ function stringValue(value: unknown, fallback: string): string {
 
 function numberValue(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-async function getTenant(ctx: any, tenantSlug: string) {
-  return await ctx.db
-    .query("tenants")
-    .withIndex("by_slug", (q: any) => q.eq("slug", tenantSlug))
-    .first();
 }
 
 async function collectByTenant(ctx: any, tableName: any, tenantId: any) {
@@ -1099,25 +1092,11 @@ export const commitPreviewBatchChunk = mutation({
 export const getCatalogImportStats = query({
   args: {
     tenantSlug: v.string(),
+    actor: readActorValidator,
     summaryOnly: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
-    const tenant = await getTenant(ctx, args.tenantSlug);
-
-    if (!tenant) {
-      return {
-        tenantSlug: args.tenantSlug,
-        exists: false,
-        products: 0,
-        activeProducts: 0,
-        productPrices: 0,
-        priceLists: 0,
-        brands: 0,
-        productCollections: 0,
-        categories: {},
-        suppliers: {}
-      };
-    }
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
 
     if (args.summaryOnly) {
       const latestImportedBatch = await ctx.db
@@ -1207,25 +1186,11 @@ export const getCatalogImportStats = query({
 export const getSupplierCatalogStats = query({
   args: {
     tenantSlug: v.string(),
-    supplierName: v.string()
+    supplierName: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await getTenant(ctx, args.tenantSlug);
-
-    if (!tenant) {
-      return {
-        tenantSlug: args.tenantSlug,
-        supplierName: args.supplierName,
-        exists: false,
-        activeProducts: 0,
-        productPrices: 0,
-        unknownVatModePriceRules: 0,
-        categories: {},
-        priceTypes: {},
-        vatModes: {},
-        sourceFileName: {}
-      };
-    }
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
 
     const [products, productPrices, categories, suppliers] = await Promise.all([
       collectByTenant(ctx, "products", tenant._id),

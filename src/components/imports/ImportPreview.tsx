@@ -130,7 +130,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
   const batchSearch = batchSearchQuery.trim().toLocaleLowerCase("nl-NL");
 
   const loadBatches = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
@@ -161,7 +161,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
@@ -200,7 +200,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
 
   async function createBatch(event: SubmitEventLike) {
     event.preventDefault();
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
@@ -234,7 +234,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
   }
 
   async function saveMapping(batch: ProductImportBatch) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
@@ -266,7 +266,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
   }
 
   async function commitBatch(batch: ProductImportBatch) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
@@ -310,7 +310,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;

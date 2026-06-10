@@ -49,7 +49,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
   useAutoFocusPanel(editingCustomer, customerEditFormRef);
 
   const loadDetail = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -84,7 +84,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
@@ -120,7 +120,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
@@ -155,7 +155,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
   }
 
   async function handleAddContact(values: AddContactFormValues) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });

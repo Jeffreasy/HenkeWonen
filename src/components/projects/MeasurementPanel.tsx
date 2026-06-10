@@ -175,7 +175,7 @@ export default function MeasurementPanel({
     .length;
 
   const loadMeasurement = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -334,7 +334,7 @@ export default function MeasurementPanel({
   );
 
   function requireClientAndMeasurement() {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client || !tenantConvexId || !measurement) {
       setError("Inmeting is nog niet beschikbaar.");
@@ -354,7 +354,7 @@ export default function MeasurementPanel({
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client || !tenantConvexId) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");

@@ -2,6 +2,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
+import { withToolActor } from "./authz_actor.mjs";
 import {
   loadCatalogToolEnv,
   requireCatalogToolTarget,
@@ -20,9 +21,12 @@ const client = new ConvexHttpClient(toolEnv.convexUrl);
 const tenantSlug = toolEnv.tenantSlug;
 
 const [readiness, vatReview, catalogStats] = await Promise.all([
-  client.query(api.catalog.review.productionReadiness, { tenantSlug }),
-  client.query(api.catalog.review.vatMappingReview, { tenantSlug }),
-  client.query(api.catalog.import.getCatalogImportStats, { tenantSlug, summaryOnly: true })
+  client.query(api.catalog.review.productionReadiness, withToolActor(tenantSlug, { tenantSlug })),
+  client.query(api.catalog.review.vatMappingReview, withToolActor(tenantSlug, { tenantSlug })),
+  client.query(
+    api.catalog.import.getCatalogImportStats,
+    withToolActor(tenantSlug, { tenantSlug, summaryOnly: true })
+  )
 ]);
 
 console.log(

@@ -54,7 +54,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
   const [error, setError] = useState<string | null>(null);
 
   const loadSuppliers = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -129,7 +129,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
     expectedAt?: number;
     notes?: string;
   }) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -172,7 +172,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -205,7 +205,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -238,7 +238,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
     }
 
     const { supplier, nextStatus } = pendingSupplierStatus;
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");

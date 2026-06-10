@@ -1,26 +1,21 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
-import { getTenant, taskPriority, toProject, toQuoteSummary } from "./portalUtils";
+import { readActorValidator, requireQueryRole } from "./authz";
+import { taskPriority, toProject, toQuoteSummary } from "./portalUtils";
 
 export const dashboard = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await getTenant(ctx, args.tenantSlug);
-
-    if (!tenant) {
-      return {
-        openQuoteCount: 0,
-        plannedWorkCount: 0,
-        workItemCount: 0,
-        workItems: [],
-        quoteFollowUps: [],
-        projects: [],
-        invoiceStats: { openAmount: 0, overdueCount: 0 }
-      };
-    }
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
 
     const invoiceStatuses = ["sent", "partially_paid", "overdue"] as const;
 

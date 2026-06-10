@@ -302,7 +302,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
   );
 
   const loadReview = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
@@ -337,7 +337,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
   }, [loadReview]);
 
   async function updateVatMode(row: VatMappingReviewRow, value: VatMode) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
@@ -370,7 +370,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
     selectedRows: VatMappingReviewRow[],
     vatMode: "inclusive" | "exclusive"
   ) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client || selectedRows.length === 0) {
       return;
     }
@@ -409,7 +409,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
 
   async function markReviewed(rows: VatMappingReviewRow[]) {
     const selectedRows = rows.filter((row) => selected[rowKey(row)]);
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client || selectedRows.length === 0) {
       return;
     }
@@ -445,7 +445,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
   }
 
   async function setAllowUnknown(profileId: string, allowUnknownVatMode: boolean) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;
@@ -482,7 +482,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       return;

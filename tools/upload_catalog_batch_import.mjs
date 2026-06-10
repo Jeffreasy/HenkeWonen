@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
-import { createToolMutationActor } from "./authz_actor.mjs";
+import { createToolMutationActor, withToolActor } from "./authz_actor.mjs";
 import {
   hasFlag,
   loadCatalogToolEnv,
@@ -253,7 +253,7 @@ const convexUrl = toolEnv.convexUrl;
 const client = new ConvexHttpClient(convexUrl);
 const defaultTenantSlug = toolEnv.tenantSlug;
 const initialVatReview = await client.query(api.catalog.review.vatMappingReview, {
-  tenantSlug: defaultTenantSlug,
+  ...withToolActor(defaultTenantSlug, { tenantSlug: defaultTenantSlug }),
 });
 const initialUnresolvedProfileMappings = initialVatReview.rows.filter(
   (row) => row.currentVatMode === "unknown" && !row.allowUnknownVatMode
@@ -289,8 +289,14 @@ const actor = createToolMutationActor(tenantSlug);
 const vatReview =
   tenantSlug === defaultTenantSlug
     ? initialVatReview
-    : await client.query(api.catalog.review.vatMappingReview, { tenantSlug });
-const profiles = await client.query(api.catalog.imports.listProfilesForPortal, { tenantSlug });
+    : await client.query(
+        api.catalog.review.vatMappingReview,
+        withToolActor(tenantSlug, { tenantSlug })
+      );
+const profiles = await client.query(
+  api.catalog.imports.listProfilesForPortal,
+  withToolActor(tenantSlug, { tenantSlug })
+);
 const profileBySourceFile = new Map();
 
 for (const row of payload.previewRows ?? rows.map(toPreviewRow)) {

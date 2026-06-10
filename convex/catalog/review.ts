@@ -1,6 +1,6 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { mutationActorValidator, requireMutationRole } from "../authz";
+import { mutationActorValidator, readActorValidator, requireMutationRole, requireQueryRole } from "../authz";
 
 const vatMode = v.union(v.literal("inclusive"), v.literal("exclusive"), v.literal("unknown"));
 const duplicateEanDecision = v.union(
@@ -231,25 +231,13 @@ function suggestedVatMode(sourceColumnName: string, priceType: string) {
   };
 }
 
-async function tenantBySlug(ctx: any, tenantSlug: string) {
-  const tenant = await ctx.db
-    .query("tenants")
-    .withIndex("by_slug", (q: any) => q.eq("slug", tenantSlug))
-    .first();
-
-  if (!tenant) {
-    throw new Error(`Tenant not found: ${tenantSlug}`);
-  }
-
-  return tenant;
-}
-
 export const vatMappingReview = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const [profiles, categories] = await Promise.all([
       ctx.db
         .query("importProfiles")
@@ -583,10 +571,11 @@ export const setProfileAllowUnknownVatMode = mutation({
 
 export const duplicateEanReview = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const [suppliers, issues] = await Promise.all([
       ctx.db
         .query("suppliers")
@@ -1011,10 +1000,11 @@ function latestCompleteImportRun(batches: any[]) {
 
 export const productionReadiness = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await tenantBySlug(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const [profiles, duplicateOpenIssues, batches] = await Promise.all([
       ctx.db
         .query("importProfiles")

@@ -120,7 +120,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
   const canEditQuote = canEditQuotes(session.role);
 
   const loadWorkspace = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan dit klantbezoek nu niet bereiken.");
@@ -173,7 +173,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de conceptofferte nu niet maken.");
@@ -207,7 +207,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de offertepost nu niet opslaan.");
@@ -225,7 +225,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
   }
 
   async function deleteQuoteLine(lineId: string) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de offertepost nu niet verwijderen.");
@@ -241,7 +241,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
   }
 
   async function updateQuoteLine(lineId: string, line: QuoteLineFormValues) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de offertepost nu niet aanpassen.");
@@ -262,7 +262,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de offerte nu niet verwerken.");
@@ -283,7 +283,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       return;
     }
 
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de klantversie nu niet opslaan.");

@@ -1,6 +1,12 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { mutationActorValidator, requireMutationRoleForTenantId } from "../authz";
+import {
+  mutationActorValidator,
+  readActorValidator,
+  requireMutationRole,
+  requireMutationRoleForTenantId,
+  requireQueryRole
+} from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireTenant } from "../portalUtils";
 
@@ -58,10 +64,16 @@ function toInvoice(tenantSlug: string, invoice: Doc<"invoices">) {
 
 export const listInvoices = query({
   args: {
-    tenantSlug: v.string()
+    tenantSlug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await requireTenant(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
 
     const invoiceStatuses = ["draft", "sent", "partially_paid", "paid", "overdue", "cancelled"] as const;
 
@@ -106,10 +118,16 @@ export const listInvoices = query({
 export const invoiceDetail = query({
   args: {
     tenantSlug: v.string(),
-    invoiceId: v.string()
+    invoiceId: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const tenant = await requireTenant(ctx, args.tenantSlug);
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
     const invoiceId = ctx.db.normalizeId("invoices", args.invoiceId);
 
     if (!invoiceId) {
@@ -314,13 +332,13 @@ const invoiceStatus = v.union(
 
 export const updateInvoiceStatus = mutation({
   args: {
-    tenantId: v.id("tenants"),
+    tenantSlug: v.string(),
     actor: mutationActorValidator,
     invoiceId: v.string(),
     status: invoiceStatus
   },
   handler: async (ctx, args) => {
-    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
       "user",
       "editor",
       "admin"
@@ -334,7 +352,7 @@ export const updateInvoiceStatus = mutation({
 
     const invoice = await ctx.db.get(invoiceId);
 
-    if (!invoice || invoice.tenantId !== args.tenantId) {
+    if (!invoice || invoice.tenantId !== tenant._id) {
       throw new Error("Factuur niet gevonden.");
     }
 
@@ -351,7 +369,7 @@ export const updateInvoiceStatus = mutation({
     if (args.status === "paid") {
       const project = await ctx.db.get(invoice.projectId);
 
-      if (project && project.tenantId === args.tenantId) {
+      if (project && project.tenantId === tenant._id) {
         await ctx.db.patch(invoice.projectId, {
           status: "paid",
           paidAt: now,
@@ -366,14 +384,14 @@ export const updateInvoiceStatus = mutation({
 
 export const markInvoicePaid = mutation({
   args: {
-    tenantId: v.id("tenants"),
+    tenantSlug: v.string(),
     actor: mutationActorValidator,
     invoiceId: v.string(),
     paidAmount: v.number(),
     paidAt: v.optional(v.number())
   },
   handler: async (ctx, args) => {
-    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
       "user",
       "editor",
       "admin"
@@ -387,7 +405,7 @@ export const markInvoicePaid = mutation({
 
     const invoice = await ctx.db.get(invoiceId);
 
-    if (!invoice || invoice.tenantId !== args.tenantId) {
+    if (!invoice || invoice.tenantId !== tenant._id) {
       throw new Error("Factuur niet gevonden.");
     }
 
@@ -417,7 +435,7 @@ export const markInvoicePaid = mutation({
     if (isFullyPaid) {
       const project = await ctx.db.get(invoice.projectId);
 
-      if (project && project.tenantId === args.tenantId) {
+      if (project && project.tenantId === tenant._id) {
         await ctx.db.patch(invoice.projectId, {
           status: "paid",
           paidAt,

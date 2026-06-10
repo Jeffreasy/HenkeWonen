@@ -1,22 +1,14 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { readActorValidator, requireQueryRole } from "../authz";
 
 export const getMetadata = query({
   args: {
     tenantSlug: v.string(),
+    actor: readActorValidator,
   },
   handler: async (ctx, args) => {
-    const tenant = await ctx.db
-      .query("tenants")
-      .withIndex("by_slug", (q) => q.eq("slug", args.tenantSlug))
-      .first();
-
-    if (!tenant) {
-      return {
-        suppliers: [],
-        importProfiles: [],
-      };
-    }
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
 
     const [suppliers, importProfiles] = await Promise.all([
       ctx.db
@@ -48,22 +40,12 @@ export const getMetadata = query({
 export const getProductsPage = query({
   args: {
     tenantSlug: v.string(),
+    actor: readActorValidator,
     cursor: v.union(v.string(), v.null()),
     limit: v.number(),
   },
   handler: async (ctx, args) => {
-    const tenant = await ctx.db
-      .query("tenants")
-      .withIndex("by_slug", (q) => q.eq("slug", args.tenantSlug))
-      .first();
-
-    if (!tenant) {
-      return {
-        isDone: true,
-        page: [],
-        continueCursor: "",
-      };
-    }
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
 
     const result = await ctx.db
       .query("products")
@@ -87,22 +69,12 @@ export const getProductsPage = query({
 export const getProductPricesPage = query({
   args: {
     tenantSlug: v.string(),
+    actor: readActorValidator,
     cursor: v.union(v.string(), v.null()),
     limit: v.number(),
   },
   handler: async (ctx, args) => {
-    const tenant = await ctx.db
-      .query("tenants")
-      .withIndex("by_slug", (q) => q.eq("slug", args.tenantSlug))
-      .first();
-
-    if (!tenant) {
-      return {
-        isDone: true,
-        page: [],
-        continueCursor: "",
-      };
-    }
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
 
     const result = await ctx.db
       .query("productPrices")

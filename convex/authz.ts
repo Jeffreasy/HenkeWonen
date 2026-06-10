@@ -14,6 +14,8 @@ export const mutationActorValidator = v.object({
   authzToken: v.string()
 });
 
+export const readActorValidator = mutationActorValidator;
+
 export type AppRole = "viewer" | "user" | "editor" | "admin";
 export type AppWorkspaceMode = "general" | "field";
 
@@ -121,7 +123,7 @@ async function verifyToken(
     }
 
     throw new Error(
-      "AUTHZ_TOKEN_SECRET ontbreekt voor beveiligde mutaties. Zet ALLOW_DEV_AUTHZ_TOKENS=true alleen in lokale/dev omgevingen."
+      "AUTHZ_TOKEN_SECRET ontbreekt voor beveiligde Convex-acties. Zet ALLOW_DEV_AUTHZ_TOKENS=true alleen in lokale/dev omgevingen."
     );
   }
 
@@ -196,6 +198,15 @@ export async function requireMutationRole(
   };
 }
 
+export async function requireQueryRole(
+  ctx: any,
+  tenantSlug: string,
+  actor: { externalUserId: string; authzToken: string },
+  allowedRoles: AppRole[]
+) {
+  return await requireMutationRole(ctx, tenantSlug, actor, allowedRoles);
+}
+
 export async function requireMutationRoleForTenantId(
   ctx: any,
   tenantId: any,
@@ -209,6 +220,15 @@ export async function requireMutationRoleForTenantId(
   }
 
   return await requireMutationRole(ctx, tenant.slug, actor, allowedRoles);
+}
+
+export async function requireQueryRoleForTenantId(
+  ctx: any,
+  tenantId: any,
+  actor: { externalUserId: string; authzToken: string },
+  allowedRoles: AppRole[]
+) {
+  return await requireMutationRoleForTenantId(ctx, tenantId, actor, allowedRoles);
 }
 
 export function requireConvexToolingEnabled(toolName: string) {

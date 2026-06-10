@@ -1,12 +1,21 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireSyncToken, roleValidator, workspaceModeValidator } from "../authz";
+import {
+  readActorValidator,
+  requireQueryRoleForTenantId,
+  requireSyncToken,
+  roleValidator,
+  workspaceModeValidator
+} from "../authz";
 
 export const list = query({
   args: {
-    tenantId: v.id("tenants")
+    tenantId: v.id("tenants"),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
+
     return await ctx.db
       .query("users")
       .withIndex("by_tenant", (q) => q.eq("tenantId", args.tenantId))

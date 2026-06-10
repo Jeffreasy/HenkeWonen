@@ -64,9 +64,9 @@ async function createToken(kind: AuthzTokenKind, session: AppSession) {
   return `${body}.${signature}`;
 }
 
-export function mutationActorFromSession(session: AppSession) {
+export function authzActorFromSession(session: AppSession) {
   if (!session.authzToken) {
-    throw new Error("Sessie mist autorisatie voor wijzigingen.");
+    throw new Error("Sessie mist autorisatie voor Convex.");
   }
 
   return {
@@ -74,6 +74,8 @@ export function mutationActorFromSession(session: AppSession) {
     authzToken: session.authzToken
   };
 }
+
+export const mutationActorFromSession = authzActorFromSession;
 
 export async function createSessionAuthzToken(session: AppSession) {
   return await createToken("actor", session);

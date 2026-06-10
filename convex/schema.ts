@@ -19,7 +19,8 @@
  * │ productImportBatches    │ Import-runs met statistieken en status                │
  * │ productImportRows       │ Individuele rijen per import-batch                    │
  * │ importProfiles          │ Herbruikbare import-configuraties per leverancier     │
- * │ importProfileColumns    │ Kolomdefinities per importprofiel                     │
+ * │ catalogDataIssues       │ Datakwaliteitsissues voor catalogusreview             │
+ * │ supplierOrders          │ Leveranciersbestellingen per project                  │
  * │ serviceCostRules        │ Vaste werktarieven (per m², per meter, etc.)          │
  * │ projects                │ Klantprojecten met volledige statusmachine            │
  * │ projectRooms            │ Ruimtes per project voor inmeting en offerte          │
@@ -30,10 +31,10 @@
  * │ quotes                  │ Offertes met totalen en status                       │
  * │ quoteLines              │ Offerteregels (product, dienst, tekst, korting)       │
  * │ quoteTemplates          │ Herbruikbare offertetemplates met standaardteksten    │
- * │ invoices                │ Facturen gekoppeld aan project + quote                │
- * │ projectTasks            │ Opvolgingstaken per project (workflow-triggers)       │
  * │ projectWorkflowEvents   │ Audit trail van projectstatusovergangen               │
- * │ fieldServiceVisits      │ Buitendienstbezoeken (agenda + afhandeling)           │
+ * │ projectTasks            │ Opvolgingstaken per project (workflow-triggers)       │
+ * │ invoices                │ Facturen gekoppeld aan project + quote                │
+ * │ timelineEvents          │ Tijdlijnitems over projecten en klantdossiers         │
  * └─────────────────────────┴──────────────────────────────────────────────────────┘
  *
  * Alle tabellen bevatten `tenantId` als eerste veld — queries filteren altijd hierop.

@@ -1,6 +1,11 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { mutationActorValidator, requireMutationRoleForTenantId } from "../authz";
+import {
+  mutationActorValidator,
+  readActorValidator,
+  requireMutationRoleForTenantId,
+  requireQueryRoleForTenantId
+} from "../authz";
 
 const workflowEventType = v.union(
   v.literal("customer_contact"),
@@ -22,9 +27,17 @@ const workflowEventType = v.union(
 export const listByProject = query({
   args: {
     tenantId: v.id("tenants"),
-    projectId: v.id("projects")
+    projectId: v.id("projects"),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
+
     return await ctx.db
       .query("projectWorkflowEvents")
       .withIndex("by_project", (q) =>

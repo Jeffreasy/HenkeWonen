@@ -29,7 +29,7 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
   const canCreateCustomers = canEditDossiers(session.role);
 
   const loadCustomers = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -59,7 +59,7 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
   }, [loadCustomers]);
 
   async function createCustomer(customer: CustomerFormValues) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });

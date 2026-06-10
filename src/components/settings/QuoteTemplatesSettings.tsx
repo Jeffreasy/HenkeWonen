@@ -24,7 +24,7 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
 
   useEffect(() => {
     let isActive = true;
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -74,7 +74,7 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
     defaultTerms: string[],
     paymentTerms: string[]
   ) {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");

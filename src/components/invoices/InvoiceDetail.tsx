@@ -40,7 +40,7 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
   const canEdit = canWrite(session.role);
 
   const loadDetail = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken.");
@@ -77,7 +77,7 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
   }
 
   async function handleConfirm() {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client || !detail) {
       return;
@@ -97,21 +97,21 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
         }
 
         await client.mutation(api.portal.markInvoicePaid, {
-          tenantId: detail.invoice.tenantId as any,
+          tenantSlug: session.tenantId,
           actor: mutationActorFromSession(session),
           invoiceId,
           paidAmount: parsedAmount
         });
       } else if (pendingAction?.type === "mark_overdue") {
         await client.mutation(api.portal.updateInvoiceStatus, {
-          tenantId: detail.invoice.tenantId as any,
+          tenantSlug: session.tenantId,
           actor: mutationActorFromSession(session),
           invoiceId,
           status: "overdue" as InvoiceStatus
         });
       } else if (pendingAction?.type === "cancel") {
         await client.mutation(api.portal.updateInvoiceStatus, {
-          tenantId: detail.invoice.tenantId as any,
+          tenantSlug: session.tenantId,
           actor: mutationActorFromSession(session),
           invoiceId,
           status: "cancelled" as InvoiceStatus

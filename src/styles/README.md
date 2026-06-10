@@ -5,23 +5,30 @@ Gelaagde CSS-architectuur voor het Henke Wonen portal. Alle stijlen zijn georgan
 ## Import-volgorde (`global.css`)
 
 ```
-00-keyframes.css       Animatie-definities
-00-tokens.css          Design tokens (kleuren, spacing, typografie)
-01-portal-layout.css   Portal shell, sidebar, header
-03-utilities.css       Herbruikbare utility-klassen
-04-ui-components.css   Generieke UI-componenten
-05-overlays.css        Modals, drawers, toasts
-06-legacy-ui.css       Verouderde stijlen (afbouwen)
-06-shared.css          Gedeelde klassen zonder domeindependency
-07-features-imports.css Feature-specifieke CSS (imports)
-07-vat-workbench.css   BTW-workbench specifieke stijlen
+01-tokens.css            Design tokens (kleuren, spacing, typografie)
+02-portal-layout.css     Portal shell, sidebar, header
+03-utilities.css         Herbruikbare utility-klassen
+04-features-field.css    Buitendienst pages en calc-tabs
+05-legacy-ui.css         Verouderde stijlen (afbouwen)
+06-ui-components.css     Generieke UI-componenten
+07-overlays.css          Modals, skeletons, toasts
+08-shared.css            Gedeelde klassen zonder domeindependency
+09-features-vat.css      BTW-workbench specifieke stijlen
+10-features-catalog.css  Catalogus-workbench
+11-features-imports.css  Import batch-workbench
+12-timeline.css          Timeline en workflow rail
+13-features-projects.css Projecten en dossiers
+14-features-quotes.css   Offertes en calculators
+15-keyframes.css         Animatie-definities
+16-responsive.css        Responsive breakpoints
+17-print.css             Printstijlen
 ```
 
 > [!IMPORTANT]
 > Nummering is intentioneel — voeg een nieuwe layer altijd in op het juiste nummer.
 > Wijzig nooit de volgorde van bestaande layers zonder de hele cascade te controleren.
 
-## Design tokens (`00-tokens.css`)
+## Design tokens (`01-tokens.css`)
 
 Alle kleuren, spacing en typografie staan als CSS custom properties op `:root`:
 

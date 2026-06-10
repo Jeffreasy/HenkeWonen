@@ -7,6 +7,7 @@ import {
   applyLaventeCareJsonTokenCookies,
   clearLaventeCareCookies
 } from "../src/lib/auth/laventeCareCookies";
+import { parseCookies } from "../src/lib/auth/laventeCareSession";
 
 describe("LaventeCare Cookies Helpers", () => {
   it("splitSetCookieHeader should split headers on commas but respect expires date commas", () => {
@@ -31,6 +32,13 @@ describe("LaventeCare Cookies Helpers", () => {
     const cookieHeader = "other=xyz; access_token=encoded%20value; test=foo";
     expect(firstCookieValue(cookieHeader, "access_token")).toBe("encoded value");
     expect(firstCookieValue(cookieHeader, "missing")).toBeUndefined();
+  });
+
+  it("parseCookies should preserve malformed encoded values instead of throwing", () => {
+    expect(parseCookies("access_token=abc%ZZ; valid=encoded%20value")).toEqual({
+      access_token: "abc%ZZ",
+      valid: "encoded value"
+    });
   });
 
   it("cookieHeaderFromAppliedCookies should generate formatted Cookie header", () => {

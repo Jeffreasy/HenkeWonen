@@ -25,12 +25,9 @@ Het project is strikt geconfigureerd voor **Node.js 24.x** (npm 11.x) via:
 *   `engine-strict=true` in `.npmrc`.
 *   Een Windows-helper om Node 24 te forceren: [tools/use-node24.ps1](file:///c:/Users/JJALa/Desktop/2026Developer/HenkeWonen/tools/use-node24.ps1).
 
-### Diagnostische Status (Geverifieerd op 4 juni 2026)
-*   **Type-safety check (`npm run check`)**: **Geslaagd** (184 bestanden, 0 errors, 0 warnings, 0 hints).
-*   **Calculatortests (`npm run test:calculators`)**: **Geslaagd**. Valideert alle meetberekeningen (oppervlakte, omtrek, rollen, trappen).
-*   **Workflow Guardrails (`npm run test:workflow-guardrails`)**: **Geslaagd**. Valideert dat mutaties en destructieve deletes voldoen aan de integriteitsregels.
-*   **Offertedocument Tests (`npm run test:quote-document`)**: **Geslaagd**. Controleert de datastructuur en HTML-opmaak van offertes.
-*   **Route Smoke Test (`npm run test:portal`)**: **Geslaagd**. Start een lokale testserver op en verifieert 20 kritieke routes (allen retourneren HTTP 200).
+### Diagnostische Status
+*   **Type-safety check (`npm run check`)**: valideert Astro en TypeScript.
+*   **Volledige testset (`npm test`)**: draait de Vitest-suite met calculators, workflow guardrails, offertedocumenten, route smoke en lichte a11y/copy checks.
 
 ---
 

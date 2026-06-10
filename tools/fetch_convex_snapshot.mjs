@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api.js";
+import { withToolActor } from "./authz_actor.mjs";
 import {
   loadCatalogToolEnv,
   requireCatalogToolTarget
@@ -23,7 +24,10 @@ const tenantSlug = toolEnv.tenantSlug;
 console.log(`Snapshot ophalen voor tenant: ${tenantSlug} op ${toolEnv.target}...`);
 
 // 1. Metadata ophalen
-const metadata = await client.query(api.catalog.reconciliation.getMetadata, { tenantSlug });
+const metadata = await client.query(
+  api.catalog.reconciliation.getMetadata,
+  withToolActor(tenantSlug, { tenantSlug })
+);
 const { suppliers, importProfiles } = metadata;
 console.log(`Geladen suppliers: ${suppliers.length}, importProfiles: ${importProfiles.length}`);
 
@@ -33,7 +37,7 @@ let productCursor = null;
 let productsDone = false;
 while (!productsDone) {
   const result = await client.query(api.catalog.reconciliation.getProductsPage, {
-    tenantSlug,
+    ...withToolActor(tenantSlug, { tenantSlug }),
     cursor: productCursor,
     limit: 4096
   });
@@ -49,7 +53,7 @@ let priceCursor = null;
 let pricesDone = false;
 while (!pricesDone) {
   const result = await client.query(api.catalog.reconciliation.getProductPricesPage, {
-    tenantSlug,
+    ...withToolActor(tenantSlug, { tenantSlug }),
     cursor: priceCursor,
     limit: 4096
   });

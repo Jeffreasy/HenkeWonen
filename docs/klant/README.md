@@ -8,6 +8,8 @@ Deze map bevat de documenten die bedoeld zijn voor Henke Wonen-medewerkers in wi
 | --- | --- |
 | [Workflowhandleiding](./henke-wonen-portal-workflow-handleiding-2026-04-30.md) | Volledige uitleg van de dagelijkse portalworkflow |
 | [Quickstart](./henke-wonen-portal-quickstart-2026-04-30.md) | Korte startgids voor de basisflow klant -> project -> inmeting -> offerte |
+| [Pilot Handleiding](./henke-wonen-portal-pilot-handleiding-2026-06-10.md) | Handleiding en checklists specifiek voor de pilot-start en buitendienst |
+| [Vrijgave- & Datakwaliteitgids](./henke-wonen-portal-vrijgave-en-datakwaliteit-2026-06-10.md) | Toelichting op de btw-mappings, dubbele EAN-barcodes en omgevingsstatus |
 
 ## Belangrijkste uitgangspunten
 

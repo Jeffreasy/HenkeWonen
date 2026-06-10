@@ -20,7 +20,7 @@ export default function InvoiceWorkspace({ session }: InvoiceWorkspaceProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const loadInvoices = useCallback(async () => {
-    const client = createConvexHttpClient();
+    const client = createConvexHttpClient(session);
 
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");

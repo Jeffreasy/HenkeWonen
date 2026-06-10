@@ -17,6 +17,14 @@ const roleAliases: Record<string, AppRole> = {
   super_admin: "admin"
 };
 
+function safeDecodeURIComponent(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export function parseCookies(cookieHeader: string) {
   return Object.fromEntries(
     cookieHeader
@@ -31,8 +39,8 @@ export function parseCookies(cookieHeader: string) {
         }
 
         return [
-          decodeURIComponent(part.slice(0, separator)),
-          decodeURIComponent(part.slice(separator + 1))
+          safeDecodeURIComponent(part.slice(0, separator)),
+          safeDecodeURIComponent(part.slice(separator + 1))
         ];
       })
   );

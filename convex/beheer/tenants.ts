@@ -1,16 +1,21 @@
 import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireSyncToken } from "../authz";
+import { readActorValidator, requireQueryRole, requireSyncToken } from "../authz";
 
 export const getBySlug = query({
   args: {
-    slug: v.string()
+    slug: v.string(),
+    actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("tenants")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .first();
+    const { tenant } = await requireQueryRole(ctx, args.slug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
+
+    return tenant;
   }
 });
 
