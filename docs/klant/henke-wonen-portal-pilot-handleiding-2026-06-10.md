@@ -44,7 +44,7 @@ Rechtsonder in de hoek van de desktop-portal bevindt zich de paarse **Actie-knop
 *Opmerking: Medewerkers met een "Viewer"-rol zien deze knop niet, omdat zij geen schrijfrechten hebben.*
 
 ### 3.3 Klanten & Dossiers
-* **Klant aanmaken**: Vul naam, type (particulier/zakelijk), contactgegevens en adres in.
+* **Klant aanmaken**: Vul naam, type (particulier/zakelijk), contactgegevens en plaats in. Vul straat, huisnummer en postcode daarna via **Bewerken** in het klantdossier aan als route-informatie nodig is.
 * **Contactmomenten**: Registreer elk contact (telefoon, e-mail, winkelbezoek, afspraak).
 * **Uitgeleend item**: Registreer wanneer een klant een staal, behangboek of monster mee naar huis neemt via het contacttype **Uitgeleend**. Dit blijft apart zichtbaar in het dossier totdat het item retour is gemeld.
 
@@ -52,7 +52,7 @@ Rechtsonder in de hoek van de desktop-portal bevindt zich de paarse **Actie-knop
 Een project bundelt alle documenten en acties van een specifieke klantvraag (bijv. "PVC benedenverdieping"). Het doorloopt de volgende statussen via de statusbalk bovenin:
 `Lead` $\rightarrow$ `Inmeting gepland` $\rightarrow$ `Offerteconcept` $\rightarrow$ `Offerte verzonden` $\rightarrow$ `Offerte akkoord` $\rightarrow$ `Bestellen` $\rightarrow$ `Uitvoering gepland` / `In uitvoering` $\rightarrow$ `Gefactureerd` $\rightarrow$ `Betaald` $\rightarrow$ `Gesloten`.
 
-Belangrijk: **Offerte akkoord** is geen losse tekstnotitie. De portal verwerkt deze stap alleen als er al een echte offerte bij het project bestaat. **Factuur aanmaken** kan alleen als die offerte geaccepteerd is.
+Belangrijk: **Offerte akkoord** is geen losse tekstnotitie. De portal verwerkt deze stap alleen als er al een echte offerte bij het project bestaat. De actie zet de laatste actieve offerte op **Geaccepteerd**. **Factuur aanmaken** kan alleen als er een geaccepteerde offerte is.
 
 ---
 
@@ -72,7 +72,7 @@ Op de mobiele weergave past de FAB zich aan je locatie in de app aan:
 * **Binnen een projectdossier**: De FAB toont contextacties om snel door het dossier te springen:
   * **Inmeten**: Direct scrollen naar het inmeetgedeelte.
   * **Conceptofferte**: Direct scrollen naar de offerteposten.
-  * **Route openen**: Opent Google Maps in een nieuw tabblad met het adres van de klant ingevuld om direct te navigeren.
+  * **Route openen**: Opent Google Maps in een nieuw tabblad wanneer er een adres in het klantdossier beschikbaar is.
 
 ### 4.3 Inmeten & Rekenhulp-wizards
 Binnen de inmeetsectie voeg je ruimtes toe (woonkamer, gang, trap, etc.). Gebruik de ingebouwde rekenhulpen om hoeveelheden te berekenen:
@@ -91,9 +91,9 @@ Zodra een meetregel is gecontroleerd en klopt, klik je op **Klaarzetten voor off
 
 ### 4.5 Conceptoffertes in het Veld
 Gebruik **Conceptofferte maken** om een echte offerte bij het project aan te maken. Daarna kun je meetregels die op **Klaar voor offerte** staan overnemen.
-1. Klik in de offerte op **Uit inmeting laden**.
+1. Klik in de buitendienst-offerte op **Meetregels kiezen**.
 2. Selecteer de meetregels.
-3. Bevestig de invoer. De meetregels worden omgezet naar offerteposten.
+3. Klik op **Toevoegen aan offerte**. De meetregels worden omgezet naar offerteposten.
 4. **PRIJS- EN BTW-CONTROLE**: Omdat meetregels geen prijzen bevatten, moet je nu per regel het juiste product koppelen, de verkoopprijs controleren/invoeren en het btw-percentage toewijzen.
 5. Pas de offertestatus pas aan naar **Geaccepteerd** nadat de klant akkoord heeft gegeven. Pas daarna kan er een factuur worden aangemaakt.
 
@@ -113,12 +113,12 @@ Soms gebruiken leveranciers hetzelfde EAN-nummer voor verschillende varianten of
 * **Regel**: De portal voegt producten met hetzelfde EAN-nummer **nooit** automatisch samen om dataverlies te voorkomen.
 * **Beoordeling**: Onder **Productcontrole** staan alle openstaande EAN-waarschuwingen. Je kunt hier handmatig bepalen of producten gescheiden moeten blijven, of dat er sprake is van een bronfout.
 
-### 5.3 PVC-Click Uitsluiting & Selectieve Verberging
-* **Automatische Uitsluiting**: Alle producten die onder de categorie of het type `pvc-click` vallen worden tijdens import genegeerd (`ignored`) en niet getoond.
-* **Pilot-Verberging**: Producten met type `click` worden tijdens de pilot automatisch verborgen in de portal-catalogus om verwarring te voorkomen.
+### 5.3 PVC-Click verberging tijdens de pilot
+* **Actieve catalogus**: Producten in categorie **PVC Click** of met producttype **click** worden standaard verborgen in de portal-catalogus en in de productkeuze voor offertes.
+* **Doel**: De pilot richt zich op de productgroepen die nu verkocht en gecontroleerd moeten worden. Verborgen pilotproducten blijven buiten het normale verkoopproces zodat medewerkers geen verkeerde click-variant selecteren.
 
 ### 5.4 Rebranding & Weergave-rules
-In de code van de catalogus (`pilot.ts`) zijn specifieke regels ingesteld om de productweergave voor gebruikers te optimaliseren:
+In de catalogusweergave zijn specifieke regels ingesteld om de productweergave voor gebruikers te optimaliseren:
 * **Moduleo (Roots) Rebranding**: De leverancier **Roots** en alle producten met "Roots" in de naam worden in de portal automatisch getoond als **Moduleo**.
 * **Floorlife PVC Producten**: PVC-producten die een commerciële merknaam van **Floorlife** hebben, gebruiken automatisch deze merknaam als display-naam in de portal.
 * **Ambiant Filter**: Bij PVC-producten worden commerciële namen onder het merk **Ambiant** uitgefilterd om dubbele merkaanduidingen en rommelige weergaven te voorkomen.
@@ -142,7 +142,7 @@ Voorafgaand aan de officiële start van de pilot is het wenselijk om alle testda
 * Alle facturen (`invoices`), taken (`projectTasks`) en leveranciersbestellingen.
 
 ### Hoe voer je de reset uit?
-Deze actie kan alleen direct via het Convex Dashboard of via beheertools worden aangeroepen en vereist twee beveiligingssleutels:
+Deze actie kan alleen direct via het Convex Dashboard of via beheertools worden aangeroepen en vereist twee beveiligingsvoorwaarden:
 1. De omgevingsvariabele `ALLOW_CONVEX_TOOLING` moet in Convex op `true` staan.
 2. De argument-parameter `confirmPhrase` moet exact de waarde `"JA_VERWIJDER_TESTDATA"` bevatten.
 
@@ -151,14 +151,14 @@ Deze actie kan alleen direct via het Convex Dashboard of via beheertools worden 
 ## 7. Dagelijkse Checklists voor Medewerkers
 
 ### Checklist: Voor het inmeten op locatie (Buitendienst)
-* [ ] Is het klantadres correct ingevoerd in het klantdossier? (Test de Maps-link via de FAB).
+* [ ] Is het klantadres aangevuld als route-informatie nodig is? (Test de Maps-link als **Route openen** zichtbaar is).
 * [ ] Staan er openstaande opvolgingstaken klaar in het actieplan?
 * [ ] Zijn de ruimtes al globaal aangemaakt als projectruimtes?
 
 ### Checklist: Na het inmeten op locatie
 * [ ] Zijn alle meetregels berekend en voorzien van de juiste snijverliespercentages?
 * [ ] Staan alle afgeronde meetregels op de status **Klaar voor offerte**?
-* [ ] Is de inmeetstatus in het dossier bijgewerkt naar *Reviewed*?
+* [ ] Is de inmeetstatus in het dossier bijgewerkt naar **Gecontroleerd**?
 
 ### Checklist: Bij het opstellen van de offerte (Winkel)
 * [ ] Zijn alle benodigde meetregels succesvol ingeladen?

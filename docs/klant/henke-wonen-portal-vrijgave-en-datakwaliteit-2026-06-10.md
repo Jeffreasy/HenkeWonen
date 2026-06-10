@@ -14,15 +14,15 @@ Dit document vat de resultaten van deze audits samen en legt uit hoe het systeem
 
 ---
 
-## 2. Catalogus & Btw-mappings (100% Resolved)
+## 2. Catalogus & Btw-mappings (100% opgelost)
 
 Voor een betrouwbare prijsberekening in de offertes moeten alle geïmporteerde prijskolommen een bekende btw-status hebben (inclusief of exclusief btw). Indien deze status onbekend is, blokkeert het systeem de productie-import om foutieve klantprijzen te voorkomen.
 
 ### Actuele productiestatus (gecontroleerd op 10 juni 2026)
 * **Aantal importprofielen**: 20 actieve profielen.
 * **Totaal aantal prijskolommen**: 61 kolommen.
-* **Opgeloste (Resolved) mappings**: **61 van de 61 kolommen**.
-* **Openstaande (Unresolved) mappings**: **0 kolommen**.
+* **Opgeloste mappings**: **61 van de 61 kolommen**.
+* **Openstaande mappings**: **0 kolommen**.
 * **Productie-import status**: **READY** (Vrijgegeven).
 
 Dit betekent dat alle prijsinformatie van de onderstaande leveranciers succesvol is geanalyseerd, handmatig is gecorrigeerd en gereed is voor gebruik:
@@ -76,8 +76,8 @@ De portal draait in verschillende geïsoleerde omgevingen. De status van de beve
 
 ### 4.1 Productie-omgeving (Vercel Production & Convex Production)
 * **Status**: **GROEN (Veilig)**.
-* **Toelichting**: De cryptografische tokensleutel (`AUTHZ_TOKEN_SECRET`) is correct geconfigureerd en komt exact overeen tussen Vercel en Convex. Dit garandeert dat alle database-wijzigingen cryptografisch zijn beveiligd. 
-* **Guardrail**: Ontwikkelingsvlaggen (`ALLOW_DEV_AUTHZ_TOKENS` en `ALLOW_DEV_AUTH`) en beheer-tooling (`ALLOW_CONVEX_TOOLING`) staan in de productieomgeving **strikt uitgeschakeld** om ongeoorloofde toegang te blokkeren.
+* **Toelichting**: De cryptografische tokensleutel (`AUTHZ_TOKEN_SECRET`) is in Vercel Production en Convex Production geconfigureerd. Database-wijzigingen lopen via HMAC-ondertekende actor-tokens en rolcontrole.
+* **Guardrail**: Ontwikkelingsvlaggen (`ALLOW_DEV_AUTHZ_TOKENS` en `ALLOW_DEV_AUTH`) en beheer-tooling (`ALLOW_CONVEX_TOOLING`) staan niet als actieve productievariabelen ingesteld. Beheer-tooling wordt alleen tijdelijk en bewust ingeschakeld voor gecontroleerde beheeracties.
 
 ### 4.2 Test- & Preview-omgeving (Vercel Preview)
 * **Status**: **GEEL (alleen gecontroleerd gebruiken)**.

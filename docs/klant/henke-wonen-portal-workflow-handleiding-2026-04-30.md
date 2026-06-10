@@ -25,12 +25,10 @@ Belangrijk:
 
 ## 2. Hoofdnavigatie
 
-De portal heeft deze hoofdonderdelen:
+De zichtbare hoofdnavigatie heeft deze hoofdonderdelen:
 
-- **Dashboard / Start**: overzicht, pipeline, facturenstrip en productiegereedheid.
-- **Dossiers**: zoeken over klanten, projecten en offertes.
-- **Klanten**: klanten zoeken, aanmaken en klantdossiers openen.
-- **Projecten**: projecten aanmaken, volgen en inmetingen beheren.
+- **Start**: overzicht, pipeline, facturenstrip en productiegereedheid.
+- **Dossiers**: zoeken over klanten, projecten en offertes. Vanuit Dossiers start je ook **Klant vastleggen** en **Project aanmaken**.
 - **Offertes**: offertes maken, offerteposten beheren en totalen controleren.
 - **Facturen**: facturen bekijken en opvolgen.
 - **Catalogus**: producten zoeken en prijsinformatie raadplegen.
@@ -39,7 +37,7 @@ De portal heeft deze hoofdonderdelen:
 - **Prijslijsten**: importbatches en importcontrole bekijken.
 - **Btw controle**: btw-mappings per prijskolom beoordelen.
 - **Productcontrole**: datakwaliteitsissues zoals dubbele EAN beoordelen.
-- **Instellingen**: werkzaamheden, productgroepen en offerteteksten.
+- **Beheer/instellingen**: werkzaamheden, productgroepen en offerteteksten.
 
 ## 3. Dashboard
 
@@ -67,16 +65,16 @@ Dubbele EAN-waarschuwingen zijn zichtbaar als waarschuwing. Ze blokkeren de prod
 
 ## 4. Klanten
 
-Gebruik **Klanten** om klanten te zoeken, nieuwe klanten aan te maken en klantdossiers te openen.
+Gebruik **Dossiers** om klanten te zoeken en klantdossiers te openen. Nieuwe klanten maak je aan via **Dossiers -> Klant vastleggen** of via de snelle actie **Nieuwe aanvraag**.
 
 ### Klant aanmaken
 
-1. Ga naar **Klanten**.
+1. Ga naar **Dossiers** en kies **Klant vastleggen**, of gebruik **Actie -> Nieuwe aanvraag**.
 2. Vul de klantgegevens in.
 3. Kies het type klant, bijvoorbeeld particulier of zakelijk.
-4. Sla de klant op.
+4. Klik op **Klant vastleggen**.
 
-In de huidige portal is klant aanmaken beschikbaar. Een uitgebreide klant-bewerkflow of verwijderflow is niet als hoofdactie zichtbaar.
+Bij het aanmaken leg je naam, type, e-mail, telefoon, plaats en interne notities vast. Volledige adresvelden zoals straat, huisnummer en postcode kun je daarna via **Bewerken** in het klantdossier aanvullen.
 
 ### Klant zoeken
 
@@ -117,10 +115,10 @@ Een project is het werkdossier rondom een klantvraag, bijvoorbeeld een PVC-vloer
 
 ### Project aanmaken
 
-1. Ga naar **Projecten**.
+1. Ga naar **Dossiers** en kies **Project aanmaken**, of gebruik **Actie -> Werk starten**.
 2. Kies een bestaande klant.
 3. Vul projectnaam en omschrijving in.
-4. Sla het project op.
+4. Klik op **Project starten**.
 
 Een project hoort altijd bij een klant.
 
@@ -168,7 +166,7 @@ Projectdetail bevat snelle acties voor werkprocesmomenten, zoals:
 - factuur aangemaakt
 - export naar boekhouder
 
-Let op: **akkoord op offerte** kan alleen als er al een echte offerte bij het project bestaat. **Factuur aangemaakt** kan alleen als er een geaccepteerde offerte is. Export naar boekhouder is een dossiermoment; er is geen automatische boekhoudkoppeling.
+Let op: **akkoord op offerte** kan alleen als er al een echte offerte bij het project bestaat. Deze actie zet de laatste actieve offerte op **Geaccepteerd** en legt het akkoord vast op het project. **Factuur aanmaken** kan alleen als er een geaccepteerde offerte is. De projectstap maakt een factuur aan op basis van die offerte en vraagt om een vervaldatum. Export naar boekhouder is een dossiermoment; er is geen automatische boekhoudkoppeling.
 
 ## 6. Inmeten
 
@@ -325,31 +323,31 @@ Gebruik **Offertes** om offertes aan te maken, te openen en te beheren.
 ### Offerte aanmaken
 
 1. Ga naar **Offertes**.
-2. Kies een project.
-3. Vul een offertenaam in.
-4. Sla de offerte op.
+2. Kies **Nieuwe offerte**.
+3. Kies een project en vul een offertenaam in.
+4. Klik op **Offerte starten**.
 
-Nieuwe offertes nemen standaardvoorwaarden en betalingsafspraken over vanuit het actieve offertesjabloon.
+Nieuwe offertes nemen standaardvoorwaarden en betalingsafspraken over vanuit de actieve offerteteksten.
 
 ### Offerte openen
 
 Selecteer een offerte uit de lijst. De offertebuilder verschijnt met:
 
 - offertegegevens
-- regel toevoegen
-- uit inmeting laden
+- offertepost toevoegen
+- inmeting overnemen
 - offerteregels
 - voorwaarden
 - totalen
 
 ### Handmatige offertepost toevoegen
 
-Gebruik **Regel toevoegen** voor een nieuwe offertepost.
+Gebruik **Offertepost toevoegen** voor een nieuwe offertepost.
 
 Je kiest een regeltype:
 
 - Productregel
-- Serviceregel
+- Werkzaamheid
 - Arbeidsregel
 - Materiaalregel
 - Korting
@@ -358,22 +356,22 @@ Je kiest een regeltype:
 
 Vul daarna omschrijving, aantal, eenheid, prijs excl. btw en btw-percentage in.
 
-### Sjabloonregel laden
+### Standaardregel gebruiken
 
-Bij **Sjabloonregel laden** kun je een standaardregel uit het offertevoorbeeld kiezen.
+Bij **Standaardregel gebruiken** kun je een standaardregel uit het offertevoorbeeld kiezen.
 
 De regel wordt ingevuld als concept. Je kunt de tekst, hoeveelheid, eenheid, prijs en btw daarna aanpassen voordat je hem toevoegt.
 
-### Uit inmeting laden
+### Inmeting overnemen
 
-Gebruik **Uit inmeting laden** om meetregels over te nemen die klaarstaan voor offerte.
+Gebruik **Inmeting overnemen** om meetregels over te nemen die klaarstaan voor offerte.
 
 Flow:
 
-1. Klik op **Uit inmeting laden**.
+1. Klik op **Inmeting overnemen**.
 2. Bekijk de meetregels die klaarstaan.
 3. Selecteer een of meer regels.
-4. Bevestig dat je ze wilt toevoegen.
+4. Klik op **Toevoegen aan offerte**.
 5. Controleer daarna product, prijs en btw in de offertepost.
 
 Belangrijk:
@@ -406,11 +404,16 @@ Controleer altijd of de regels, prijzen, btw en kortingen kloppen voordat je een
 
 Vanuit de offertebuilder kun je de status aanpassen naar bijvoorbeeld **Verzonden** of **Geaccepteerd**. Als een offerte wordt geaccepteerd, legt de portal dit ook vast op het gekoppelde project. Daarna kan er een factuur worden aangemaakt op basis van die geaccepteerde offerte.
 
-De projectknop **Offerte akkoord** is dus geen vervanging voor een offerte. Zonder offerte wordt deze actie geblokkeerd.
+De projectknop **Offerte akkoord** is dus geen vervanging voor een offerte. Zonder offerte wordt deze actie geblokkeerd. Als er wel een actieve offerte is, zet de actie die offerte op **Geaccepteerd**.
+
+Er zijn twee factuurpaden:
+
+- Vanuit de offertebuilder: **Factuur aanmaken** verschijnt bij een geaccepteerde offerte en maakt een conceptfactuur met standaard 30 dagen vervaldatum.
+- Vanuit het projectdossier: **Factuur aanmaken** verwerkt de projectstap, maakt een verzonden factuur en gebruikt een aanpasbare vervaldatum. Standaard is dit 8 kalenderdagen voor particulier en 21 kalenderdagen voor zakelijk.
 
 ## 8. Offerteteksten
 
-Ga naar **Instellingen -> Offerteteksten** om het standaard offertesjabloon te bekijken.
+Ga naar **Offerteteksten** om het standaard offertesjabloon te bekijken.
 
 Het belangrijkste sjabloon is:
 
@@ -582,9 +585,9 @@ Mogelijke beslissingen:
 
 Deze controle helpt de cataloguskwaliteit, maar blokkeert de productie-import niet automatisch.
 
-## 14. Instellingen
+## 14. Beheer/instellingen
 
-Onder **Instellingen** staan:
+Onder **Beheer** staan ook de instellingen voor:
 
 - **Werkzaamheden**: overzicht van werkzaamheden en prijzen excl. btw.
 - **Productgroepen**: overzicht van cataloguscategorieen.
@@ -596,10 +599,10 @@ Werkzaamheden en productgroepen zijn in de huidige UI vooral raadpleegschermen. 
 
 ### Nieuwe klant komt in de winkel
 
-1. Ga naar **Klanten**.
+1. Ga naar **Dossiers**.
 2. Zoek of de klant al bestaat.
-3. Maak de klant aan als die nog niet bestaat.
-4. Maak daarna een project aan.
+3. Kies **Klant vastleggen** als die nog niet bestaat.
+4. Maak daarna via **Project aanmaken** een project aan.
 
 ### Klant wil offerte voor PVC-vloer
 
@@ -609,7 +612,7 @@ Werkzaamheden en productgroepen zijn in de huidige UI vooral raadpleegschermen. 
 4. Bereken vloer en plinten.
 5. Zet meetregels klaar voor offerte.
 6. Maak een offerte.
-7. Laad meetregels uit inmeting.
+7. Neem meetregels over via **Inmeting overnemen**.
 8. Controleer product, prijs en btw.
 
 ### Er moet eerst ingemeten worden
@@ -623,9 +626,9 @@ Werkzaamheden en productgroepen zijn in de huidige UI vooral raadpleegschermen. 
 ### Meetregel is klaar voor offerte
 
 1. Open de gekoppelde offerte.
-2. Kies **Uit inmeting laden**.
+2. Kies **Inmeting overnemen**.
 3. Selecteer de meetregel.
-4. Bevestig toevoegen.
+4. Klik op **Toevoegen aan offerte**.
 5. Controleer de nieuwe offertepost.
 
 ### Productlijst van leverancier is nog niet ontvangen
@@ -661,7 +664,7 @@ Voor een specifieke offerte:
 
 Voor nieuwe offertes:
 
-1. Ga naar **Instellingen -> Offerteteksten**.
+1. Ga naar **Offerteteksten**.
 2. Pas voorwaarden of betalingsafspraken aan.
 3. Sla op.
 
@@ -716,8 +719,8 @@ Extra materiaal voor snijden, patroon, legrichting of productafmetingen.
 **Offertepost**  
 Een regel op een offerte, bijvoorbeeld product, arbeid, materiaal of tekst.
 
-**Offertesjabloon**  
-Standaardset met offerteblokken, regels, voorwaarden en betalingsafspraken.
+**Offerteteksten / offertesjabloon**
+Standaardset met offerteblokken, regels, voorwaarden en betalingsafspraken. In de portal staat dit onder **Offerteteksten**.
 
 **Catalogus**  
 Product- en prijsdata uit leveranciersbestanden.

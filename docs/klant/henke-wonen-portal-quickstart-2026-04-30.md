@@ -8,7 +8,7 @@ Doel: snel starten met de dagelijkse basisflow
 
 ### 1. Klant aanmaken of opzoeken
 
-Ga naar **Klanten**.
+Ga naar **Dossiers** en kies **Klant vastleggen**, of gebruik rechtsonder **Actie -> Nieuwe aanvraag**.
 
 - Zoek eerst of de klant al bestaat.
 - Maak de klant aan als die nog niet bestaat.
@@ -16,11 +16,11 @@ Ga naar **Klanten**.
 
 ### 2. Project aanmaken
 
-Ga naar **Projecten**.
+Ga naar **Dossiers** en kies **Project aanmaken**, of gebruik rechtsonder **Actie -> Werk starten**.
 
 - Kies de klant.
 - Vul projectnaam en omschrijving in.
-- Sla het project op.
+- Klik op **Project starten**.
 
 Voorbeeld: “PVC benedenverdieping” of “Behang woonkamer”.
 
@@ -64,21 +64,21 @@ De regel staat daarna klaar om in de offerte te laden.
 
 ### 6. Offerte maken
 
-Ga naar **Offertes**.
+Ga naar **Offertes** en kies **Nieuwe offerte**.
 
 - Kies het project.
 - Vul een offertenaam in.
-- Sla de offerte op.
+- Klik op **Offerte starten**.
 
-Nieuwe offertes nemen standaardvoorwaarden en betalingsafspraken over uit het offertesjabloon.
+Nieuwe offertes nemen standaardvoorwaarden en betalingsafspraken over uit de ingestelde offerteteksten.
 
-### 7. Uit inmeting laden
+### 7. Inmeting overnemen
 
 Open de offerte.
 
-1. Klik op **Uit inmeting laden**.
+1. Klik op **Inmeting overnemen**.
 2. Selecteer de meetregels.
-3. Bevestig toevoegen.
+3. Klik op **Toevoegen aan offerte**.
 
 De regels worden gewone offerteposten met hoeveelheid en omschrijving.
 
@@ -130,7 +130,7 @@ Ga naar **Leveranciers**.
 
 ### Productie-import controleren
 
-Ga naar **Start/Dashboard** of **Btw controle**.
+Ga naar **Start** of **Btw controle**.
 
 - Staat productie-import op **Geblokkeerd**?
 - Los dan eerst de open btw-mappings op.
