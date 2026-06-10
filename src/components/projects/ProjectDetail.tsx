@@ -5,11 +5,13 @@ import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatDate } from "../../lib/dates";
 import { formatEuro } from "../../lib/money";
+import { showToast } from "../../lib/toast";
 import type {
   InvoiceStatus,
   PortalCustomer,
   PortalProject,
   PortalProjectTask,
+  PortalQuote,
   PortalRoom,
   PortalWorkflowEvent
 } from "../../lib/portalTypes";
@@ -40,6 +42,7 @@ type ProjectDetailResult = {
   customer: PortalCustomer | null;
   workflowEvents?: PortalWorkflowEvent[];
   projectTasks?: PortalProjectTask[];
+  latestQuote?: Omit<PortalQuote, "lines"> | null;
   invoice?: {
     id: string;
     invoiceNumber: string;
@@ -303,16 +306,29 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       return;
     }
 
-    await client.mutation(api.portal.processProjectAction, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      projectId,
-      action,
-      invoiceDueAt:
-        action === "invoice_created" ? fromDateInputValue(invoiceDueDate) : undefined
-    });
-    setPendingProjectAction(null);
-    await loadProject();
+    try {
+      await client.mutation(api.portal.processProjectAction, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        projectId,
+        action,
+        invoiceDueAt:
+          action === "invoice_created" ? fromDateInputValue(invoiceDueDate) : undefined
+      });
+      setPendingProjectAction(null);
+      await loadProject();
+    } catch (processError) {
+      console.error(processError);
+      setPendingProjectAction(null);
+      showToast({
+        title: "Dossieractie mislukt",
+        description:
+          processError instanceof Error
+            ? processError.message
+            : "De dossieractie kon niet worden verwerkt.",
+        tone: "error"
+      });
+    }
   }
 
   async function updateProjectTaskStatus(
@@ -445,6 +461,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
 
         <ProjectTimelinePanel
           workflowEvents={workflowEvents}
+          latestQuote={detail.latestQuote ?? null}
           canEdit={canEditProject}
           onProcessAction={openProjectAction}
         />

@@ -1,4 +1,6 @@
 import { Archive, CheckCircle, FileText, Send, ShoppingCart } from "lucide-react";
+import { formatQuoteStatus } from "../../lib/i18n/statusLabels";
+import type { PortalQuote } from "../../lib/portalTypes";
 import type { PortalWorkflowEvent } from "../../lib/portalTypes";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
@@ -15,6 +17,7 @@ type ProjectAction =
 
 type ProjectTimelinePanelProps = {
   workflowEvents: PortalWorkflowEvent[];
+  latestQuote?: Omit<PortalQuote, "lines"> | null;
   canEdit: boolean;
   onProcessAction: (action: ProjectAction) => void;
 };
@@ -54,9 +57,16 @@ function eventLabel(type: PortalWorkflowEvent["type"]) {
 
 export function ProjectTimelinePanel({
   workflowEvents,
+  latestQuote,
   canEdit,
   onProcessAction
 }: ProjectTimelinePanelProps) {
+  const hasQuote = Boolean(latestQuote);
+  const canCreateInvoice = latestQuote?.status === "accepted";
+  const quoteContext = latestQuote
+    ? `${latestQuote.quoteNumber} - ${formatQuoteStatus(latestQuote.status)}`
+    : undefined;
+
   return (
     <section className="panel project-timeline-panel">
       <SectionHeader
@@ -68,9 +78,14 @@ export function ProjectTimelinePanel({
             <div className="project-action-row">
               <Button
                 onClick={() => onProcessAction("quote_accepted")}
+                disabled={!hasQuote}
                 size="sm"
                 variant="secondary"
                 leftIcon={<CheckCircle size={14} aria-hidden="true" />}
+                title={
+                  quoteContext ??
+                  "Maak eerst een offerte aan voordat je akkoord verwerkt."
+                }
               >
                 Offerte akkoord
               </Button>
@@ -84,9 +99,15 @@ export function ProjectTimelinePanel({
               </Button>
               <Button
                 onClick={() => onProcessAction("invoice_created")}
+                disabled={!canCreateInvoice}
                 size="sm"
                 variant="secondary"
                 leftIcon={<FileText size={14} aria-hidden="true" />}
+                title={
+                  latestQuote
+                    ? `Laatste offerte: ${quoteContext}`
+                    : "Maak of accepteer eerst een offerte voordat je een factuur aanmaakt."
+                }
               >
                 Factuur aanmaken
               </Button>

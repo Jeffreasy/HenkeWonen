@@ -160,6 +160,16 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(legacyAddQuoteLine).toContain('quote.status !== "draft"');
   });
 
+  it("should not accept a project quote workflow without an actual quote", () => {
+    const block = exportedMutationBlock("convex/projecten/core.ts", "processProjectAction");
+
+    expect(block).toContain('args.action === "quote_accepted"');
+    expect(block).toContain("Maak eerst een offerte aan voordat je akkoord verwerkt.");
+    expect(block).toContain("Er is geen actieve offerte om akkoord te verwerken.");
+    expect(block).toContain("latestAcceptedQuoteForProject");
+    expect(block).toContain("Maak of accepteer eerst een offerte voordat je een factuur aanmaakt.");
+  });
+
   it("should enforce child check constraints before deleting a project room", () => {
     const deleteProjectRoom = exportedMutationBlock("convex/projecten/core.ts", "deleteProjectRoom");
     expect(deleteProjectRoom).toContain('query("measurementRooms")');

@@ -24,6 +24,7 @@ import {
   invoicePaymentTermDays,
   latestMeasurementForProject,
   latestQuoteForProject,
+  latestAcceptedQuoteForProject,
   hasProjectEvent,
   addProjectEvent,
   upsertProjectTask,
@@ -424,7 +425,7 @@ export const projectDetail = query({
       return null;
     }
 
-    const [customer, workflowEvents, projectTasks, projectInvoices] = await Promise.all([
+    const [customer, workflowEvents, projectTasks, projectInvoices, latestQuote] = await Promise.all([
       ctx.db.get(project.customerId),
       ctx.db
         .query("projectWorkflowEvents")
@@ -443,7 +444,8 @@ export const projectDetail = query({
         .withIndex("by_project", (q: any) =>
           q.eq("tenantId", tenant._id).eq("projectId", project._id)
         )
-        .collect()
+        .collect(),
+      latestQuoteForProject(ctx, tenant._id, project._id)
     ]);
 
     // Meest recente factuur (doorgaans is er maar één per project)
@@ -454,6 +456,7 @@ export const projectDetail = query({
     return {
       project: await toProject(ctx, tenant.slug, project),
       customer: customer ? toCustomer(tenant.slug, customer) : null,
+      latestQuote: latestQuote ? toQuoteSummary(tenant.slug, latestQuote) : null,
       workflowEvents: workflowEvents
         .sort(
           (left: Doc<"projectWorkflowEvents">, right: Doc<"projectWorkflowEvents">) =>
@@ -868,6 +871,29 @@ export const processProjectAction = mutation({
       }
     }[args.action];
 
+    const latestQuote =
+      args.action === "quote_accepted"
+        ? await latestQuoteForProject(ctx, tenant._id, project._id)
+        : undefined;
+    const latestAcceptedQuote =
+      args.action === "invoice_created"
+        ? await latestAcceptedQuoteForProject(ctx, tenant._id, project._id)
+        : undefined;
+
+    if (args.action === "quote_accepted") {
+      if (!latestQuote) {
+        throw new Error("Maak eerst een offerte aan voordat je akkoord verwerkt.");
+      }
+
+      if (["cancelled", "rejected", "expired"].includes(latestQuote.status)) {
+        throw new Error("Er is geen actieve offerte om akkoord te verwerken.");
+      }
+    }
+
+    if (args.action === "invoice_created" && !latestAcceptedQuote) {
+      throw new Error("Maak of accepteer eerst een offerte voordat je een factuur aanmaakt.");
+    }
+
     await ctx.db.patch(project._id, {
       status: actionConfig.projectStatus,
       acceptedAt:
@@ -883,9 +909,8 @@ export const processProjectAction = mutation({
     });
 
     if (args.action === "quote_accepted") {
-      const quote = await latestQuoteForProject(ctx, tenant._id, project._id);
-      if (quote && quote.status !== "accepted") {
-        await ctx.db.patch(quote._id, {
+      if (latestQuote && latestQuote.status !== "accepted") {
+        await ctx.db.patch(latestQuote._id, {
           status: "accepted",
           acceptedAt: now,
           updatedAt: now
@@ -898,7 +923,7 @@ export const processProjectAction = mutation({
         project._id,
         "quote_follow_up",
         "done",
-        quote?._id
+        latestQuote?._id
       );
       await upsertProjectTask(
         ctx,
@@ -908,7 +933,7 @@ export const processProjectAction = mutation({
         "Bevestigingsmail / betaling binnen 5 dagen",
         addCalendarDays(now, 5),
         externalUserId,
-        quote?._id
+        latestQuote?._id
       );
       await upsertProjectTask(
         ctx,
@@ -918,7 +943,7 @@ export const processProjectAction = mutation({
         "Bellen / afspraak maken voor uitvoering",
         addCalendarDays(now, 5),
         externalUserId,
-        quote?._id
+        latestQuote?._id
       );
     }
 
@@ -938,21 +963,19 @@ export const processProjectAction = mutation({
         externalUserId
       );
 
-      // Koppel de laatste geaccepteerde offerte voor bedragen
-      const acceptedQuote = await latestQuoteForProject(ctx, tenant._id, project._id);
       const invoiceNumber = await nextInvoiceNumber(ctx, tenant._id);
       await ctx.db.insert("invoices", {
         tenantId: tenant._id,
         projectId: project._id,
         customerId: project.customerId,
-        quoteId: acceptedQuote?._id,
+        quoteId: latestAcceptedQuote?._id,
         invoiceNumber,
         status: "sent",
         invoiceDate: now,
         dueDate: args.invoiceDueAt ?? addCalendarDays(now, invoiceTermDays),
-        subtotalExVat: acceptedQuote?.subtotalExVat ?? 0,
-        vatTotal: acceptedQuote?.vatTotal ?? 0,
-        totalIncVat: acceptedQuote?.totalIncVat ?? 0,
+        subtotalExVat: latestAcceptedQuote?.subtotalExVat ?? 0,
+        vatTotal: latestAcceptedQuote?.vatTotal ?? 0,
+        totalIncVat: latestAcceptedQuote?.totalIncVat ?? 0,
         paidAmount: 0,
         createdAt: now,
         updatedAt: now

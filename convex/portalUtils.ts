@@ -572,6 +572,21 @@ export async function latestQuoteForProject(ctx: any, tenantId: Id<"tenants">, p
   return quotes.sort((left: Doc<"quotes">, right: Doc<"quotes">) => right.updatedAt - left.updatedAt)[0];
 }
 
+export async function latestAcceptedQuoteForProject(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  projectId: Id<"projects">
+) {
+  const quotes = await ctx.db
+    .query("quotes")
+    .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
+    .collect();
+
+  return quotes
+    .filter((quote: Doc<"quotes">) => quote.status === "accepted")
+    .sort((left: Doc<"quotes">, right: Doc<"quotes">) => right.updatedAt - left.updatedAt)[0];
+}
+
 export async function latestMeasurementForProject(
   ctx: any,
   tenantId: Id<"tenants">,
