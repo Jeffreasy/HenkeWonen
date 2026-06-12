@@ -24,7 +24,7 @@ function loanStatus(contact: PortalCustomerContact) {
 
 export function LoanedItemsList({ loanedItems }: LoanedItemsListProps) {
   return (
-    <section className="panel">
+    <section className="panel customer-detail-panel customer-loaned-panel">
       <SectionHeader
         compact
         title="Uitgeleende items"

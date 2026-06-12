@@ -239,6 +239,8 @@ export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
     <div className="grid">
       {error ? <Alert variant="danger" title="Dossiers niet geladen" description={error} /> : null}
 
+      <DossierActions canCreateDossiers={canCreateDossiers} />
+
       <DossierStats
         customersCount={workspace.customers.length}
         openProjectsCount={openProjects.length}
@@ -253,8 +255,6 @@ export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
         isLoading={isLoading}
         rows={filteredRows}
       />
-
-      <DossierActions canCreateDossiers={canCreateDossiers} />
     </div>
   );
 }

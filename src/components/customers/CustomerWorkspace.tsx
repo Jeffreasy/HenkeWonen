@@ -67,14 +67,14 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
     }
 
     try {
-      await client.mutation(api.portal.createCustomer, {
+      const customerId = await client.mutation(api.portal.createCustomer, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         ...customer
       });
-      await loadCustomers();
       setIsModalOpen(false);
       showToast({ title: "Klant aangemaakt", description: customer.displayName, tone: "success" });
+      window.location.assign(`/portal/klanten/${String(customerId)}`);
     } catch {
       showToast({ title: "Klant aanmaken mislukt", tone: "error" });
     }

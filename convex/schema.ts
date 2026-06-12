@@ -179,6 +179,8 @@ export default defineSchema({
     slug: v.string(),
     name: v.string(),
     status: statusActive,
+    invoiceSequenceYear: v.optional(v.number()),
+    invoiceSequenceValue: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number()
   })

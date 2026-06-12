@@ -95,6 +95,7 @@ describe("Quote Document Model", () => {
     expect(model.paymentTerms).toEqual(["100% bij oplevering.", "Betalingstermijn 8 dagen."]);
     expect(model.customer.addressLines).toEqual(["Voorbeeldstraat 12", "8255 AA Swifterbant"]);
     expect(model.customer.salutation).toBe("Beste familie Jansen");
+    expect(model.company.logoUrl).toBe("/images/logo-henke-wonen.png");
   });
 
   it("should formulate the correct vat label for mixed vat rates", () => {

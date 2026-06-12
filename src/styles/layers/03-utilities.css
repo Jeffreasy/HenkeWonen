@@ -9,8 +9,8 @@
 .page-header h1,
 .section-title {
   margin: 6px 0 0;
-  font-size: clamp(1.8rem, 4vw, 2.6rem);
-  line-height: 1.05;
+  font-size: clamp(1.55rem, 3vw, 2.15rem);
+  line-height: 1.08;
   letter-spacing: 0;
   overflow-wrap: break-word;
   text-wrap: balance;
@@ -19,7 +19,7 @@
 .ui-page-header,
 .ui-section-header {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .ui-page-header-row,
@@ -38,7 +38,7 @@
 
 .ui-page-header-copy {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-1);
   min-width: 0;
   max-width: 78ch;
 }
@@ -46,8 +46,8 @@
 .ui-page-header h1 {
   margin: 0;
   color: var(--ink);
-  font-size: clamp(2rem, 4vw, 2.75rem);
-  line-height: var(--line-tight);
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+  line-height: 1.08;
   letter-spacing: 0;
   overflow-wrap: break-word;
   text-wrap: balance;
@@ -72,6 +72,7 @@
 .ui-page-header .muted,
 .ui-section-header .muted {
   margin: 0;
+  font-size: var(--text-md);
   line-height: var(--line-normal);
   overflow-wrap: break-word;
 }
@@ -94,7 +95,7 @@
 .ui-section-header h2 {
   margin: 0;
   color: var(--ink);
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   line-height: var(--line-tight);
 }
 
@@ -130,7 +131,7 @@
 
 .breadcrumbs-link {
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .breadcrumbs-link:hover {
@@ -139,7 +140,7 @@
 
 .breadcrumbs-current {
   color: var(--ink);
-  font-weight: 800;
+  font-weight: 750;
 }
 
 .muted {
@@ -165,7 +166,7 @@
 }
 
 .dashboard-focus-card {
-  min-height: 150px;
+  min-height: 128px;
 }
 
 .dashboard-focus-card-info {
@@ -189,19 +190,20 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
 .dashboard-section-header h2 {
   margin: var(--space-1) 0 0;
   color: var(--ink);
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   line-height: var(--line-tight);
 }
 
 .dashboard-section-header .muted {
-  margin: var(--space-2) 0 0;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-md);
 }
 
 .dashboard-work-list {
@@ -212,11 +214,11 @@
 .dashboard-work-item,
 .dashboard-project-link {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--surface-raised);
-  padding: var(--space-4);
+  padding: var(--space-3);
 }
 
 .dashboard-work-item {
@@ -233,8 +235,21 @@
 .dashboard-work-copy,
 .dashboard-work-meta {
   display: grid;
-  gap: var(--space-2);
+  gap: 6px;
   min-width: 0;
+}
+
+.dashboard-work-item strong,
+.dashboard-project-link strong {
+  font-size: var(--text-md);
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.dashboard-work-item small,
+.dashboard-project-link small {
+  font-size: var(--text-sm);
+  line-height: 1.3;
 }
 
 .dashboard-work-meta {

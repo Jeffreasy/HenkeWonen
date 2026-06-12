@@ -1,5 +1,6 @@
 ---
 import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import DossierTabs from "../../../components/dossiers/DossierTabs.astro";
 import ProjectWorkspace from "../../../components/projects/ProjectWorkspace";
 import { PageHeader } from "../../../components/ui/PageHeader";
 
@@ -15,8 +16,7 @@ if (!session) {
     eyebrow="Dossiers"
     title="Projectdossiers"
     description="Maak en beheer projecten als werkdossiers voor inmeting, offerte, uitvoering en opvolging."
-  >
-    <a class="button secondary" href="/portal/dossiers">Terug naar dossiers</a>
-  </PageHeader>
+  />
+  <DossierTabs active="projects" />
   <ProjectWorkspace client:load session={session} />
 </PortalLayout>

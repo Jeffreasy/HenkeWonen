@@ -69,7 +69,7 @@ export function ContactListTable({ contacts, onNew }: ContactListTableProps) {
   );
 
   return (
-    <section className="panel">
+    <section className="panel customer-detail-panel customer-contact-panel">
       <SectionHeader
         compact
         title="Contactmomenten"
@@ -77,10 +77,11 @@ export function ContactListTable({ contacts, onNew }: ContactListTableProps) {
         actions={
           onNew ? (
             <Button
+              className="customer-detail-action-button"
               leftIcon={<Plus size={16} aria-hidden="true" />}
               onClick={onNew}
               size="sm"
-              variant="primary"
+              variant="secondary"
             >
               Toevoegen
             </Button>

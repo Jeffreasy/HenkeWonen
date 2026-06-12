@@ -221,7 +221,11 @@ function customerAddress(customer: Doc<"customers"> | undefined | null) {
 function activeFieldQuote(quotes: Doc<"quotes">[], projectId: Id<"projects">) {
   return quotes
     .filter((quote) => quote.projectId === projectId)
-    .filter((quote) => quote.status === "draft" || quote.status === "sent")
+    .filter((quote) =>
+      quote.status === "draft" ||
+      quote.status === "sent" ||
+      quote.status === "accepted"
+    )
     .sort((left, right) => right.updatedAt - left.updatedAt)[0];
 }
 
@@ -235,6 +239,10 @@ function fieldVisitTimestamp(
   project: Doc<"projects">,
   measurement: Doc<"measurements"> | undefined
 ) {
+  if (project.status === "execution_planned" || project.status === "in_progress") {
+    return project.executionDate ?? project.measurementDate ?? measurement?.measurementDate;
+  }
+
   return project.measurementDate ?? measurement?.measurementDate;
 }
 
@@ -272,12 +280,16 @@ function fieldBucket(
     return "today";
   }
 
+  if (isDueTodayOrEarlier(fieldVisitTimestamp(project, measurement), now)) {
+    return "today";
+  }
+
   if (firstOpenTask) {
     return "followUp";
   }
 
-  if (isDueTodayOrEarlier(fieldVisitTimestamp(project, measurement), now)) {
-    return "today";
+  if (project.status === "execution_planned" || project.status === "in_progress") {
+    return "followUp";
   }
 
   if (
@@ -289,11 +301,16 @@ function fieldBucket(
     return "quote";
   }
 
-  if (quote?.status === "sent" || project.status === "quote_sent") {
+  if (
+    quote?.status === "sent" ||
+    quote?.status === "accepted" ||
+    project.status === "quote_sent" ||
+    project.status === "quote_accepted"
+  ) {
     return "followUp";
   }
 
-  if (["lead", "quote_accepted", "measurement_planned"].includes(project.status)) {
+  if (["lead", "measurement_planned"].includes(project.status)) {
     return "measure";
   }
 
@@ -532,7 +549,11 @@ export const fieldProjectWorkspace = query({
       customer: customer ? toCustomer(tenant.slug, customer) : null,
       quotes: await Promise.all(
         quotes
-          .filter((quote: Doc<"quotes">) => quote.status === "draft" || quote.status === "sent")
+          .filter((quote: Doc<"quotes">) =>
+            quote.status === "draft" ||
+            quote.status === "sent" ||
+            quote.status === "accepted"
+          )
           .map((quote: Doc<"quotes">) => toQuote(ctx, tenant.slug, quote))
       ),
       templates: templates

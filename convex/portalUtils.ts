@@ -119,6 +119,42 @@ export function invoicePaymentTermDays(customer?: Doc<"customers"> | null) {
   return customer?.type === "business" ? 21 : 8;
 }
 
+export async function nextInvoiceNumber(ctx: any, tenantId: Id<"tenants">): Promise<string> {
+  const now = Date.now();
+  const year = new Date(now).getFullYear();
+  const prefix = `FAC-${year}-`;
+  const tenant = (await ctx.db.get(tenantId)) as (Doc<"tenants"> & {
+    invoiceSequenceYear?: number;
+    invoiceSequenceValue?: number;
+  }) | null;
+  let nextSequence: number;
+
+  if (tenant?.invoiceSequenceYear === year && typeof tenant.invoiceSequenceValue === "number") {
+    nextSequence = tenant.invoiceSequenceValue + 1;
+  } else {
+    const existing = await ctx.db
+      .query("invoices")
+      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
+      .collect();
+    const highest = existing
+      .filter((inv: Doc<"invoices">) => inv.invoiceNumber.startsWith(prefix))
+      .reduce((max: number, inv: Doc<"invoices">) => {
+        const num = parseInt(inv.invoiceNumber.replace(prefix, ""), 10);
+        return isNaN(num) ? max : Math.max(max, num);
+      }, 0);
+
+    nextSequence = highest + 1;
+  }
+
+  await ctx.db.patch(tenantId, {
+    invoiceSequenceYear: year,
+    invoiceSequenceValue: nextSequence,
+    updatedAt: now
+  });
+
+  return `${prefix}${String(nextSequence).padStart(3, "0")}`;
+}
+
 export function taskPriority(dueAt: number, now = Date.now()) {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
@@ -429,7 +465,11 @@ export function customerAddress(customer: Doc<"customers"> | undefined | null) {
 export function activeFieldQuote(quotes: Doc<"quotes">[], projectId: Id<"projects">) {
   return quotes
     .filter((quote) => quote.projectId === projectId)
-    .filter((quote) => quote.status === "draft" || quote.status === "sent")
+    .filter((quote) =>
+      quote.status === "draft" ||
+      quote.status === "sent" ||
+      quote.status === "accepted"
+    )
     .sort((left, right) => right.updatedAt - left.updatedAt)[0];
 }
 
@@ -443,6 +483,10 @@ export function fieldVisitTimestamp(
   project: Doc<"projects">,
   measurement: Doc<"measurements"> | undefined
 ) {
+  if (project.status === "execution_planned" || project.status === "in_progress") {
+    return project.executionDate ?? project.measurementDate ?? measurement?.measurementDate;
+  }
+
   return project.measurementDate ?? measurement?.measurementDate;
 }
 
@@ -488,6 +532,10 @@ export function fieldBucket(
     return "today";
   }
 
+  if (project.status === "execution_planned" || project.status === "in_progress") {
+    return "followUp";
+  }
+
   if (
     quote?.status === "draft" ||
     project.status === "quote_draft" ||
@@ -497,11 +545,16 @@ export function fieldBucket(
     return "quote";
   }
 
-  if (quote?.status === "sent" || project.status === "quote_sent") {
+  if (
+    quote?.status === "sent" ||
+    quote?.status === "accepted" ||
+    project.status === "quote_sent" ||
+    project.status === "quote_accepted"
+  ) {
     return "followUp";
   }
 
-  if (["lead", "quote_accepted", "measurement_planned"].includes(project.status)) {
+  if (["lead", "measurement_planned"].includes(project.status)) {
     return "measure";
   }
 
@@ -585,6 +638,18 @@ export async function latestAcceptedQuoteForProject(
   return quotes
     .filter((quote: Doc<"quotes">) => quote.status === "accepted")
     .sort((left: Doc<"quotes">, right: Doc<"quotes">) => right.updatedAt - left.updatedAt)[0];
+}
+
+export async function existingInvoiceForQuote(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  quoteId: Id<"quotes">
+) {
+  return await ctx.db
+    .query("invoices")
+    .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
+    .filter((q: any) => q.eq(q.field("quoteId"), quoteId))
+    .first();
 }
 
 export async function latestMeasurementForProject(
@@ -714,6 +779,29 @@ export async function closeOpenProjectTasks(
         })
       )
   );
+}
+
+export async function completeInvoiceWorkflow(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  project: Doc<"projects">,
+  dueAt: number,
+  externalUserId?: string
+) {
+  await closeOpenProjectTasks(ctx, tenantId, project._id, "confirmation_payment", "done");
+  await upsertProjectTask(
+    ctx,
+    tenantId,
+    project._id,
+    "invoice_payment",
+    "Factuurbetaling opvolgen",
+    dueAt,
+    externalUserId
+  );
+
+  if (!(await hasProjectEvent(ctx, tenantId, project._id, "invoice_created"))) {
+    await addProjectEvent(ctx, tenantId, project._id, "invoice_created", "Factuur aangemaakt", externalUserId);
+  }
 }
 
 export async function validateQuoteLineProduct(

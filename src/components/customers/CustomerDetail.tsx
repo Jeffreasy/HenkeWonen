@@ -169,7 +169,9 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         customerId,
         type: values.type,
         title: values.title,
+        description: values.description,
         loanedItemName: values.loanedItemName,
+        expectedReturnDate: values.expectedReturnDate,
         visibleToCustomer: false,
         createdByExternalUserId: session.userId
       });
@@ -233,7 +235,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         openLoanedItemsCount={openLoanedItems.length}
       />
 
-      <div className="grid two-column">
+      <div className="grid two-column customer-overview-grid">
         <CustomerInfoPanel
           customer={customer}
           canEdit={canAddContact}
@@ -253,7 +255,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         />
       ) : null}
 
-      <div className="grid two-column">
+      <div className="grid two-column customer-support-grid">
         <ContactListTable
           contacts={contacts}
           onNew={canAddContact ? () => setIsContactModalOpen(true) : undefined}
@@ -265,8 +267,8 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         <FormModal
           open={isContactModalOpen}
           title="Contactmoment toevoegen"
-          description="Registreer een notitie, afspraak of geleend artikel."
-          size="sm"
+          description="Leg klantcontact, afspraken of uitgeleend materiaal vast."
+          size="md"
           onClose={() => setIsContactModalOpen(false)}
         >
           <AddContactForm onSubmit={handleAddContact} />

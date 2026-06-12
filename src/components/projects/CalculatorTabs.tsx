@@ -128,9 +128,9 @@ function TabPanel({ tab }: { tab: CalcTab }) {
         >
           {tab.result}
         </div>
-        <p className="calc-result-hint">
+        <div className="calc-result-hint">
           <Alert variant="info" description={INDICATIVE_TEXT} />
-        </p>
+        </div>
       </div>
     </form>
   );

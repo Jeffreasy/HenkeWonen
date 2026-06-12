@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatCustomerStatus, formatCustomerType } from "../../lib/i18n/statusLabels";
 import type { CustomerStatus, CustomerType, PortalCustomer } from "../../lib/portalTypes";
 import { Badge } from "../ui/Badge";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { Field } from "../ui/Field";
 import { FilterBar } from "../ui/FilterBar";
+import { PaginationControls } from "../ui/PaginationControls";
 import { SearchInput } from "../ui/SearchInput";
 import { Select } from "../ui/Select";
 import { StatusBadge } from "../ui/StatusBadge";
@@ -17,11 +18,13 @@ type CustomerListProps = {
 
 type StatusFilter = "all" | CustomerStatus;
 type TypeFilter = "all" | CustomerType;
+const pageSize = 25;
 
 export default function CustomerList({ customers, isLoading = false }: CustomerListProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [page, setPage] = useState(1);
 
   const filteredCustomers = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -46,6 +49,23 @@ export default function CustomerList({ customers, isLoading = false }: CustomerL
       return matchesSearch && matchesStatus && matchesType;
     });
   }, [customers, search, statusFilter, typeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paginatedCustomers = useMemo(
+    () => filteredCustomers.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filteredCustomers, safePage]
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, typeFilter]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   const columns: Array<DataTableColumn<PortalCustomer>> = [
     {
@@ -172,7 +192,14 @@ export default function CustomerList({ customers, isLoading = false }: CustomerL
             </div>
           </>
         )}
-        rows={filteredCustomers}
+        rows={paginatedCustomers}
+      />
+      <PaginationControls
+        label="Paginering voor klanten"
+        page={safePage}
+        pageSize={pageSize}
+        totalItems={filteredCustomers.length}
+        onPageChange={setPage}
       />
     </div>
   );

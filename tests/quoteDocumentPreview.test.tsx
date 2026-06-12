@@ -15,6 +15,7 @@ import type { QuoteDocumentModel } from "../src/lib/quotes/quoteDocumentModel";
 const model: QuoteDocumentModel = {
   company: {
     name: "Henke Wonen",
+    logoUrl: "/images/logo-henke-wonen.png",
     addressLines: ["Zuidsingel 44", "8255 CH Swifterbant"],
     contactLine: "Telefoon: 06 23163067 / Email: henkewonen@hotmail.com",
     legalLine: "Rabobank: NL54RABO0166385220 / BTW nr: NL001593768B36",
@@ -114,7 +115,14 @@ describe("Quote Document Preview", () => {
   it("should render the preview HTML document correctly", () => {
     expect(html.length).toBeGreaterThan(0);
     expect(html).toContain('class="quote-document-preview"');
+    expect(html).toContain('class="quote-document-front-page"');
+    expect(html).toContain('class="quote-document-back-matter"');
+    expect(html).toContain('data-print-title="OFF-2026-014 - Familie Jansen"');
+    expect(html).toContain('class="quote-document-logo"');
+    expect(html).toContain('src="/images/logo-henke-wonen.png"');
     expect(html).toContain('class="quote-document-actions no-print"');
+    expect(html).toContain('class="quote-document-cover print-page-break-avoid no-print"');
+    expect(html).toContain('class="quote-document-review-warning no-print"');
     expect(html).toContain('class="quote-document-totals print-keep-together"');
     expect(html).toContain("Klantversie");
     expect(html).toContain("Concept");
@@ -137,10 +145,18 @@ describe("Quote Document Preview", () => {
 
   it("should verify CSS classes and rules are defined", () => {
     expect(combinedCss).toContain(".quote-print-root");
+    expect(combinedCss).toContain(".quote-document-logo");
+    expect(combinedCss).toContain("width: 48mm;");
+    expect(combinedCss).toContain(".quote-document-front-page");
+    expect(combinedCss).toContain("min-height: calc(297mm - 27mm);");
+    expect(combinedCss).toContain("margin: auto 0 0 auto;");
+    expect(combinedCss).toContain(".quote-document-back-matter");
     expect(combinedCss).toContain("body.quote-print-active > :not(.quote-print-root)");
     expect(combinedCss).toContain("body.quote-print-active .quote-print-root");
     expect(combinedCss).toContain("position: static;");
     expect(combinedCss).toContain(".quote-document-section h3");
+    expect(combinedCss).toContain(".quote-document-line-needs-review td");
+    expect(combinedCss).toContain("background: #fff !important;");
     expect(combinedCss).toContain("break-after: avoid;");
     expect(combinedCss).toContain("break-before: avoid;");
     expect(combinedCss).not.toContain("body * {\n    visibility: hidden");

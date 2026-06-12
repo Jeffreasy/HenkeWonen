@@ -61,6 +61,9 @@ export const dashboard = query({
     const projectById = new Map(
       projects.map((project: Doc<"projects">) => [String(project._id), project])
     );
+    const openTaskProjectIds = new Set(
+      projectTasks.map((task: Doc<"projectTasks">) => String(task.projectId))
+    );
     const openQuotes = quotes
       .filter((quote: Doc<"quotes">) => quote.status === "draft" || quote.status === "sent")
       .sort((left: Doc<"quotes">, right: Doc<"quotes">) => right.updatedAt - left.updatedAt);
@@ -131,15 +134,28 @@ export const dashboard = query({
           };
         }),
       ...projects
-        .filter((project: Doc<"projects">) =>
-          ["quote_accepted", "measurement_planned"].includes(project.status)
-        )
+        .filter((project: Doc<"projects">) => project.status === "measurement_planned")
         .map((project: Doc<"projects">) => ({
           id: `measurement-${project._id}`,
           title: "Inmeting voorbereiden",
           description: `${project.title} - ${customerById.get(String(project.customerId)) ?? "Onbekende klant"}`,
           href: `/portal/projecten/${project._id}`,
           label: "Inmeting",
+          tone: "info",
+          updatedAt: project.updatedAt,
+          priorityRank: 2
+        })),
+      ...projects
+        .filter(
+          (project: Doc<"projects">) =>
+            project.status === "quote_accepted" && !openTaskProjectIds.has(String(project._id))
+        )
+        .map((project: Doc<"projects">) => ({
+          id: `accepted-${project._id}`,
+          title: "Akkoord opvolgen",
+          description: `${project.title} - ${customerById.get(String(project.customerId)) ?? "Onbekende klant"}`,
+          href: `/portal/projecten/${project._id}`,
+          label: "Opvolging",
           tone: "info",
           updatedAt: project.updatedAt,
           priorityRank: 2

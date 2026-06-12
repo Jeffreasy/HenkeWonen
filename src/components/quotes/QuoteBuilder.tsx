@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, FileText, Pencil, Save, Send, Trash2, XCircle } from "lucide-react";
+import { Ban, CheckCircle2, Eye, FileText, Pencil, Save, Send, Trash2, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
 import type {
@@ -19,6 +19,7 @@ import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { EmptyState } from "../ui/EmptyState";
 import { Field } from "../ui/Field";
 import { IconButton } from "../ui/IconButton";
+import { FormModal } from "../ui/overlays/FormModal";
 import { SectionHeader } from "../ui/SectionHeader";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SummaryList } from "../ui/SummaryList";
@@ -141,13 +142,24 @@ export default function QuoteBuilder({
   const [pendingDeleteLine, setPendingDeleteLine] = useState<PortalQuoteLine | null>(null);
   const [pendingStatus, setPendingStatus] = useState<QuoteStatus | null>(null);
   const [pendingCreateInvoice, setPendingCreateInvoice] = useState(false);
+  const [isCustomerVersionModalOpen, setIsCustomerVersionModalOpen] = useState(false);
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [isSavingLine, setIsSavingLine] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const canEditDraftLines = canEdit && quote.status === "draft";
+  const fieldQuoteLabel = quote.status === "draft" ? "Conceptofferte" : "Klantversie";
+  const fieldLineLabel = quote.status === "draft" ? "Conceptposten" : "Offerteposten";
   const roomById = useMemo(
     () => new Map((project?.rooms ?? []).map((room) => [room.id, room.name])),
     [project?.rooms]
+  );
+  const customerVersionReviewCount = useMemo(
+    () =>
+      documentModel?.sections.reduce(
+        (count, section) => count + section.lines.filter((line) => line.requiresManualReview).length,
+        0
+      ) ?? 0,
+    [documentModel]
   );
 
   useEffect(() => {
@@ -234,6 +246,33 @@ export default function QuoteBuilder({
     }
   }
 
+  function renderLineActionButtons(line: PortalQuoteLine) {
+    return canEditDraftLines ? (
+      <div className="toolbar quote-line-actions">
+        {onUpdateLine ? (
+          <IconButton
+            aria-label={`Offertepost ${line.title} bewerken`}
+            onClick={() => setEditingLine(line)}
+            title={`Offertepost ${line.title} bewerken`}
+            variant="secondary"
+            size="sm"
+          >
+            <Pencil size={16} aria-hidden="true" />
+          </IconButton>
+        ) : null}
+        <IconButton
+          aria-label={`Offertepost ${line.title} verwijderen`}
+          onClick={() => setPendingDeleteLine(line)}
+          title={`Offertepost ${line.title} verwijderen`}
+          variant="danger"
+          size="sm"
+        >
+          <Trash2 size={16} aria-hidden="true" />
+        </IconButton>
+      </div>
+    ) : null;
+  }
+
   const columns: Array<DataTableColumn<PortalQuoteLine>> = [
     {
       key: "type",
@@ -301,31 +340,7 @@ export default function QuoteBuilder({
       header: "Acties",
       align: "right",
       width: "96px",
-      render: (line) =>
-        canEditDraftLines ? (
-          <div className="toolbar">
-            {onUpdateLine ? (
-              <IconButton
-                aria-label={`Offertepost ${line.title} bewerken`}
-                onClick={() => setEditingLine(line)}
-                title={`Offertepost ${line.title} bewerken`}
-                variant="secondary"
-                size="sm"
-              >
-                <Pencil size={16} aria-hidden="true" />
-              </IconButton>
-            ) : null}
-            <IconButton
-              aria-label={`Offertepost ${line.title} verwijderen`}
-              onClick={() => setPendingDeleteLine(line)}
-              title={`Offertepost ${line.title} verwijderen`}
-              variant="danger"
-              size="sm"
-            >
-              <Trash2 size={16} aria-hidden="true" />
-            </IconButton>
-          </div>
-        ) : null
+      render: renderLineActionButtons
     }
   ];
   
@@ -377,73 +392,124 @@ export default function QuoteBuilder({
       />
     ) : null;
 
-  const quoteLinesPanel = (
-    <section className="panel">
-      <SectionHeader
-        compact
-        title={isFieldMode ? "Conceptposten" : "Offerteposten"}
+  const quoteLineCards =
+    quote.lines.length > 0 ? (
+      <div className="quote-line-list" role="list" aria-label={isFieldMode ? fieldLineLabel : "Offerteposten"}>
+        {quote.lines.map((line) => (
+          <article className="quote-line-card" key={line.id} role="listitem">
+            <div className="quote-line-card-copy">
+              <div className="quote-line-card-heading">
+                <LineTypeBadge lineType={line.lineType} />
+                <strong>{line.title}</strong>
+              </div>
+              {line.description ? <p>{line.description}</p> : null}
+            </div>
+            <div className="quote-line-card-values" aria-label={`Bedragen voor ${line.title}`}>
+              <div>
+                <span>Ruimte</span>
+                <strong>{line.projectRoomId ? roomById.get(line.projectRoomId) ?? "-" : "-"}</strong>
+              </div>
+              <div>
+                <span>Aantal</span>
+                <strong>
+                  {line.quantity} {formatUnit(line.unit)}
+                </strong>
+              </div>
+              <div>
+                <span>Prijs excl.</span>
+                <strong>{formatEuro(line.unitPriceExVat)}</strong>
+              </div>
+              <div>
+                <span>Btw</span>
+                <strong>{line.vatRate}%</strong>
+              </div>
+              <div className="quote-line-total">
+                <span>Totaal incl.</span>
+                <strong>{formatEuro(line.lineTotalIncVat)}</strong>
+              </div>
+            </div>
+            {renderLineActionButtons(line)}
+          </article>
+        ))}
+      </div>
+    ) : (
+      <EmptyState
+        title={isFieldMode ? `Nog geen ${fieldLineLabel.toLowerCase()}` : "Nog geen offerteposten"}
         description={
-          isFieldMode
-            ? "Controleer of de meetregels en extra posten kloppen voor de klantversie."
-            : "Producten, werkzaamheden, materialen en tekst in verkoopvolgorde."
-        }
-      />
-      <DataTable
-        ariaLabel={isFieldMode ? "Conceptposten" : "Offerteposten"}
-        columns={columns}
-        density="compact"
-        emptyTitle={isFieldMode ? "Nog geen conceptposten" : "Nog geen offerteposten"}
-        emptyDescription={
           isFieldMode
             ? "Neem eerst meetregels over of voeg een extra post toe."
             : "Voeg een product, werkzaamheid, materiaal, korting of tekst toe."
         }
-        getRowKey={(line) => line.id}
-        mobileMode="cards"
-        renderMobileCard={(line) => (
-          <div className="mobile-card-section">
-            <div className="mobile-card-header">
-              <div className="mobile-card-title">
-                <strong>{line.title}</strong>
-                {line.description ? <small className="muted">{line.description}</small> : null}
-              </div>
-              <LineTypeBadge lineType={line.lineType} />
-            </div>
-            <div className="mobile-card-meta">
-              <span>
-                {line.projectRoomId ? roomById.get(line.projectRoomId) ?? "Geen ruimte" : "Geen ruimte"}
-              </span>
-              <span>
-                {line.quantity} {formatUnit(line.unit)}
-              </span>
-              <strong>{formatEuro(line.lineTotalIncVat)}</strong>
-            </div>
-            {canEditDraftLines ? (
-              <div className="mobile-card-actions">
-                {onUpdateLine ? (
-                  <Button
-                    leftIcon={<Pencil size={16} aria-hidden="true" />}
-                    onClick={() => setEditingLine(line)}
-                    size="sm"
-                    variant="secondary"
-                  >
-                    Bewerken
-                  </Button>
-                ) : null}
-                <Button
-                  leftIcon={<Trash2 size={16} aria-hidden="true" />}
-                  onClick={() => setPendingDeleteLine(line)}
-                  size="sm"
-                  variant="danger"
-                >
-                  Verwijderen
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        )}
-        rows={quote.lines}
       />
+    );
+
+  const quoteLinesPanel = (
+    <section className="panel">
+      <SectionHeader
+        compact
+        title={isFieldMode ? fieldLineLabel : "Offerteposten"}
+        description={
+          isFieldMode
+            ? "Controleer of de meetregels en extra posten kloppen voor de klantversie."
+          : "Producten, werkzaamheden, materialen en tekst in verkoopvolgorde."
+        }
+      />
+      {isFieldMode ? (
+        <DataTable
+          ariaLabel={fieldLineLabel}
+          columns={columns}
+          density="compact"
+          emptyTitle={`Nog geen ${fieldLineLabel.toLowerCase()}`}
+          emptyDescription="Neem eerst meetregels over of voeg een extra post toe."
+          getRowKey={(line) => line.id}
+          mobileMode="cards"
+          renderMobileCard={(line) => (
+            <div className="mobile-card-section">
+              <div className="mobile-card-header">
+                <div className="mobile-card-title">
+                  <strong>{line.title}</strong>
+                  {line.description ? <small className="muted">{line.description}</small> : null}
+                </div>
+                <LineTypeBadge lineType={line.lineType} />
+              </div>
+              <div className="mobile-card-meta">
+                <span>
+                  {line.projectRoomId ? roomById.get(line.projectRoomId) ?? "Geen ruimte" : "Geen ruimte"}
+                </span>
+                <span>
+                  {line.quantity} {formatUnit(line.unit)}
+                </span>
+                <strong>{formatEuro(line.lineTotalIncVat)}</strong>
+              </div>
+              {canEditDraftLines ? (
+                <div className="mobile-card-actions">
+                  {onUpdateLine ? (
+                    <Button
+                      leftIcon={<Pencil size={16} aria-hidden="true" />}
+                      onClick={() => setEditingLine(line)}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      Bewerken
+                    </Button>
+                  ) : null}
+                  <Button
+                    leftIcon={<Trash2 size={16} aria-hidden="true" />}
+                    onClick={() => setPendingDeleteLine(line)}
+                    size="sm"
+                    variant="danger"
+                  >
+                    Verwijderen
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          )}
+          rows={quote.lines}
+        />
+      ) : (
+        quoteLineCards
+      )}
       {canEdit && quote.status !== "draft" ? (
         <p className="muted" style={{ marginTop: 12 }}>
           Regels kunnen alleen worden aangepast zolang de offerte nog concept is.
@@ -512,7 +578,7 @@ export default function QuoteBuilder({
     </section>
   );
 
-  const customerVersionContent = documentModel ? (
+  const customerVersionPreview = documentModel ? (
     <QuoteDocumentPreview model={documentModel} />
   ) : (
     <EmptyState
@@ -527,8 +593,37 @@ export default function QuoteBuilder({
         compact
         title="Klantversie"
         description="Controleer hoe de offerte eruitziet voordat je deze deelt of print."
+        actions={
+          documentModel ? (
+            <Button
+              leftIcon={<Eye size={16} aria-hidden="true" />}
+              onClick={() => setIsCustomerVersionModalOpen(true)}
+              size="sm"
+              variant="primary"
+            >
+              Klantversie openen
+            </Button>
+          ) : null
+        }
       />
-      {customerVersionContent}
+      {documentModel ? (
+        <SummaryList
+          items={[
+            { id: "quote-number", label: "Offertenummer", value: documentModel.quote.quoteNumber },
+            { id: "quote-status", label: "Status", value: formatQuoteStatus(quote.status) },
+            {
+              id: "review",
+              label: "Controle",
+              value:
+                customerVersionReviewCount > 0
+                  ? `${customerVersionReviewCount} aandachtspunt${customerVersionReviewCount === 1 ? "" : "en"}`
+                  : "Geen aandachtspunten"
+            }
+          ]}
+        />
+      ) : (
+        customerVersionPreview
+      )}
     </section>
   );
 
@@ -536,7 +631,7 @@ export default function QuoteBuilder({
   
   const statusActions =
     !isFieldMode && canEdit && onUpdateStatus ? (
-      <div className="toolbar">
+      <div className="toolbar quote-status-actions">
         <StatusBadge status={quote.status} label={formatQuoteStatus(quote.status)} />
         {quoteStatusActions.map((action) => {
           const Icon = action.icon;
@@ -603,13 +698,22 @@ export default function QuoteBuilder({
       <ConfirmDialog
         open={pendingCreateInvoice}
         title="Factuur aanmaken?"
-        description={`Er wordt een conceptfactuur aangemaakt op basis van offerte ${quote.quoteNumber}. Het totaal bedraagt ${new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(quote.totalIncVat)} incl. btw. De vervaldatum wordt standaard 30 dagen na vandaag ingesteld.`}
+        description={`Er wordt een factuur aangemaakt op basis van offerte ${quote.quoteNumber}. Het totaal bedraagt ${new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(quote.totalIncVat)} incl. btw. De vervaldatum volgt de betaaltermijn van deze klant.`}
         confirmLabel="Factuur aanmaken"
         tone="warning"
         isBusy={isCreatingInvoice}
         onCancel={() => setPendingCreateInvoice(false)}
         onConfirm={() => void confirmCreateInvoice()}
       />
+      <FormModal
+        open={isCustomerVersionModalOpen}
+        title="Klantversie"
+        description="Bekijk de offerte zoals de klant hem ontvangt. Printen gebeurt vanuit deze preview."
+        size="xl"
+        onClose={() => setIsCustomerVersionModalOpen(false)}
+      >
+        {customerVersionPreview}
+      </FormModal>
     </>
   );
 
@@ -619,14 +723,14 @@ export default function QuoteBuilder({
         {dialogs}
         <section className="field-quote-compact-header">
           <div>
-            <p className="eyebrow">Conceptofferte</p>
+            <p className="eyebrow">{fieldQuoteLabel}</p>
             <h2>{quote.title}</h2>
           </div>
           <StatusBadge status={quote.status} label={formatQuoteStatus(quote.status)} />
           <SummaryList
             items={[
               { id: "number", label: "Offertenummer", value: quote.quoteNumber },
-              { id: "lines", label: "Conceptposten", value: quote.lines.length },
+              { id: "lines", label: fieldLineLabel, value: quote.lines.length },
               { id: "total", label: "Totaal incl. btw", value: formatEuro(quoteTotals.totalIncVat) }
             ]}
           />
@@ -651,7 +755,7 @@ export default function QuoteBuilder({
 
         <details className="field-quote-disclosure">
           <summary>Klantversie bekijken en printen</summary>
-          <div className="field-quote-disclosure-content">{customerVersionContent}</div>
+          <div className="field-quote-disclosure-content">{customerVersionPreview}</div>
         </details>
       </div>
     );
@@ -660,25 +764,26 @@ export default function QuoteBuilder({
   return (
     <div className="grid quote-workbench">
       {dialogs}
-      <div className="grid quote-main-column">
-        <section className="panel">
-          <SectionHeader
-            compact
-            title={quote.title}
-            description="Controleer gegevens, voorwaarden en offerteposten."
-            actions={statusActions}
-          />
-          <SummaryList
-            items={[
-              { id: "number", label: "Offertenummer", value: quote.quoteNumber },
-              { id: "lines", label: "Offerteposten", value: quote.lines.length },
-              { id: "updated", label: "Bijgewerkt", value: new Intl.DateTimeFormat("nl-NL").format(new Date(quote.updatedAt)) }
-            ]}
-          />
-        </section>
+      <section className="panel quote-summary-panel">
+        <SectionHeader
+          compact
+          title={quote.title}
+          description="Controleer gegevens, voorwaarden en offerteposten."
+          actions={statusActions}
+        />
+        <SummaryList
+          items={[
+            { id: "number", label: "Offertenummer", value: quote.quoteNumber },
+            { id: "lines", label: "Offerteposten", value: quote.lines.length },
+            { id: "updated", label: "Bijgewerkt", value: new Intl.DateTimeFormat("nl-NL").format(new Date(quote.updatedAt)) }
+          ]}
+        />
+      </section>
+      <QuoteTotals lines={quote.lines} />
 
-        {canEditDraftLines ? (
-          isFieldMode ? (
+      {canEditDraftLines ? (
+        <div className="grid quote-composer-panel">
+          {isFieldMode ? (
             <>
               {measurementPicker}
               {lineEditor}
@@ -688,17 +793,14 @@ export default function QuoteBuilder({
               {lineEditor}
               {measurementPicker}
             </>
-          )
-        ) : null}
+          )}
+        </div>
+      ) : null}
 
-        {quoteLinesPanel}
-        {lineEditPanel}
-
-        {termsPanel}
-
-        {customerVersionPanel}
-      </div>
-      <QuoteTotals lines={quote.lines} />
+      <div className="quote-full-width-panel">{quoteLinesPanel}</div>
+      {lineEditPanel ? <div className="quote-full-width-panel">{lineEditPanel}</div> : null}
+      <div className="quote-full-width-panel">{termsPanel}</div>
+      <div className="quote-customer-version-panel">{customerVersionPanel}</div>
     </div>
   );
 }

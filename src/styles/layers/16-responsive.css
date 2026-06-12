@@ -269,7 +269,6 @@
   .field-hero-panel,
   .field-visit-header,
   .field-section,
-  .field-intake-panel,
   .field-measurement-section,
   .field-quote-section {
     padding: var(--space-4);
@@ -551,12 +550,62 @@
     width: 100%;
   }
 
+  .quote-summary-panel .quote-status-actions .button,
+  .quote-summary-panel .quote-status-actions .ui-button {
+    width: auto;
+  }
+
   .vat-summary-strip,
   .issue-summary-strip,
   .import-summary-strip,
   .import-detail-summary,
   .project-meta-strip {
     grid-template-columns: 1fr;
+  }
+
+  .dossier-tabs {
+    display: flex;
+    overflow-x: auto;
+    scroll-padding-inline: var(--space-3);
+  }
+
+  .dossier-tab {
+    min-width: 180px;
+  }
+
+  .contact-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-form-field-full {
+    grid-column: auto;
+  }
+
+  .contact-form-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .contact-form-footer .ui-button {
+    width: 100%;
+  }
+
+  .pagination-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pagination-actions {
+    justify-content: space-between;
+  }
+
+  .dossier-attachment-form,
+  .dossier-attachment-card {
+    grid-template-columns: 1fr;
+  }
+
+  .dossier-attachment-card .ui-button {
+    justify-self: flex-start;
   }
 
   .project-overview-header {
@@ -705,7 +754,8 @@
   .form-modal,
   .form-modal--sm,
   .form-modal--md,
-  .form-modal--lg {
+  .form-modal--lg,
+  .form-modal--xl {
     width: 100%;
     max-height: 90dvh;
     border-bottom-left-radius: 0;
@@ -713,6 +763,19 @@
     border-top-left-radius: var(--radius-lg);
     border-top-right-radius: var(--radius-lg);
     animation: modalSlideUp 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .field-intake-footer,
+  .field-intake-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .field-intake-actions .ui-button,
+  .field-intake-actions .button {
+    flex: none;
+    width: 100%;
+    justify-content: center;
   }
 
   /* Dashboard focus cards 1 per rij */

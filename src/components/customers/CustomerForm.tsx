@@ -14,6 +14,9 @@ export type CustomerFormValues = {
   displayName: string;
   email?: string;
   phone?: string;
+  street?: string;
+  houseNumber?: string;
+  postalCode?: string;
   city?: string;
   notes?: string;
 };
@@ -27,6 +30,9 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
   const [type, setType] = useState<CustomerType>("private");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [street, setStreet] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
+  const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
   const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -39,6 +45,9 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
       displayName: displayName.trim(),
       email: email.trim() || undefined,
       phone: phone.trim() || undefined,
+      street: street.trim() || undefined,
+      houseNumber: houseNumber.trim() || undefined,
+      postalCode: postalCode.trim() || undefined,
       city: city.trim() || undefined,
       notes: notes.trim() || undefined
     };
@@ -54,6 +63,9 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
       setType("private");
       setEmail("");
       setPhone("");
+      setStreet("");
+      setHouseNumber("");
+      setPostalCode("");
       setCity("");
       setNotes("");
     } finally {
@@ -99,6 +111,27 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
           id="customer-phone"
           value={phone}
           onChange={(event) => setPhone(event.target.value)}
+        />
+      </Field>
+      <Field htmlFor="customer-street" label="Straat">
+        <Input
+          id="customer-street"
+          value={street}
+          onChange={(event) => setStreet(event.target.value)}
+        />
+      </Field>
+      <Field htmlFor="customer-house-number" label="Huisnummer">
+        <Input
+          id="customer-house-number"
+          value={houseNumber}
+          onChange={(event) => setHouseNumber(event.target.value)}
+        />
+      </Field>
+      <Field htmlFor="customer-postal-code" label="Postcode">
+        <Input
+          id="customer-postal-code"
+          value={postalCode}
+          onChange={(event) => setPostalCode(event.target.value)}
         />
       </Field>
       <Field htmlFor="customer-city" label="Plaats">

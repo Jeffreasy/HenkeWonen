@@ -7,34 +7,17 @@ import {
   requireMutationRoleForTenantId,
   requireQueryRole
 } from "../authz";
-import type { Doc, Id } from "../_generated/dataModel";
-import { requireTenant } from "../portalUtils";
+import type { Doc } from "../_generated/dataModel";
+import {
+  completeInvoiceWorkflow,
+  existingInvoiceForQuote,
+  nextInvoiceNumber,
+  requireTenant
+} from "../portalUtils";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-async function nextInvoiceNumber(ctx: any, tenantId: Id<"tenants">): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `FAC-${year}-`;
-
-  const existing = await ctx.db
-    .query("invoices")
-    .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
-    .collect();
-
-  const yearInvoices = existing.filter((inv: Doc<"invoices">) =>
-    inv.invoiceNumber.startsWith(prefix)
-  );
-
-  const highest = yearInvoices.reduce((max: number, inv: Doc<"invoices">) => {
-    const num = parseInt(inv.invoiceNumber.replace(prefix, ""), 10);
-    return isNaN(num) ? max : Math.max(max, num);
-  }, 0);
-
-  const next = String(highest + 1).padStart(3, "0");
-  return `${prefix}${next}`;
-}
 
 function toInvoice(tenantSlug: string, invoice: Doc<"invoices">) {
   return {
@@ -193,7 +176,7 @@ export const createInvoice = mutation({
     totalIncVat: v.number()
   },
   handler: async (ctx, args) => {
-    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+    const { externalUserId } = await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
       "user",
       "editor",
       "admin"
@@ -231,6 +214,13 @@ export const createInvoice = mutation({
       updatedAt: now
     });
 
+    await ctx.db.patch(args.projectId, {
+      status: "invoiced",
+      invoicedAt: now,
+      updatedAt: now
+    });
+    await completeInvoiceWorkflow(ctx, args.tenantId, project, args.dueDate, externalUserId);
+
     return { invoiceId: String(invoiceId), invoiceNumber };
   }
 });
@@ -245,7 +235,7 @@ export const createInvoiceFromQuote = mutation({
   handler: async (ctx, args) => {
     const tenant = await requireTenant(ctx, args.tenantSlug);
 
-    await requireMutationRoleForTenantId(ctx, tenant._id, args.actor, [
+    const { externalUserId } = await requireMutationRoleForTenantId(ctx, tenant._id, args.actor, [
       "user",
       "editor",
       "admin"
@@ -267,14 +257,28 @@ export const createInvoiceFromQuote = mutation({
       throw new Error("Factuur kan alleen worden aangemaakt voor een geaccepteerde offerte.");
     }
 
+    const project = await ctx.db.get(quote.projectId);
+
+    if (!project || project.tenantId !== tenant._id) {
+      throw new Error("Project niet gevonden.");
+    }
+
     // Voorkom dubbele factuur voor dezelfde offerte
-    const existing = await ctx.db
-      .query("invoices")
-      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-      .filter((q: any) => q.eq(q.field("quoteId"), quoteId))
-      .first();
+    const existing = await existingInvoiceForQuote(ctx, tenant._id, quoteId);
 
     if (existing) {
+      if (!["paid", "closed", "cancelled"].includes(project.status)) {
+        if (project.status !== "invoiced") {
+          const invoicedAt = Date.now();
+          await ctx.db.patch(project._id, {
+            status: "invoiced",
+            invoicedAt: project.invoicedAt ?? invoicedAt,
+            updatedAt: invoicedAt
+          });
+        }
+        await completeInvoiceWorkflow(ctx, tenant._id, project, existing.dueDate, externalUserId);
+      }
+
       return {
         invoiceId: String(existing._id),
         invoiceNumber: existing.invoiceNumber,
@@ -291,7 +295,7 @@ export const createInvoiceFromQuote = mutation({
       customerId: quote.customerId,
       quoteId,
       invoiceNumber,
-      status: "draft",
+      status: "sent",
       invoiceDate: now,
       dueDate: args.dueDate,
       subtotalExVat: quote.subtotalExVat,
@@ -303,15 +307,12 @@ export const createInvoiceFromQuote = mutation({
     });
 
     // Projectstatus → gefactureerd
-    const project = await ctx.db.get(quote.projectId);
-
-    if (project && project.tenantId === tenant._id) {
-      await ctx.db.patch(quote.projectId, {
-        status: "invoiced",
-        invoicedAt: now,
-        updatedAt: now
-      });
-    }
+    await ctx.db.patch(quote.projectId, {
+      status: "invoiced",
+      invoicedAt: now,
+      updatedAt: now
+    });
+    await completeInvoiceWorkflow(ctx, tenant._id, project, args.dueDate, externalUserId);
 
     return {
       invoiceId: String(invoiceId),

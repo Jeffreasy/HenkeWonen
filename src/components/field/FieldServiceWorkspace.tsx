@@ -11,6 +11,7 @@ import type {
 } from "../../lib/portalTypes";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
+import { FormModal } from "../ui/overlays/FormModal";
 import { SearchInput } from "../ui/SearchInput";
 import { FieldPrioritySummary } from "./FieldPrioritySummary";
 import { FieldPageTabs } from "./FieldPageTabs";
@@ -203,6 +204,8 @@ export default function FieldServiceWorkspace({
     const params = new URLSearchParams(window.location.search);
     if (params.get("open") === "nieuw") {
       setIsIntakeOpen(true);
+      setIntakeError(null);
+      setIntakeNotice(null);
       // Verwijder param uit URL zonder pagina reload
       const url = new URL(window.location.href);
       url.searchParams.delete("open");
@@ -346,13 +349,13 @@ export default function FieldServiceWorkspace({
               <Button
                 leftIcon={<UserPlus size={17} aria-hidden="true" />}
                 onClick={() => {
-                  setIsIntakeOpen((current) => !current);
+                  setIsIntakeOpen(true);
                   setIntakeError(null);
                   setIntakeNotice(null);
                 }}
-                variant={isIntakeOpen ? "secondary" : "primary"}
+                variant="primary"
               >
-                {isIntakeOpen ? "Intake sluiten" : "Nieuwe klant/lead"}
+                Nieuwe klant/lead
               </Button>
             </div>
           ) : null}
@@ -365,13 +368,20 @@ export default function FieldServiceWorkspace({
         <Alert variant="success" title="Lead vastgelegd" description={intakeNotice} />
       ) : null}
 
-      {canCreateFieldLead && isIntakeOpen ? (
-        <FieldIntakeForm
-          onSubmit={handleCreateFieldLead}
+      {canCreateFieldLead ? (
+        <FormModal
+          open={isIntakeOpen}
+          title="Nieuwe klant of lead"
+          description="Leg klantgegevens vast voor de buitendienst. Maak direct een dossier aan als er gemeten of opgevolgd moet worden."
+          size="lg"
           onClose={() => setIsIntakeOpen(false)}
-          isSaving={isSavingLead}
-          error={intakeError}
-        />
+        >
+          <FieldIntakeForm
+            onSubmit={handleCreateFieldLead}
+            isSaving={isSavingLead}
+            error={intakeError}
+          />
+        </FormModal>
       ) : null}
 
       {isLoading ? (

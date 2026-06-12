@@ -1,5 +1,6 @@
 ---
 import PortalLayout from "../../../components/layout/PortalLayout.astro";
+import DossierTabs from "../../../components/dossiers/DossierTabs.astro";
 import CustomerWorkspace from "../../../components/customers/CustomerWorkspace";
 import { PageHeader } from "../../../components/ui/PageHeader";
 
@@ -14,9 +15,8 @@ if (!session) {
   <PageHeader
     eyebrow="Dossiers"
     title="Klantdossiers"
-    description="Leg klantgegevens vast en open daarna het volledige dossier vanuit de centrale dossierzoeker."
-  >
-    <a class="button secondary" href="/portal/dossiers">Terug naar dossiers</a>
-  </PageHeader>
+    description="Zoek klanten, open dossiers en leg nieuwe aanvragen vast."
+  />
+  <DossierTabs active="customers" />
   <CustomerWorkspace client:load session={session} />
 </PortalLayout>

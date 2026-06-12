@@ -7,7 +7,7 @@ import {
   type ReactNode
 } from "react";
 
-export type FormModalSize = "sm" | "md" | "lg";
+export type FormModalSize = "sm" | "md" | "lg" | "xl";
 
 type FormModalProps = {
   open: boolean;

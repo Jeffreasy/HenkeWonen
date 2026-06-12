@@ -6,7 +6,6 @@ import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
 import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
-import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
 import { Textarea } from "../ui/Textarea";
 
@@ -56,12 +55,7 @@ export default function ProjectForm({ customers, onCreate }: ProjectFormProps) {
   }
 
   return (
-    <form className="panel form-grid" onSubmit={submit}>
-      <SectionHeader
-        compact
-        title="Nieuw project"
-        description="Start een traject vanuit een klantdossier."
-      />
+    <form className="form-grid" onSubmit={submit}>
       {customers.length === 0 ? (
         <EmptyState
           title="Geen klanten beschikbaar"

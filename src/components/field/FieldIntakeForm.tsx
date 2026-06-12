@@ -1,4 +1,4 @@
-import { ClipboardList, X } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 import { useState } from "react";
 import type { CustomerType } from "../../lib/portalTypes";
 import { Alert } from "../ui/Alert";
@@ -6,7 +6,6 @@ import { Button } from "../ui/Button";
 import { Checkbox } from "../ui/Checkbox";
 import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
-import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
 import { Textarea } from "../ui/Textarea";
 
@@ -26,12 +25,11 @@ export type IntakeFormValues = {
 
 type FieldIntakeFormProps = {
   onSubmit: (values: IntakeFormValues) => Promise<void>;
-  onClose: () => void;
   isSaving: boolean;
   error: string | null;
 };
 
-export function FieldIntakeForm({ onSubmit, onClose, isSaving, error }: FieldIntakeFormProps) {
+export function FieldIntakeForm({ onSubmit, isSaving, error }: FieldIntakeFormProps) {
   const [leadType, setLeadType] = useState<CustomerType>("private");
   const [leadName, setLeadName] = useState("");
   const [leadPhone, setLeadPhone] = useState("");
@@ -78,22 +76,7 @@ export function FieldIntakeForm({ onSubmit, onClose, isSaving, error }: FieldInt
   };
 
   return (
-    <section className="field-intake-panel">
-      <SectionHeader
-        compact
-        title="Nieuwe klant of lead"
-        description="Leg de klant vast terwijl je onderweg bent. Maak meteen een dossier aan als er gemeten of opgevolgd moet worden."
-        actions={
-          <Button
-            leftIcon={<X size={16} aria-hidden="true" />}
-            onClick={onClose}
-            size="sm"
-            variant="ghost"
-          >
-            Sluiten
-          </Button>
-        }
-      />
+    <>
       {error ? <Alert variant="danger" description={error} /> : null}
       <form className="field-intake-form" onSubmit={handleSubmit}>
         <div className="grid two-column-even">
@@ -218,6 +201,6 @@ export function FieldIntakeForm({ onSubmit, onClose, isSaving, error }: FieldInt
           </div>
         </div>
       </form>
-    </section>
+    </>
   );
 }

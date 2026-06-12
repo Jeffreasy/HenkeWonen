@@ -11,6 +11,7 @@ import { henkeCompanyProfile, type QuoteCompanyProfile } from "./henkeCompanyPro
 export type QuoteDocumentModel = {
   company: {
     name: string;
+    logoUrl?: string;
     addressLines: string[];
     contactLine: string;
     legalLine: string;
@@ -208,6 +209,7 @@ export function buildQuoteDocumentModel({
   return {
     company: {
       name: companyProfile.name,
+      logoUrl: companyProfile.logoUrl,
       addressLines: [...companyProfile.addressLines],
       contactLine: companyProfile.contactLine,
       legalLine: companyProfile.legalLine,

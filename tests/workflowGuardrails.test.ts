@@ -170,6 +170,143 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(block).toContain("Maak of accepteer eerst een offerte voordat je een factuur aanmaakt.");
   });
 
+  it("should keep project invoice creation idempotent per accepted quote", () => {
+    const processProjectAction = exportedMutationBlock("convex/projecten/core.ts", "processProjectAction");
+    const createInvoiceFromQuote = exportedMutationBlock("convex/facturen/core.ts", "createInvoiceFromQuote");
+    const portalUtils = read("convex/portalUtils.ts");
+    const schema = read("convex/schema.ts");
+
+    expect(portalUtils).toContain("export async function existingInvoiceForQuote");
+    expect(portalUtils).toContain("export async function nextInvoiceNumber");
+    expect(portalUtils).toContain("export async function completeInvoiceWorkflow");
+    expect(portalUtils).toContain("invoiceSequenceYear");
+    expect(schema).toContain("invoiceSequenceValue: v.optional(v.number())");
+    expect(createInvoiceFromQuote).toContain("existingInvoiceForQuote(ctx, tenant._id, quoteId)");
+    expect(createInvoiceFromQuote).toContain("completeInvoiceWorkflow(ctx, tenant._id, project");
+    expect(createInvoiceFromQuote).toContain('status: "sent"');
+    expect(processProjectAction).toContain("existingInvoiceForQuote(ctx, tenant._id, latestAcceptedQuote._id)");
+    expect(processProjectAction).toContain("completeInvoiceWorkflow(ctx, tenant._id, project, invoiceDueAt");
+    expect(processProjectAction).toContain('args.action !== "invoice_created"');
+    expect(processProjectAction).toContain("if (!existingInvoice)");
+    expect(processProjectAction).toContain("existingInvoice?.dueDate ?? args.invoiceDueAt");
+  });
+
+  it("should surface execution appointments and accepted quotes in the field workspace", () => {
+    const fieldServiceSource = read("convex/projecten/fieldService.ts");
+    const portalUtils = read("convex/portalUtils.ts");
+
+    expect(fieldServiceSource).toContain('project.status === "execution_planned"');
+    expect(fieldServiceSource).toContain("project.executionDate ?? project.measurementDate");
+    expect(fieldServiceSource).toContain('quote.status === "accepted"');
+    expect(fieldServiceSource).not.toContain('["lead", "quote_accepted", "measurement_planned"]');
+    expect(portalUtils).toContain('quote.status === "accepted"');
+    expect(portalUtils).toContain("project.executionDate ?? project.measurementDate");
+    expect(portalUtils).not.toContain('["lead", "quote_accepted", "measurement_planned"]');
+  });
+
+  it("should keep accepted quotes out of the measurement dashboard bucket", () => {
+    const dashboardSource = read("convex/portal.ts");
+
+    expect(dashboardSource).toContain('project.status === "measurement_planned"');
+    expect(dashboardSource).toContain('title: "Akkoord opvolgen"');
+    expect(dashboardSource).toContain('project.status === "quote_accepted"');
+    expect(dashboardSource).toContain("openTaskProjectIds");
+  });
+
+  it("should open creation modals directly from dossier action cards", () => {
+    const dossierActions = read("src/components/dossiers/DossierActions.tsx");
+    const dossierTabs = read("src/components/dossiers/DossierTabs.astro");
+    const dossierWorkspace = read("src/components/dossiers/DossierWorkspace.tsx");
+    const dossierSearchPanel = read("src/components/dossiers/DossierSearchPanel.tsx");
+    const dossierPage = read("src/pages/portal/dossiers/index.astro");
+    const customerPage = read("src/pages/portal/klanten/index.astro");
+    const projectPage = read("src/pages/portal/projecten/index.astro");
+    const customerForm = read("src/components/customers/CustomerForm.tsx");
+    const customerList = read("src/components/customers/CustomerList.tsx");
+    const customerWorkspace = read("src/components/customers/CustomerWorkspace.tsx");
+    const projectForm = read("src/components/projects/ProjectForm.tsx");
+    const createQuoteForm = read("src/components/quotes/CreateQuoteForm.tsx");
+    const quoteWorkspace = read("src/components/quotes/QuoteWorkspace.tsx");
+
+    expect(dossierActions).toContain('href="/portal/klanten?open=nieuw"');
+    expect(dossierActions).toContain('href="/portal/projecten?open=nieuw"');
+    expect(dossierActions).toContain('className="card dossier-action-card"');
+    expect(dossierWorkspace.indexOf("<DossierActions")).toBeLessThan(dossierWorkspace.indexOf("<DossierStats"));
+    expect(dossierTabs).toContain('href: "/portal/klanten"');
+    expect(dossierTabs).toContain('href: "/portal/projecten"');
+    expect(dossierPage).toContain('<DossierTabs active="overview" />');
+    expect(customerPage).toContain('<DossierTabs active="customers" />');
+    expect(projectPage).toContain('<DossierTabs active="projects" />');
+    expect(customerForm).toContain("postalCode?: string");
+    expect(customerForm).toContain('htmlFor="customer-postal-code"');
+    expect(customerForm).toContain("street: street.trim() || undefined");
+    expect(dossierSearchPanel).toContain("PaginationControls");
+    expect(dossierSearchPanel).toContain("const pageSize = 25");
+    expect(customerList).toContain("PaginationControls");
+    expect(customerList).toContain("const pageSize = 25");
+    expect(customerWorkspace).toContain("window.location.assign(`/portal/klanten/${String(customerId)}`)");
+    expect(projectForm).toContain('className="form-grid"');
+    expect(projectForm).not.toContain('className="panel form-grid"');
+    expect(createQuoteForm).toContain('className="form-grid"');
+    expect(createQuoteForm).not.toContain('className="panel"');
+    expect(quoteWorkspace).toContain("shouldOpenNewQuoteModal");
+    expect(quoteWorkspace).toContain('get("open") === "nieuw"');
+    expect(quoteWorkspace).toContain("window.location.assign(`/portal/offertes/${newQuoteId}`)");
+    expect(quoteWorkspace).toContain("invoicePaymentTermDays(selectedCustomer)");
+  });
+
+  it("should show the customer quote version in a modal instead of inline on the quote page", () => {
+    const quoteBuilder = read("src/components/quotes/QuoteBuilder.tsx");
+    const quoteDocumentPreview = read("src/components/quotes/QuoteDocumentPreview.tsx");
+
+    expect(quoteBuilder).toContain("isCustomerVersionModalOpen");
+    expect(quoteBuilder).toContain("setIsCustomerVersionModalOpen(true)");
+    expect(quoteBuilder).toContain('<FormModal');
+    expect(quoteBuilder).toContain('size="xl"');
+    expect(quoteBuilder).toContain("Klantversie openen");
+    expect(quoteDocumentPreview).toContain('className="no-print"');
+    expect(quoteDocumentPreview).toContain('quote-document-cover print-page-break-avoid no-print');
+    expect(quoteDocumentPreview).toContain('quote-document-review-warning no-print');
+  });
+
+  it("should open the field intake in a modal instead of inline on the field workspace", () => {
+    const fieldServiceWorkspace = read("src/components/field/FieldServiceWorkspace.tsx");
+    const fieldIntakeForm = read("src/components/field/FieldIntakeForm.tsx");
+    const featureStyles = read("src/styles/layers/04-features-field.css");
+
+    expect(fieldServiceWorkspace).toContain('get("open") === "nieuw"');
+    expect(fieldServiceWorkspace).toContain("<FormModal");
+    expect(fieldServiceWorkspace).toContain('size="lg"');
+    expect(fieldServiceWorkspace).toContain("setIsIntakeOpen(true)");
+    expect(fieldServiceWorkspace).not.toContain("setIsIntakeOpen((current) => !current)");
+    expect(fieldIntakeForm).toContain('className="field-intake-form"');
+    expect(fieldIntakeForm).not.toContain("field-intake-panel");
+    expect(fieldIntakeForm).not.toContain("SectionHeader");
+    expect(featureStyles).not.toContain(".field-intake-panel");
+  });
+
+  it("should keep the customer contact modal professional and complete", () => {
+    const addContactForm = read("src/components/customers/AddContactForm.tsx");
+    const customerDetail = read("src/components/customers/CustomerDetail.tsx");
+    const customerInfoPanel = read("src/components/customers/CustomerInfoPanel.tsx");
+    const featureStyles = read("src/styles/layers/13-features-projects.css");
+    const responsiveStyles = read("src/styles/layers/16-responsive.css");
+
+    expect(customerDetail).toContain('size="md"');
+    expect(customerDetail).toContain("description: values.description");
+    expect(customerDetail).toContain("expectedReturnDate: values.expectedReturnDate");
+    expect(addContactForm).toContain("contact-moment-form");
+    expect(addContactForm).toContain("<Select");
+    expect(addContactForm).toContain("dateInputToTimestamp");
+    expect(addContactForm).toContain("expectedReturnDate");
+    expect(addContactForm).toContain("Textarea");
+    expect(addContactForm).not.toContain("responsive-form-row");
+    expect(customerInfoPanel).toContain("customer-info-copy-value");
+    expect(customerInfoPanel).toContain("customer-info-value-text");
+    expect(featureStyles).toContain(".contact-form-grid");
+    expect(responsiveStyles).toContain(".contact-form-footer .ui-button");
+  });
+
   it("should enforce child check constraints before deleting a project room", () => {
     const deleteProjectRoom = exportedMutationBlock("convex/projecten/core.ts", "deleteProjectRoom");
     expect(deleteProjectRoom).toContain('query("measurementRooms")');

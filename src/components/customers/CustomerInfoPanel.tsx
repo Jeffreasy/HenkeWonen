@@ -16,24 +16,45 @@ type CustomerInfoPanelProps = {
   onArchiveToggle: (status: PortalCustomer["status"]) => void;
 };
 
+function CopyableCustomerValue({
+  value,
+  copyLabel
+}: {
+  value: string;
+  copyLabel: string;
+}) {
+  return (
+    <span className="customer-info-copy-value">
+      <span className="customer-info-value-text">{value}</span>
+      <CopyButton value={value} label={copyLabel} />
+    </span>
+  );
+}
+
 export function CustomerInfoPanel({
   customer,
   canEdit,
   onEditToggle,
   onArchiveToggle
 }: CustomerInfoPanelProps) {
+  const address =
+    [customer.street, customer.houseNumber, customer.postalCode, customer.city]
+      .filter(Boolean)
+      .join(" ") || "";
+
   return (
-    <section className="panel">
+    <section className="panel customer-detail-panel customer-info-panel">
       <SectionHeader
         compact
         title={customer.displayName}
         description={customer.type === "business" ? "Zakelijke klant" : "Particuliere klant"}
         actions={
-          <div className="toolbar">
+          <div className="toolbar customer-detail-action-bar customer-info-actions">
             <StatusBadge status={customer.status} label={formatCustomerStatus(customer.status)} />
             {canEdit ? (
               <>
                 <Button
+                  className="customer-detail-action-button"
                   leftIcon={<Pencil size={16} aria-hidden="true" />}
                   size="sm"
                   variant="secondary"
@@ -42,6 +63,11 @@ export function CustomerInfoPanel({
                   Bewerken
                 </Button>
                 <Button
+                  className={
+                    customer.status === "archived"
+                      ? "customer-detail-action-button"
+                      : "customer-detail-action-button customer-danger-action"
+                  }
                   leftIcon={
                     customer.status === "archived" ? (
                       <RotateCcw size={16} aria-hidden="true" />
@@ -50,7 +76,7 @@ export function CustomerInfoPanel({
                     )
                   }
                   size="sm"
-                  variant={customer.status === "archived" ? "secondary" : "danger"}
+                  variant={customer.status === "archived" ? "secondary" : "ghost"}
                   onClick={() => onArchiveToggle(customer.status === "archived" ? "active" : "archived")}
                 >
                   {customer.status === "archived" ? "Herstellen" : "Archiveren"}
@@ -66,29 +92,28 @@ export function CustomerInfoPanel({
             id: "email",
             label: "E-mail",
             value: customer.email ? (
-              <>
-                {customer.email}
-                <CopyButton value={customer.email} label="E-mailadres kopiëren" />
-              </>
+              <CopyableCustomerValue
+                value={customer.email}
+                copyLabel="E-mailadres kopiëren"
+              />
             ) : "-"
           },
           {
             id: "phone",
             label: "Telefoon",
             value: customer.phone ? (
-              <>
-                {customer.phone}
-                <CopyButton value={customer.phone} label="Telefoonnummer kopiëren" />
-              </>
+              <CopyableCustomerValue
+                value={customer.phone}
+                copyLabel="Telefoonnummer kopiëren"
+              />
             ) : "-"
           },
           {
             id: "address",
             label: "Adres",
-            value:
-              [customer.street, customer.houseNumber, customer.postalCode, customer.city]
-                .filter(Boolean)
-                .join(" ") || "-"
+            value: address ? (
+              <span className="customer-info-value-text">{address}</span>
+            ) : "-"
           },
           { id: "registered", label: "Vastgelegd op", value: dateText(customer.createdAt) },
           { id: "updated", label: "Bijgewerkt", value: dateText(customer.updatedAt) }

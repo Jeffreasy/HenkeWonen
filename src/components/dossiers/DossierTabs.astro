@@ -1,0 +1,43 @@
+---
+type DossierTabId = "overview" | "customers" | "projects";
+
+type Props = {
+  active: DossierTabId;
+};
+
+const { active } = Astro.props;
+
+const tabs: Array<{ id: DossierTabId; label: string; href: string; description: string }> = [
+  {
+    id: "overview",
+    label: "Overzicht",
+    href: "/portal/dossiers",
+    description: "Zoek klanten, projecten en offertes"
+  },
+  {
+    id: "customers",
+    label: "Klanten",
+    href: "/portal/klanten",
+    description: "Alle klantdossiers"
+  },
+  {
+    id: "projects",
+    label: "Projecten",
+    href: "/portal/projecten",
+    description: "Alle projectdossiers"
+  }
+];
+---
+
+<nav class="dossier-tabs" aria-label="Dossieronderdelen">
+  {tabs.map((tab) => (
+    <a
+      class={tab.id === active ? "dossier-tab active" : "dossier-tab"}
+      href={tab.href}
+      aria-current={tab.id === active ? "page" : undefined}
+    >
+      <span>{tab.label}</span>
+      <small>{tab.description}</small>
+    </a>
+  ))}
+</nav>

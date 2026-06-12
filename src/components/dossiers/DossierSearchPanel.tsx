@@ -1,7 +1,9 @@
+import { useEffect, useMemo, useState } from "react";
 import { formatDate } from "../../lib/dates";
 import { DataTable, type DataTableColumn } from "../ui/DataTable";
 import { Field } from "../ui/Field";
 import { FilterBar } from "../ui/FilterBar";
+import { PaginationControls } from "../ui/PaginationControls";
 import { SearchInput } from "../ui/SearchInput";
 import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
@@ -30,6 +32,8 @@ const typeOptions: Array<{ value: DossierType; label: string }> = [
   { value: "quote", label: "Offertes" }
 ];
 
+const pageSize = 25;
+
 type DossierSearchPanelProps = {
   search: string;
   onSearchChange: (search: string) => void;
@@ -47,6 +51,25 @@ export function DossierSearchPanel({
   isLoading,
   rows
 }: DossierSearchPanelProps) {
+  const [page, setPage] = useState(1);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paginatedRows = useMemo(
+    () => rows.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [rows, safePage]
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, typeFilter]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
   const columns: Array<DataTableColumn<DossierSearchRow>> = [
     {
       key: "dossier",
@@ -165,7 +188,14 @@ export function DossierSearchPanel({
             </div>
           </div>
         )}
-        rows={rows}
+        rows={paginatedRows}
+      />
+      <PaginationControls
+        label="Paginering voor dossierresultaten"
+        page={safePage}
+        pageSize={pageSize}
+        totalItems={rows.length}
+        onPageChange={setPage}
       />
     </section>
   );

@@ -5,7 +5,6 @@ import type { PortalProject } from "../../lib/portalTypes";
 import { Button } from "../ui/Button";
 import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
-import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
 
 type CreateQuoteFormProps = {
@@ -42,13 +41,7 @@ export function CreateQuoteForm({ projects, onCreateQuote }: CreateQuoteFormProp
   }
 
   return (
-    <section className="panel">
-      <SectionHeader
-        compact
-        title="Nieuwe offerte"
-        description="Start een offerte vanuit een bestaand project."
-      />
-      <form className="responsive-form-row" onSubmit={handleSubmit}>
+    <form className="form-grid" onSubmit={handleSubmit}>
         <Field htmlFor="quote-project" label="Project" required>
           <Select
             id="quote-project"
@@ -80,7 +73,6 @@ export function CreateQuoteForm({ projects, onCreateQuote }: CreateQuoteFormProp
         >
           Offerte starten
         </Button>
-      </form>
-    </section>
+    </form>
   );
 }

@@ -45,7 +45,7 @@ export function CustomerProjectsTable({ projects }: CustomerProjectsTableProps) 
   );
 
   return (
-    <section className="panel">
+    <section className="panel customer-detail-panel customer-projects-panel">
       <SectionHeader
         compact
         title="Projecten"

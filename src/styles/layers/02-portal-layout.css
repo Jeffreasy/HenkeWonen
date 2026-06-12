@@ -60,7 +60,7 @@
 
 .breadcrumb-item {
   color: var(--ink);
-  font-weight: 900; /* Was 950 — buiten CSS-spec, browsers ronden af naar 900 */
+  font-weight: 750;
 }
 
 /* User Menu Dropdown */
@@ -640,15 +640,15 @@
   margin: 0;
   color: var(--accent);
   font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 650;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .brand-title {
   margin: 8px 0 0;
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: var(--text-lg);
+  font-weight: 650;
   letter-spacing: 0;
 }
 
@@ -670,8 +670,8 @@
   margin: 0;
   color: rgba(255, 255, 255, 0.42);
   font-size: var(--text-xs);
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -721,13 +721,13 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 38px;
+  gap: var(--space-2);
+  min-height: 36px;
   border-radius: var(--radius);
   color: rgba(255, 255, 255, 0.76);
-  padding: 8px 10px;
-  font-size: 0.92rem;
-  font-weight: 650;
+  padding: 7px 10px;
+  font-size: var(--text-sm);
+  font-weight: 600;
 }
 
 .nav-link:hover,

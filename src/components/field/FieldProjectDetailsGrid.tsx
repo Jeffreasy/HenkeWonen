@@ -58,7 +58,7 @@ export function FieldProjectDetailsGrid({
         <SectionHeader
           compact
           title="Bezoekstatus"
-          description="Meetmoment en relevante notities."
+          description="Afspraakmoment en relevante notities."
         />
         <dl className="field-detail-list">
           <div>
@@ -66,7 +66,7 @@ export function FieldProjectDetailsGrid({
             <dd>{visit.status}</dd>
           </div>
           <div>
-            <dt>Meetdatum</dt>
+            <dt>Afspraakdatum</dt>
             <dd>{visit.visitAt ? formatDate(visit.visitAt) : "-"}</dd>
           </div>
           <div>

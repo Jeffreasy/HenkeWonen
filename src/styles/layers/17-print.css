@@ -1,10 +1,11 @@
-.quote-print-root {
+.quote-print-root,
+.print-only {
   display: none;
 }
 
 @page {
   size: A4;
-  margin: 14mm;
+  margin: 0;
 }
 
 @media print {
@@ -42,54 +43,126 @@
     padding: 0 !important;
   }
 
+  body.quote-print-active .print-only {
+    display: block !important;
+  }
+
   .quote-document-preview {
+    box-sizing: border-box;
     position: static;
-    width: 100%;
+    display: block;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
     border: 0;
     border-radius: 0;
     background: #fff !important;
     box-shadow: none;
     color: #111 !important;
-    gap: 12pt;
-    padding: 0;
-    orphans: 3; /* Minimaal 3 regels onderaan pagina voor typografische kwaliteit */
-    widows: 3;  /* Minimaal 3 regels bovenaan volgende pagina */
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9.4pt;
+    line-height: 1.42;
+    padding: 14mm 13mm 13mm;
+    orphans: 3;
+    widows: 3;
   }
 
-  .quote-document-preview-header,
-  .quote-document-cover,
+  .quote-document-preview > * + * {
+    margin-top: 10pt;
+  }
+
+  .quote-document-front-page {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(297mm - 27mm);
+  }
+
+  .quote-document-front-page > * + * {
+    margin-top: 10pt;
+  }
+
+  .quote-document-back-matter {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
   .quote-document-letterhead,
   .quote-document-meta-grid,
   .quote-document-terms {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .quote-document-preview-header h2 {
-    font-size: 20pt;
-  }
-
-  .quote-document-preview-badges {
-    justify-content: flex-end;
-  }
-
   .quote-document-letterhead {
-    border-color: #bbb;
+    gap: 18pt;
+    border-top: 0;
+    border-bottom: 1px solid #bbb;
+    padding: 0 0 10pt;
   }
 
-  .quote-document-cover {
-    background: #fff !important;
-    border-color: #bbb;
+  .quote-document-letterhead strong {
+    font-size: 11pt;
   }
 
-  .quote-document-total-card {
-    background: #f1f1f1 !important;
-    border: 1px solid #888;
+  .quote-document-logo {
+    width: 48mm;
+    max-width: 100%;
+    height: auto;
+    margin: 0 0 5pt;
+  }
+
+  .quote-document-print-title {
+    border-bottom: 2px solid #111;
+    padding-bottom: 8pt;
+  }
+
+  .quote-document-print-title .eyebrow {
+    margin: 0 0 3pt;
+  }
+
+  .quote-document-print-title h1 {
+    margin: 0;
     color: #111 !important;
+    font-size: 17pt;
+    line-height: 1.15;
   }
 
-  .quote-document-total-card span,
-  .quote-document-total-card small {
-    color: #333 !important;
+  .quote-document-meta-grid {
+    gap: 18pt;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  }
+
+  .quote-document-meta-grid dl {
+    gap: 4pt;
+  }
+
+  .quote-document-meta-grid dl > div {
+    gap: 8pt;
+    grid-template-columns: 28mm minmax(0, 1fr);
+  }
+
+  .quote-document-copy {
+    margin-top: 16pt;
+  }
+
+  .quote-document-sections {
+    display: grid;
+    gap: 10pt;
+    margin-top: 12pt;
+  }
+
+  .quote-document-section {
+    break-after: auto;
+    break-inside: avoid;
+    page-break-after: auto;
+    page-break-inside: avoid;
+  }
+
+  .quote-document-section h3 {
+    break-after: avoid;
+    margin: 0 0 5pt;
+    font-size: 11pt;
+    page-break-after: avoid;
   }
 
   .quote-document-table-wrap {
@@ -101,7 +174,7 @@
 
   .quote-document-table {
     min-width: 0;
-    font-size: 9pt;
+    font-size: 8.4pt;
     table-layout: fixed;
   }
 
@@ -118,7 +191,7 @@
   .quote-document-table td {
     border-color: #ccc;
     overflow-wrap: anywhere;
-    padding: 6pt;
+    padding: 5pt;
   }
 
   .quote-document-table th:nth-child(1),
@@ -165,36 +238,53 @@
     font-weight: 800;
   }
 
-  .quote-document-section h3 {
-    break-after: avoid;
-    page-break-after: avoid;
-  }
-
-  .print-keep-together,
-  .print-page-break-avoid,
-  .quote-document-section,
-  .quote-document-totals,
-  .quote-document-terms,
-  .quote-document-terms > div,
-  .quote-document-closing {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  .quote-document-section {
-    break-after: auto;
-    page-break-after: auto;
+  .quote-document-line-needs-review td {
+    background: #fff !important;
   }
 
   .quote-document-totals {
     break-before: avoid;
-    width: 84mm;
+    break-inside: avoid;
+    justify-self: end;
+    width: 72mm;
+    margin: auto 0 0 auto;
     border-color: #888;
     page-break-before: avoid;
+    page-break-inside: avoid;
   }
 
   .quote-document-total-row {
     border-color: #bbb;
+  }
+
+  .quote-document-terms {
+    break-inside: avoid;
+    gap: 16pt;
+    margin-top: 16pt;
+    page-break-inside: avoid;
+  }
+
+  .quote-document-terms h3 {
+    margin: 0 0 5pt;
+    font-size: 11pt;
+  }
+
+  .quote-document-text-list {
+    gap: 4pt;
+    padding-left: 13pt;
+  }
+
+  .quote-document-closing {
+    break-inside: avoid;
+    margin-top: 14pt;
+    padding-top: 10pt;
+    page-break-inside: avoid;
+  }
+
+  .print-keep-together,
+  .print-page-break-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .ui-alert,

@@ -39,6 +39,7 @@ function pickInitialQuote(quotes: PortalQuote[]) {
   return (
     quotes.find((quote) => quote.status === "draft") ??
     quotes.find((quote) => quote.status === "sent") ??
+    quotes.find((quote) => quote.status === "accepted") ??
     quotes[0]
   );
 }
@@ -167,6 +168,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
   const draftQuote = workspace?.quotes.find((quote) => quote.status === "draft") ?? null;
   const address = workspace ? customerAddress(workspace) : undefined;
   const canEditSelectedQuote = canEditQuote && selectedQuote?.status === "draft";
+  const canCreateConceptQuote = canEditQuote && !draftQuote && !selectedQuote;
 
   async function createConceptQuote() {
     if (!workspace || isCreatingQuote) {
@@ -372,7 +374,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
           title="Conceptofferte"
           description="Werk aan posten, voorwaarden en een nette Klantversie op basis van de inmeting."
           actions={
-            !draftQuote && canEditQuote ? (
+            canCreateConceptQuote ? (
               <Button
                 isLoading={isCreatingQuote}
                 leftIcon={<Save size={17} aria-hidden="true" />}

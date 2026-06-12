@@ -25,31 +25,16 @@ import {
   latestMeasurementForProject,
   latestQuoteForProject,
   latestAcceptedQuoteForProject,
+  existingInvoiceForQuote,
   hasProjectEvent,
+  nextInvoiceNumber,
+  completeInvoiceWorkflow,
   addProjectEvent,
   upsertProjectTask,
   closeOpenProjectTasks,
   getRooms,
   sortProjectTasks
 } from "../portalUtils";
-
-async function nextInvoiceNumber(ctx: any, tenantId: Id<"tenants">): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `FAC-${year}-`;
-  const existing = await ctx.db
-    .query("invoices")
-    .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
-    .collect();
-  const yearInvoices = existing.filter((inv: Doc<"invoices">) =>
-    inv.invoiceNumber.startsWith(prefix)
-  );
-  const highest = yearInvoices.reduce((max: number, inv: Doc<"invoices">) => {
-    const num = parseInt(inv.invoiceNumber.replace(prefix, ""), 10);
-    return isNaN(num) ? max : Math.max(max, num);
-  }, 0);
-  return `${prefix}${String(highest + 1).padStart(3, "0")}`;
-}
-
 
 export const list = query({
   args: {
@@ -879,6 +864,10 @@ export const processProjectAction = mutation({
       args.action === "invoice_created"
         ? await latestAcceptedQuoteForProject(ctx, tenant._id, project._id)
         : undefined;
+    const existingInvoice =
+      args.action === "invoice_created" && latestAcceptedQuote
+        ? await existingInvoiceForQuote(ctx, tenant._id, latestAcceptedQuote._id)
+        : undefined;
 
     if (args.action === "quote_accepted") {
       if (!latestQuote) {
@@ -952,34 +941,28 @@ export const processProjectAction = mutation({
     }
 
     if (args.action === "invoice_created") {
-      await closeOpenProjectTasks(ctx, tenant._id, project._id, "confirmation_payment", "done");
-      await upsertProjectTask(
-        ctx,
-        tenant._id,
-        project._id,
-        "invoice_payment",
-        "Factuurbetaling opvolgen",
-        args.invoiceDueAt ?? addCalendarDays(now, invoiceTermDays),
-        externalUserId
-      );
+      const invoiceDueAt = existingInvoice?.dueDate ?? args.invoiceDueAt ?? addCalendarDays(now, invoiceTermDays);
+      await completeInvoiceWorkflow(ctx, tenant._id, project, invoiceDueAt, externalUserId);
 
-      const invoiceNumber = await nextInvoiceNumber(ctx, tenant._id);
-      await ctx.db.insert("invoices", {
-        tenantId: tenant._id,
-        projectId: project._id,
-        customerId: project.customerId,
-        quoteId: latestAcceptedQuote?._id,
-        invoiceNumber,
-        status: "sent",
-        invoiceDate: now,
-        dueDate: args.invoiceDueAt ?? addCalendarDays(now, invoiceTermDays),
-        subtotalExVat: latestAcceptedQuote?.subtotalExVat ?? 0,
-        vatTotal: latestAcceptedQuote?.vatTotal ?? 0,
-        totalIncVat: latestAcceptedQuote?.totalIncVat ?? 0,
-        paidAmount: 0,
-        createdAt: now,
-        updatedAt: now
-      });
+      if (!existingInvoice) {
+        const invoiceNumber = await nextInvoiceNumber(ctx, tenant._id);
+        await ctx.db.insert("invoices", {
+          tenantId: tenant._id,
+          projectId: project._id,
+          customerId: project.customerId,
+          quoteId: latestAcceptedQuote?._id,
+          invoiceNumber,
+          status: "sent",
+          invoiceDate: now,
+          dueDate: invoiceDueAt,
+          subtotalExVat: latestAcceptedQuote?.subtotalExVat ?? 0,
+          vatTotal: latestAcceptedQuote?.vatTotal ?? 0,
+          totalIncVat: latestAcceptedQuote?.totalIncVat ?? 0,
+          paidAmount: 0,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
     }
 
     if (args.action === "cancelled") {
@@ -1003,14 +986,16 @@ export const processProjectAction = mutation({
       );
     }
 
-    await addProjectEvent(
-      ctx,
-      tenant._id,
-      project._id,
-      actionConfig.eventType,
-      actionConfig.eventTitle,
-      externalUserId
-    );
+    if (args.action !== "invoice_created") {
+      await addProjectEvent(
+        ctx,
+        tenant._id,
+        project._id,
+        actionConfig.eventType,
+        actionConfig.eventTitle,
+        externalUserId
+      );
+    }
 
     return project._id;
   }

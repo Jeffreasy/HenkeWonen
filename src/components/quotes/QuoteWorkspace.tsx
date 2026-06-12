@@ -34,6 +34,16 @@ type QuoteWorkspaceResult = {
 
 type StatusFilter = "all" | QuoteStatus;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function invoicePaymentTermDays(customer?: PortalCustomer | null) {
+  return customer?.type === "business" ? 21 : 8;
+}
+
+function shouldOpenNewQuoteModal() {
+  return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("open") === "nieuw";
+}
+
 export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps) {
   const [customers, setCustomers] = useState<PortalCustomer[]>([]);
   const [projects, setProjects] = useState<PortalProject[]>([]);
@@ -44,7 +54,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [isNewQuoteModalOpen, setIsNewQuoteModalOpen] = useState(false);
+  const [isNewQuoteModalOpen, setIsNewQuoteModalOpen] = useState(shouldOpenNewQuoteModal);
   const canEditQuote = canEditQuotes(session.role);
 
   const loadWorkspace = useCallback(async () => {
@@ -104,6 +114,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       setSelectedQuoteId(newQuoteId);
       setIsNewQuoteModalOpen(false);
       showToast({ title: "Offerte aangemaakt", description: title.trim(), tone: "success" });
+      window.location.assign(`/portal/offertes/${newQuoteId}`);
     } catch {
       showToast({ title: "Offerte aanmaken mislukt", tone: "error" });
     }
@@ -219,8 +230,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       return null;
     }
 
-    // Standaard vervaldatum: 30 dagen vanaf nu
-    const dueDate = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    const dueDate = Date.now() + invoicePaymentTermDays(selectedCustomer) * DAY_MS;
 
     const result = await client.mutation(api.portal.createInvoiceFromQuote, {
       tenantSlug: session.tenantId,

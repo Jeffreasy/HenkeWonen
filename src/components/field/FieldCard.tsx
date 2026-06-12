@@ -102,7 +102,7 @@ export function FieldCard({ card, preferredAction }: FieldCardProps) {
               {card.address}
             </span>
           ) : null}
-          {card.visitAt ? <span>Meetmoment: {formatDate(card.visitAt)}</span> : null}
+          {card.visitAt ? <span>Afspraak: {formatDate(card.visitAt)}</span> : null}
           {card.measurement ? (
             <span>Inmeting: {formatMeasurementStatus(card.measurement.status)}</span>
           ) : null}
