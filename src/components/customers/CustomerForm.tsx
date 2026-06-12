@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { SubmitEventLike } from "../../lib/events";
 import type { CustomerType } from "../../lib/portalTypes";
 import { Button } from "../ui/Button";
+import { Checkbox } from "../ui/Checkbox";
 import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
 import { SectionHeader } from "../ui/SectionHeader";
@@ -19,6 +20,7 @@ export type CustomerFormValues = {
   postalCode?: string;
   city?: string;
   notes?: string;
+  createDossier: boolean;
 };
 
 type CustomerFormProps = {
@@ -36,6 +38,7 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
   const [city, setCity] = useState("");
   const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [createDossier, setCreateDossier] = useState(true);
 
   async function submit(event: SubmitEventLike) {
     event.preventDefault();
@@ -49,7 +52,8 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
       houseNumber: houseNumber.trim() || undefined,
       postalCode: postalCode.trim() || undefined,
       city: city.trim() || undefined,
-      notes: notes.trim() || undefined
+      notes: notes.trim() || undefined,
+      createDossier
     };
 
     if (!customer.displayName) {
@@ -68,6 +72,7 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
       setPostalCode("");
       setCity("");
       setNotes("");
+      setCreateDossier(true);
     } finally {
       setIsSaving(false);
     }
@@ -144,6 +149,12 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
           onChange={(event) => setNotes(event.target.value)}
         />
       </Field>
+      <Checkbox
+        id="customer-create-dossier"
+        checked={createDossier}
+        label="Gelijk een dossier aanmaken"
+        onChange={(event) => setCreateDossier(event.target.checked)}
+      />
       <Button
         isLoading={isSaving}
         leftIcon={<Save size={17} aria-hidden="true" />}

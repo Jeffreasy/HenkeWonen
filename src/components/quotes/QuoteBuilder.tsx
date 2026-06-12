@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, Eye, FileText, Pencil, Save, Send, Trash2, XCircle } from "lucide-react";
+import { Ban, CheckCircle2, Eye, FileText, Pencil, Printer, Save, Send, Trash2, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
 import type {
@@ -9,9 +9,11 @@ import type {
   QuoteStatus,
   QuoteTemplate
 } from "../../lib/portalTypes";
-import { formatQuoteStatus, formatUnit } from "../../lib/i18n/statusLabels";
+import { formatMeasurementProductGroup, formatQuoteStatus, formatUnit } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
+import type { MeasurementProductGroup } from "../../lib/portalTypes";
 import { buildQuoteDocumentModel } from "../../lib/quotes/quoteDocumentModel";
+import { PRODUCT_GROUP_OPTIONS } from "../projects/measurement/measurementTypes";
 import { polishQuoteTemplateLines, polishQuoteTemplateText } from "../../lib/quotes/quoteTemplateCopy";
 import { Button } from "../ui/Button";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
@@ -149,6 +151,33 @@ export default function QuoteBuilder({
   const canEditDraftLines = canEdit && quote.status === "draft";
   const fieldQuoteLabel = quote.status === "draft" ? "Conceptofferte" : "Klantversie";
   const fieldLineLabel = quote.status === "draft" ? "Conceptposten" : "Offerteposten";
+
+  // ── Catalogusfilter inferentie (field-mode) ──────────────────────────────────
+  const inferredProductGroup = useMemo((): MeasurementProductGroup | null => {
+    if (!isFieldMode) return null;
+    const measurementLines = quote.lines.filter(
+      (line) =>
+        (line.metadata as Record<string, unknown> | undefined)?.source === "measurement"
+    );
+    if (measurementLines.length === 0) return null;
+    const counts = new Map<string, number>();
+    for (const line of measurementLines) {
+      const group = (line.metadata as Record<string, unknown>)?.productGroup as string | undefined;
+      if (group) counts.set(group, (counts.get(group) ?? 0) + 1);
+    }
+    let dominant: string | null = null;
+    let highest = 0;
+    for (const [group, count] of counts) {
+      if (count > highest) { highest = count; dominant = group; }
+    }
+    return dominant as MeasurementProductGroup | null;
+  }, [isFieldMode, quote.lines]);
+
+  const [productGroupOverride, setProductGroupOverride] = useState<MeasurementProductGroup | "all" | null>(null);
+  const activeProductGroup: MeasurementProductGroup | null =
+    productGroupOverride === "all"
+      ? null
+      : (productGroupOverride ?? inferredProductGroup);
   const roomById = useMemo(
     () => new Map((project?.rooms ?? []).map((room) => [room.id, room.name])),
     [project?.rooms]
@@ -365,6 +394,7 @@ export default function QuoteBuilder({
       templateLines={defaultTemplate?.defaultLines ?? []}
       session={session}
       projectRooms={project?.rooms ?? []}
+      productGroupHint={activeProductGroup}
       onAdd={onAddLine}
     />
   );
@@ -628,28 +658,36 @@ export default function QuoteBuilder({
   );
 
   const pendingStatusAction = quoteStatusActions.find((action) => action.status === pendingStatus);
-  
+
+  // Buitendienst: alleen de 3 relevante statusacties
+  const fieldAllowedStatuses = new Set(["sent", "accepted", "rejected"] as const);
+
   const statusActions =
-    !isFieldMode && canEdit && onUpdateStatus ? (
+    canEdit && onUpdateStatus ? (
       <div className="toolbar quote-status-actions">
         <StatusBadge status={quote.status} label={formatQuoteStatus(quote.status)} />
-        {quoteStatusActions.map((action) => {
-          const Icon = action.icon;
-          const isCurrent = quote.status === action.status;
+        {quoteStatusActions
+          .filter((action) =>
+            isFieldMode ? fieldAllowedStatuses.has(action.status as "sent" | "accepted" | "rejected") : true
+          )
+          .map((action) => {
+            const Icon = action.icon;
+            const isCurrent = quote.status === action.status;
 
-          return (
-            <Button
-              disabled={isCurrent || isUpdatingStatus}
-              key={action.status}
-              leftIcon={<Icon size={16} aria-hidden="true" />}
-              onClick={() => setPendingStatus(action.status)}
-              size="sm"
-              variant={action.variant}
-            >
-              {action.label}
-            </Button>
-          );
-        })}
+            return (
+              <Button
+                disabled={isCurrent || isUpdatingStatus}
+                key={action.status}
+                leftIcon={<Icon size={16} aria-hidden="true" />}
+                onClick={() => setPendingStatus(action.status)}
+                size="sm"
+                variant={action.variant}
+              >
+                {action.label}
+              </Button>
+            );
+          })}
+        {/* Factuur aanmaken alleen in winkel-mode */}
         {!isFieldMode && quote.status === "accepted" && onCreateInvoice ? (
           <Button
             leftIcon={<FileText size={16} aria-hidden="true" />}
@@ -721,6 +759,8 @@ export default function QuoteBuilder({
     return (
       <div className="grid field-quote-workbench">
         {dialogs}
+
+        {/* Compact header met status-acties */}
         <section className="field-quote-compact-header">
           <div>
             <p className="eyebrow">{fieldQuoteLabel}</p>
@@ -734,6 +774,11 @@ export default function QuoteBuilder({
               { id: "total", label: "Totaal incl. btw", value: formatEuro(quoteTotals.totalIncVat) }
             ]}
           />
+          {canEdit && onUpdateStatus ? (
+            <div className="field-quote-status-actions">
+              {statusActions}
+            </div>
+          ) : null}
         </section>
 
         {canEditDraftLines ? measurementPicker : null}
@@ -744,19 +789,64 @@ export default function QuoteBuilder({
         {canEditDraftLines ? (
           <details className="field-quote-disclosure">
             <summary>Extra post toevoegen</summary>
-            <div className="field-quote-disclosure-content">{lineEditor}</div>
+            <div className="field-quote-disclosure-content">
+              {inferredProductGroup ? (
+                <div className="field-quote-catalog-filter">
+                  <label htmlFor="catalog-group-filter" className="eyebrow">
+                    Catalogus gefilterd op
+                  </label>
+                  <select
+                    id="catalog-group-filter"
+                    value={productGroupOverride ?? inferredProductGroup}
+                    onChange={(e) =>
+                      setProductGroupOverride(
+                        e.target.value === "all"
+                          ? "all"
+                          : (e.target.value as MeasurementProductGroup)
+                      )
+                    }
+                  >
+                    {PRODUCT_GROUP_OPTIONS.map((group) => (
+                      <option key={group} value={group}>
+                        {formatMeasurementProductGroup(group)}
+                      </option>
+                    ))}
+                    <option value="all">Alle categorieën</option>
+                  </select>
+                </div>
+              ) : null}
+              {lineEditor}
+            </div>
           </details>
         ) : null}
 
-        <details className="field-quote-disclosure">
-          <summary>Voorwaarden bekijken of aanpassen</summary>
+        {/* Voorwaarden: altijd open in field-mode zodat buitendienst ze kan inzien */}
+        <details className="field-quote-disclosure" open>
+          <summary>Voorwaarden</summary>
           <div className="field-quote-disclosure-content">{termsContent}</div>
         </details>
 
-        <details className="field-quote-disclosure">
-          <summary>Klantversie bekijken en printen</summary>
-          <div className="field-quote-disclosure-content">{customerVersionPreview}</div>
-        </details>
+        {/* Klantversie: altijd zichtbaar als prominente sectie */}
+        <section className="panel field-quote-customer-section">
+          <SectionHeader
+            compact
+            title="Klantversie"
+            description="Controleer en print de offerte zoals de klant hem ontvangt."
+            actions={
+              documentModel ? (
+                <Button
+                  leftIcon={<Printer size={16} aria-hidden="true" />}
+                  onClick={() => setIsCustomerVersionModalOpen(true)}
+                  size="sm"
+                  variant="primary"
+                >
+                  Klantversie openen
+                </Button>
+              ) : null
+            }
+          />
+          {customerVersionPreview}
+        </section>
       </div>
     );
   }

@@ -6,7 +6,8 @@ import { createConvexHttpClient } from "../../lib/convex/client";
 import type { SubmitEventLike } from "../../lib/events";
 import { formatLineType } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
-import type { PortalProduct, PortalRoom, QuoteLineType, QuoteTemplateLine } from "../../lib/portalTypes";
+import type { MeasurementProductGroup, PortalProduct, PortalRoom, QuoteLineType, QuoteTemplateLine } from "../../lib/portalTypes";
+import { getAllowedCategories } from "../../lib/quotes/measurementCatalogMapping";
 import { polishQuoteTemplateText } from "../../lib/quotes/quoteTemplateCopy";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
@@ -32,6 +33,8 @@ type QuoteLineEditorProps = {
   onAdd: (line: QuoteLineFormValues) => Promise<string | void> | string | void;
   mode?: "full" | "field";
   surface?: "panel" | "plain";
+  /** Hint vanuit de meetcontext — filtert de catalogus op bijbehorende categorieën. */
+  productGroupHint?: MeasurementProductGroup | null;
 };
 
 export default function QuoteLineEditor({
@@ -41,9 +44,11 @@ export default function QuoteLineEditor({
   projectRooms = [],
   onAdd,
   mode = "full",
-  surface = "panel"
+  surface = "panel",
+  productGroupHint = null
 }: QuoteLineEditorProps) {
   const isFieldMode = mode === "field";
+  const allowedCategories = getAllowedCategories(productGroupHint);
   const [lineType, setLineType] = useState<QuoteLineType>("product");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -92,7 +97,8 @@ export default function QuoteLineEditor({
           tenantSlug: session.tenantId,
           search: productSearch || undefined,
           status: "active",
-          limit: 60
+          limit: 60,
+          ...(allowedCategories ? { categories: allowedCategories } : {})
         })) as { items: PortalProduct[] };
 
         if (isActive) {
@@ -324,6 +330,11 @@ export default function QuoteLineEditor({
             title="Catalogusproduct"
             description="Pilotkeuze uit zichtbare catalogusproducten; PVC Click blijft hier verborgen."
           />
+          {isFieldMode && allowedCategories ? (
+            <p className="quote-catalog-filter-hint muted">
+              Gefilterd op: {allowedCategories.join(", ")}
+            </p>
+          ) : null}
           <SearchInput
             aria-label="Catalogusproduct zoeken"
             placeholder="Zoek product, Moduleo, kleur, artikelnummer of leverancier"

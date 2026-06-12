@@ -66,6 +66,22 @@ import {
 } from "./measurement/measurementUtils";
 
 
+const FIELD_ROOM_PRESETS: Array<{ label: string; name: string }> = [
+  { label: "Hal",        name: "Hal" },
+  { label: "Overloop",   name: "Overloop" },
+  { label: "Woonkamer",  name: "Woonkamer" },
+  { label: "Keuken",     name: "Keuken" },
+  { label: "Bijkeuken",  name: "Bijkeuken" },
+  { label: "Berging",    name: "Berging" },
+  { label: "Garage",     name: "Garage" },
+  { label: "Wc",         name: "Wc" },
+  { label: "Sk BG",      name: "Sk BG" },
+  { label: "Sk1",        name: "Sk1" },
+  { label: "Sk2",        name: "Sk2" },
+  { label: "Sk3",        name: "Sk3" },
+  { label: "Sk4",        name: "Sk4" },
+];
+
 export default function MeasurementPanel({
   tenantId,
   projectId,
@@ -109,6 +125,7 @@ export default function MeasurementPanel({
     notes: ""
   });
   const [pendingRoomDelete, setPendingRoomDelete] = useState<MeasurementRoomDoc | null>(null);
+  const [roomDeleteError, setRoomDeleteError] = useState<string | null>(null);
 
   const [floorRoomId, setFloorRoomId] = useState("");
   const [floorLengthM, setFloorLengthM] = useState("");
@@ -116,6 +133,7 @@ export default function MeasurementPanel({
   const [floorWastePercent, setFloorWastePercent] = useState("7");
   const [floorPatternType, setFloorPatternType] = useState("straight");
   const [floorNotes, setFloorNotes] = useState("");
+  const [floorPatternAutoFilled, setFloorPatternAutoFilled] = useState(false);
 
   const [plinthRoomId, setPlinthRoomId] = useState("");
   const [plinthPerimeterM, setPlinthPerimeterM] = useState("");
@@ -222,6 +240,35 @@ export default function MeasurementPanel({
     setMeasuredBy(measurement.measuredBy ?? "");
     setMeasurementNotes(measurement.notes ?? "");
   }, [measurement]);
+
+  // Koppel legpatroon aan snijverlies via wasteProfiles (best-effort op naam)
+  useEffect(() => {
+    if (wasteProfiles.length === 0) return;
+
+    const PATTERN_PROFILE_NAMES: Partial<Record<string, string>> = {
+      straight:    "PVC rechte plank",
+      herringbone: "PVC visgraat"
+      // "tile" en "custom": geen automatische koppeling
+    };
+
+    const targetName = PATTERN_PROFILE_NAMES[floorPatternType];
+
+    if (!targetName) {
+      setFloorPatternAutoFilled(false);
+      return;
+    }
+
+    const match = wasteProfiles.find(
+      (p) => p.productGroup === "flooring" && p.name === targetName
+    );
+
+    if (match) {
+      setFloorWastePercent(String(match.defaultWastePercent));
+      setFloorPatternAutoFilled(true);
+    } else {
+      setFloorPatternAutoFilled(false);
+    }
+  }, [floorPatternType, wasteProfiles]);
 
   const roomNameById = useMemo(() => {
     const names = new Map<string, string>();
@@ -476,6 +523,32 @@ export default function MeasurementPanel({
     }
   }
 
+  async function addRoomByPreset(presetName: string) {
+    if (!canEditMeasurement) return;
+
+    const context = requireClientAndMeasurement();
+
+    if (!context) return;
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await context.client.mutation(api.projecten.measurements.addMeasurementRoom, {
+        tenantId: context.tenantId,
+        actor: mutationActorFromSession(session),
+        measurementId: context.measurementId,
+        name: presetName
+      });
+      showToast({ title: `${presetName} toegevoegd`, tone: "success" });
+      await loadMeasurement();
+    } catch {
+      setError("Ruimte kon niet worden toegevoegd.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   async function addLine(
     event: SubmitEventLike,
     line: {
@@ -639,7 +712,7 @@ export default function MeasurementPanel({
     }
 
     setIsSaving(true);
-    setError(null);
+    setRoomDeleteError(null);
 
     try {
       await context.client.mutation(api.projecten.measurements.deleteMeasurementRoom, {
@@ -649,11 +722,14 @@ export default function MeasurementPanel({
       });
       showToast({ title: "Meetruimte verwijderd", tone: "warning" });
       setPendingRoomDelete(null);
+      setRoomDeleteError(null);
       await loadMeasurement();
     } catch (deleteError) {
       console.error(deleteError);
-      setError("Meetruimte kan niet worden verwijderd zolang er meetregels aan gekoppeld zijn.");
-      setPendingRoomDelete(null);
+      // Fout tonen IN de dialoog — niet sluiten, zodat de gebruiker de melding ziet
+      setRoomDeleteError(
+        "Deze ruimte heeft nog meetregels gekoppeld. Verwijder eerst alle meetregels van deze ruimte."
+      );
     } finally {
       setIsSaving(false);
     }
@@ -1009,12 +1085,24 @@ export default function MeasurementPanel({
       <ConfirmDialog
         open={Boolean(pendingRoomDelete)}
         title="Meetruimte verwijderen?"
-        description="Dit kan alleen als er nog geen meetregels aan deze ruimte gekoppeld zijn."
-        confirmLabel="Meetruimte verwijderen"
-        tone="danger"
+        description={
+          roomDeleteError
+            ? roomDeleteError
+            : "Dit kan alleen als er nog geen meetregels aan deze ruimte gekoppeld zijn."
+        }
+        confirmLabel={roomDeleteError ? "Sluiten" : "Meetruimte verwijderen"}
+        cancelLabel={roomDeleteError ? undefined : "Annuleren"}
+        tone={roomDeleteError ? "warning" : "danger"}
         isBusy={isSaving}
-        onCancel={() => setPendingRoomDelete(null)}
-        onConfirm={() => void deleteRoomCorrection()}
+        onCancel={() => { setPendingRoomDelete(null); setRoomDeleteError(null); }}
+        onConfirm={() => {
+          if (roomDeleteError) {
+            setPendingRoomDelete(null);
+            setRoomDeleteError(null);
+          } else {
+            void deleteRoomCorrection();
+          }
+        }}
       />
       <ConfirmDialog
         open={Boolean(pendingLineDelete)}
@@ -1167,6 +1255,35 @@ export default function MeasurementPanel({
                   : "Een meetruimte is de vastgelegde maatvoering binnen deze inmeting."
               }
             />
+            {canEditMeasurement ? (
+              <div className="field-room-presets">
+                <p className="field-room-presets-label">
+                  {isFieldMode ? "Snel toevoegen" : "Naam invullen via preset"}
+                </p>
+                <div className="field-room-presets-grid">
+                  {FIELD_ROOM_PRESETS.map((preset) => {
+                    const alreadyAdded = rooms.some((r) => r.name === preset.name);
+                    return (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        className={alreadyAdded ? "field-room-preset-btn added" : "field-room-preset-btn"}
+                        disabled={isSaving}
+                        onClick={() =>
+                          isFieldMode
+                            ? void addRoomByPreset(preset.name)
+                            : setRoomName(preset.name)
+                        }
+                        aria-label={alreadyAdded ? `${preset.label} — al toegevoegd` : `${preset.label} toevoegen`}
+                      >
+                        {preset.label}
+                        {alreadyAdded ? " ✓" : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             <form onSubmit={addRoom}>
               <div className="responsive-form-row">
                 <Field
@@ -1490,9 +1607,6 @@ export default function MeasurementPanel({
             <Field htmlFor="floor-width" label="Breedte in meter">
               <Input id="floor-width" inputMode="decimal" value={floorWidthM} onChange={(e) => setFloorWidthM(e.target.value)} />
             </Field>
-            <Field htmlFor="floor-waste" label="Snijverlies %">
-              <Input id="floor-waste" inputMode="decimal" value={floorWastePercent} onChange={(e) => setFloorWastePercent(e.target.value)} />
-            </Field>
             <Field htmlFor="floor-pattern" label="Legpatroon">
               <Select id="floor-pattern" value={floorPatternType} onChange={(e) => setFloorPatternType(e.target.value)}>
                 <option value="straight">Rechte plank</option>
@@ -1500,6 +1614,22 @@ export default function MeasurementPanel({
                 <option value="tile">Tegelpatroon</option>
                 <option value="custom">Maatwerk</option>
               </Select>
+            </Field>
+            <Field htmlFor="floor-waste" label="Snijverlies %">
+              <Input
+                id="floor-waste"
+                inputMode="decimal"
+                value={floorWastePercent}
+                onChange={(e) => {
+                  setFloorWastePercent(e.target.value);
+                  setFloorPatternAutoFilled(false);
+                }}
+              />
+              {floorPatternAutoFilled ? (
+                <p className="muted" style={{ margin: "4px 0 0", fontSize: "var(--text-xs)" }}>
+                  Automatisch ingesteld op basis van legpatroon.
+                </p>
+              ) : null}
             </Field>
             <Field htmlFor="floor-notes" label="Notitie">
               <Input id="floor-notes" value={floorNotes} onChange={(e) => setFloorNotes(e.target.value)} />

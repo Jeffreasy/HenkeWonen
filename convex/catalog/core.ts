@@ -244,7 +244,8 @@ function productMatchesPortalFilters({
   requestedStatus,
   includePilotHidden,
   search,
-  categoryFilter
+  categoryFilter,
+  allowedCategoryNames
 }: {
   product: ProductDoc;
   categoryName: string;
@@ -253,6 +254,7 @@ function productMatchesPortalFilters({
   includePilotHidden: boolean;
   search: string;
   categoryFilter: string;
+  allowedCategoryNames: Set<string> | null;
 }) {
   if (normalizedProductStatus(product.status) !== requestedStatus) {
     return false;
@@ -263,6 +265,11 @@ function productMatchesPortalFilters({
   }
 
   if (categoryFilter && categoryName !== categoryFilter) {
+    return false;
+  }
+
+  // Multi-categorie filter (productGroup-gebaseerd)
+  if (allowedCategoryNames && !allowedCategoryNames.has(categoryName)) {
     return false;
   }
 
@@ -363,6 +370,7 @@ export const listProductsForPortal = query({
     actor: readActorValidator,
     search: v.optional(v.string()),
     category: v.optional(v.string()),
+    categories: v.optional(v.array(v.string())), // meerdere categorieën (productGroup-filter)
     status: v.optional(productStatus),
     includePilotHidden: v.optional(v.boolean()),
     limit: v.optional(v.number()),
@@ -419,6 +427,11 @@ export const listProductsForPortal = query({
     const search = (args.search ?? "").trim().toLowerCase();
     const selected: ProductDoc[] = [];
     const cursor = args.cursor ?? null;
+    // Multi-categorie filter op basis van productGroup-mapping
+    const allowedCategoryNames: Set<string> | null =
+      args.categories && args.categories.length > 0
+        ? new Set(args.categories)
+        : null;
     const paginated = targetCategory
       ? await ctx.db
           .query("products")
@@ -450,7 +463,8 @@ export const listProductsForPortal = query({
           requestedStatus,
           includePilotHidden,
           search,
-          categoryFilter
+          categoryFilter,
+          allowedCategoryNames
         })
       ) {
         selected.push(product);

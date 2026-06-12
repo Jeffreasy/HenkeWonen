@@ -511,6 +511,27 @@
   }
 }
 /* ---------------------------------------------------------------------------
+   640px — Buitendienst offerte status-acties op mobiel
+   --------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .field-quote-status-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .field-quote-status-actions .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .field-quote-status-actions .ui-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ---------------------------------------------------------------------------
    760px — Data-tabel kaartmodus (iets voor 720px om dead zone te voorkomen)
    --------------------------------------------------------------------------- */
 @media (max-width: 760px) {

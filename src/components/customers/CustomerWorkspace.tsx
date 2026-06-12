@@ -67,14 +67,27 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
     }
 
     try {
+      const { createDossier, ...customerData } = customer;
       const customerId = await client.mutation(api.portal.createCustomer, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        ...customer
+        ...customerData
       });
       setIsModalOpen(false);
       showToast({ title: "Klant aangemaakt", description: customer.displayName, tone: "success" });
-      window.location.assign(`/portal/klanten/${String(customerId)}`);
+
+      if (createDossier) {
+        const projectId = await client.mutation(api.portal.createProject, {
+          tenantSlug: session.tenantId,
+          actor: mutationActorFromSession(session),
+          customerId: String(customerId),
+          title: `${customer.displayName} - nieuw dossier`,
+          createdByExternalUserId: session.userId
+        });
+        window.location.assign(`/portal/projecten/${String(projectId)}`);
+      } else {
+        window.location.assign(`/portal/klanten/${String(customerId)}`);
+      }
     } catch {
       showToast({ title: "Klant aanmaken mislukt", tone: "error" });
     }

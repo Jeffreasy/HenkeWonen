@@ -71,6 +71,23 @@ export function FieldActionPlan({
             </p>
           </div>
         </a>
+        {selectedQuoteStatus ? (
+          <a className="field-action-card" href="#conceptofferte">
+            <span>4</span>
+            <div>
+              <strong>Klantversie</strong>
+              <p>
+                {selectedQuoteStatus === "accepted"
+                  ? "Akkoord ontvangen"
+                  : selectedQuoteStatus === "sent"
+                  ? "Gedeeld met klant"
+                  : selectedQuoteStatus === "rejected"
+                  ? "Afgewezen"
+                  : "Nog te presenteren"}
+              </p>
+            </div>
+          </a>
+        ) : null}
       </section>
 
       {openTasks.length > 0 ? (

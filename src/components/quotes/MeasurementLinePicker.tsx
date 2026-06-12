@@ -132,7 +132,11 @@ export default function MeasurementLinePicker({
 
       const result = (await client.query(api.projecten.measurements.listReadyForQuoteByProject, {
         tenantId: resolvedTenantId as Id<"tenants">,
-        projectId: projectId as Id<"projects">
+        projectId: projectId as Id<"projects">,
+        actor: {
+          externalUserId: session.userId,
+          authzToken: session.authzToken ?? ""
+        }
       })) as ReadyMeasurementResult;
 
       setReadyLines(result.readyLines);
