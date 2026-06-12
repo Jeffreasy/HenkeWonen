@@ -5,10 +5,13 @@
 .form-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1100;
+  z-index: 1450;
   display: grid;
   place-items: center;
   padding: var(--space-5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   background: rgba(14, 20, 17, 0.56);
   backdrop-filter: blur(3px);
   animation: backdropFadeIn 180ms ease;
@@ -24,8 +27,10 @@
   grid-template-rows: auto 1fr;
   width: min(100%, 600px);
   max-height: calc(100dvh - var(--space-8, 64px));
+  min-height: 0;
   min-width: 0;
   overflow: hidden;
+  overscroll-behavior: contain;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg, 14px);
   background: var(--surface-raised);
@@ -113,8 +118,13 @@
 }
 
 .form-modal-body {
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   padding: var(--space-5);
+  scroll-padding-block: var(--space-5);
 }
 
 .form-modal-body .panel,
@@ -526,8 +536,8 @@
 
 /* ---------------------------------------------------------------------------
    Quick Action FAB (Floating Action Button)
-   Rechts onderaan op desktop én mobiel. Z-index 1400 (onder toast 1500,
-   boven overlays 1100). Op mobiel: boven de mobile-quickbar (z-index 45).
+   Rechts onderaan op desktop én mobiel. Z-index 1400 (onder modal 1450 en
+   toast 1500). Op mobiel: boven de mobile-quickbar (z-index 45).
    --------------------------------------------------------------------------- */
 
 .quick-action-fab-container {

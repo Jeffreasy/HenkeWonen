@@ -285,6 +285,23 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(featureStyles).not.toContain(".field-intake-panel");
   });
 
+  it("should keep mobile modals above quick actions and touch-scrollable", () => {
+    const overlayStyles = read("src/styles/layers/07-overlays.css");
+    const responsiveStyles = read("src/styles/layers/16-responsive.css");
+    const componentStyles = read("src/styles/layers/06-ui-components.css");
+
+    expect(overlayStyles).toContain(".form-modal-backdrop");
+    expect(overlayStyles).toContain("z-index: 1450");
+    expect(overlayStyles).toContain("touch-action: pan-y");
+    expect(overlayStyles).toContain("-webkit-overflow-scrolling: touch");
+    expect(overlayStyles).toContain(".quick-action-fab-container");
+    expect(overlayStyles).toContain("z-index: 1400");
+    expect(componentStyles).toContain(".confirm-dialog-backdrop");
+    expect(componentStyles).toContain("z-index: 1460");
+    expect(responsiveStyles).toContain("height: min(90dvh");
+    expect(responsiveStyles).toContain("env(safe-area-inset-bottom");
+  });
+
   it("should keep the customer contact modal professional and complete", () => {
     const addContactForm = read("src/components/customers/AddContactForm.tsx");
     const customerDetail = read("src/components/customers/CustomerDetail.tsx");

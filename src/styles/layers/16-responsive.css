@@ -757,12 +757,18 @@
   .form-modal--lg,
   .form-modal--xl {
     width: 100%;
+    height: min(90dvh, calc(100dvh - env(safe-area-inset-top, 0px)));
     max-height: 90dvh;
+    min-height: 0;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
     border-top-left-radius: var(--radius-lg);
     border-top-right-radius: var(--radius-lg);
     animation: modalSlideUp 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .form-modal-body {
+    padding-bottom: max(var(--space-5), calc(var(--space-5) + env(safe-area-inset-bottom, 0px)));
   }
 
   .field-intake-footer,

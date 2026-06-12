@@ -686,10 +686,13 @@ html[data-theme="dark"] select.ui-control {
 .confirm-dialog-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1200;
+  z-index: 1460;
   display: grid;
   place-items: center;
   padding: var(--space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   background: rgba(18, 24, 21, 0.48);
   backdrop-filter: blur(2px);
 }
@@ -700,8 +703,12 @@ html[data-theme="dark"] select.ui-control {
   width: min(100%, 540px);
   max-height: calc(100dvh - var(--space-6)); /* dvh = dynamic viewport height, correct op mobiel */
   max-width: 100%;
+  min-height: 0;
   min-width: 0;
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
   background: var(--surface-raised);
