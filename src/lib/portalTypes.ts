@@ -373,6 +373,8 @@ export type PortalProduct = {
   trailerQuantity?: number;
   bundleSize?: number;
   priceExVat: number;
+  /** Eenheid waarop priceExVat slaat (m2/m1/rol/pak/...), voor nette weergave. */
+  priceUnit?: string;
   vatRate: number;
   pilotHiddenReason?: string;
   status: "draft" | "active" | "inactive" | "archived";

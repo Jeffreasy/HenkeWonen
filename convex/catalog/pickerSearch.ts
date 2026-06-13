@@ -289,6 +289,7 @@ export const searchPickerProducts = query({
           trailerQuantity: product.trailerQuantity,
           bundleSize: product.bundleSize,
           priceExVat: preferredPrice?.unitPriceExVat ?? 0,
+          priceUnit: preferredPrice?.priceUnit,
           vatRate: preferredPrice?.vatRate ?? 21,
           status: normalizedStatus(product.status)
         };

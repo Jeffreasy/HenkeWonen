@@ -3,6 +3,7 @@ import { api } from "../../../convex/_generated/api";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatEuro } from "../../lib/money";
+import { formatUnit } from "../../lib/i18n/statusLabels";
 import type { MeasurementProductGroup, PortalProduct } from "../../lib/portalTypes";
 import { Alert } from "../ui/Alert";
 import { Field } from "../ui/Field";
@@ -122,7 +123,9 @@ export default function CatalogProductPicker({
     let text = parts.join(" — ");
 
     if (showPriceInLabel && product.priceExVat > 0) {
-      text += ` — ${formatEuro(product.priceExVat)}`;
+      // Toon de prijseenheid erbij zodat een pak-/rolprijs niet als kale stuksprijs leest.
+      const unitSuffix = product.priceUnit ? ` / ${formatUnit(product.priceUnit)}` : "";
+      text += ` — ${formatEuro(product.priceExVat)}${unitSuffix}`;
     }
 
     return text;
