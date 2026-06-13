@@ -1142,6 +1142,22 @@ export const getCatalogImportStats = query({
       };
     }
 
+    // Defense-in-depth: de exacte modus collecteert alle producten + prijzen en overschrijdt
+    // op prod-volume de Convex-leeslimiet (~16k docs/query). Alle live callers gebruiken
+    // summaryOnly; een directe aanroep op een grote tenant krijgt nu een duidelijke,
+    // actionable fout i.p.v. een cryptische "read limit exceeded"-crash.
+    const EXACT_STATS_PRODUCT_LIMIT = 15000;
+    const exactProbe = await ctx.db
+      .query("products")
+      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+      .take(EXACT_STATS_PRODUCT_LIMIT + 1);
+    if (exactProbe.length > EXACT_STATS_PRODUCT_LIMIT) {
+      throw new Error(
+        `Catalogus te groot voor exacte statistiek (>${EXACT_STATS_PRODUCT_LIMIT} producten). ` +
+          "Roep getCatalogImportStats aan met summaryOnly: true."
+      );
+    }
+
     const [products, productPrices, priceLists, brands, productCollections, categories, suppliers] =
       await Promise.all([
         collectByTenant(ctx, "products", tenant._id),
