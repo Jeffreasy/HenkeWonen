@@ -419,12 +419,18 @@ async function importNormalizedCatalogRow(ctx: any, tenantId: any, row: any, now
     }
 
     sourceKeys.push(sourceKey);
-    const existingPrice = await ctx.db
+    // Dedup ALLEEN binnen hetzelfde product: sourceKey is niet product-uniek
+    // (collisies over meerdere producten komen in de data voor — zie validation.ts
+    // duplicateSourceKeys). Een blinde .first() + patch zou een bestaande prijs naar
+    // een ánder product kunnen verhangen. Match daarom expliciet op productId.
+    const sourceKeyMatches = await ctx.db
       .query("productPrices")
       .withIndex("by_source_key", (q: any) =>
         q.eq("tenantId", tenantId).eq("sourceKey", sourceKey)
       )
-      .first();
+      .collect();
+    const existingPrice =
+      sourceKeyMatches.find((row: any) => row.productId === productId) ?? null;
 
     const pricePatch: any = {
       productId,

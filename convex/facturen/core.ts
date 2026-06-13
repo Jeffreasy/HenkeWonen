@@ -194,6 +194,29 @@ export const createInvoice = mutation({
       throw new Error("Klant niet gevonden.");
     }
 
+    // Vertrouw client-aangeleverde bedragen niet blind. Valideer vorm + consistentie,
+    // en bind aan de vertrouwde offerte-totalen als er een offerte aan hangt.
+    const { subtotalExVat, vatTotal, totalIncVat } = args;
+    if (![subtotalExVat, vatTotal, totalIncVat].every((n) => Number.isFinite(n) && n >= 0)) {
+      throw new Error("Factuurbedragen moeten eindige, niet-negatieve getallen zijn.");
+    }
+    if (Math.abs(totalIncVat - (subtotalExVat + vatTotal)) > 0.01) {
+      throw new Error("Factuurtotaal is inconsistent (totaal incl. btw moet subtotaal + btw zijn).");
+    }
+    if (args.quoteId) {
+      const linkedQuote = await ctx.db.get(args.quoteId);
+      if (!linkedQuote || linkedQuote.tenantId !== args.tenantId) {
+        throw new Error("Gekoppelde offerte niet gevonden.");
+      }
+      if (
+        Math.abs(linkedQuote.subtotalExVat - subtotalExVat) > 0.01 ||
+        Math.abs(linkedQuote.vatTotal - vatTotal) > 0.01 ||
+        Math.abs(linkedQuote.totalIncVat - totalIncVat) > 0.01
+      ) {
+        throw new Error("Factuurbedragen wijken af van de gekoppelde offerte.");
+      }
+    }
+
     const invoiceNumber = await nextInvoiceNumber(ctx, args.tenantId);
     const now = Date.now();
 
@@ -358,11 +381,15 @@ export const updateInvoiceStatus = mutation({
     }
 
     const now = Date.now();
+    const markingPaid = args.status === "paid";
 
     await ctx.db.patch(invoiceId, {
       status: args.status,
       reminderSentAt:
         args.status === "overdue" ? invoice.reminderSentAt ?? now : invoice.reminderSentAt,
+      // Bij handmatig op 'paid' zetten: betaalbedrag/-datum verzoenen met het totaal.
+      paidAmount: markingPaid ? invoice.totalIncVat : invoice.paidAmount,
+      paidAt: markingPaid ? invoice.paidAt ?? now : invoice.paidAt,
       updatedAt: now
     });
 
