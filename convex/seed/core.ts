@@ -1,4 +1,4 @@
-import { mutation } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 import { requireConvexToolingEnabled } from "../authz";
 
 const categories = [
@@ -933,7 +933,7 @@ function slugify(value: string): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-export const run = mutation({
+export const run = internalMutation({
   args: {},
   handler: async (ctx) => {
     requireConvexToolingEnabled("seed.run");

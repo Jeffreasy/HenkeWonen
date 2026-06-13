@@ -16,9 +16,10 @@
  * Vereist: ALLOW_CONVEX_TOOLING=true in de Convex environment variables
  * Vereist: confirmPhrase = "JA_VERWIJDER_TESTDATA"
  *
- * Geen actor/token nodig — bedoeld voor directe aanroep via Convex dashboard.
+ * INTERN (internalMutation): NIET aanroepbaar via de publieke client-API. Alleen via het Convex
+ * dashboard of `npx convex run` (deploy-key-auth). ALLOW_CONVEX_TOOLING + confirmPhrase zijn extra sloten.
  */
-import { mutation } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireConvexToolingEnabled } from "../authz";
 
@@ -53,7 +54,7 @@ async function deleteAllForTenant(
   return deleted;
 }
 
-export const clearTenantData = mutation({
+export const clearTenantData = internalMutation({
   args: {
     tenantSlug: v.string(),
     /**

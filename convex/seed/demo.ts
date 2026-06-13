@@ -1,4 +1,4 @@
-import { mutation } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireConvexToolingEnabled } from "../authz";
 
@@ -438,7 +438,7 @@ async function recalculateQuote(ctx: any, tenantId: Id<"tenants">, quoteId: Id<"
   });
 }
 
-export const run = mutation({
+export const run = internalMutation({
   args: {},
   handler: async (ctx) => {
     requireConvexToolingEnabled("demoSeed.run");
