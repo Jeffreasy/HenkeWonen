@@ -42,7 +42,9 @@
     "catalog:orphans:cleanup:apply": "node tools/cleanup_orphan_records.mjs --apply",
     "catalog:suppliers:audit": "node tools/audit_supplier_products.mjs",
     "portal:demo-seed": "node tools/seed_demo_portal_data.mjs",
-    "test": "vitest run",
+    "test": "vitest run && vitest run --config vitest.convex.config.ts",
+    "test:portal": "vitest run",
+    "test:convex": "vitest run --config vitest.convex.config.ts",
     "test:watch": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -67,6 +69,8 @@
     "typescript": "5.9.3"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
+    "convex-test": "^0.0.53",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^9.1.2",
     "eslint-plugin-react-hooks": "^5.2.0",
