@@ -194,7 +194,8 @@ export async function requireMutationRole(
   return {
     tenant,
     role: user.role as AppRole,
-    externalUserId: actor.externalUserId
+    externalUserId: actor.externalUserId,
+    workspaceMode: (user.workspaceMode ?? "general") as AppWorkspaceMode
   };
 }
 

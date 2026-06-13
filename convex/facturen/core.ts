@@ -41,6 +41,14 @@ function toInvoice(tenantSlug: string, invoice: Doc<"invoices">) {
   };
 }
 
+function ensureNotFieldMode(workspaceMode: string) {
+  // Buitendienst-werkplek (field) krijgt geen toegang tot facturen. Audit: field-mode werd
+  // niet server-side afgedwongen → financiële data was via de API bereikbaar voor buitendienst.
+  if (workspaceMode === "field") {
+    throw new Error("Facturen zijn niet beschikbaar in de buitendienst-werkplek.");
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
@@ -51,12 +59,13 @@ export const listInvoices = query({
     actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+    const { tenant, workspaceMode } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
       "viewer",
       "user",
       "editor",
       "admin"
     ]);
+    ensureNotFieldMode(workspaceMode);
 
     const invoiceStatuses = ["draft", "sent", "partially_paid", "paid", "overdue", "cancelled"] as const;
 
@@ -105,12 +114,13 @@ export const invoiceDetail = query({
     actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+    const { tenant, workspaceMode } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
       "viewer",
       "user",
       "editor",
       "admin"
     ]);
+    ensureNotFieldMode(workspaceMode);
     const invoiceId = ctx.db.normalizeId("invoices", args.invoiceId);
 
     if (!invoiceId) {
