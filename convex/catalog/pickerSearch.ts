@@ -17,6 +17,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { readActorValidator, requireQueryRole } from "../authz";
 import {
+  cleanProductDisplayName,
   displayProductName,
   displaySupplierName,
   pilotHiddenReason,
@@ -276,7 +277,7 @@ export const searchPickerProducts = query({
           commercialCode: product.commercialCode,
           supplierProductGroup: product.supplierProductGroup,
           name: product.name,
-          displayName: displayProductName(product, categoryName, supplierName),
+          displayName: cleanProductDisplayName(product, categoryName, supplierName),
           colorName: product.colorName,
           productKind: product.productKind,
           commercialNames: visibleCommercialNames(product, categoryName),

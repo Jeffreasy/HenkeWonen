@@ -9,7 +9,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { readActorValidator, requireQueryRole } from "../authz";
-import { displayProductName, pilotHiddenReason } from "./pilot";
+import { cleanProductDisplayName, pilotHiddenReason } from "./pilot";
 import { selectIndicativePrice } from "./pricingRules";
 
 export const getIndicativePrice = query({
@@ -66,11 +66,7 @@ export const getIndicativePrice = query({
     // Alleen afgeleide klantgerichte velden teruggeven — nooit ruwe inkoopdata.
     return {
       productId: String(product._id),
-      productName: displayProductName(
-        product,
-        categoryName,
-        supplier?.name
-      ),
+      productName: cleanProductDisplayName(product, categoryName, supplier?.name),
       indicative: selection
         ? {
             unitPriceExVat: selection.unitPriceExVat,

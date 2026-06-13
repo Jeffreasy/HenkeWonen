@@ -10,6 +10,7 @@ import {
 } from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
+  cleanProductDisplayName,
   displayProductName,
   displaySupplierName,
   pilotHiddenReason,
@@ -515,7 +516,7 @@ export const listProductsForPortal = query({
           commercialCode: product.commercialCode,
           supplierProductGroup: product.supplierProductGroup,
           name: product.name,
-          displayName: displayProductName(product, categoryName, supplierName),
+          displayName: cleanProductDisplayName(product, categoryName, supplierName),
           colorName: product.colorName,
           productKind: product.productKind,
           commercialNames: visibleCommercialNames(product, categoryName),

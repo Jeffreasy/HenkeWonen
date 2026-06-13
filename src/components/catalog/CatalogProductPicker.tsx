@@ -110,11 +110,14 @@ export default function CatalogProductPicker({
   );
 
   function optionLabel(product: PortalProduct) {
-    const parts = [
-      product.displayName ?? product.name,
-      product.colorName,
-      product.displaySupplierName ?? product.supplier
-    ].filter(Boolean);
+    const name = product.displayName ?? product.name;
+    const normalizedName = name.toLowerCase();
+    // Kleur weglaten als die al in de (schone) naam zit, anders staat hij dubbel.
+    const color =
+      product.colorName && !normalizedName.includes(product.colorName.toLowerCase())
+        ? product.colorName
+        : undefined;
+    const parts = [name, color, product.displaySupplierName ?? product.supplier].filter(Boolean);
 
     let text = parts.join(" — ");
 
