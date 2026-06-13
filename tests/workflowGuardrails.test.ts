@@ -377,6 +377,12 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(repairVatModes).toContain('["admin"]');
     expect(repairVatModes).not.toContain("ctx.db.delete(");
 
+    const stripNames = exportedMutationBlock("convex/catalog/maintenance.ts", "stripLeakedFilenameFromNamesChunk");
+    expect(stripNames).toContain('confirm: v.literal("STRIP_LEAKED_FILENAME")');
+    expect(stripNames).toContain("actor: mutationActorValidator");
+    expect(stripNames).toContain('["admin"]');
+    expect(stripNames).not.toContain("ctx.db.delete(");
+
     const deletePseudoRows = exportedMutationBlock("convex/catalog/maintenance.ts", "deletePseudoPriceRowsChunk");
     expect(deletePseudoRows).toContain('confirm: v.literal("DELETE_PSEUDO_PRICE_ROWS")');
     expect(deletePseudoRows).toContain("actor: mutationActorValidator");

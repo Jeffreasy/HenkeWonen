@@ -1,0 +1,7 @@
+[
+  {
+    "fromModes": ["exclusive"],
+    "toMode": "inclusive",
+    "sourceColumnNames": ["Adviesverkoopprijs incl. BTW. per verpakking"]
+  }
+]

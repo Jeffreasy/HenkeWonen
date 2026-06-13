@@ -422,6 +422,85 @@ export const repairPackageContentChunk = mutation({
   }
 });
 
+/**
+ * Verwijdert een bij de import gelekte bron-bestandsnaam uit products.name
+ * (audit 2026-06-13, bevinding H-1: 988 Interfloor-namen bevatten een token als
+ * "henke-swifterbant-artikeloverzicht"). Strip dezelfde slug-tokens als
+ * cleanProductDisplayName, maar nu op de RUWE naam zodat ook zoeken/import
+ * schoon is. Idempotent (gerepareerde namen bevatten de slug niet meer).
+ */
+function stripFilenameTokens(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((token) => !(/artikeloverzicht?/i.test(token) || /^henke-[a-z0-9-]+$/i.test(token)))
+    .join(" ")
+    .trim();
+}
+
+export const stripLeakedFilenameFromNamesChunk = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    confirm: v.literal("STRIP_LEAKED_FILENAME"),
+    dryRun: v.optional(v.boolean()),
+    batchSize: v.optional(v.number()),
+    cursor: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const batchSize = Math.min(Math.max(args.batchSize ?? 1000, 100), 2000);
+    const dryRun = args.dryRun ?? true;
+
+    const paginated = await ctx.db
+      .query("products")
+      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+      .paginate({ numItems: batchSize, cursor: args.cursor ?? null });
+
+    let matched = 0;
+    let patched = 0;
+    let skippedEmpty = 0;
+    const samples: Array<{ from: string; to: string }> = [];
+
+    for (const product of paginated.page) {
+      const name = product.name ?? "";
+
+      if (!/artikeloverzicht?/i.test(name) && !/\bhenke-[a-z0-9-]/i.test(name)) {
+        continue;
+      }
+
+      matched += 1;
+      const cleaned = stripFilenameTokens(name);
+
+      // Veiligheid: nooit een lege naam achterlaten.
+      if (!cleaned || cleaned === name) {
+        skippedEmpty += 1;
+        continue;
+      }
+
+      if (samples.length < 5) {
+        samples.push({ from: name, to: cleaned });
+      }
+
+      if (!dryRun) {
+        await ctx.db.patch(product._id, { name: cleaned, updatedAt: Date.now() });
+        patched += 1;
+      }
+    }
+
+    return {
+      dryRun,
+      scanned: paginated.page.length,
+      matched,
+      patched: dryRun ? 0 : patched,
+      skippedEmpty,
+      samples,
+      isDone: paginated.isDone,
+      continueCursor: paginated.continueCursor
+    };
+  }
+});
+
 export const deletePseudoPriceRowsChunk = mutation({
   args: {
     tenantSlug: v.string(),

@@ -753,7 +753,9 @@ def product_name_for(headers: list[str], values: list[Any], path: Path, sheet_na
         get_text(headers, values, ["Material Description"]),
         get_text(headers, values, ["Decor name"]),
         get_text(headers, values, ["Afmeting (cm)"]),
-        sheet_name if supplier == "Interfloor" else None,
+        # NIET sheet_name meenemen voor Interfloor: dat is de bron-bestandsnaam
+        # ("henke-swifterbant-artikeloverzicht") die anders in de productnaam lekt
+        # (audit 2026-06-13, bevinding H-1). De kwaliteit-/kleurvelden volstaan.
     )
 
 

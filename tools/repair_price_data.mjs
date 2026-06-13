@@ -69,6 +69,10 @@ requireCatalogToolTarget(toolEnv, {
 
 const DEFAULT_VAT_RULES = [
   // Klantbesluit 2026-06-13: alle leverancierslijsten zijn exclusief btw.
+  // UITZONDERING: de Co-pro-kolom "Adviesverkoopprijs incl. BTW. per verpakking"
+  // is aantoonbaar inclusief (audit-bevinding C-1) en hoort NIET geflipt te
+  // worden. Draai na een volledige default-run zo nodig de correctie terug met
+  // docs/release-readiness/vat-mapping/copro-inclusive-fix-rules-2026-06-13.json.
   { fromModes: ["unknown", "inclusive"], toMode: "exclusive" }
 ];
 
