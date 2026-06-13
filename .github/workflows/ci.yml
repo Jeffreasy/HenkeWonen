@@ -26,6 +26,9 @@ jobs:
       - name: TypeScript & Astro Check
         run: npm run check
 
+      - name: ESLint
+        run: npm run lint
+
       - name: Run Vitest Suites
         run: npm run test
         env:
