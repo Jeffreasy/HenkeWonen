@@ -41,6 +41,16 @@ export const getIndicativePrice = query({
 
     const supplier = product.supplierId ? await ctx.db.get(product.supplierId) : null;
 
+    // Geen richtprijs voor niet-actieve producten (draft/inactive/archived): die zijn
+    // niet verkoopbaar en mogen geen indicatieve verkoopprijs opleveren.
+    if (product.status !== "active") {
+      return {
+        productId: String(product._id),
+        productName: cleanProductDisplayName(product, categoryName, supplier?.name),
+        indicative: null
+      };
+    }
+
     const prices = await ctx.db
       .query("productPrices")
       .withIndex("by_product", (q) => q.eq("tenantId", tenant._id).eq("productId", product._id))

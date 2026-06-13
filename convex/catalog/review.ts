@@ -349,8 +349,10 @@ export const updateProfileVatMode = mutation({
       const header = label(column.header ?? column.sourceColumnName, `Kolom ${index + 1}`);
       const sourceColumnIndex =
         typeof column.sourceColumnIndex === "number" ? column.sourceColumnIndex : index;
-      const matches =
-        header === args.sourceColumnName || sourceColumnIndex === args.sourceColumnIndex;
+      // Match op de stabiele kolomINDEX (de autoritatieve kolomsleutel). De vorige losse
+      // OR op naam kon bij dubbele/hergebruikte kolomnamen de verkeerde btw-kolom
+      // overschrijven; de index identificeert de kolom eenduidig.
+      const matches = sourceColumnIndex === args.sourceColumnIndex;
 
       return matches
         ? {
