@@ -1,4 +1,5 @@
 import { internalMutation } from "../_generated/server";
+import { v } from "convex/values";
 import { requireConvexToolingEnabled } from "../authz";
 
 const categories = [
@@ -934,8 +935,11 @@ function slugify(value: string): string {
 }
 
 export const run = internalMutation({
-  args: {},
-  handler: async (ctx) => {
+  // deactivateUnlisted (default false): zet import-profielen die niet in de hardcoded
+  // basislijst staan op "inactive". Bewust OPT-IN — anders kan een bootstrap/herrun per
+  // ongeluk echte, later toegevoegde profielen op prod uitschakelen (destructief).
+  args: { deactivateUnlisted: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
     requireConvexToolingEnabled("seed.run");
     const now = Date.now();
 
@@ -1245,21 +1249,24 @@ export const run = internalMutation({
       }
     }
 
-    const activeImportProfileKeys = new Set(
-      importProfiles.map((profile) => `${profile.supplierName}::${profile.name}`)
-    );
-    const tenantImportProfiles = await ctx.db
-      .query("importProfiles")
-      .withIndex("by_tenant", (q) => q.eq("tenantId", tenantId))
-      .collect();
+    // Alleen op expliciet verzoek niet-gelijste profielen deactiveren (zie args-comment).
+    if (args.deactivateUnlisted) {
+      const activeImportProfileKeys = new Set(
+        importProfiles.map((profile) => `${profile.supplierName}::${profile.name}`)
+      );
+      const tenantImportProfiles = await ctx.db
+        .query("importProfiles")
+        .withIndex("by_tenant", (q) => q.eq("tenantId", tenantId))
+        .collect();
 
-    for (const profile of tenantImportProfiles) {
-      const key = `${profile.supplierName}::${profile.name}`;
-      if (!activeImportProfileKeys.has(key) && profile.status !== "inactive") {
-        await ctx.db.patch(profile._id, {
-          status: "inactive",
-          updatedAt: now
-        });
+      for (const profile of tenantImportProfiles) {
+        const key = `${profile.supplierName}::${profile.name}`;
+        if (!activeImportProfileKeys.has(key) && profile.status !== "inactive") {
+          await ctx.db.patch(profile._id, {
+            status: "inactive",
+            updatedAt: now
+          });
+        }
       }
     }
 
