@@ -1,5 +1,5 @@
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   mutationActorValidator,
   readActorValidator,
@@ -45,7 +45,7 @@ function ensureNotFieldMode(workspaceMode: string) {
   // Buitendienst-werkplek (field) krijgt geen toegang tot facturen. Audit: field-mode werd
   // niet server-side afgedwongen → financiële data was via de API bereikbaar voor buitendienst.
   if (workspaceMode === "field") {
-    throw new Error("Facturen zijn niet beschikbaar in de buitendienst-werkplek.");
+    throw new ConvexError("Facturen zijn niet beschikbaar in de buitendienst-werkplek.");
   }
 }
 
@@ -195,35 +195,35 @@ export const createInvoice = mutation({
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
-      throw new Error("Project niet gevonden.");
+      throw new ConvexError("Project niet gevonden.");
     }
 
     const customer = await ctx.db.get(args.customerId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
-      throw new Error("Klant niet gevonden.");
+      throw new ConvexError("Klant niet gevonden.");
     }
 
     // Vertrouw client-aangeleverde bedragen niet blind. Valideer vorm + consistentie,
     // en bind aan de vertrouwde offerte-totalen als er een offerte aan hangt.
     const { subtotalExVat, vatTotal, totalIncVat } = args;
     if (![subtotalExVat, vatTotal, totalIncVat].every((n) => Number.isFinite(n) && n >= 0)) {
-      throw new Error("Factuurbedragen moeten eindige, niet-negatieve getallen zijn.");
+      throw new ConvexError("Factuurbedragen moeten eindige, niet-negatieve getallen zijn.");
     }
     if (Math.abs(totalIncVat - (subtotalExVat + vatTotal)) > 0.01) {
-      throw new Error("Factuurtotaal is inconsistent (totaal incl. btw moet subtotaal + btw zijn).");
+      throw new ConvexError("Factuurtotaal is inconsistent (totaal incl. btw moet subtotaal + btw zijn).");
     }
     if (args.quoteId) {
       const linkedQuote = await ctx.db.get(args.quoteId);
       if (!linkedQuote || linkedQuote.tenantId !== args.tenantId) {
-        throw new Error("Gekoppelde offerte niet gevonden.");
+        throw new ConvexError("Gekoppelde offerte niet gevonden.");
       }
       if (
         Math.abs(linkedQuote.subtotalExVat - subtotalExVat) > 0.01 ||
         Math.abs(linkedQuote.vatTotal - vatTotal) > 0.01 ||
         Math.abs(linkedQuote.totalIncVat - totalIncVat) > 0.01
       ) {
-        throw new Error("Factuurbedragen wijken af van de gekoppelde offerte.");
+        throw new ConvexError("Factuurbedragen wijken af van de gekoppelde offerte.");
       }
     }
 
@@ -277,23 +277,23 @@ export const createInvoiceFromQuote = mutation({
     const quoteId = ctx.db.normalizeId("quotes", args.quoteId);
 
     if (!quoteId) {
-      throw new Error("Offerte niet gevonden.");
+      throw new ConvexError("Offerte niet gevonden.");
     }
 
     const quote = await ctx.db.get(quoteId);
 
     if (!quote || quote.tenantId !== tenant._id) {
-      throw new Error("Offerte niet gevonden.");
+      throw new ConvexError("Offerte niet gevonden.");
     }
 
     if (quote.status !== "accepted") {
-      throw new Error("Factuur kan alleen worden aangemaakt voor een geaccepteerde offerte.");
+      throw new ConvexError("Factuur kan alleen worden aangemaakt voor een geaccepteerde offerte.");
     }
 
     const project = await ctx.db.get(quote.projectId);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new Error("Project niet gevonden.");
+      throw new ConvexError("Project niet gevonden.");
     }
 
     // Voorkom dubbele factuur voor dezelfde offerte
@@ -381,13 +381,13 @@ export const updateInvoiceStatus = mutation({
     const invoiceId = ctx.db.normalizeId("invoices", args.invoiceId);
 
     if (!invoiceId) {
-      throw new Error("Factuur niet gevonden.");
+      throw new ConvexError("Factuur niet gevonden.");
     }
 
     const invoice = await ctx.db.get(invoiceId);
 
     if (!invoice || invoice.tenantId !== tenant._id) {
-      throw new Error("Factuur niet gevonden.");
+      throw new ConvexError("Factuur niet gevonden.");
     }
 
     const now = Date.now();
@@ -438,17 +438,17 @@ export const markInvoicePaid = mutation({
     const invoiceId = ctx.db.normalizeId("invoices", args.invoiceId);
 
     if (!invoiceId) {
-      throw new Error("Factuur niet gevonden.");
+      throw new ConvexError("Factuur niet gevonden.");
     }
 
     const invoice = await ctx.db.get(invoiceId);
 
     if (!invoice || invoice.tenantId !== tenant._id) {
-      throw new Error("Factuur niet gevonden.");
+      throw new ConvexError("Factuur niet gevonden.");
     }
 
     if (invoice.status === "cancelled") {
-      throw new Error("Geannuleerde facturen kunnen niet worden bijgewerkt.");
+      throw new ConvexError("Geannuleerde facturen kunnen niet worden bijgewerkt.");
     }
 
     const now = Date.now();

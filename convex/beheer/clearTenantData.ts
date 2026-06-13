@@ -20,7 +20,7 @@
  * dashboard of `npx convex run` (deploy-key-auth). ALLOW_CONVEX_TOOLING + confirmPhrase zijn extra sloten.
  */
 import { internalMutation } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { requireConvexToolingEnabled } from "../authz";
 
 /**
@@ -69,7 +69,7 @@ export const clearTenantData = internalMutation({
 
     // 2. Bevestigingszin valideren
     if (args.confirmPhrase !== "JA_VERWIJDER_TESTDATA") {
-      throw new Error(
+      throw new ConvexError(
         "Veiligheidsbevestiging klopt niet. Stuur confirmPhrase: \"JA_VERWIJDER_TESTDATA\"."
       );
     }
@@ -81,7 +81,7 @@ export const clearTenantData = internalMutation({
       .first();
 
     if (!tenant) {
-      throw new Error(`Tenant "${args.tenantSlug}" niet gevonden.`);
+      throw new ConvexError(`Tenant "${args.tenantSlug}" niet gevonden.`);
     }
 
     const tenantId = tenant._id;

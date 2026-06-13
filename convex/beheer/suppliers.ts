@@ -1,5 +1,5 @@
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   mutationActorValidator,
   readActorValidator,
@@ -91,7 +91,7 @@ export const updateProductListStatus = mutation({
     const supplier = await ctx.db.get(args.supplierId);
 
     if (!supplier || supplier.tenantId !== args.tenantId) {
-      throw new Error("Supplier not found");
+      throw new ConvexError("Supplier not found");
     }
 
     await ctx.db.patch(args.supplierId, {
@@ -254,7 +254,7 @@ export const updateSupplier = mutation({
     const supplier = await ctx.db.get(args.supplierId as Id<"suppliers">);
 
     if (!supplier || supplier.tenantId !== tenant._id) {
-      throw new Error("Supplier not found");
+      throw new ConvexError("Supplier not found");
     }
 
     const patch: Partial<Doc<"suppliers">> = {
@@ -289,7 +289,7 @@ export const updateSupplierProductListStatus = mutation({
     const supplier = await ctx.db.get(args.supplierId as Id<"suppliers">);
 
     if (!supplier || supplier.tenantId !== tenant._id) {
-      throw new Error("Supplier not found");
+      throw new ConvexError("Supplier not found");
     }
 
     await ctx.db.patch(supplier._id, {

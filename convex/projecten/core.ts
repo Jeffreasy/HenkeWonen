@@ -1,5 +1,5 @@
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   mutationActorValidator,
   readActorValidator,
@@ -120,7 +120,7 @@ export const create = mutation({
     const customer = await ctx.db.get(args.customerId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
-      throw new Error("Customer not found");
+      throw new ConvexError("Customer not found");
     }
 
     const now = Date.now();
@@ -161,7 +161,7 @@ export const addRoom = mutation({
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
-      throw new Error("Project not found");
+      throw new ConvexError("Project not found");
     }
 
     const rooms = await ctx.db
@@ -206,7 +206,7 @@ export const updateStatus = mutation({
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
-      throw new Error("Project not found");
+      throw new ConvexError("Project not found");
     }
 
     await ctx.db.patch(args.projectId, {
@@ -322,7 +322,7 @@ export const createProject = mutation({
     const customer = await ctx.db.get(args.customerId as Id<"customers">);
 
     if (!customer || customer.tenantId !== tenant._id) {
-      throw new Error("Customer not found");
+      throw new ConvexError("Customer not found");
     }
 
     const now = Date.now();
@@ -363,7 +363,7 @@ export const updateProject = mutation({
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new Error("Project not found");
+      throw new ConvexError("Project not found");
     }
 
     const patch: Partial<Doc<"projects">> = { updatedAt: Date.now() };
@@ -483,7 +483,7 @@ export const addProjectRoom = mutation({
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new Error("Project not found");
+      throw new ConvexError("Project not found");
     }
 
     const rooms = await getRooms(ctx, tenant._id, project._id);
@@ -525,7 +525,7 @@ export const updateProjectRoom = mutation({
     const room = await ctx.db.get(args.roomId as Id<"projectRooms">);
 
     if (!room || room.tenantId !== tenant._id) {
-      throw new Error("Project room not found");
+      throw new ConvexError("Project room not found");
     }
 
     const now = Date.now();
@@ -558,7 +558,7 @@ export const deleteProjectRoom = mutation({
     const room = await ctx.db.get(args.roomId as Id<"projectRooms">);
 
     if (!room || room.tenantId !== tenant._id) {
-      throw new Error("Project room not found");
+      throw new ConvexError("Project room not found");
     }
 
     const [measurementRoom, quoteLine] = await Promise.all([
@@ -577,7 +577,7 @@ export const deleteProjectRoom = mutation({
     ]);
 
     if (measurementRoom || quoteLine) {
-      throw new Error("Ruimte is al gebruikt in een inmeting of offerte en kan niet veilig worden verwijderd.");
+      throw new ConvexError("Ruimte is al gebruikt in een inmeting of offerte en kan niet veilig worden verwijderd.");
     }
 
     await ctx.db.delete(room._id);
@@ -607,7 +607,7 @@ export const updateProjectStatus = mutation({
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new Error("Project not found");
+      throw new ConvexError("Project not found");
     }
 
     const now = Date.now();
@@ -660,17 +660,17 @@ export const startOrPlanMeasurement = mutation({
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new Error("Project not found");
+      throw new ConvexError("Project not found");
     }
 
     if (["closed", "cancelled", "paid"].includes(project.status)) {
-      throw new Error("Afgesloten dossiers kunnen niet opnieuw worden ingemeten.");
+      throw new ConvexError("Afgesloten dossiers kunnen niet opnieuw worden ingemeten.");
     }
 
     const customer = await ctx.db.get(project.customerId);
 
     if (!customer || customer.tenantId !== tenant._id) {
-      throw new Error("Customer not found");
+      throw new ConvexError("Customer not found");
     }
 
     const now = Date.now();
@@ -773,7 +773,7 @@ export const createWorkflowEvent = mutation({
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new Error("Project not found");
+      throw new ConvexError("Project not found");
     }
 
     return await ctx.db.insert("projectWorkflowEvents", {
@@ -814,7 +814,7 @@ export const processProjectAction = mutation({
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new Error("Project not found");
+      throw new ConvexError("Project not found");
     }
 
     const now = Date.now();
@@ -871,16 +871,16 @@ export const processProjectAction = mutation({
 
     if (args.action === "quote_accepted") {
       if (!latestQuote) {
-        throw new Error("Maak eerst een offerte aan voordat je akkoord verwerkt.");
+        throw new ConvexError("Maak eerst een offerte aan voordat je akkoord verwerkt.");
       }
 
       if (["cancelled", "rejected", "expired"].includes(latestQuote.status)) {
-        throw new Error("Er is geen actieve offerte om akkoord te verwerken.");
+        throw new ConvexError("Er is geen actieve offerte om akkoord te verwerken.");
       }
     }
 
     if (args.action === "invoice_created" && !latestAcceptedQuote) {
-      throw new Error("Maak of accepteer eerst een offerte voordat je een factuur aanmaakt.");
+      throw new ConvexError("Maak of accepteer eerst een offerte voordat je een factuur aanmaakt.");
     }
 
     await ctx.db.patch(project._id, {
@@ -1017,7 +1017,7 @@ export const updateProjectTaskStatus = mutation({
     const task = await ctx.db.get(args.taskId as Id<"projectTasks">);
 
     if (!task || task.tenantId !== tenant._id) {
-      throw new Error("Project task not found");
+      throw new ConvexError("Project task not found");
     }
 
     const now = Date.now();

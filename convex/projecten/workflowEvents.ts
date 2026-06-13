@@ -1,5 +1,5 @@
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   mutationActorValidator,
   readActorValidator,
@@ -68,7 +68,7 @@ export const create = mutation({
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
-      throw new Error("Project not found");
+      throw new ConvexError("Project not found");
     }
 
     return await ctx.db.insert("projectWorkflowEvents", {

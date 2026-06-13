@@ -1,5 +1,5 @@
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   mutationActorValidator,
   readActorValidator,
@@ -121,7 +121,7 @@ export const upsertServiceRule = mutation({
       const rule = await ctx.db.get(args.ruleId as Id<"serviceCostRules">);
 
       if (!rule || rule.tenantId !== tenant._id) {
-        throw new Error("Service rule not found");
+        throw new ConvexError("Service rule not found");
       }
 
       await ctx.db.patch(rule._id, {

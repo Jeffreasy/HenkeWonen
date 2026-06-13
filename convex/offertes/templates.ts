@@ -1,5 +1,5 @@
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   mutationActorValidator,
   readActorValidator,
@@ -170,7 +170,7 @@ export const updateQuoteTemplateContent = mutation({
     const template = await ctx.db.get(args.templateId as Id<"quoteTemplates">);
 
     if (!template || template.tenantId !== tenant._id) {
-      throw new Error("Quote template not found");
+      throw new ConvexError("Quote template not found");
     }
 
     await ctx.db.patch(template._id, {

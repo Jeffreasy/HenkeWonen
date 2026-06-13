@@ -1,5 +1,5 @@
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   readActorValidator,
   requireQueryRoleForTenantId,
@@ -37,7 +37,7 @@ export const ensureUser = mutation({
     const tenant = await ctx.db.get(args.tenantId);
 
     if (!tenant) {
-      throw new Error("Tenant niet gevonden");
+      throw new ConvexError("Tenant niet gevonden");
     }
 
     await requireSyncToken(args.syncToken, tenant.slug, args.externalUserId);
@@ -50,7 +50,7 @@ export const ensureUser = mutation({
 
     if (existing) {
       if (existing.tenantId !== args.tenantId) {
-        throw new Error("User exists in another tenant");
+        throw new ConvexError("User exists in another tenant");
       }
 
       await ctx.db.patch(existing._id, {

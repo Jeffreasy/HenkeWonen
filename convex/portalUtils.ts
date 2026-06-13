@@ -1,5 +1,5 @@
 import type { Doc, Id } from "./_generated/dataModel";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { pilotHiddenReason } from "./catalog/pilot";
 
 export const customerType = v.union(v.literal("private"), v.literal("business"));
@@ -182,7 +182,7 @@ export async function requireTenant(ctx: any, tenantSlug: string): Promise<Doc<"
   const tenant = await getTenant(ctx, tenantSlug);
 
   if (!tenant) {
-    throw new Error("Tenant not found");
+    throw new ConvexError("Tenant not found");
   }
 
   return tenant;
@@ -208,10 +208,10 @@ export function calculateLineTotals(
   // negatieve unitPriceExVat. Wel: niet-eindige waarden (NaN/Infinity) weren — die
   // corrumperen offerte-/factuurtotalen — en het btw-percentage begrenzen.
   if (![quantity, unitPriceExVat, vatRate, discountExVat ?? 0].every((n) => Number.isFinite(n))) {
-    throw new Error("Ongeldige regelbedragen: aantal, prijs, btw en korting moeten eindige getallen zijn.");
+    throw new ConvexError("Ongeldige regelbedragen: aantal, prijs, btw en korting moeten eindige getallen zijn.");
   }
   if (vatRate < 0 || vatRate > 100) {
-    throw new Error("Ongeldig btw-percentage: moet tussen 0 en 100 liggen.");
+    throw new ConvexError("Ongeldig btw-percentage: moet tussen 0 en 100 liggen.");
   }
 
   const lineTotalExVat = roundMoney(quantity * unitPriceExVat - (discountExVat ?? 0));
@@ -228,7 +228,7 @@ export async function recalculateQuote(ctx: any, tenantId: Id<"tenants">, quoteI
   const quote = await ctx.db.get(quoteId);
 
   if (!quote || quote.tenantId !== tenantId) {
-    throw new Error("Quote not found");
+    throw new ConvexError("Quote not found");
   }
 
   const lines = await ctx.db
@@ -827,18 +827,18 @@ export async function validateQuoteLineProduct(
   const product = await ctx.db.get(productId as Id<"products">);
 
   if (!product || product.tenantId !== tenantId) {
-    throw new Error("Product not found");
+    throw new ConvexError("Product not found");
   }
 
   const category = product.categoryId ? await ctx.db.get(product.categoryId) : null;
   const hiddenReason = pilotHiddenReason(product, category?.name);
 
   if (hiddenReason) {
-    throw new Error(hiddenReason);
+    throw new ConvexError(hiddenReason);
   }
 
   if (product.status !== "active") {
-    throw new Error("Dit product is niet (meer) actief en kan niet worden gekozen.");
+    throw new ConvexError("Dit product is niet (meer) actief en kan niet worden gekozen.");
   }
 
   return product._id;

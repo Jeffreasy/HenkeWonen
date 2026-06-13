@@ -1,5 +1,5 @@
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutationActorValidator, readActorValidator, requireMutationRole, requireQueryRole } from "../authz";
 
 const vatMode = v.union(v.literal("inclusive"), v.literal("exclusive"), v.literal("unknown"));
@@ -341,7 +341,7 @@ export const updateProfileVatMode = mutation({
     const profile: any = await ctx.db.get(args.profileId as any);
 
     if (!profile || profile.tenantId !== tenant._id) {
-      throw new Error("Import profile not found");
+      throw new ConvexError("Import profile not found");
     }
 
     const now = Date.now();
@@ -428,7 +428,7 @@ export const bulkUpdateProfileVatModes = mutation({
     const profile: any = await ctx.db.get(args.profileId as any);
 
     if (!profile || profile.tenantId !== tenant._id) {
-      throw new Error("Import profile not found");
+      throw new ConvexError("Import profile not found");
     }
 
     const now = Date.now();
@@ -503,7 +503,7 @@ export const markProfileVatColumnsReviewed = mutation({
     const profile: any = await ctx.db.get(args.profileId as any);
 
     if (!profile || profile.tenantId !== tenant._id) {
-      throw new Error("Import profile not found");
+      throw new ConvexError("Import profile not found");
     }
 
     const now = Date.now();
@@ -556,7 +556,7 @@ export const setProfileAllowUnknownVatMode = mutation({
     const profile: any = await ctx.db.get(args.profileId as any);
 
     if (!profile || profile.tenantId !== tenant._id) {
-      throw new Error("Import profile not found");
+      throw new ConvexError("Import profile not found");
     }
 
     const now = Date.now();
@@ -692,7 +692,7 @@ export const updateDuplicateEanIssueReview = mutation({
     const issue: any = await ctx.db.get(args.issueId as any);
 
     if (!issue || issue.tenantId !== tenant._id || issue.issueType !== "duplicate_ean") {
-      throw new Error("Duplicate EAN issue not found");
+      throw new ConvexError("Duplicate EAN issue not found");
     }
 
     const status =

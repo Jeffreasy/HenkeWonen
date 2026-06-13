@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 export const roleValidator = v.union(
   v.literal("viewer"),
@@ -122,7 +122,7 @@ async function verifyToken(
       return;
     }
 
-    throw new Error(
+    throw new ConvexError(
       "AUTHZ_TOKEN_SECRET ontbreekt voor beveiligde Convex-acties. Zet ALLOW_DEV_AUTHZ_TOKENS=true alleen in lokale/dev omgevingen."
     );
   }
@@ -130,14 +130,14 @@ async function verifyToken(
   const parts = token.split(".");
 
   if (parts.length !== 2) {
-    throw new Error("Ongeldige autorisatie.");
+    throw new ConvexError("Ongeldige autorisatie.");
   }
 
   const [body, signature] = parts;
   const expectedSignature = await sign(body, secret);
 
   if (!timingSafeEqual(signature, expectedSignature)) {
-    throw new Error("Ongeldige autorisatie.");
+    throw new ConvexError("Ongeldige autorisatie.");
   }
 
   const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(body))) as TokenPayload;
@@ -149,7 +149,7 @@ async function verifyToken(
     payload.exp <= nowSeconds ||
     (expectedExternalUserId && payload.sub !== expectedExternalUserId)
   ) {
-    throw new Error("Ongeldige autorisatie.");
+    throw new ConvexError("Ongeldige autorisatie.");
   }
 }
 
@@ -175,7 +175,7 @@ export async function requireMutationRole(
     .first();
 
   if (!tenant || tenant.status !== "active") {
-    throw new Error("Tenant niet gevonden.");
+    throw new ConvexError("Tenant niet gevonden.");
   }
 
   const user = await ctx.db
@@ -184,11 +184,11 @@ export async function requireMutationRole(
     .first();
 
   if (!user || user.tenantId !== tenant._id) {
-    throw new Error("Gebruiker heeft geen toegang tot deze tenant.");
+    throw new ConvexError("Gebruiker heeft geen toegang tot deze tenant.");
   }
 
   if (!allowedRoles.includes(user.role)) {
-    throw new Error("Geen rechten voor deze wijziging.");
+    throw new ConvexError("Geen rechten voor deze wijziging.");
   }
 
   return {
@@ -217,7 +217,7 @@ export async function requireMutationRoleForTenantId(
   const tenant = await ctx.db.get(tenantId);
 
   if (!tenant || tenant.status !== "active") {
-    throw new Error("Tenant niet gevonden.");
+    throw new ConvexError("Tenant niet gevonden.");
   }
 
   return await requireMutationRole(ctx, tenant.slug, actor, allowedRoles);
@@ -234,7 +234,7 @@ export async function requireQueryRoleForTenantId(
 
 export function requireConvexToolingEnabled(toolName: string) {
   if (process.env.ALLOW_CONVEX_TOOLING !== "true") {
-    throw new Error(
+    throw new ConvexError(
       `${toolName} is uitgeschakeld. Zet ALLOW_CONVEX_TOOLING=true alleen voor bewuste lokale of beheeracties.`
     );
   }

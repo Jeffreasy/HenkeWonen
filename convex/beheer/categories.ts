@@ -1,5 +1,5 @@
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   mutationActorValidator,
   readActorValidator,
@@ -111,7 +111,7 @@ export const upsertCategory = mutation({
       const category = await ctx.db.get(args.categoryId as Id<"categories">);
 
       if (!category || category.tenantId !== tenant._id) {
-        throw new Error("Category not found");
+        throw new ConvexError("Category not found");
       }
 
       await ctx.db.patch(category._id, {

@@ -1,5 +1,5 @@
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   mutationActorValidator,
   readActorValidator,
@@ -568,7 +568,7 @@ export const updateProductForPortal = mutation({
     const product = await ctx.db.get(args.productId as Id<"products">);
 
     if (!product || product.tenantId !== tenant._id) {
-      throw new Error("Product not found");
+      throw new ConvexError("Product not found");
     }
 
     const patch: Partial<Doc<"products">> = {
@@ -670,14 +670,14 @@ export const createProduct = mutation({
     const category = await ctx.db.get(args.categoryId);
 
     if (!category || category.tenantId !== args.tenantId) {
-      throw new Error("Category not found");
+      throw new ConvexError("Category not found");
     }
 
     if (args.supplierId) {
       const supplier = await ctx.db.get(args.supplierId);
 
       if (!supplier || supplier.tenantId !== args.tenantId) {
-        throw new Error("Supplier not found");
+        throw new ConvexError("Supplier not found");
       }
     }
 
@@ -790,7 +790,7 @@ export const addPrice = mutation({
     const product = await ctx.db.get(args.productId);
 
     if (!product || product.tenantId !== args.tenantId) {
-      throw new Error("Product not found");
+      throw new ConvexError("Product not found");
     }
 
     const now = Date.now();

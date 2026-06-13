@@ -18,7 +18,7 @@
  * Aansturing: tools/repair_price_data.mjs
  */
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   mutationActorValidator,
   readActorValidator,
@@ -156,7 +156,7 @@ export const repairPriceVatModesChunk = mutation({
       : null;
 
     if (fromModes.has(args.rule.toMode)) {
-      throw new Error("fromModes mag de doelmodus niet bevatten.");
+      throw new ConvexError("fromModes mag de doelmodus niet bevatten.");
     }
 
     const paginated = await ctx.db
@@ -301,7 +301,7 @@ export const repairTexdecorCategoriesChunk = mutation({
       const targetCategoryId = categoryIdByName.get(target.categoryName);
 
       if (!targetCategoryId) {
-        throw new Error(`Doelcategorie "${target.categoryName}" bestaat niet voor deze tenant.`);
+        throw new ConvexError(`Doelcategorie "${target.categoryName}" bestaat niet voor deze tenant.`);
       }
 
       const needsProductPatch =

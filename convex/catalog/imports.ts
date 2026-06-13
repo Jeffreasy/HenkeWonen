@@ -1,5 +1,5 @@
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   mutationActorValidator,
   readActorValidator,
@@ -45,7 +45,7 @@ async function tenantBySlug(ctx: any, tenantSlug: string) {
     .first();
 
   if (!tenant) {
-    throw new Error(`Tenant not found: ${tenantSlug}`);
+    throw new ConvexError(`Tenant not found: ${tenantSlug}`);
   }
 
   return tenant;
@@ -265,7 +265,7 @@ export const addPreviewRow = mutation({
     const batch = await ctx.db.get(args.batchId);
 
     if (!batch || batch.tenantId !== args.tenantId) {
-      throw new Error("Import batch not found");
+      throw new ConvexError("Import batch not found");
     }
 
     const now = Date.now();
@@ -520,11 +520,11 @@ export const updateBatchStatusForPortal = mutation({
     const batch = await ctx.db.get(args.batchId as Id<"productImportBatches">);
 
     if (!batch || batch.tenantId !== tenant._id) {
-      throw new Error("Import batch not found");
+      throw new ConvexError("Import batch not found");
     }
 
     if (batch.status === "importing") {
-      throw new Error("Een prijslijst die nu verwerkt wordt kan niet worden aangepast.");
+      throw new ConvexError("Een prijslijst die nu verwerkt wordt kan niet worden aangepast.");
     }
 
     const now = Date.now();
@@ -604,7 +604,7 @@ export const updateProfileStatusForPortal = mutation({
     const profile = await ctx.db.get(args.profileId as Id<"importProfiles">);
 
     if (!profile || profile.tenantId !== tenant._id) {
-      throw new Error("Import profile not found");
+      throw new ConvexError("Import profile not found");
     }
 
     await ctx.db.patch(profile._id, {
@@ -628,7 +628,7 @@ export const saveMapping = mutation({
     const batch = await ctx.db.get(args.batchId);
 
     if (!batch || batch.tenantId !== args.tenantId) {
-      throw new Error("Import batch not found");
+      throw new ConvexError("Import batch not found");
     }
 
     await ctx.db.patch(args.batchId, {

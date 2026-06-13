@@ -1,5 +1,5 @@
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   mutationActorValidator,
   readActorValidator,
@@ -124,11 +124,11 @@ export const create = mutation({
     const customer = await ctx.db.get(args.customerId);
 
     if (!project || project.tenantId !== args.tenantId) {
-      throw new Error("Project not found");
+      throw new ConvexError("Project not found");
     }
 
     if (!customer || customer.tenantId !== args.tenantId) {
-      throw new Error("Customer not found");
+      throw new ConvexError("Customer not found");
     }
 
     const now = Date.now();
@@ -190,11 +190,11 @@ export const addLine = mutation({
     const quote = await ctx.db.get(args.quoteId);
 
     if (!quote || quote.tenantId !== args.tenantId) {
-      throw new Error("Quote not found");
+      throw new ConvexError("Quote not found");
     }
 
     if (quote.status !== "draft") {
-      throw new Error("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
+      throw new ConvexError("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
     }
 
     const totals = calculateLineTotals(
@@ -256,7 +256,7 @@ async function recalculateQuote(ctx: any, tenantId: any, quoteId: any) {
   const quote = await ctx.db.get(quoteId);
 
   if (!quote || quote.tenantId !== tenantId) {
-    throw new Error("Quote not found");
+    throw new ConvexError("Quote not found");
   }
 
   const lines = await ctx.db
@@ -299,18 +299,18 @@ async function validateQuoteLineProduct(
   const product = await ctx.db.get(productId as Id<"products">);
 
   if (!product || product.tenantId !== tenantId) {
-    throw new Error("Product not found");
+    throw new ConvexError("Product not found");
   }
 
   const category = product.categoryId ? await ctx.db.get(product.categoryId) : null;
   const hiddenReason = pilotHiddenReason(product, category?.name);
 
   if (hiddenReason) {
-    throw new Error(hiddenReason);
+    throw new ConvexError(hiddenReason);
   }
 
   if (product.status !== "active") {
-    throw new Error("Dit product is niet (meer) actief en kan niet worden gekozen.");
+    throw new ConvexError("Dit product is niet (meer) actief en kan niet worden gekozen.");
   }
 
   return product._id;
@@ -431,17 +431,17 @@ export const deleteQuoteLine = mutation({
     const line = await ctx.db.get(args.lineId as Id<"quoteLines">);
 
     if (!line || line.tenantId !== tenant._id) {
-      throw new Error("Quote line not found");
+      throw new ConvexError("Quote line not found");
     }
 
     const quote = await ctx.db.get(line.quoteId);
 
     if (!quote || quote.tenantId !== tenant._id) {
-      throw new Error("Quote not found");
+      throw new ConvexError("Quote not found");
     }
 
     if (quote.status !== "draft") {
-      throw new Error("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
+      throw new ConvexError("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
     }
 
     // Herstel eventueel gekoppelde meetregel (measurementLine)
@@ -511,17 +511,17 @@ export const updateQuoteLine = mutation({
     const line = await ctx.db.get(args.lineId as Id<"quoteLines">);
 
     if (!line || line.tenantId !== tenant._id) {
-      throw new Error("Quote line not found");
+      throw new ConvexError("Quote line not found");
     }
 
     const quote = await ctx.db.get(line.quoteId);
 
     if (!quote || quote.tenantId !== tenant._id) {
-      throw new Error("Quote not found");
+      throw new ConvexError("Quote not found");
     }
 
     if (quote.status !== "draft") {
-      throw new Error("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
+      throw new ConvexError("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
     }
 
     const projectRoomId = args.projectRoomId
@@ -536,7 +536,7 @@ export const updateQuoteLine = mutation({
         projectRoom.tenantId !== tenant._id ||
         projectRoom.projectId !== quote.projectId
       ) {
-        throw new Error("Project room not found");
+        throw new ConvexError("Project room not found");
       }
     }
 
@@ -593,11 +593,11 @@ export const updateQuoteTerms = mutation({
     const quote = await ctx.db.get(args.quoteId as Id<"quotes">);
 
     if (!quote || quote.tenantId !== tenant._id) {
-      throw new Error("Quote not found");
+      throw new ConvexError("Quote not found");
     }
 
     if (quote.status !== "draft") {
-      throw new Error("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
+      throw new ConvexError("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
     }
 
     await ctx.db.patch(quote._id, {
@@ -627,13 +627,13 @@ export const updateQuoteStatus = mutation({
     const quote = await ctx.db.get(args.quoteId as Id<"quotes">);
 
     if (!quote || quote.tenantId !== tenant._id) {
-      throw new Error("Quote not found");
+      throw new ConvexError("Quote not found");
     }
 
     const project = await ctx.db.get(quote.projectId);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new Error("Project not found");
+      throw new ConvexError("Project not found");
     }
 
     const now = Date.now();
@@ -806,7 +806,7 @@ export const createQuote = mutation({
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new Error("Project not found");
+      throw new ConvexError("Project not found");
     }
 
     const template = await ctx.db
@@ -871,11 +871,11 @@ export const updateQuote = mutation({
     const quote = await ctx.db.get(args.quoteId as Id<"quotes">);
 
     if (!quote || quote.tenantId !== tenant._id) {
-      throw new Error("Quote not found");
+      throw new ConvexError("Quote not found");
     }
 
     if (quote.status !== "draft") {
-      throw new Error("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
+      throw new ConvexError("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
     }
 
     const patch: Partial<Doc<"quotes">> = { updatedAt: Date.now() };
@@ -919,11 +919,11 @@ export const addQuoteLine = mutation({
     const quote = await ctx.db.get(args.quoteId as Id<"quotes">);
 
     if (!quote || quote.tenantId !== tenant._id) {
-      throw new Error("Quote not found");
+      throw new ConvexError("Quote not found");
     }
 
     if (quote.status !== "draft") {
-      throw new Error("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
+      throw new ConvexError("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
     }
 
     const projectRoomId = args.projectRoomId
@@ -938,7 +938,7 @@ export const addQuoteLine = mutation({
         projectRoom.tenantId !== tenant._id ||
         projectRoom.projectId !== quote.projectId
       ) {
-        throw new Error("Project room not found");
+        throw new ConvexError("Project room not found");
       }
     }
 
@@ -999,11 +999,11 @@ export const importMeasurementLinesToQuote = mutation({
     const quote = await ctx.db.get(args.quoteId as Id<"quotes">);
 
     if (!quote || quote.tenantId !== tenant._id) {
-      throw new Error("Quote not found");
+      throw new ConvexError("Quote not found");
     }
 
     if (quote.status !== "draft") {
-      throw new Error("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
+      throw new ConvexError("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
     }
 
     if (args.lineIds.length === 0) {
@@ -1011,7 +1011,7 @@ export const importMeasurementLinesToQuote = mutation({
     }
 
     if (new Set(args.lineIds.map((lineId) => String(lineId))).size !== args.lineIds.length) {
-      throw new Error("Meetregels mogen maar een keer worden geimporteerd.");
+      throw new ConvexError("Meetregels mogen maar een keer worden geimporteerd.");
     }
 
     const now = Date.now();
@@ -1035,11 +1035,11 @@ export const importMeasurementLinesToQuote = mutation({
       const line = await ctx.db.get(lineId);
 
       if (!line || line.tenantId !== tenant._id) {
-        throw new Error("Measurement line not found");
+        throw new ConvexError("Measurement line not found");
       }
 
       if (line.quotePreparationStatus !== "ready_for_quote") {
-        throw new Error("Measurement line is not ready for quote");
+        throw new ConvexError("Measurement line is not ready for quote");
       }
 
       const measurement = await ctx.db.get(line.measurementId);
@@ -1049,7 +1049,7 @@ export const importMeasurementLinesToQuote = mutation({
         measurement.tenantId !== tenant._id ||
         measurement.projectId !== quote.projectId
       ) {
-        throw new Error("Measurement not found for quote project");
+        throw new ConvexError("Measurement not found for quote project");
       }
 
       const room = line.roomId ? await ctx.db.get(line.roomId) : null;
@@ -1058,7 +1058,7 @@ export const importMeasurementLinesToQuote = mutation({
         room &&
         (room.tenantId !== tenant._id || room.measurementId !== measurement._id)
       ) {
-        throw new Error("Measurement room not found");
+        throw new ConvexError("Measurement room not found");
       }
 
       if (room?.projectRoomId) {
@@ -1069,7 +1069,7 @@ export const importMeasurementLinesToQuote = mutation({
           projectRoom.tenantId !== tenant._id ||
           projectRoom.projectId !== quote.projectId
         ) {
-          throw new Error("Project room not found");
+          throw new ConvexError("Project room not found");
         }
       }
 

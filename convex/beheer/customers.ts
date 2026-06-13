@@ -1,5 +1,5 @@
 import { mutation, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import {
   mutationActorValidator,
   readActorValidator,
@@ -138,7 +138,7 @@ export const updateStatus = mutation({
     const customer = await ctx.db.get(args.customerId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
-      throw new Error("Customer not found");
+      throw new ConvexError("Customer not found");
     }
 
     await ctx.db.patch(args.customerId, {
@@ -204,7 +204,7 @@ export const createContact = mutation({
     const customer = await ctx.db.get(args.customerId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
-      throw new Error("Customer not found");
+      throw new ConvexError("Customer not found");
     }
 
     const now = Date.now();
@@ -240,7 +240,7 @@ export const markLoanedItemReturned = mutation({
     const contact = await ctx.db.get(args.contactId);
 
     if (!contact || contact.tenantId !== args.tenantId) {
-      throw new Error("Contact not found");
+      throw new ConvexError("Contact not found");
     }
 
     await ctx.db.patch(args.contactId, {
@@ -340,7 +340,7 @@ export const updateCustomer = mutation({
     const customer = await ctx.db.get(args.customerId as Id<"customers">);
 
     if (!customer || customer.tenantId !== tenant._id) {
-      throw new Error("Customer not found");
+      throw new ConvexError("Customer not found");
     }
 
     const patch: Partial<Doc<"customers">> = { updatedAt: Date.now() };
@@ -433,7 +433,7 @@ export const createCustomerContact = mutation({
     const customer = await ctx.db.get(args.customerId as Id<"customers">);
 
     if (!customer || customer.tenantId !== tenant._id) {
-      throw new Error("Customer not found");
+      throw new ConvexError("Customer not found");
     }
 
     const now = Date.now();

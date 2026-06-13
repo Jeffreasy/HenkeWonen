@@ -7,7 +7,7 @@
  * btw genormaliseerd, en bij twijfel géén prijs (zie pricingRules.ts).
  */
 import { query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { readActorValidator, requireQueryRole } from "../authz";
 import { cleanProductDisplayName, pilotHiddenReason } from "./pilot";
 import { selectIndicativePrice } from "./pricingRules";
@@ -29,14 +29,14 @@ export const getIndicativePrice = query({
     const product = await ctx.db.get(args.productId);
 
     if (!product || product.tenantId !== tenant._id) {
-      throw new Error("Product niet gevonden.");
+      throw new ConvexError("Product niet gevonden.");
     }
 
     const category = await ctx.db.get(product.categoryId);
     const categoryName = category?.name ?? "Overig";
 
     if (pilotHiddenReason(product, categoryName)) {
-      throw new Error("Dit product is in de pilot niet beschikbaar.");
+      throw new ConvexError("Dit product is in de pilot niet beschikbaar.");
     }
 
     const supplier = product.supplierId ? await ctx.db.get(product.supplierId) : null;
