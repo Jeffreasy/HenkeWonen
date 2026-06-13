@@ -837,6 +837,10 @@ export async function validateQuoteLineProduct(
     throw new Error(hiddenReason);
   }
 
+  if (product.status !== "active") {
+    throw new Error("Dit product is niet (meer) actief en kan niet worden gekozen.");
+  }
+
   return product._id;
 }
 

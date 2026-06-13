@@ -796,12 +796,16 @@ export const addPrice = mutation({
     const now = Date.now();
 
     if (args.sourceKey) {
-      const existing = await ctx.db
+      // Dedup alleen binnen hetzelfde product: sourceKey is niet product-uniek, dus een
+      // blinde .first()+patch zou een bestaande prijs naar een ander product verhangen
+      // (zelfde fix als de import-pijplijn in catalog/import.ts).
+      const sourceKeyMatches = await ctx.db
         .query("productPrices")
         .withIndex("by_source_key", (q) =>
           q.eq("tenantId", args.tenantId).eq("sourceKey", args.sourceKey)
         )
-        .first();
+        .collect();
+      const existing = sourceKeyMatches.find((row) => row.productId === args.productId);
 
       if (existing) {
         await ctx.db.patch(existing._id, {

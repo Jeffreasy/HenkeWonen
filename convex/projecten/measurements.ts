@@ -87,6 +87,10 @@ async function requireSelectableProduct(ctx: any, tenantId: any, productId: any)
     throw new Error("Dit product is in de pilot niet beschikbaar.");
   }
 
+  if (product.status !== "active") {
+    throw new Error("Dit product is niet (meer) actief en kan niet worden gekozen.");
+  }
+
   return product;
 }
 
