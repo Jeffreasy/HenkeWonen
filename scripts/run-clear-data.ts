@@ -2,7 +2,8 @@
  * run-clear-data.ts — Uitvoeringsscript voor clearTenantData
  *
  * Gebruik (vanuit project-root):
- *   npx convex run portal:clearTenantData '{"tenantSlug":"henke","actor":{"externalUserId":"<jouw-user-id>","authzToken":"<token>"},"confirmPhrase":"JA_VERWIJDER_TESTDATA"}'
+ *   npx convex run beheer/clearTenantData:clearTenantData '{"tenantSlug":"henke","confirmPhrase":"JA_VERWIJDER_TESTDATA"}'
+ *   (clearTenantData is nu een internalMutation: geen actor/authzToken meer nodig; aanroepen via dashboard/CLI met deploy-key)
  *
  * OF via dit script:
  *   npx tsx scripts/run-clear-data.ts

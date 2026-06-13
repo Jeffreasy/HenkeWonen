@@ -1142,32 +1142,31 @@ export const getCatalogImportStats = query({
       };
     }
 
-    // Defense-in-depth: de exacte modus collecteert alle producten + prijzen en overschrijdt
-    // op prod-volume de Convex-leeslimiet (~16k docs/query). Alle live callers gebruiken
-    // summaryOnly; een directe aanroep op een grote tenant krijgt nu een duidelijke,
-    // actionable fout i.p.v. een cryptische "read limit exceeded"-crash.
-    const EXACT_STATS_PRODUCT_LIMIT = 15000;
-    const exactProbe = await ctx.db
-      .query("products")
-      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-      .take(EXACT_STATS_PRODUCT_LIMIT + 1);
-    if (exactProbe.length > EXACT_STATS_PRODUCT_LIMIT) {
+    // Defense-in-depth: de exacte modus leest alle producten + prijzen; op grote catalogi
+    // overschrijdt dat de Convex-leeslimiet (~16k docs/query), met de PRIJZEN-tabel als
+    // dominante factor (bv. ~74k prijzen vs ~25k producten op prod). We lezen producten +
+    // prijzen GEBONDEN (één keer, via take) en weigeren met een duidelijke fout als één van
+    // beide de limiet overschrijdt — geen dubbel-lezen, geen cryptische crash. Alle live
+    // callers gebruiken summaryOnly; dit beschermt alleen een directe aanroep op een grote tenant.
+    const EXACT_STATS_LIMIT = 7000;
+    const [products, productPrices] = await Promise.all([
+      takeByTenant(ctx, "products", tenant._id, EXACT_STATS_LIMIT + 1),
+      takeByTenant(ctx, "productPrices", tenant._id, EXACT_STATS_LIMIT + 1)
+    ]);
+    if (products.length > EXACT_STATS_LIMIT || productPrices.length > EXACT_STATS_LIMIT) {
       throw new Error(
-        `Catalogus te groot voor exacte statistiek (>${EXACT_STATS_PRODUCT_LIMIT} producten). ` +
+        `Catalogus te groot voor exacte statistiek (limiet ${EXACT_STATS_LIMIT} producten/prijzen). ` +
           "Roep getCatalogImportStats aan met summaryOnly: true."
       );
     }
 
-    const [products, productPrices, priceLists, brands, productCollections, categories, suppliers] =
-      await Promise.all([
-        collectByTenant(ctx, "products", tenant._id),
-        collectByTenant(ctx, "productPrices", tenant._id),
-        collectByTenant(ctx, "priceLists", tenant._id),
-        collectByTenant(ctx, "brands", tenant._id),
-        collectByTenant(ctx, "productCollections", tenant._id),
-        collectByTenant(ctx, "categories", tenant._id),
-        collectByTenant(ctx, "suppliers", tenant._id)
-      ]);
+    const [priceLists, brands, productCollections, categories, suppliers] = await Promise.all([
+      collectByTenant(ctx, "priceLists", tenant._id),
+      collectByTenant(ctx, "brands", tenant._id),
+      collectByTenant(ctx, "productCollections", tenant._id),
+      collectByTenant(ctx, "categories", tenant._id),
+      collectByTenant(ctx, "suppliers", tenant._id)
+    ]);
 
     const categoryById = new Map(categories.map((category: any) => [String(category._id), category.name]));
     const supplierById = new Map(suppliers.map((supplier: any) => [String(supplier._id), supplier.name]));
