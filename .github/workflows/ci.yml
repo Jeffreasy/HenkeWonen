@@ -37,7 +37,7 @@ jobs:
           PUBLIC_AUTH_MODE: dev
           ALLOW_DEV_AUTH: "true"
           ALLOW_DEV_AUTHZ_TOKENS: "true"
-          AUTHZ_TOKEN_SECRET: E74388313CE8A1B78693EA2424781D88387CE6B3C03C1ADF223A134880AAFFB7
+          AUTHZ_TOKEN_SECRET: "${{ secrets.AUTHZ_TOKEN_SECRET || 'ci-test-secret-not-used-outside-ci' }}"
           LAVENTECARE_API_URL: https://test-ci.laventecare.nl/api/v1
           LAVENTECARE_TENANT_ID: test-tenant-slug
           HENKE_TENANT_SLUG: henke-wonen
@@ -54,7 +54,7 @@ jobs:
           PUBLIC_AUTH_MODE: dev
           ALLOW_DEV_AUTH: "true"
           ALLOW_DEV_AUTHZ_TOKENS: "true"
-          AUTHZ_TOKEN_SECRET: E74388313CE8A1B78693EA2424781D88387CE6B3C03C1ADF223A134880AAFFB7
+          AUTHZ_TOKEN_SECRET: "${{ secrets.AUTHZ_TOKEN_SECRET || 'ci-test-secret-not-used-outside-ci' }}"
           LAVENTECARE_API_URL: https://test-ci.laventecare.nl/api/v1
           LAVENTECARE_TENANT_ID: test-tenant-slug
           HENKE_TENANT_SLUG: henke-wonen
