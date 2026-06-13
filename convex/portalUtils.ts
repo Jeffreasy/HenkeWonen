@@ -857,6 +857,10 @@ export function importedMeasurementLineTitle(
   line: Doc<"measurementLines">,
   room: Doc<"measurementRooms"> | null
 ) {
+  if (line.productName) {
+    return [line.productName, room?.name].filter(Boolean).join(" - ");
+  }
+
   return [
     measurementProductGroupLabels[line.productGroup] ?? readableMeasurementFallback(line.productGroup),
     measurementCalculationTypeLabels[line.calculationType] ??
@@ -867,10 +871,21 @@ export function importedMeasurementLineTitle(
     .join(" - ");
 }
 
-export function importedMeasurementLineDescription(line: Doc<"measurementLines">) {
+export function importedMeasurementLineDescription(
+  line: Doc<"measurementLines">,
+  priceWasPrefilled?: boolean
+) {
+  const hasIndicativePrice =
+    priceWasPrefilled ??
+    (line.productId !== undefined &&
+      line.indicativeUnitPriceExVat !== undefined &&
+      line.indicativeVatRate !== undefined);
+
   return [
     "Overgenomen uit inmeting.",
-    "Richtprijs. Kies product, verkoopprijs en btw bewust voordat je de offerte verstuurt.",
+    hasIndicativePrice
+      ? "Richtprijs uit de inmeting overgenomen. Controleer product, verkoopprijs en btw bewust voordat je de offerte verstuurt."
+      : "Richtprijs. Kies product, verkoopprijs en btw bewust voordat je de offerte verstuurt.",
     line.wastePercent !== undefined ? `Snijverlies: ${line.wastePercent}%.` : undefined,
     line.notes ? `Meetnotitie: ${line.notes}` : undefined
   ]

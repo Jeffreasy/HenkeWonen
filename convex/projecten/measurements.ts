@@ -6,6 +6,8 @@ import {
   requireMutationRoleForTenantId,
   requireQueryRoleForTenantId
 } from "../authz";
+import { pilotHiddenReason } from "../catalog/pilot";
+import { isUnitCompatible } from "../catalog/pricingRules";
 
 const measurementStatus = v.union(
   v.literal("draft"),
@@ -67,6 +69,37 @@ async function requireMeasurement(ctx: any, tenantId: any, measurementId: any) {
 async function touchMeasurement(ctx: any, measurementId: any, updatedAt = Date.now()) {
   await ctx.db.patch(measurementId, { updatedAt });
 }
+
+/**
+ * Valideert een tijdens het inmeten gekozen product: moet bij de tenant horen
+ * en mag niet pilot-verborgen zijn (zelfde guard als validateQuoteLineProduct).
+ */
+async function requireSelectableProduct(ctx: any, tenantId: any, productId: any) {
+  const product = await ctx.db.get(productId);
+
+  if (!product || product.tenantId !== tenantId) {
+    throw new Error("Product niet gevonden.");
+  }
+
+  const category = product.categoryId ? await ctx.db.get(product.categoryId) : null;
+
+  if (pilotHiddenReason(product, category?.name)) {
+    throw new Error("Dit product is in de pilot niet beschikbaar.");
+  }
+
+  return product;
+}
+
+/** Optionele richtprijs-snapshotvelden op een meetregel. */
+const indicativeSnapshotArgs = {
+  productId: v.optional(v.id("products")),
+  productName: v.optional(v.string()),
+  indicativeUnitPriceExVat: v.optional(v.number()),
+  indicativeVatRate: v.optional(v.number()),
+  indicativePriceUnit: v.optional(v.string()),
+  indicativePriceType: v.optional(v.string()),
+  indicativeCapturedAt: v.optional(v.number())
+};
 
 async function getActiveWasteProfiles(ctx: any, tenantId: any, productGroupArg?: string) {
   if (productGroupArg) {
@@ -501,7 +534,8 @@ export const addMeasurementLine = mutation({
     quantity: v.number(),
     unit: v.string(),
     notes: v.optional(v.string()),
-    quoteLineType
+    quoteLineType,
+    ...indicativeSnapshotArgs
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
@@ -523,6 +557,10 @@ export const addMeasurementLine = mutation({
       }
     }
 
+    if (args.productId) {
+      await requireSelectableProduct(ctx, args.tenantId, args.productId);
+    }
+
     const now = Date.now();
 
     const lineId = await ctx.db.insert("measurementLines", {
@@ -539,6 +577,13 @@ export const addMeasurementLine = mutation({
       notes: args.notes,
       quoteLineType: args.quoteLineType,
       quotePreparationStatus: "draft",
+      productId: args.productId,
+      productName: args.productId ? args.productName : undefined,
+      indicativeUnitPriceExVat: args.productId ? args.indicativeUnitPriceExVat : undefined,
+      indicativeVatRate: args.productId ? args.indicativeVatRate : undefined,
+      indicativePriceUnit: args.productId ? args.indicativePriceUnit : undefined,
+      indicativePriceType: args.productId ? args.indicativePriceType : undefined,
+      indicativeCapturedAt: args.productId ? args.indicativeCapturedAt ?? now : undefined,
       createdAt: now,
       updatedAt: now
     });
@@ -598,7 +643,10 @@ export const updateMeasurementLine = mutation({
     unit: v.string(),
     notes: v.optional(v.string()),
     quoteLineType,
-    quotePreparationStatus: v.optional(quotePreparationStatus)
+    quotePreparationStatus: v.optional(quotePreparationStatus),
+    ...indicativeSnapshotArgs,
+    /** Expliciet de productkeuze + snapshot wissen (undefined overleeft JSON niet). */
+    clearProduct: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
@@ -624,6 +672,25 @@ export const updateMeasurementLine = mutation({
       }
     }
 
+    if (args.productId && args.productId !== line.productId) {
+      await requireSelectableProduct(ctx, args.tenantId, args.productId);
+    }
+
+    // Productkeuze: alleen overschrijven als de aanroeper het veld meestuurt of
+    // expliciet wist via clearProduct (undefined overleeft JSON-serialisatie niet).
+    const touchesProduct = hasArg(args, "productId") || args.clearProduct === true;
+    const nextProductId = args.clearProduct === true ? undefined : touchesProduct ? args.productId : line.productId;
+    const snapshotSource = touchesProduct ? args : line;
+
+    // Een behouden prijssnapshot is alleen geldig zolang de prijseenheid bij de
+    // (mogelijk gewijzigde) meeteenheid past; anders vervalt de prijs (het
+    // product blijft gekozen) zodat geen m²-prijs × meters de offerte in stroomt.
+    const keepPriceSnapshot = Boolean(
+      nextProductId &&
+        snapshotSource.indicativeUnitPriceExVat !== undefined &&
+        (touchesProduct || isUnitCompatible(args.unit, snapshotSource.indicativePriceUnit))
+    );
+
     await ctx.db.patch(line._id, {
       roomId: args.roomId,
       productGroup: args.productGroup,
@@ -636,6 +703,17 @@ export const updateMeasurementLine = mutation({
       notes: args.notes,
       quoteLineType: args.quoteLineType,
       quotePreparationStatus: args.quotePreparationStatus ?? line.quotePreparationStatus,
+      productId: nextProductId,
+      productName: nextProductId ? snapshotSource.productName : undefined,
+      indicativeUnitPriceExVat: keepPriceSnapshot ? snapshotSource.indicativeUnitPriceExVat : undefined,
+      indicativeVatRate: keepPriceSnapshot ? snapshotSource.indicativeVatRate : undefined,
+      indicativePriceUnit: keepPriceSnapshot ? snapshotSource.indicativePriceUnit : undefined,
+      indicativePriceType: keepPriceSnapshot ? snapshotSource.indicativePriceType : undefined,
+      indicativeCapturedAt: keepPriceSnapshot
+        ? touchesProduct
+          ? args.indicativeCapturedAt ?? Date.now()
+          : line.indicativeCapturedAt
+        : undefined,
       updatedAt: Date.now()
     });
     await touchMeasurement(ctx, line.measurementId);

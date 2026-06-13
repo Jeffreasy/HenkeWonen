@@ -32,6 +32,8 @@
     "catalog:vat:export": "node tools/export_vat_mapping_review.mjs",
     "catalog:vat:apply": "node tools/apply_vat_mapping_decisions.mjs",
     "catalog:duplicates:sync": "node tools/sync_duplicate_ean_issues_from_preview.mjs",
+    "catalog:prices:repair": "node tools/repair_price_data.mjs",
+    "catalog:prices:repair:apply": "node tools/repair_price_data.mjs --apply",
     "portal:demo-seed": "node tools/seed_demo_portal_data.mjs",
     "test": "vitest run",
     "test:watch": "vitest",

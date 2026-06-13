@@ -57,7 +57,7 @@ export const CALC_TAB_ICONS: Record<CalcTabId, ReactNode> = {
 };
 
 const INDICATIVE_TEXT =
-  "Indicatief — controleer altijd legrichting, patroon, productafmetingen en snijverlies vóór je de inmeetregel opslaat.";
+  "Indicatief — controleer altijd legrichting, patroon, productafmetingen en snijverlies vóór je de inmeetregel opslaat. Een richtprijs is een indicatie; de definitieve prijs bepaal je in de offerte.";
 
 // ─── Result highlight hook ─────────────────────────────────────────────────────
 

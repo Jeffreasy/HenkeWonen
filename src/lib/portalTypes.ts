@@ -139,6 +139,13 @@ export type PortalMeasurementLine = {
   notes?: string;
   quoteLineType: QuoteLineType;
   quotePreparationStatus: QuotePreparationStatus;
+  productId?: string;
+  productName?: string;
+  indicativeUnitPriceExVat?: number;
+  indicativeVatRate?: number;
+  indicativePriceUnit?: string;
+  indicativePriceType?: string;
+  indicativeCapturedAt?: number;
   convertedQuoteId?: string;
   convertedQuoteLineId?: string;
   createdAt: number;

@@ -11,6 +11,7 @@ import {
   formatMeasurementProductGroup,
   formatUnit
 } from "../../lib/i18n/statusLabels";
+import { calculateIncVat, formatEuro, roundMoney } from "../../lib/money";
 import type {
   MeasurementCalculationType,
   MeasurementProductGroup,
@@ -62,6 +63,10 @@ type ReadyLine = {
   unit: string;
   notes?: string;
   quoteLineType: QuoteLineType;
+  productId?: string;
+  productName?: string;
+  indicativeUnitPriceExVat?: number;
+  indicativeVatRate?: number;
 };
 
 type ReadyMeasurementLine = {
@@ -94,6 +99,17 @@ function buildLineTitle(item: ReadyMeasurementLine) {
   ].filter(Boolean);
 
   return parts.join(" - ");
+}
+
+/** Richtprijs incl. btw uit het meetregel-snapshot, of null. */
+function indicativeLineTotal(line: ReadyLine) {
+  if (line.indicativeUnitPriceExVat === undefined || line.indicativeVatRate === undefined) {
+    return null;
+  }
+
+  return formatEuro(
+    roundMoney(line.quantity * calculateIncVat(line.indicativeUnitPriceExVat, line.indicativeVatRate))
+  );
 }
 
 export default function MeasurementLinePicker({
@@ -217,6 +233,25 @@ export default function MeasurementLinePicker({
           item.line.wastePercent !== undefined ? `${item.line.wastePercent}%` : "-"
       },
       {
+        key: "indicative",
+        header: "Product / richtprijs",
+        align: "right",
+        render: (item) => {
+          if (!item.line.productName) {
+            return "-";
+          }
+
+          return (
+            <div style={{ textAlign: "right" }}>
+              <strong>{indicativeLineTotal(item.line) ?? "Nog geen prijs"}</strong>
+              <div className="muted" style={{ fontSize: "var(--text-xs)" }}>
+                {item.line.productName}
+              </div>
+            </div>
+          );
+        }
+      },
+      {
         key: "type",
         header: "Soort offertepost",
         hideOnMobile: true,
@@ -306,8 +341,8 @@ export default function MeasurementLinePicker({
             title="Controleer de offerteposten"
             description={
               isFieldMode
-                ? "Meetregels nemen hoeveelheden over. Vul daarna product en verkoopprijs bewust aan voordat je een klantversie gebruikt."
-                : "Deze regels nemen alleen hoeveelheden en omschrijvingen over. Controleer prijs, product en btw voordat je de offerte verstuurt."
+                ? "Meetregels nemen hoeveelheden over; bij een gekozen product komt de richtprijs als voorinvulling mee. Controleer product en verkoopprijs bewust voordat je een klantversie gebruikt."
+                : "Deze regels nemen hoeveelheden over; bij een gekozen product komt de richtprijs als voorinvulling mee. Controleer prijs, product en btw voordat je de offerte verstuurt."
             }
           />
 
@@ -355,6 +390,16 @@ export default function MeasurementLinePicker({
                         ? ` · Snijverlies ${item.line.wastePercent}%`
                         : ""}
                     </p>
+                    {item.line.productName ? (
+                      <p>
+                        {item.line.productName}
+                        {" · "}
+                        <strong>{indicativeLineTotal(item.line) ?? "Nog geen richtprijs"}</strong>
+                        {indicativeLineTotal(item.line) ? (
+                          <span className="muted"> (incl. btw, indicatief)</span>
+                        ) : null}
+                      </p>
+                    ) : null}
                     <p className="muted">{item.line.notes ?? "Geen notitie"}</p>
                   </div>
                 )}
@@ -397,7 +442,11 @@ export default function MeasurementLinePicker({
         title="Inmeetregels toevoegen aan offerte?"
         description={`Je voegt ${selectedLines.length} meetregel${
           selectedLines.length === 1 ? "" : "s"
-        } toe als gewone offerteregel. Product, verkoopprijs en btw worden niet gekozen; vul die bewust aan voordat je de offerte verstuurt.`}
+        } toe als offerteregel. ${
+          selectedLines.some((item) => item.line.productId)
+            ? "Meetregels met een gekozen product nemen de richtprijs als voorinvulling mee; regels zonder product blijven leeg."
+            : "Product, verkoopprijs en btw worden niet gekozen."
+        } Controleer prijs, product en btw bewust voordat je de offerte verstuurt.`}
         confirmLabel="Toevoegen aan offerte"
         isBusy={isSaving}
         onCancel={() => setConfirmOpen(false)}

@@ -62,6 +62,29 @@ export type MeasurementLineDoc = {
   notes?: string;
   quoteLineType: QuoteLineType;
   quotePreparationStatus: QuotePreparationStatus;
+  productId?: string;
+  productName?: string;
+  indicativeUnitPriceExVat?: number;
+  indicativeVatRate?: number;
+  indicativePriceUnit?: string;
+  indicativePriceType?: string;
+  indicativeCapturedAt?: number;
+};
+
+/** Richtprijs-respons van api.catalog.pricing.getIndicativePrice. */
+export type IndicativePriceResult = {
+  productId: string;
+  productName: string;
+  indicative: {
+    unitPriceExVat: number;
+    unitPriceIncVat: number;
+    vatRate: number;
+    priceType: string;
+    priceUnit?: string;
+    vatModeUsed: "exclusive" | "inclusive";
+    validFrom?: number;
+    conversionApplied?: "package_to_m2";
+  } | null;
 };
 
 export type WasteProfileDoc = {

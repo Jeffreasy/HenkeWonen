@@ -1,19 +1,15 @@
 import { Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { api } from "../../../convex/_generated/api";
+import { useEffect, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
-import { createConvexHttpClient } from "../../lib/convex/client";
 import type { SubmitEventLike } from "../../lib/events";
 import { formatLineType } from "../../lib/i18n/statusLabels";
-import { formatEuro } from "../../lib/money";
 import type { MeasurementProductGroup, PortalProduct, PortalRoom, QuoteLineType, QuoteTemplateLine } from "../../lib/portalTypes";
-import { getAllowedCategories } from "../../lib/quotes/measurementCatalogMapping";
 import { polishQuoteTemplateText } from "../../lib/quotes/quoteTemplateCopy";
+import CatalogProductPicker from "../catalog/CatalogProductPicker";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
-import { SearchInput } from "../ui/SearchInput";
 import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
 import { Textarea } from "../ui/Textarea";
@@ -48,7 +44,6 @@ export default function QuoteLineEditor({
   productGroupHint = null
 }: QuoteLineEditorProps) {
   const isFieldMode = mode === "field";
-  const allowedCategories = getAllowedCategories(productGroupHint);
   const [lineType, setLineType] = useState<QuoteLineType>("product");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -60,73 +55,20 @@ export default function QuoteLineEditor({
   const [selectedTemplateKey, setSelectedTemplateKey] = useState("");
   const [selectedTemplateLine, setSelectedTemplateLine] = useState<QuoteTemplateLine | null>(null);
   const [projectRoomId, setProjectRoomId] = useState("");
-  const [productSearch, setProductSearch] = useState("");
-  const [products, setProducts] = useState<PortalProduct[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<PortalProduct | null>(null);
   const [productError, setProductError] = useState<string | null>(null);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const selectedProduct = useMemo(
-    () => products.find((product) => product.id === selectedProductId) ?? null,
-    [products, selectedProductId]
-  );
 
   useEffect(() => {
     if (lineType !== "product") {
-      setProducts([]);
-      setSelectedProductId("");
+      setSelectedProduct(null);
       setProductError(null);
-      return;
     }
+  }, [lineType]);
 
-    let isActive = true;
-
-    async function loadProducts() {
-      const client = createConvexHttpClient(session);
-
-      if (!client) {
-        setProductError("Kan de catalogus nu niet bereiken.");
-        return;
-      }
-
-      setIsLoadingProducts(true);
-      setProductError(null);
-
-      try {
-        const result = (await client.query(api.catalog.core.listProductsForPortal, {
-          tenantSlug: session.tenantId,
-          search: productSearch || undefined,
-          status: "active",
-          limit: 60,
-          ...(allowedCategories ? { categories: allowedCategories } : {})
-        })) as { items: PortalProduct[] };
-
-        if (isActive) {
-          setProducts(result.items ?? []);
-        }
-      } catch (loadError) {
-        console.error(loadError);
-        if (isActive) {
-          setProducts([]);
-          setProductError("Catalogusproducten konden niet worden opgehaald.");
-        }
-      } finally {
-        if (isActive) {
-          setIsLoadingProducts(false);
-        }
-      }
-    }
-
-    void loadProducts();
-
-    return () => {
-      isActive = false;
-    };
-  }, [lineType, productSearch, session.tenantId]);
-
-  function applyProduct(productId: string) {
-    setSelectedProductId(productId);
-    const product = products.find((item) => item.id === productId);
+  function applyProduct(product: PortalProduct | null) {
+    setSelectedProduct(product);
+    setProductError(null);
 
     if (!product) {
       return;
@@ -162,7 +104,7 @@ export default function QuoteLineEditor({
     setSelectedTemplateLine(templateLine);
     setLineType(templateLine.lineType);
     if (templateLine.lineType !== "product") {
-      setSelectedProductId("");
+      setSelectedProduct(null);
     }
     setTitle(polishQuoteTemplateText(templateLine.title));
     setDescription(templateLine.description ? polishQuoteTemplateText(templateLine.description) : "");
@@ -237,7 +179,7 @@ export default function QuoteLineEditor({
       setDiscountExVat("");
       setSelectedTemplateKey("");
       setSelectedTemplateLine(null);
-      setSelectedProductId("");
+      setSelectedProduct(null);
       setProjectRoomId("");
     } finally {
       setIsSaving(false);
@@ -330,34 +272,16 @@ export default function QuoteLineEditor({
             title="Catalogusproduct"
             description="Pilotkeuze uit zichtbare catalogusproducten; PVC Click blijft hier verborgen."
           />
-          {isFieldMode && allowedCategories ? (
-            <p className="quote-catalog-filter-hint muted">
-              Gefilterd op: {allowedCategories.join(", ")}
-            </p>
-          ) : null}
-          <SearchInput
-            aria-label="Catalogusproduct zoeken"
-            placeholder="Zoek product, Moduleo, kleur, artikelnummer of leverancier"
-            value={productSearch}
-            onChange={setProductSearch}
+          <CatalogProductPicker
+            session={session}
+            idPrefix="catalog"
+            productGroupHint={productGroupHint}
+            selectedProductId={selectedProduct?.id ?? ""}
+            onSelect={applyProduct}
+            required
+            showFilterHint={isFieldMode}
+            showPriceInLabel
           />
-          <Field htmlFor="catalog-product" label="Product kiezen" required>
-            <Select
-              id="catalog-product"
-              required
-              value={selectedProductId}
-              onChange={(event) => applyProduct(event.target.value)}
-            >
-              <option value="">
-                {isLoadingProducts ? "Catalogus laden..." : "Kies een zichtbaar product"}
-              </option>
-              {products.map((product) => (
-                <option value={product.id} key={product.id}>
-                  {(product.displayName ?? product.name)} - {product.displaySupplierName ?? product.supplier} - {formatEuro(product.priceExVat)}
-                </option>
-              ))}
-            </Select>
-          </Field>
           {productError ? <Alert variant="warning" description={productError} /> : null}
         </section>
       ) : null}

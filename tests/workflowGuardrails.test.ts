@@ -136,6 +136,7 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
       "convex/catalog/import.ts:deleteProductsByCategoryChunk",
       "convex/catalog/import.ts:deleteProductsBySupplierChunk",
       "convex/catalog/import.ts:resetCatalogChunk",
+      "convex/catalog/maintenance.ts:deletePseudoPriceRowsChunk",
       "convex/projecten/measurements.ts:deleteMeasurementLine",
       "convex/projecten/measurements.ts:deleteMeasurementRoom",
       "convex/projecten/core.ts:deleteProjectRoom",
@@ -367,6 +368,33 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(deleteProductsByCategoryChunk).toContain('confirm: v.literal("DELETE_PRODUCTS_BY_CATEGORY")');
     expect(deleteProductsByCategoryChunk).toContain("actor: mutationActorValidator");
     expect(deleteProductsByCategoryChunk).toContain('["admin"]');
+  });
+
+  it("should guard the price maintenance mutations with literal confirmation and admin role", () => {
+    const repairVatModes = exportedMutationBlock("convex/catalog/maintenance.ts", "repairPriceVatModesChunk");
+    expect(repairVatModes).toContain('confirm: v.literal("REPAIR_PRICE_VAT_MODES")');
+    expect(repairVatModes).toContain("actor: mutationActorValidator");
+    expect(repairVatModes).toContain('["admin"]');
+    expect(repairVatModes).not.toContain("ctx.db.delete(");
+
+    const deletePseudoRows = exportedMutationBlock("convex/catalog/maintenance.ts", "deletePseudoPriceRowsChunk");
+    expect(deletePseudoRows).toContain('confirm: v.literal("DELETE_PSEUDO_PRICE_ROWS")');
+    expect(deletePseudoRows).toContain("actor: mutationActorValidator");
+    expect(deletePseudoRows).toContain('["admin"]');
+    expect(deletePseudoRows).toContain('"productPrices"');
+    expect(deletePseudoRows).not.toContain('"products"');
+  });
+
+  it("should keep the indicative price rule customer-safe", () => {
+    const pricingRules = read("convex/catalog/pricingRules.ts");
+    expect(pricingRules).toContain('new Set(["advice_retail", "retail"])');
+    expect(pricingRules).not.toContain("purchase");
+    expect(pricingRules).toContain('row.vatMode !== "exclusive" && row.vatMode !== "inclusive"');
+
+    const pricingQuery = exportedQueryBlock("convex/catalog/pricing.ts", "getIndicativePrice");
+    expect(pricingQuery).toContain("actor: readActorValidator");
+    expect(pricingQuery).toContain("pilotHiddenReason");
+    expect(pricingQuery).not.toContain('"viewer"');
   });
 
   it("should guard deleteProductsBySupplierChunk to require literal confirmation and admin role", () => {

@@ -14,6 +14,7 @@ import {
 } from "../../lib/calculators";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { SubmitEventLike } from "../../lib/events";
+import { calculateIncVat, formatEuro, roundMoney } from "../../lib/money";
 import { showToast } from "../../lib/toast";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import {
@@ -28,9 +29,11 @@ import type {
   MeasurementCalculationType,
   MeasurementProductGroup,
   MeasurementStatus,
+  PortalProduct,
   QuoteLineType,
   QuotePreparationStatus
 } from "../../lib/portalTypes";
+import CatalogProductPicker from "../catalog/CatalogProductPicker";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
@@ -49,6 +52,7 @@ import { SummaryList } from "../ui/SummaryList";
 import { Textarea } from "../ui/Textarea";
 import type {
   FieldMeasureTool,
+  IndicativePriceResult,
   MeasurementData,
   MeasurementLineDoc,
   MeasurementRoomDoc,
@@ -179,9 +183,29 @@ export default function MeasurementPanel({
     unit: "",
     wastePercent: "",
     notes: "",
-    quotePreparationStatus: "draft" as QuotePreparationStatus
+    quotePreparationStatus: "draft" as QuotePreparationStatus,
+    productId: "",
+    productName: "",
+    indicativeUnitPriceExVat: undefined as number | undefined,
+    indicativeVatRate: undefined as number | undefined,
+    indicativePriceUnit: undefined as string | undefined,
+    indicativePriceType: undefined as string | undefined,
+    productTouched: false
   });
   const [pendingLineDelete, setPendingLineDelete] = useState<MeasurementLineDoc | null>(null);
+  const priceRequestSeq = useRef<Partial<Record<FieldMeasureTool | "edit", number>>>({});
+
+  // Richtprijs: per rekenhulp-tab een gekozen product + indicatieve prijs.
+  const [tabProducts, setTabProducts] = useState<Partial<Record<FieldMeasureTool, PortalProduct | null>>>({});
+  const [tabPrices, setTabPrices] = useState<Partial<Record<FieldMeasureTool, IndicativePriceResult | null>>>({});
+  const [tabPriceLoading, setTabPriceLoading] = useState<Partial<Record<FieldMeasureTool, boolean>>>({});
+  const [showPricesIncVat, setShowPricesIncVat] = useState(() => {
+    if (typeof window === "undefined") {
+      return true;
+    }
+
+    return window.localStorage.getItem("henke-richtprijs-btw-weergave") !== "exclusief";
+  });
   const roomEditFormRef = useRef<HTMLFormElement>(null);
   const lineEditFormRef = useRef<HTMLFormElement>(null);
 
@@ -380,6 +404,208 @@ export default function MeasurementPanel({
     [riserCount, stairType, stripLengthM, treadCount]
   );
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        "henke-richtprijs-btw-weergave",
+        showPricesIncVat ? "inclusief" : "exclusief"
+      );
+    } catch {
+      // localStorage kan ontbreken (privémodus) — weergavevoorkeur is niet kritiek.
+    }
+  }, [showPricesIncVat]);
+
+  /** Meeteenheid die per rekenhulp-tab naar de prijs-lookup gaat. */
+  const measurementUnitForTool = useCallback(
+    (tool: FieldMeasureTool) => {
+      switch (tool) {
+        case "flooring":
+          return "m2";
+        case "plinths":
+          return "meter";
+        case "wallpaper":
+          return "roll";
+        case "wall_panels":
+          return "piece";
+        case "stairs":
+          return "stairs";
+        case "manual":
+          return manualUnit;
+      }
+    },
+    [manualUnit]
+  );
+
+  const fetchIndicativePrice = useCallback(
+    async (productId: string, measurementUnit: string) => {
+      const client = createConvexHttpClient(session);
+
+      if (!client) {
+        return null;
+      }
+
+      return (await client.query(api.catalog.pricing.getIndicativePrice, {
+        tenantSlug: tenantId,
+        productId: productId as Id<"products">,
+        measurementUnit
+      })) as IndicativePriceResult;
+    },
+    [session, tenantId]
+  );
+
+  const selectTabProduct = useCallback(
+    async (tool: FieldMeasureTool, product: PortalProduct | null) => {
+      // Volgorde-guard: bij snel wisselen mag een trage respons van product A
+      // nooit onder product B worden vastgelegd.
+      const requestSeq = (priceRequestSeq.current[tool] ?? 0) + 1;
+      priceRequestSeq.current[tool] = requestSeq;
+
+      setTabProducts((current) => ({ ...current, [tool]: product }));
+      setTabPrices((current) => ({ ...current, [tool]: null }));
+
+      if (!product) {
+        setTabPriceLoading((current) => ({ ...current, [tool]: false }));
+        return;
+      }
+
+      setTabPriceLoading((current) => ({ ...current, [tool]: true }));
+
+      try {
+        const result = await fetchIndicativePrice(product.id, measurementUnitForTool(tool));
+
+        if (priceRequestSeq.current[tool] !== requestSeq) {
+          return;
+        }
+
+        setTabPrices((current) => ({ ...current, [tool]: result }));
+      } catch (priceError) {
+        console.error(priceError);
+
+        if (priceRequestSeq.current[tool] !== requestSeq) {
+          return;
+        }
+
+        setTabPrices((current) => ({ ...current, [tool]: null }));
+      } finally {
+        if (priceRequestSeq.current[tool] === requestSeq) {
+          setTabPriceLoading((current) => ({ ...current, [tool]: false }));
+        }
+      }
+    },
+    [fetchIndicativePrice, measurementUnitForTool]
+  );
+
+  // Vrije regel: eenheid of productgroep kan ná de productkeuze wijzigen —
+  // dan moet de richtprijs opnieuw worden opgezocht met de actuele eenheid.
+  // Gedebounced: het eenheid-veld is vrije tekst en mag niet per toetsaanslag
+  // een query afvuren.
+  useEffect(() => {
+    const product = tabProducts.manual;
+
+    if (!product) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      void selectTabProduct("manual", product);
+    }, 400);
+
+    return () => clearTimeout(timer);
+    // Alleen heruitvoeren bij eenheid-/groepswijziging, niet bij elke productwissel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manualUnit, manualProductGroup]);
+
+  /** Prijsresultaat van een tab, maar alleen als het bij het gekozen product hoort. */
+  function matchedTabPrice(tool: FieldMeasureTool) {
+    const product = tabProducts[tool];
+    const priceResult = tabPrices[tool];
+
+    if (!product || !priceResult || priceResult.productId !== product.id) {
+      return null;
+    }
+
+    return priceResult;
+  }
+
+  /** Snapshot-velden voor addMeasurementLine op basis van de tab-keuze. */
+  function indicativeSnapshotForTool(tool: FieldMeasureTool) {
+    const product = tabProducts[tool];
+
+    if (!product) {
+      return {};
+    }
+
+    const priceResult = matchedTabPrice(tool);
+    const indicative = priceResult?.indicative ?? null;
+
+    return {
+      productId: product.id as Id<"products">,
+      productName: priceResult?.productName ?? product.displayName ?? product.name,
+      ...(indicative
+        ? {
+            indicativeUnitPriceExVat: indicative.unitPriceExVat,
+            indicativeVatRate: indicative.vatRate,
+            indicativePriceUnit: indicative.priceUnit,
+            indicativePriceType: indicative.priceType,
+            indicativeCapturedAt: Date.now()
+          }
+        : {})
+    };
+  }
+
+  /** SummaryList-regels met productkeuze + richtprijs voor in het live resultaatpaneel. */
+  function indicativeSummaryItems(tool: FieldMeasureTool, quantity: number | undefined) {
+    const product = tabProducts[tool];
+
+    if (!product) {
+      return [];
+    }
+
+    const priceResult = matchedTabPrice(tool);
+    const items: Array<{ label: string; value: string }> = [
+      { label: "Product", value: priceResult?.productName ?? product.displayName ?? product.name }
+    ];
+
+    if (tabPriceLoading[tool]) {
+      items.push({ label: "Richtprijs", value: "Laden..." });
+      return items;
+    }
+
+    const indicative = priceResult?.indicative ?? null;
+
+    if (!indicative) {
+      items.push({ label: "Richtprijs", value: "Nog niet beschikbaar" });
+      return items;
+    }
+
+    const unitAmount = showPricesIncVat ? indicative.unitPriceIncVat : indicative.unitPriceExVat;
+    const vatLabel = showPricesIncVat ? "incl. btw" : "excl. btw";
+    const safeQuantity = quantity && quantity > 0 ? quantity : 0;
+
+    items.push({
+      label: `Richtprijs ${vatLabel}`,
+      value:
+        safeQuantity > 0
+          ? `${formatEuro(roundMoney(safeQuantity * unitAmount))} (${formatEuro(unitAmount)} per ${formatUnit(indicative.priceUnit ?? "custom")})`
+          : `${formatEuro(unitAmount)} per ${formatUnit(indicative.priceUnit ?? "custom")}`
+    });
+
+    return items;
+  }
+
+  /** Richtprijs-totaal van een opgeslagen meetregel op basis van het snapshot. */
+  function lineIndicativeTotal(line: MeasurementLineDoc) {
+    if (line.indicativeUnitPriceExVat === undefined || line.indicativeVatRate === undefined) {
+      return null;
+    }
+
+    const unitAmount = showPricesIncVat
+      ? calculateIncVat(line.indicativeUnitPriceExVat, line.indicativeVatRate)
+      : line.indicativeUnitPriceExVat;
+
+    return formatEuro(roundMoney(line.quantity * unitAmount));
+  }
+
   function requireClientAndMeasurement() {
     const client = createConvexHttpClient(session);
 
@@ -562,6 +788,14 @@ export default function MeasurementPanel({
       unit: string;
       notes?: string;
       quoteLineType: QuoteLineType;
+      tool?: FieldMeasureTool;
+      productId?: Id<"products">;
+      productName?: string;
+      indicativeUnitPriceExVat?: number;
+      indicativeVatRate?: number;
+      indicativePriceUnit?: string;
+      indicativePriceType?: string;
+      indicativeCapturedAt?: number;
       validationError?: string;
       successMessage: string;
     }
@@ -584,6 +818,13 @@ export default function MeasurementPanel({
       return;
     }
 
+    // Niet opslaan terwijl de richtprijs van het gekozen product nog laadt:
+    // anders belandt de regel zonder prijssnapshot in de inmeting.
+    if (line.tool && tabProducts[line.tool] && tabPriceLoading[line.tool]) {
+      setError("De richtprijs wordt nog geladen. Probeer het over een moment opnieuw.");
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
 
@@ -601,7 +842,14 @@ export default function MeasurementPanel({
         quantity: line.quantity,
         unit: line.unit,
         notes: line.notes,
-        quoteLineType: line.quoteLineType
+        quoteLineType: line.quoteLineType,
+        productId: line.productId,
+        productName: line.productName,
+        indicativeUnitPriceExVat: line.indicativeUnitPriceExVat,
+        indicativeVatRate: line.indicativeVatRate,
+        indicativePriceUnit: line.indicativePriceUnit,
+        indicativePriceType: line.indicativePriceType,
+        indicativeCapturedAt: line.indicativeCapturedAt
       });
       showToast({ title: line.successMessage, tone: "success" });
       await loadMeasurement();
@@ -743,7 +991,71 @@ export default function MeasurementPanel({
       unit: line.unit,
       wastePercent: decimalText(line.wastePercent),
       notes: line.notes ?? "",
-      quotePreparationStatus: line.quotePreparationStatus
+      quotePreparationStatus: line.quotePreparationStatus,
+      productId: line.productId ?? "",
+      productName: line.productName ?? "",
+      indicativeUnitPriceExVat: line.indicativeUnitPriceExVat,
+      indicativeVatRate: line.indicativeVatRate,
+      indicativePriceUnit: line.indicativePriceUnit,
+      indicativePriceType: line.indicativePriceType,
+      productTouched: false
+    });
+  }
+
+  /**
+   * Productwissel in het editformulier: keuze direct vastleggen, richtprijs
+   * async erbij (alleen voor weergave — bij opslaan wordt sowieso een verse
+   * prijs opgehaald met de definitieve eenheid).
+   */
+  async function selectEditLineProduct(product: PortalProduct | null) {
+    const requestSeq = (priceRequestSeq.current.edit ?? 0) + 1;
+    priceRequestSeq.current.edit = requestSeq;
+
+    setLineCorrectionDraft((current) => ({
+      ...current,
+      productId: product?.id ?? "",
+      productName: product ? product.displayName ?? product.name : "",
+      indicativeUnitPriceExVat: undefined,
+      indicativeVatRate: undefined,
+      indicativePriceUnit: undefined,
+      indicativePriceType: undefined,
+      productTouched: true
+    }));
+
+    if (!product) {
+      return;
+    }
+
+    let priceResult: IndicativePriceResult | null = null;
+
+    try {
+      priceResult = await fetchIndicativePrice(
+        product.id,
+        lineCorrectionDraft.unit.trim() || "custom"
+      );
+    } catch (priceError) {
+      console.error(priceError);
+    }
+
+    if (priceRequestSeq.current.edit !== requestSeq) {
+      return;
+    }
+
+    const indicative = priceResult?.indicative ?? null;
+
+    setLineCorrectionDraft((current) => {
+      if (current.productId !== product.id) {
+        return current;
+      }
+
+      return {
+        ...current,
+        productName: priceResult?.productName ?? current.productName,
+        indicativeUnitPriceExVat: indicative?.unitPriceExVat,
+        indicativeVatRate: indicative?.vatRate,
+        indicativePriceUnit: indicative?.priceUnit,
+        indicativePriceType: indicative?.priceType
+      };
     });
   }
 
@@ -767,6 +1079,48 @@ export default function MeasurementPanel({
     setIsSaving(true);
     setError(null);
 
+    const finalUnit = lineCorrectionDraft.unit.trim() || line.unit;
+
+    // Bij een gekozen product altijd een verse richtprijs ophalen met de
+    // definitieve eenheid: dit voorkomt verouderde snapshots (eenheid gewijzigd
+    // na productkeuze) én races met nog lopende weergave-lookups.
+    let productArgs: Record<string, unknown> = {};
+
+    if (lineCorrectionDraft.productTouched && !lineCorrectionDraft.productId) {
+      productArgs = { clearProduct: true };
+    } else if (lineCorrectionDraft.productId) {
+      let freshPrice: IndicativePriceResult | null = null;
+
+      try {
+        freshPrice = await fetchIndicativePrice(lineCorrectionDraft.productId, finalUnit);
+      } catch (priceError) {
+        console.error(priceError);
+      }
+
+      const indicative = freshPrice?.indicative ?? null;
+
+      if (!freshPrice && !lineCorrectionDraft.productTouched) {
+        // Lookup mislukt en de keuze is niet gewijzigd: niets meesturen, dan
+        // behoudt de server het bestaande snapshot (incl. eenheid-guard).
+        productArgs = {};
+      } else {
+        productArgs = {
+          productId: lineCorrectionDraft.productId as Id<"products">,
+          productName:
+            freshPrice?.productName ?? (lineCorrectionDraft.productName || undefined),
+          ...(indicative
+            ? {
+                indicativeUnitPriceExVat: indicative.unitPriceExVat,
+                indicativeVatRate: indicative.vatRate,
+                indicativePriceUnit: indicative.priceUnit,
+                indicativePriceType: indicative.priceType,
+                indicativeCapturedAt: Date.now()
+              }
+            : {})
+        };
+      }
+    }
+
     try {
       await context.client.mutation(api.projecten.measurements.updateMeasurementLine, {
         tenantId: context.tenantId,
@@ -783,10 +1137,11 @@ export default function MeasurementPanel({
         },
         wastePercent: parseDecimal(lineCorrectionDraft.wastePercent),
         quantity,
-        unit: lineCorrectionDraft.unit.trim() || line.unit,
+        unit: finalUnit,
         notes: lineCorrectionDraft.notes.trim() || undefined,
         quoteLineType: line.quoteLineType,
-        quotePreparationStatus: lineCorrectionDraft.quotePreparationStatus
+        quotePreparationStatus: lineCorrectionDraft.quotePreparationStatus,
+        ...productArgs
       });
       showToast({ title: "Meetregel bijgewerkt", tone: "success" });
       setEditingLineId(null);
@@ -1021,6 +1376,25 @@ export default function MeasurementPanel({
         render: (line) => (line.wastePercent !== undefined ? `${line.wastePercent}%` : "-")
       },
       {
+        key: "indicative",
+        header: showPricesIncVat ? "Richtprijs incl. btw" : "Richtprijs excl. btw",
+        align: "right",
+        render: (line) => {
+          if (!line.productName) {
+            return "-";
+          }
+
+          return (
+            <div style={{ textAlign: "right" }}>
+              <strong>{lineIndicativeTotal(line) ?? "Nog geen prijs"}</strong>
+              <div className="muted" style={{ fontSize: "var(--text-xs)" }}>
+                {line.productName}
+              </div>
+            </div>
+          );
+        }
+      },
+      {
         key: "status",
         header: "Status",
         render: (line) => (
@@ -1069,7 +1443,7 @@ export default function MeasurementPanel({
         }
       }
     ],
-    [canEditMeasurement, isFieldMode, isSaving, roomNameById]
+    [canEditMeasurement, isFieldMode, isSaving, roomNameById, showPricesIncVat]
   );
 
   if (isLoading) {
@@ -1587,6 +1961,8 @@ export default function MeasurementPanel({
             unit: "m2",
             notes: floorNotes.trim() || undefined,
             quoteLineType: "product",
+            tool: "flooring",
+            ...indicativeSnapshotForTool("flooring"),
             validationError: floorResult.validationError,
             successMessage: "Vloerinmeting opgeslagen."
           }),
@@ -1594,13 +1970,15 @@ export default function MeasurementPanel({
           <SummaryList items={[
             { label: "Netto oppervlakte", value: formatNumber(floorResult.areaM2, " m²") },
             { label: "Snijverlies", value: formatNumber(floorResult.wasteM2, " m²") },
-            { label: "Offertehoeveelheid", value: formatNumber(floorResult.quoteQuantityM2, " m²") }
+            { label: "Offertehoeveelheid", value: formatNumber(floorResult.quoteQuantityM2, " m²") },
+            ...indicativeSummaryItems("flooring", floorResult.quoteQuantityM2)
           ]} />
         ),
         fields: (
           <>
             {renderRoomSelect("floor-room", "Ruimte", floorRoomId, applyMeasurementRoomToFloor)}
             {renderWasteProfileSelect("floor-waste-profile", "Standaard snijverlies", getProfilesForGroup("flooring"), (profileId) => setWasteFromProfile(profileId, setFloorWastePercent, "flooring"))}
+            {renderProductPicker("flooring", "flooring")}
             <Field htmlFor="floor-length" label="Lengte in meter">
               <Input id="floor-length" inputMode="decimal" value={floorLengthM} onChange={(e) => setFloorLengthM(e.target.value)} />
             </Field>
@@ -1657,6 +2035,8 @@ export default function MeasurementPanel({
             unit: "meter",
             notes: plinthNotes.trim() || undefined,
             quoteLineType: "material",
+            tool: "plinths",
+            ...indicativeSnapshotForTool("plinths"),
             validationError: plinthResult.validationError,
             successMessage: "Plintinmeting opgeslagen."
           }),
@@ -1664,13 +2044,15 @@ export default function MeasurementPanel({
           <SummaryList items={[
             { label: "Netto meters", value: formatNumber(plinthResult.netMeter, " m") },
             { label: "Snijverlies", value: formatNumber(plinthResult.wasteMeter, " m") },
-            { label: "Offertehoeveelheid", value: formatNumber(plinthResult.quoteQuantityMeter, " m") }
+            { label: "Offertehoeveelheid", value: formatNumber(plinthResult.quoteQuantityMeter, " m") },
+            ...indicativeSummaryItems("plinths", plinthResult.quoteQuantityMeter)
           ]} />
         ),
         fields: (
           <>
             {renderRoomSelect("plinth-room", "Ruimte", plinthRoomId, applyMeasurementRoomToPlinth)}
             {renderWasteProfileSelect("plinth-waste-profile", "Standaard snijverlies", getProfilesForGroup("plinths"), (profileId) => setWasteFromProfile(profileId, setPlinthWastePercent, "plinths"))}
+            {renderProductPicker("plinths", "plinths")}
             <Field htmlFor="plinth-perimeter" label="Omtrek in meter">
               <Input id="plinth-perimeter" inputMode="decimal" value={plinthPerimeterM} onChange={(e) => setPlinthPerimeterM(e.target.value)} />
             </Field>
@@ -1706,6 +2088,8 @@ export default function MeasurementPanel({
             unit: "roll",
             notes: wallpaperNotes.trim() || undefined,
             quoteLineType: "product",
+            tool: "wallpaper",
+            ...indicativeSnapshotForTool("wallpaper"),
             validationError: wallpaperResult.validationError,
             successMessage: "Behanginmeting opgeslagen."
           }),
@@ -1713,13 +2097,15 @@ export default function MeasurementPanel({
           <SummaryList items={[
             { label: "Banen nodig", value: wallpaperResult.banenNeeded },
             { label: "Banen per rol", value: wallpaperResult.banenPerRol },
-            { label: "Offertehoeveelheid", value: `${wallpaperResult.rollsNeeded} rollen` }
+            { label: "Offertehoeveelheid", value: `${wallpaperResult.rollsNeeded} rollen` },
+            ...indicativeSummaryItems("wallpaper", wallpaperResult.rollsNeeded)
           ]} />
         ),
         fields: (
           <>
             {renderRoomSelect("wallpaper-room", "Ruimte", wallpaperRoomId, applyMeasurementRoomToWallpaper)}
             {renderWasteProfileSelect("wallpaper-waste-profile", "Standaard snijverlies", getProfilesForGroup("wallpaper"), (profileId) => setWasteFromProfile(profileId, setWallpaperWastePercent, "wallpaper"))}
+            {renderProductPicker("wallpaper", "wallpaper")}
             <Field htmlFor="wallpaper-width" label="Wandbreedte in meter">
               <Input id="wallpaper-width" inputMode="decimal" value={wallpaperWidthM} onChange={(e) => setWallpaperWidthM(e.target.value)} />
             </Field>
@@ -1764,6 +2150,8 @@ export default function MeasurementPanel({
             unit: "piece",
             notes: wallPanelNotes.trim() || undefined,
             quoteLineType: "product",
+            tool: "wall_panels",
+            ...indicativeSnapshotForTool("wall_panels"),
             validationError: wallPanelResult.validationError,
             successMessage: "Wandpaneleninmeting opgeslagen."
           }),
@@ -1771,13 +2159,15 @@ export default function MeasurementPanel({
           <SummaryList items={[
             { label: "Wandoppervlakte", value: formatNumber(wallPanelResult.wallAreaM2, " m²") },
             { label: "Panelen nodig", value: wallPanelResult.panelsNeeded },
-            { label: "Offertehoeveelheid", value: `${wallPanelResult.quoteQuantityPieces} stuks` }
+            { label: "Offertehoeveelheid", value: `${wallPanelResult.quoteQuantityPieces} stuks` },
+            ...indicativeSummaryItems("wall_panels", wallPanelResult.quoteQuantityPieces)
           ]} />
         ),
         fields: (
           <>
             {renderRoomSelect("wall-panel-room", "Ruimte", wallPanelRoomId, applyMeasurementRoomToWallPanel)}
             {renderWasteProfileSelect("wall-panel-waste-profile", "Standaard snijverlies", getProfilesForGroup("wall_panels"), (profileId) => setWasteFromProfile(profileId, setWallPanelWastePercent, "wall_panels"))}
+            {renderProductPicker("wall_panels", "wall_panels")}
             <Field htmlFor="wall-panel-wall-width" label="Wandbreedte in meter">
               <Input id="wall-panel-wall-width" inputMode="decimal" value={wallWidthM} onChange={(e) => setWallWidthM(e.target.value)} />
             </Field>
@@ -1818,6 +2208,8 @@ export default function MeasurementPanel({
             unit: "stairs",
             notes: stairNotes.trim() || undefined,
             quoteLineType: "service",
+            tool: "stairs",
+            ...indicativeSnapshotForTool("stairs"),
             validationError: stairResult.validationError,
             successMessage: "Trapinmeting opgeslagen."
           }),
@@ -1825,12 +2217,14 @@ export default function MeasurementPanel({
           <SummaryList items={[
             { label: "Treden", value: stairResult.treadCount },
             { label: "Stootborden", value: stairResult.riserCount },
-            { label: "Offertehoeveelheid", value: `${stairResult.quoteQuantity} trap` }
+            { label: "Offertehoeveelheid", value: `${stairResult.quoteQuantity} trap` },
+            ...indicativeSummaryItems("stairs", stairResult.quoteQuantity)
           ]} />
         ),
         fields: (
           <>
             {renderRoomSelect("stair-room", "Ruimte", stairRoomId, setStairRoomId)}
+            {renderProductPicker("stairs", "stairs")}
             <Field htmlFor="stair-type" label="Traptype">
               <Select id="stair-type" value={stairType} onChange={(e) => setStairType(e.target.value)}>
                 <option value="straight">Rechte trap</option>
@@ -1875,6 +2269,8 @@ export default function MeasurementPanel({
             unit: manualUnit,
             notes: manualNotes.trim() || undefined,
             quoteLineType: manualQuoteLineType,
+            tool: "manual",
+            ...indicativeSnapshotForTool("manual"),
             validationError: parseDecimal(manualQuantity) ? undefined : "quantity is required.",
             successMessage: "Vrije inmeetregel opgeslagen."
           }),
@@ -1882,7 +2278,8 @@ export default function MeasurementPanel({
           <SummaryList items={[
             { label: "Productgroep", value: formatMeasurementProductGroup(manualProductGroup) },
             { label: "Soort post", value: formatLineType(manualQuoteLineType) },
-            { label: "Hoeveelheid", value: `${manualQuantity || "-"} ${formatUnit(manualUnit)}` }
+            { label: "Hoeveelheid", value: `${manualQuantity || "-"} ${formatUnit(manualUnit)}` },
+            ...indicativeSummaryItems("manual", parseDecimal(manualQuantity) ?? 0)
           ]} />
         ),
         fields: (
@@ -1893,6 +2290,7 @@ export default function MeasurementPanel({
                 {PRODUCT_GROUP_OPTIONS.map((group) => <option key={group} value={group}>{formatMeasurementProductGroup(group)}</option>)}
               </Select>
             </Field>
+            {renderProductPicker("manual", manualProductGroup)}
             <Field htmlFor="manual-quantity" label="Hoeveelheid">
               <Input id="manual-quantity" inputMode="decimal" value={manualQuantity} onChange={(e) => setManualQuantity(e.target.value)} />
             </Field>
@@ -1924,8 +2322,17 @@ export default function MeasurementPanel({
           title={isFieldMode ? "Stap 3 - Opgeslagen meetregels" : "Inmeetregels"}
           description={
             isFieldMode
-              ? "Dit zijn de hoeveelheden die klaarstaan voor de conceptofferte."
-              : "Zet inmeetregels klaar zodat je ze in een offerte kunt overnemen. Er wordt nog niets aan een offerte toegevoegd."
+              ? "Dit zijn de hoeveelheden die klaarstaan voor de conceptofferte. Richtprijzen zijn indicatief."
+              : "Zet inmeetregels klaar zodat je ze in een offerte kunt overnemen. Richtprijzen zijn indicatief; de definitieve prijs bepaal je in de offerte."
+          }
+          actions={
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowPricesIncVat((current) => !current)}
+            >
+              {showPricesIncVat ? "Toon excl. btw" : "Toon incl. btw"}
+            </Button>
           }
         />
         <DataTable
@@ -1957,6 +2364,16 @@ export default function MeasurementPanel({
                     : "Geen ruimte"}{" "}
                 · {formatNumber(line.quantity)} {formatUnit(line.unit)}
               </p>
+              {line.productName ? (
+                <p>
+                  {line.productName}
+                  {" · "}
+                  <strong>{lineIndicativeTotal(line) ?? "Nog geen richtprijs"}</strong>
+                  {lineIndicativeTotal(line) ? (
+                    <span className="muted"> ({showPricesIncVat ? "incl." : "excl."} btw, indicatief)</span>
+                  ) : null}
+                </p>
+              ) : null}
               <p className="muted">{line.notes ?? "Geen notitie"}</p>
               {canEditMeasurement && line.quotePreparationStatus !== "converted" ? (
                 <div className="mobile-card-actions">
@@ -2053,6 +2470,55 @@ export default function MeasurementPanel({
                 </Select>
               </Field>
             </div>
+            <SectionHeader
+              compact
+              title="Product en richtprijs"
+              description={
+                lineCorrectionDraft.productId
+                  ? `Gekozen: ${lineCorrectionDraft.productName || "product"}${
+                      lineCorrectionDraft.indicativeUnitPriceExVat !== undefined &&
+                      lineCorrectionDraft.indicativeVatRate !== undefined
+                        ? ` — richtprijs ${formatEuro(
+                            showPricesIncVat
+                              ? calculateIncVat(
+                                  lineCorrectionDraft.indicativeUnitPriceExVat,
+                                  lineCorrectionDraft.indicativeVatRate
+                                )
+                              : lineCorrectionDraft.indicativeUnitPriceExVat
+                          )} per ${formatUnit(lineCorrectionDraft.indicativePriceUnit ?? "custom")} (${
+                            showPricesIncVat ? "incl." : "excl."
+                          } btw, indicatief)`
+                        : " — nog geen richtprijs beschikbaar"
+                    }`
+                  : "Geen product gekozen. Kies hieronder een product om een richtprijs vast te leggen."
+              }
+              actions={
+                lineCorrectionDraft.productId ? (
+                  <Button size="sm" variant="ghost" onClick={() => void selectEditLineProduct(null)}>
+                    Productkeuze wissen
+                  </Button>
+                ) : undefined
+              }
+            />
+            {(() => {
+              const editingLine = lines.find((item) => item._id === editingLineId);
+
+              return (
+                <CatalogProductPicker
+                  session={session}
+                  idPrefix="measure-edit"
+                  productGroupHint={
+                    editingLine && editingLine.productGroup !== "other"
+                      ? editingLine.productGroup
+                      : null
+                  }
+                  selectedProductId={lineCorrectionDraft.productId}
+                  onSelect={(product) => void selectEditLineProduct(product)}
+                  label="Product (optioneel)"
+                  emptyOptionLabel="Geen product gekozen"
+                />
+              );
+            })()}
             <Field htmlFor="measurement-line-edit-notes" label="Notitie">
               <Textarea
                 id="measurement-line-edit-notes"
@@ -2092,6 +2558,25 @@ export default function MeasurementPanel({
           ))}
         </Select>
       </Field>
+    );
+  }
+
+  function renderProductPicker(tool: FieldMeasureTool, productGroup: MeasurementProductGroup) {
+    if (!canEditMeasurement) {
+      return null;
+    }
+
+    return (
+      <CatalogProductPicker
+        session={session}
+        idPrefix={`measure-${tool}`}
+        productGroupHint={productGroup === "other" ? null : productGroup}
+        selectedProductId={tabProducts[tool]?.id ?? ""}
+        onSelect={(product) => void selectTabProduct(tool, product)}
+        label="Product (optioneel)"
+        description="Kies een product om direct een richtprijs te zien. De definitieve prijs bepaal je in de offerte."
+        emptyOptionLabel="Geen product gekozen"
+      />
     );
   }
 

@@ -735,6 +735,15 @@ export default defineSchema({
     notes: v.optional(v.string()),
     quoteLineType,
     quotePreparationStatus,
+    // Optionele productkeuze tijdens het inmeten + richtprijs-snapshot.
+    // Snapshot = prijs op keuzemoment; de offerte blijft de plek voor de definitieve prijs.
+    productId: v.optional(v.id("products")),
+    productName: v.optional(v.string()),
+    indicativeUnitPriceExVat: v.optional(v.number()),
+    indicativeVatRate: v.optional(v.number()),
+    indicativePriceUnit: v.optional(v.string()),
+    indicativePriceType: v.optional(v.string()),
+    indicativeCapturedAt: v.optional(v.number()),
     convertedQuoteId: v.optional(v.id("quotes")),
     convertedQuoteLineId: v.optional(v.id("quoteLines")),
     createdAt: v.number(),

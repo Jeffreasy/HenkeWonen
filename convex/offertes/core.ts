@@ -1069,18 +1069,40 @@ export const importMeasurementLinesToQuote = mutation({
         }
       }
 
-      const totals = calculateLineTotals(line.quoteLineType, line.quantity, 0, 0);
+      // Richtprijs-snapshot van de meetregel als voorinvulling gebruiken.
+      // Prijsreview blijft altijd verplicht; de offerte is en blijft de
+      // plek waar de prijs definitief wordt gecontroleerd.
+      // Een inmiddels verwijderd of pilot-verborgen product mag de batch niet
+      // blokkeren: die regel komt dan zonder product/prijs binnen (zoals voorheen).
+      let prefilledProductId: Id<"products"> | undefined;
+
+      if (line.productId) {
+        try {
+          prefilledProductId = await validateQuoteLineProduct(ctx, tenant._id, String(line.productId));
+        } catch {
+          prefilledProductId = undefined;
+        }
+      }
+
+      const hasIndicativePrice =
+        prefilledProductId !== undefined &&
+        line.indicativeUnitPriceExVat !== undefined &&
+        line.indicativeVatRate !== undefined;
+      const unitPriceExVat = hasIndicativePrice ? line.indicativeUnitPriceExVat! : 0;
+      const vatRate = hasIndicativePrice ? line.indicativeVatRate! : 0;
+      const totals = calculateLineTotals(line.quoteLineType, line.quantity, unitPriceExVat, vatRate);
       const quoteLineId = await ctx.db.insert("quoteLines", {
         tenantId: tenant._id,
         quoteId: quote._id,
         projectRoomId: room?.projectRoomId,
         lineType: line.quoteLineType,
         title: importedMeasurementLineTitle(line, room),
-        description: importedMeasurementLineDescription(line),
+        description: importedMeasurementLineDescription(line, hasIndicativePrice),
         quantity: line.quantity,
         unit: line.unit,
-        unitPriceExVat: 0,
-        vatRate: 0,
+        unitPriceExVat,
+        vatRate,
+        productId: prefilledProductId,
         lineTotalExVat: totals.lineTotalExVat,
         lineVatTotal: totals.lineVatTotal,
         lineTotalIncVat: totals.lineTotalIncVat,
@@ -1094,9 +1116,13 @@ export const importMeasurementLinesToQuote = mutation({
           calculationType: line.calculationType,
           wastePercent: line.wastePercent,
           isIndicative: true,
-          requiresManualProductReview: true,
+          productId: prefilledProductId ? line.productId : undefined,
+          productName: prefilledProductId ? line.productName : undefined,
+          indicativePriceType: hasIndicativePrice ? line.indicativePriceType : undefined,
+          indicativePriceUnit: hasIndicativePrice ? line.indicativePriceUnit : undefined,
+          requiresManualProductReview: !prefilledProductId,
           requiresManualPriceReview: true,
-          requiresManualVatReview: true
+          requiresManualVatReview: !hasIndicativePrice
         },
         createdAt: now,
         updatedAt: now
