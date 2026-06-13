@@ -389,7 +389,7 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     const pricingRules = read("convex/catalog/pricingRules.ts");
     expect(pricingRules).toContain('new Set(["advice_retail", "retail"])');
     expect(pricingRules).not.toContain("purchase");
-    expect(pricingRules).toContain('row.vatMode !== "exclusive" && row.vatMode !== "inclusive"');
+    expect(pricingRules).toContain('row.vatMode === "exclusive" || row.vatMode === "inclusive"');
 
     const pricingQuery = exportedQueryBlock("convex/catalog/pricing.ts", "getIndicativePrice");
     expect(pricingQuery).toContain("actor: readActorValidator");

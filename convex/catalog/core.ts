@@ -15,6 +15,7 @@ import {
   pilotHiddenReason,
   visibleCommercialNames
 } from "./pilot";
+import { selectCustomerFacingPrice } from "./pricingRules";
 
 const productStatus = v.union(
   v.literal("draft"),
@@ -117,15 +118,9 @@ const productKind = v.optional(
   )
 );
 
-const pricePriority = [
-  "advice_retail",
-  "retail",
-  "pallet",
-  "commission",
-  "net_purchase",
-  "purchase",
-  "manual"
-];
+// De vroegere pricePriority-fallback (advies → pallet → commissie → inkoop)
+// is vervangen door de klantveilige keuzeregel in pricingRules.ts: alleen
+// advies-/verkoopprijzen met besliste btw-modus, nooit inkoop- of staffelprijzen.
 
 export const listProducts = query({
   args: {
@@ -480,6 +475,7 @@ export const listProductsForPortal = query({
       return `${leftCategory} ${left.name}`.localeCompare(`${rightCategory} ${right.name}`, "nl");
     });
 
+    const now = Date.now();
     const items = await Promise.all(
       selected.map(async (product) => {
         const prices = await ctx.db
@@ -488,15 +484,20 @@ export const listProductsForPortal = query({
             q.eq("tenantId", tenant._id).eq("productId", product._id)
           )
           .collect();
-        const preferredPrice = prices.sort((left, right) => {
-          const leftPriority = pricePriority.indexOf(left.priceType);
-          const rightPriority = pricePriority.indexOf(right.priceType);
-          return (
-            (leftPriority === -1 ? 999 : leftPriority) -
-              (rightPriority === -1 ? 999 : rightPriority) ||
-            right.updatedAt - left.updatedAt
-          );
-        })[0];
+        const preferredPrice = selectCustomerFacingPrice(
+          prices.map((price) => ({
+            id: String(price._id),
+            priceType: price.priceType,
+            priceUnit: price.priceUnit,
+            amount: price.amount,
+            vatRate: price.vatRate,
+            vatMode: price.vatMode,
+            validFrom: price.validFrom,
+            updatedAt: price.updatedAt,
+            creationTime: price._creationTime
+          })),
+          now
+        );
         const categoryName = categoryById.get(String(product.categoryId))?.name ?? "Overig";
         const supplierName = product.supplierId
           ? supplierById.get(String(product.supplierId))?.name ?? "Onbekend"
@@ -525,7 +526,7 @@ export const listProductsForPortal = query({
           palletQuantity: product.palletQuantity,
           trailerQuantity: product.trailerQuantity,
           bundleSize: product.bundleSize,
-          priceExVat: preferredPrice?.amount ?? 0,
+          priceExVat: preferredPrice?.unitPriceExVat ?? 0,
           vatRate: preferredPrice?.vatRate ?? 21,
           pilotHiddenReason: args.includePilotHidden ? hiddenReason : undefined,
           status: normalizedProductStatus(product.status)

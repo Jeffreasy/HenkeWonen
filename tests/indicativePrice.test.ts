@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isUnitCompatible,
+  selectCustomerFacingPrice,
   selectIndicativePrice,
   type IndicativePriceRow
 } from "../convex/catalog/pricingRules";
@@ -215,6 +216,34 @@ describe("selectIndicativePrice — geldigheid en tie-breaks", () => {
 
     expect(first?.priceRowId).toBe("b");
     expect(second?.priceRowId).toBe("b");
+  });
+});
+
+describe("selectCustomerFacingPrice — lijstweergave zonder eenheid-context", () => {
+  it("toont nooit een inkoop- of staffelprijs, ook niet als enige optie", () => {
+    for (const priceType of ["purchase", "net_purchase", "commission", "pallet", "manual"]) {
+      expect(selectCustomerFacingPrice([row({ id: "p", priceType })], NOW)).toBeNull();
+    }
+  });
+
+  it("kiest een adviesprijs ongeacht de eenheid en normaliseert btw", () => {
+    const selection = selectCustomerFacingPrice(
+      [
+        row({ id: "inkoop", priceType: "purchase", amount: 5, updatedAt: NOW }),
+        row({ id: "advies", priceUnit: "m1", amount: 12.1, vatMode: "inclusive", updatedAt: NOW - 5000 })
+      ],
+      NOW
+    );
+
+    expect(selection?.priceRowId).toBe("advies");
+    expect(selection?.unitPriceExVat).toBe(10);
+    expect(selection?.unitPriceIncVat).toBe(12.1);
+  });
+
+  it("levert null bij alleen vatMode unknown", () => {
+    expect(
+      selectCustomerFacingPrice([row({ id: "u", vatMode: "unknown" })], NOW)
+    ).toBeNull();
   });
 });
 

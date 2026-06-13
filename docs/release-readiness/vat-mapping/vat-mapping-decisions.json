@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "importProfileId": "ms74693vx6gz8aqgz2xc1d9yc98801fe",
+    "sourceColumnIndex": 0,
+    "sourceColumnName": "Prijs",
+    "vatMode": "exclusive",
+    "overwrite": true,
+    "reviewNote": "Klantbesluit 2026-06-13: alle leverancierslijsten zijn exclusief btw. Stond op inclusive; gelijkgetrokken met de rij-reparatie (tools/repair_price_data.mjs) zodat her-import consistent blijft."
+  }
+]

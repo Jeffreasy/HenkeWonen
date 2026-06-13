@@ -179,6 +179,31 @@ Keuze: **snapshot op de meetregel** (prijs op moment van keuze), met verversing 
 | 3 — offerte-doorstroom | ~0,5 dag |
 | 4 — tests/flankerend | ~0,5–1 dag |
 
+## Vervolgacties uitgevoerd (2026-06-13, na implementatie)
+
+1. **Texdecor-behang hersteld** — oorzaak gevonden: de parser vergeleek het
+   supporttype met `"Papier  peint"` (dubbele spatie) terwijl `clean_text`
+   witruimte samenklapt; al het gewone behang viel daardoor naar "Overig" met
+   priceUnit "custom". Gefixt in `tools/build_catalog_import.py` én op de
+   dev-data via `catalog:texdecor:repair` (nieuw): 6.991 producten
+   (Casadeco 2.648, Caselio 2.664, Casamance 1.679) van "Overig" naar
+   "Behang"/wallpaper/rol, plus 6.991 adviesprijsregels van priceUnit
+   "custom" naar "roll". End-to-end geverifieerd: Casadeco "BABYLONE CAD
+   SCRIBE" geeft richtprijs €72,41 incl. btw per rol.
+2. **Parser-btw conform klantbesluit** — `vat_mode_for` zette ZTAHL-verkoop en
+   Texdecor-publieksprijzen hardcoded op "inclusive"; bij her-import zou de
+   gerepareerde data dus terugdraaien. Beide nu op "exclusive" met verwijzing
+   naar het klantbesluit (en revert-instructie in de comment).
+3. **Prijslek portal-catalogus gedicht** — `listProductsForPortal` gebruikt nu
+   `selectCustomerFacingPrice` (zelfde whitelist/btw-normalisatie/tie-break als
+   de richtprijs) in plaats van de oude pricePriority-fallback die
+   inkoopprijzen kon tonen en vatMode negeerde.
+4. **Profielmappings gelijkgetrokken** — de ZTAHL-verkoopkolom (laatste op
+   "inclusive") via de vat-apply tooling op "exclusive" gezet; verse export
+   bevestigt 57/57 kolommen exclusief
+   (`vat-mapping-current-state-2026-06-13.json`). Daarmee zijn rijen,
+   profielmappings én parser consistent.
+
 ## Bijlagen / bronnen
 
 - Live verificatie: `docs/release-readiness/vat-mapping/vat-mapping-current-state-2026-06-12.{md,json}` + `vat-mapping-human-decision-table-2026-06-12.md` (gegenereerd 2026-06-13 tegen dev)

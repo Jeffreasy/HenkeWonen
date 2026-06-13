@@ -902,18 +902,24 @@ def price_type_for(header: str, source_path: Path) -> str:
 
 
 def vat_mode_for(header: str, source_path: Path) -> str:
+    # Klantbesluit 2026-06-13: alle leverancierslijsten zijn exclusief btw.
+    # ZTAHL-verkoop en Texdecor-publieksprijzen stonden hier eerder op
+    # "inclusive"; dat is conform het besluit omgezet zodat een her-import de
+    # gerepareerde data (zie tools/repair_price_data.mjs) niet terugdraait.
+    # Blijkt een van deze lijsten tóch inclusief, draai dan deze regels terug
+    # én corrigeer de bestaande rijen via repair_price_data.mjs --rules-file.
     if is_ztahl(source_path):
         lower = source_path.name.lower()
         if "inkoop" in lower:
             return "exclusive"
         if "verkoop" in lower:
-            return "inclusive"
+            return "exclusive"
     if is_texdecor(source_path):
         lower = header.lower()
         if "achat" in lower or "vente ned" in lower:
             return "exclusive"
         if "public" in lower:
-            return "inclusive"
+            return "exclusive"
     return infer_vat_mode(header)
 
 
@@ -1091,8 +1097,11 @@ def build_row(
         else:
             supplier_name = "Texdecor"
 
+        # clean_text klapt witruimte samen naar één spatie; de oude vergelijking
+        # met "Papier  peint" (dubbele spatie) kon daardoor nooit matchen en
+        # stuurde al het gewone behang naar "Overig".
         support_type = clean_text(get_value(headers, values, ["Nom Type support"]))
-        if support_type in ("Papier  peint", "Frise", "Stickers"):
+        if support_type in ("Papier peint", "Frise", "Stickers"):
             category_slug = "behang"
             product_kind = "wallpaper"
             unit = "roll"

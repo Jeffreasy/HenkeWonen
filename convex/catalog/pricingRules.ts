@@ -119,12 +119,51 @@ function normalizeVat(
 }
 
 /**
- * Kiest deterministisch één prijsregel als basis voor de richtprijs, of null.
- *
+ * Basisfilter voor klantzichtbare prijsregels: whitelist op prijstype,
+ * positief bedrag, ingegane geldigheid en een besliste btw-modus.
+ * Onbesliste btw-modus vroeg uitsluiten zodat zo'n regel geen bruikbare
+ * kandidaat (bijv. een pak→m²-conversie) kan verdringen.
+ */
+function isCustomerFacingRow(row: IndicativePriceRow, now: number) {
+  return (
+    CUSTOMER_FACING_PRICE_TYPES.has(row.priceType) &&
+    row.amount > 0 &&
+    (row.validFrom === undefined || row.validFrom <= now) &&
+    (row.vatMode === "exclusive" || row.vatMode === "inclusive")
+  );
+}
+
+/**
  * Tie-break bij meerdere kandidaten (komt voor, o.a. door dubbel geïmporteerde
  * prijslijsten): hoogste validFrom → nieuwste updatedAt → hoogste creationTime →
  * stabiele id-vergelijking.
  */
+function compareCandidates(
+  left: { row: IndicativePriceRow },
+  right: { row: IndicativePriceRow }
+) {
+  const leftValidFrom = left.row.validFrom ?? 0;
+  const rightValidFrom = right.row.validFrom ?? 0;
+
+  if (leftValidFrom !== rightValidFrom) {
+    return rightValidFrom - leftValidFrom;
+  }
+
+  if (left.row.updatedAt !== right.row.updatedAt) {
+    return right.row.updatedAt - left.row.updatedAt;
+  }
+
+  const leftCreation = left.row.creationTime ?? 0;
+  const rightCreation = right.row.creationTime ?? 0;
+
+  if (leftCreation !== rightCreation) {
+    return rightCreation - leftCreation;
+  }
+
+  return left.row.id < right.row.id ? 1 : left.row.id > right.row.id ? -1 : 0;
+}
+
+/** Kiest deterministisch één prijsregel als basis voor de richtprijs, of null. */
 export function selectIndicativePrice(
   rows: IndicativePriceRow[],
   product: IndicativePriceProduct,
@@ -136,21 +175,7 @@ export function selectIndicativePrice(
   const candidates: Array<{ row: IndicativePriceRow; conversionApplied?: "package_to_m2" }> = [];
 
   for (const row of rows) {
-    if (!CUSTOMER_FACING_PRICE_TYPES.has(row.priceType)) {
-      continue;
-    }
-
-    if (!(row.amount > 0)) {
-      continue;
-    }
-
-    if (row.validFrom !== undefined && row.validFrom > now) {
-      continue;
-    }
-
-    // Onbesliste btw-modus is onbruikbaar; vroeg uitsluiten zodat zo'n regel
-    // geen bruikbare kandidaat (bijv. een pak→m²-conversie) kan verdringen.
-    if (row.vatMode !== "exclusive" && row.vatMode !== "inclusive") {
+    if (!isCustomerFacingRow(row, now)) {
       continue;
     }
 
@@ -180,27 +205,7 @@ export function selectIndicativePrice(
   const directMatches = candidates.filter((candidate) => !candidate.conversionApplied);
   const pool = directMatches.length > 0 ? directMatches : candidates;
 
-  pool.sort((left, right) => {
-    const leftValidFrom = left.row.validFrom ?? 0;
-    const rightValidFrom = right.row.validFrom ?? 0;
-
-    if (leftValidFrom !== rightValidFrom) {
-      return rightValidFrom - leftValidFrom;
-    }
-
-    if (left.row.updatedAt !== right.row.updatedAt) {
-      return right.row.updatedAt - left.row.updatedAt;
-    }
-
-    const leftCreation = left.row.creationTime ?? 0;
-    const rightCreation = right.row.creationTime ?? 0;
-
-    if (leftCreation !== rightCreation) {
-      return rightCreation - leftCreation;
-    }
-
-    return left.row.id < right.row.id ? 1 : left.row.id > right.row.id ? -1 : 0;
-  });
+  pool.sort(compareCandidates);
 
   const chosen = pool[0];
   const normalized = normalizeVat(chosen.row);
@@ -210,6 +215,36 @@ export function selectIndicativePrice(
   }
 
   return buildSelection(chosen, normalized, product);
+}
+
+/**
+ * Klantveilige prijskeuze zonder eenheid-context, voor lijstweergaven zoals de
+ * portal-catalogus en de offertebouwer. Zelfde whitelist, btw-normalisatie en
+ * tie-break als de richtprijs; geen eenheid-match of conversie. Levert null
+ * als er geen klantzichtbare prijs is — nooit een inkoop- of staffelprijs.
+ */
+export function selectCustomerFacingPrice(
+  rows: IndicativePriceRow[],
+  now: number
+): IndicativePriceSelection | null {
+  const candidates = rows
+    .filter((row) => isCustomerFacingRow(row, now))
+    .map((row) => ({ row }));
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  candidates.sort(compareCandidates);
+
+  const chosen = candidates[0];
+  const normalized = normalizeVat(chosen.row);
+
+  if (!normalized) {
+    return null;
+  }
+
+  return buildSelection(chosen, normalized, {});
 }
 
 function buildSelection(
