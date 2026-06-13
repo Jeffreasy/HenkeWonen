@@ -68,6 +68,19 @@ De portal hanteert de volgende principes:
 2. **Geen automatische samenvoeging**: Producten met dezelfde EAN worden **nooit automatisch samengevoegd of overschreven**. Ze blijven als losse, unieke kaarten in de catalogus bestaan.
 3. **Duidelijke weergave**: In zoekresultaten en offertes toont de portal altijd de combinatie van **productnaam, artikelnummer, collectienaam en leverancier**. De verkoper en de klant zien dus altijd exact welk specifiek product is geselecteerd, ongeacht een eventueel gedeelde barcode.
 
+### Update na go-live (13 juni 2026)
+
+Bij de go-live van de richtprijs-functie is de productie-catalogus opnieuw gecontroleerd via een volledige
+read-only export. De werkelijke data-stand: **1.871 EAN-groepen met in totaal 4.393 producten** delen een
+nummer (1.805 binnen dezelfde leverancier — vooral Texdecor-behang — en 66 over leveranciers heen, doorgaans
+legitiem). Het getal "0 geregistreerde issues" hierboven betreft de in-portal registratielijst, niet de
+onderliggende data.
+
+Dit punt is voor de productie-release **expliciet geaccepteerd** als bekend datakwaliteitspunt: de
+bovenstaande principes (geen unieke sleutel, geen automatische samenvoeging, duidelijke weergave) zijn in de
+live code geverifieerd en blijven gelden. Vastlegging + onderbouwing:
+`docs/release-readiness/data-issues/duplicate-ean-prod-acceptatie-2026-06-13.md`.
+
 ---
 
 ## 4. Beveiliging- & Omgevingsstatus
