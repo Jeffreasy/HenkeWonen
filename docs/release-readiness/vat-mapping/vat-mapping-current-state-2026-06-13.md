@@ -4,13 +4,13 @@ Deze export toont de actuele btw-mapping review uit Convex. Alleen kolommen met 
 
 ## Samenvatting
 
-- Importprofielen: 18
-- Prijskolommen totaal: 57
-- Resolved: 57
+- Importprofielen: 20
+- Prijskolommen totaal: 61
+- Resolved: 61
 - Unresolved: 0
 - Onbekende btw-modus toegestaan: 0
 - Productie-importstatus: READY
-- Open duplicate-EAN waarschuwingen: 1816
+- Open duplicate-EAN waarschuwingen: 0
 
 ## Automatisch toepasbaar met hoge zekerheid
 
@@ -59,6 +59,10 @@ Geen open mappings met expliciete incl./excl. btw in de bronkolom gevonden.
 | Floorlife/Ambiant PVC 11-2025 | Floorlife | pvc | *PVC*11-2025*.xlsx | Adviesverkoopprijs EUR m2 | 3 | advice_retail | m2 | exclusive | inclusive | medium | beoordeeld | Advies-/consumentenprijs zonder expliciete btw-aanduiding. Henke Wonen rekent klantgericht inclusief btw, maar dit vraagt menselijke bevestiging per bron. |
 | Headlam gordijnstoffen Complete Collectie 2026 | Headlam | Gordijnen | *Gordijnen*Headlam*.xlsx | Consumer Price | 0 | advice_retail | m1 | exclusive | inclusive | medium | beoordeeld | Advies-/consumentenprijs zonder expliciete btw-aanduiding. Henke Wonen rekent klantgericht inclusief btw, maar dit vraagt menselijke bevestiging per bron. |
 | Interfloor legacy artikeloverzicht | Interfloor | Tapijt | *Interfloor*.xls | Adviesverkoop per m1 | 0 | advice_retail | m1 | exclusive | inclusive | medium | beoordeeld | Advies-/consumentenprijs zonder expliciete btw-aanduiding. Henke Wonen rekent klantgericht inclusief btw, maar dit vraagt menselijke bevestiging per bron. |
+| Lay Red collectie NL 2026 | Unilin Flooring | pvc | *Lay Red collectie NL 2026*.xlsx | Advies verkoop prijs geldig vanaf 01/05/2026 | 16 | advice_retail | custom | exclusive | inclusive | medium | open | Advies-/consumentenprijs zonder expliciete btw-aanduiding. Henke Wonen rekent klantgericht inclusief btw, maar dit vraagt menselijke bevestiging per bron. |
+| Lay Red collectie NL 2026 | Unilin Flooring | pvc | *Lay Red collectie NL 2026*.xlsx | Netto Inkoop | 17 | net_purchase | custom | exclusive | exclusive | medium | open | Leveranciers-, inkoop-, netto-, commissie-, pallet- en trailerprijzen worden niet automatisch definitief gezet zonder bronbevestiging. |
+| Moods collectie NL 2026 | Unilin Flooring | pvc | *Moods collectie NL 2026*.xlsx | Adviesverkoopprijs per pak vanaf 01/05/2026 | 14 | advice_retail | pack | exclusive | inclusive | medium | open | Advies-/consumentenprijs zonder expliciete btw-aanduiding. Henke Wonen rekent klantgericht inclusief btw, maar dit vraagt menselijke bevestiging per bron. |
+| Moods collectie NL 2026 | Unilin Flooring | pvc | *Moods collectie NL 2026*.xlsx | Netto Inkoop | 15 | net_purchase | custom | exclusive | exclusive | medium | open | Leveranciers-, inkoop-, netto-, commissie-, pallet- en trailerprijzen worden niet automatisch definitief gezet zonder bronbevestiging. |
 | PVC palletcollectie 2025 | Floorlife | Palletcollectie PVC | *palletcollectie*.xlsx | inkoop op commissie | 0 | commission | pack | exclusive | exclusive | low | beoordeeld | Leveranciers-, inkoop-, netto-, commissie-, pallet- en trailerprijzen worden niet automatisch definitief gezet zonder bronbevestiging. |
 | PVC palletcollectie 2025 | Floorlife | Palletcollectie PVC | *palletcollectie*.xlsx | Adviesverkoopprijs | 1 | advice_retail | m2 | exclusive | inclusive | medium | beoordeeld | Advies-/consumentenprijs zonder expliciete btw-aanduiding. Henke Wonen rekent klantgericht inclusief btw, maar dit vraagt menselijke bevestiging per bron. |
 | Roots collectie NL 2026 | Roots | pvc | *Roots*2026*.xlsx | Adviesverkoopprijs vanaf 01/05/2026 | 0 | advice_retail | pack | exclusive | inclusive | medium | beoordeeld | Advies-/consumentenprijs zonder expliciete btw-aanduiding. Henke Wonen rekent klantgericht inclusief btw, maar dit vraagt menselijke bevestiging per bron. |

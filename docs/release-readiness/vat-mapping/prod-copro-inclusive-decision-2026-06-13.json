@@ -1,0 +1,10 @@
+[
+  {
+    "importProfileId": "js77a6f2k71154wb5z5746t0a986bb2d",
+    "sourceColumnIndex": 4,
+    "sourceColumnName": "Adviesverkoopprijs incl. BTW. per verpakking",
+    "vatMode": "inclusive",
+    "overwrite": true,
+    "reviewNote": "Co-pro-kolom is letterlijk incl. BTW (31 echte adviesprijzen). Workbench-mapping op inclusief zodat een toekomstige her-import deze niet als exclusief opslaat (audit-bevinding C-1). Alle overige 60 kolommen blijven exclusief, conform klantbesluit 2026-06-13."
+  }
+]
