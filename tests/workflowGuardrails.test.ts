@@ -137,6 +137,7 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
       "convex/catalog/import.ts:deleteProductsBySupplierChunk",
       "convex/catalog/import.ts:resetCatalogChunk",
       "convex/catalog/maintenance.ts:deletePseudoPriceRowsChunk",
+      "convex/catalog/maintenance.ts:deleteDocumentsByIdChunk",
       "convex/projecten/measurements.ts:deleteMeasurementLine",
       "convex/projecten/measurements.ts:deleteMeasurementRoom",
       "convex/projecten/core.ts:deleteProjectRoom",
@@ -389,6 +390,15 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(deletePseudoRows).toContain('["admin"]');
     expect(deletePseudoRows).toContain('"productPrices"');
     expect(deletePseudoRows).not.toContain('"products"');
+  });
+
+  it("should secure deleteDocumentsByIdChunk with confirm, admin role and tenant scope", () => {
+    const deleteById = exportedMutationBlock("convex/catalog/maintenance.ts", "deleteDocumentsByIdChunk");
+    expect(deleteById).toContain('confirm: v.literal("DELETE_ORPHAN_RECORDS")');
+    expect(deleteById).toContain("actor: mutationActorValidator");
+    expect(deleteById).toContain('["admin"]');
+    expect(deleteById).toContain("doc.tenantId !== tenant._id");
+    expect(deleteById).toContain("args.dryRun ?? true");
   });
 
   it("should keep the indicative price rule customer-safe", () => {

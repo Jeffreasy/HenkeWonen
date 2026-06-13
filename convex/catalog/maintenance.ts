@@ -548,3 +548,68 @@ export const deletePseudoPriceRowsChunk = mutation({
     };
   }
 });
+
+/**
+ * Verwijdert specifieke documenten op _id binnen één tabel — voor het opruimen van
+ * cascade-delete-wezen (resten van verwijderde projecten/quotes; zie
+ * docs/release-readiness/data-issues/prod-cleanup-analysis-2026-06-13.md §B1).
+ *
+ * Veilig: admin-rol + letterlijke confirm + dryRun-default + per-tabel + tenant-scope
+ * (een document van een andere tenant wordt nooit verwijderd). De IDs moeten vooraf
+ * geverifieerde wezen zijn — deze mutatie hercontroleert ouderschap niet, alleen tenant/tabel.
+ *
+ * Aansturing: tools/cleanup_orphan_records.mjs
+ */
+export const deleteDocumentsByIdChunk = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    confirm: v.literal("DELETE_ORPHAN_RECORDS"),
+    table: v.string(),
+    ids: v.array(v.string()),
+    dryRun: v.optional(v.boolean())
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const dryRun = args.dryRun ?? true;
+
+    let matched = 0;
+    const skipped: Array<{ id: string; reason: string }> = [];
+
+    for (const idStr of args.ids) {
+      const id = ctx.db.normalizeId(args.table as any, idStr);
+
+      if (!id) {
+        skipped.push({ id: idStr, reason: "invalid-id-for-table" });
+        continue;
+      }
+
+      const doc: any = await ctx.db.get(id);
+
+      if (!doc) {
+        skipped.push({ id: idStr, reason: "not-found" });
+        continue;
+      }
+
+      if (doc.tenantId !== tenant._id) {
+        skipped.push({ id: idStr, reason: "wrong-tenant" });
+        continue;
+      }
+
+      matched += 1;
+
+      if (!dryRun) {
+        await ctx.db.delete(id);
+      }
+    }
+
+    return {
+      dryRun,
+      table: args.table,
+      requested: args.ids.length,
+      matched,
+      deleted: dryRun ? 0 : matched,
+      skipped
+    };
+  }
+});

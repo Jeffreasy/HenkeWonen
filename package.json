@@ -38,6 +38,8 @@
     "catalog:texdecor:repair:apply": "node tools/repair_texdecor_categories.mjs --apply",
     "catalog:names:repair": "node tools/repair_product_names.mjs",
     "catalog:names:repair:apply": "node tools/repair_product_names.mjs --apply",
+    "catalog:orphans:cleanup": "node tools/cleanup_orphan_records.mjs",
+    "catalog:orphans:cleanup:apply": "node tools/cleanup_orphan_records.mjs --apply",
     "catalog:suppliers:audit": "node tools/audit_supplier_products.mjs",
     "portal:demo-seed": "node tools/seed_demo_portal_data.mjs",
     "test": "vitest run",
