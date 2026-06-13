@@ -3,6 +3,11 @@
 > **Doel van dit document:** een nieuwe Claude-sessie (of ontwikkelaar) volledig op snelheid brengen
 > zonder het onderzoek van deze sessie over te doen. Lees dit eerst, daarna de gelinkte detaildocs.
 > Alle feiten hieronder zijn deze sessie geverifieerd tegen code en live data.
+>
+> **Bijgewerkt aan einde sessie:** ná de prod-data-reparaties zijn nog twee dingen gedaan: (1) de prod
+> btw-workbench is her-import-veilig gemaakt (§8 punt 1 — opgelost), en (2) de feature-branch is naar
+> `main` gemerged (fast-forward). Het enige dat nog rest is de **frontend-deploy** (`git push origin main`
+> → Vercel) om de richtprijs-UI live te zetten — dat is een bewuste eigenaarsactie. Zie §8.
 
 ---
 
@@ -50,6 +55,8 @@ Nieuwste eerst; `b62844a` en ouder = vóór deze sessie.
 
 | Commit | Inhoud |
 |---|---|
+| `86945ab` | docs: prod btw-workbench Co-pro-kolom op inclusief (her-import-veilig) |
+| `fa5c857` | docs: dit overdrachtsdocument |
 | `467abf2` | docs: productie-data-auditrapport |
 | `71ad1f2` | fix(data): audit-reparaties C-1 (btw) + H-1 (namen) + Interfloor-parser |
 | `aeb78ee` | feat(catalog): schone klant-/offertenaam uit rommelige productnamen |
@@ -58,6 +65,9 @@ Nieuwste eerst; `b62844a` en ouder = vóór deze sessie.
 | `d903d8d` | docs: btw-mapping live-stand dev (2026-06-12 export) |
 | `428d349` | feat: richtprijs bij inmeting met productkeuze en offerte-prefill |
 
+**`main` is bijgewerkt** naar deze stand (fast-forward op 2026-06-13): zowel `main` als de feature-branch
+wijzen naar `86945ab`. **Nog niet gepusht naar `origin` op moment van schrijven** — `git push origin main`
+is de eigenaarsactie die (bij gekoppelde Vercel) de frontend-deploy triggert (§8).
 Working tree is schoon. Niet gecommit (lokaal, gitignored): `.env.prod.local` (zie §6).
 
 ---
@@ -210,17 +220,20 @@ Dev is eveneens gerepareerd (zelfde stappen, eerder in de sessie).
 
 ## 8. OPENSTAANDE PUNTEN (prioriteit)
 
-**Vóór een volgende catalogus-import op prod (anders keert de btw-fout terug):**
-- [ ] **Btw-workbench-mappings op prod rechtzetten.** De reparaties fixen alleen bestaande rijen, niet de
-  `importProfiles`-mappings. Een her-import herintroduceert de oude btw-stand. Zet de profielkolommen op
-  exclusief in de portal-btw-workbench (op dev is dit al gedaan voor de ZTAHL-verkooplijst via
-  `tools/apply_vat_mapping_decisions.mjs`).
+**Go-live van de feature — DE enige resterende stap (eigenaarsactie):**
+- [ ] **Frontend live zetten.** `main` is al bijgewerkt (§2). Draai `git push origin main`; bij een aan
+  GitHub gekoppeld Vercel-project deployt dat de frontend automatisch naar productie (anders `npx vercel --prod`).
+  Backend draait al op prod, dus frontend/backend zijn in sync. Hierna ziet de pilot de richtprijs-UI.
+  ⚠️ Een AI kan dit niet zelf doen (zie §6.1) — de eigenaar pusht/deployt.
 
-**Go-live van de feature (eigenaarsbeslissing):**
-- [ ] Frontend live zetten (richtprijs-UI naar pilot-gebruikers) — deploy de Vercel-frontend, idealiter na
-  merge van de feature-branch naar `main`.
-- [ ] Overweeg de feature-branch netjes naar `main` te mergen (nu staat prod-Convex gedeployd vanaf de
-  feature-branch, buiten de normale release-poort).
+**Btw-workbench op prod — OPGELOST 2026-06-13 (was open):**
+- [x] De prod btw-workbench stond al 61/61 op exclusief (status READY, conform "alles exclusief"). Eén
+  refinement gedaan: de Co-pro-kolom "Adviesverkoopprijs incl. BTW. per verpakking" (profiel
+  `js77a6f2k71154wb5z5746t0a986bb2d`, kolomindex 4) op **inclusief** gezet zodat een her-import de 31
+  echt-inclusieve adviesprijzen niet als exclusief opslaat. Beslissing:
+  `docs/release-readiness/vat-mapping/prod-copro-inclusive-decision-2026-06-13.json`, toegepast via
+  `tools/apply_vat_mapping_decisions.mjs --decisions-file=... --production --target=production
+  --confirm-production-vat-apply --apply`. Dev was eerder al gelijkgetrokken (ZTAHL). → her-import-veilig.
 
 **Opruimwerk (laag, niet-blokkerend):**
 - [ ] 13 cascade-delete-wezen op prod (resten van verwijderde test-projecten/quote) opruimen — geen bestaand tool.
