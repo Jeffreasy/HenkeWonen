@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "portal-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/dev_preview_server.mjs"],
+      "port": 4399,
+      "autoPort": false
+    }
+  ]
+}

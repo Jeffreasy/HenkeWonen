@@ -19,7 +19,6 @@ import { showToast } from "../../lib/toast";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import {
   formatLineType,
-  formatMeasurementCalculationType,
   formatMeasurementProductGroup,
   formatMeasurementStatus,
   formatQuotePreparationStatus,
@@ -1353,20 +1352,14 @@ export default function MeasurementPanel({
           line.roomId ? roomNameById.get(line.roomId) ?? "-" : isFieldMode ? "Algemeen" : "-"
       },
       {
-        key: "calculation",
-        header: "Berekening",
-        render: (line) => formatMeasurementCalculationType(line.calculationType)
-      },
-      {
         key: "quantity",
         header: "Hoeveelheid",
         align: "right",
-        render: (line) => formatNumber(line.quantity)
-      },
-      {
-        key: "unit",
-        header: "Eenheid",
-        render: (line) => formatUnit(line.unit)
+        render: (line) => (
+          <span style={{ whiteSpace: "nowrap" }}>
+            {formatNumber(line.quantity)} {formatUnit(line.unit)}
+          </span>
+        )
       },
       {
         key: "waste",
@@ -1377,7 +1370,7 @@ export default function MeasurementPanel({
       },
       {
         key: "indicative",
-        header: showPricesIncVat ? "Richtprijs incl. btw" : "Richtprijs excl. btw",
+        header: "Richtprijs",
         align: "right",
         render: (line) => {
           if (!line.productName) {
@@ -1386,7 +1379,9 @@ export default function MeasurementPanel({
 
           return (
             <div style={{ textAlign: "right" }}>
-              <strong>{lineIndicativeTotal(line) ?? "Nog geen prijs"}</strong>
+              <strong style={{ whiteSpace: "nowrap" }}>
+                {lineIndicativeTotal(line) ?? "Nog geen prijs"}
+              </strong>
               <div className="muted" style={{ fontSize: "var(--text-xs)" }}>
                 {line.productName}
               </div>
@@ -1500,9 +1495,9 @@ export default function MeasurementPanel({
 
       {!isFieldMode ? (
         <Alert
-          variant="warning"
-          title="Geen prijsberekening"
-          description="Inmeting bereidt hoeveelheden voor. Prijzen en btw worden pas in de offerte bepaald."
+          variant="info"
+          title="Richtprijzen zijn indicatief"
+          description="Kies bij het inmeten optioneel een product om direct een richtprijs te zien. De definitieve prijs en btw bepaal je in de offerte."
         />
       ) : null}
 
@@ -1978,7 +1973,6 @@ export default function MeasurementPanel({
           <>
             {renderRoomSelect("floor-room", "Ruimte", floorRoomId, applyMeasurementRoomToFloor)}
             {renderWasteProfileSelect("floor-waste-profile", "Standaard snijverlies", getProfilesForGroup("flooring"), (profileId) => setWasteFromProfile(profileId, setFloorWastePercent, "flooring"))}
-            {renderProductPicker("flooring", "flooring")}
             <Field htmlFor="floor-length" label="Lengte in meter">
               <Input id="floor-length" inputMode="decimal" value={floorLengthM} onChange={(e) => setFloorLengthM(e.target.value)} />
             </Field>
@@ -2012,6 +2006,7 @@ export default function MeasurementPanel({
             <Field htmlFor="floor-notes" label="Notitie">
               <Input id="floor-notes" value={floorNotes} onChange={(e) => setFloorNotes(e.target.value)} />
             </Field>
+            {renderProductPicker("flooring", "flooring")}
           </>
         )
       },
@@ -2052,7 +2047,6 @@ export default function MeasurementPanel({
           <>
             {renderRoomSelect("plinth-room", "Ruimte", plinthRoomId, applyMeasurementRoomToPlinth)}
             {renderWasteProfileSelect("plinth-waste-profile", "Standaard snijverlies", getProfilesForGroup("plinths"), (profileId) => setWasteFromProfile(profileId, setPlinthWastePercent, "plinths"))}
-            {renderProductPicker("plinths", "plinths")}
             <Field htmlFor="plinth-perimeter" label="Omtrek in meter">
               <Input id="plinth-perimeter" inputMode="decimal" value={plinthPerimeterM} onChange={(e) => setPlinthPerimeterM(e.target.value)} />
             </Field>
@@ -2065,6 +2059,7 @@ export default function MeasurementPanel({
             <Field htmlFor="plinth-notes" label="Notitie">
               <Input id="plinth-notes" value={plinthNotes} onChange={(e) => setPlinthNotes(e.target.value)} />
             </Field>
+            {renderProductPicker("plinths", "plinths")}
           </>
         )
       },
@@ -2105,7 +2100,6 @@ export default function MeasurementPanel({
           <>
             {renderRoomSelect("wallpaper-room", "Ruimte", wallpaperRoomId, applyMeasurementRoomToWallpaper)}
             {renderWasteProfileSelect("wallpaper-waste-profile", "Standaard snijverlies", getProfilesForGroup("wallpaper"), (profileId) => setWasteFromProfile(profileId, setWallpaperWastePercent, "wallpaper"))}
-            {renderProductPicker("wallpaper", "wallpaper")}
             <Field htmlFor="wallpaper-width" label="Wandbreedte in meter">
               <Input id="wallpaper-width" inputMode="decimal" value={wallpaperWidthM} onChange={(e) => setWallpaperWidthM(e.target.value)} />
             </Field>
@@ -2127,6 +2121,7 @@ export default function MeasurementPanel({
             <Field htmlFor="wallpaper-notes" label="Notitie">
               <Input id="wallpaper-notes" value={wallpaperNotes} onChange={(e) => setWallpaperNotes(e.target.value)} />
             </Field>
+            {renderProductPicker("wallpaper", "wallpaper")}
           </>
         )
       },
@@ -2167,7 +2162,6 @@ export default function MeasurementPanel({
           <>
             {renderRoomSelect("wall-panel-room", "Ruimte", wallPanelRoomId, applyMeasurementRoomToWallPanel)}
             {renderWasteProfileSelect("wall-panel-waste-profile", "Standaard snijverlies", getProfilesForGroup("wall_panels"), (profileId) => setWasteFromProfile(profileId, setWallPanelWastePercent, "wall_panels"))}
-            {renderProductPicker("wall_panels", "wall_panels")}
             <Field htmlFor="wall-panel-wall-width" label="Wandbreedte in meter">
               <Input id="wall-panel-wall-width" inputMode="decimal" value={wallWidthM} onChange={(e) => setWallWidthM(e.target.value)} />
             </Field>
@@ -2186,6 +2180,7 @@ export default function MeasurementPanel({
             <Field htmlFor="wall-panel-notes" label="Notitie">
               <Input id="wall-panel-notes" value={wallPanelNotes} onChange={(e) => setWallPanelNotes(e.target.value)} />
             </Field>
+            {renderProductPicker("wall_panels", "wall_panels")}
           </>
         )
       },
@@ -2224,7 +2219,6 @@ export default function MeasurementPanel({
         fields: (
           <>
             {renderRoomSelect("stair-room", "Ruimte", stairRoomId, setStairRoomId)}
-            {renderProductPicker("stairs", "stairs")}
             <Field htmlFor="stair-type" label="Traptype">
               <Select id="stair-type" value={stairType} onChange={(e) => setStairType(e.target.value)}>
                 <option value="straight">Rechte trap</option>
@@ -2246,6 +2240,7 @@ export default function MeasurementPanel({
             <Field htmlFor="stair-notes" label="Notitie">
               <Input id="stair-notes" value={stairNotes} onChange={(e) => setStairNotes(e.target.value)} />
             </Field>
+            {renderProductPicker("stairs", "stairs")}
           </>
         )
       },
@@ -2290,7 +2285,6 @@ export default function MeasurementPanel({
                 {PRODUCT_GROUP_OPTIONS.map((group) => <option key={group} value={group}>{formatMeasurementProductGroup(group)}</option>)}
               </Select>
             </Field>
-            {renderProductPicker("manual", manualProductGroup)}
             <Field htmlFor="manual-quantity" label="Hoeveelheid">
               <Input id="manual-quantity" inputMode="decimal" value={manualQuantity} onChange={(e) => setManualQuantity(e.target.value)} />
             </Field>
@@ -2308,6 +2302,7 @@ export default function MeasurementPanel({
             <Field htmlFor="manual-notes" label="Notitie">
               <Input id="manual-notes" value={manualNotes} onChange={(e) => setManualNotes(e.target.value)} />
             </Field>
+            {renderProductPicker("manual", manualProductGroup)}
           </>
         )
       }
@@ -2322,16 +2317,17 @@ export default function MeasurementPanel({
           title={isFieldMode ? "Stap 3 - Opgeslagen meetregels" : "Inmeetregels"}
           description={
             isFieldMode
-              ? "Dit zijn de hoeveelheden die klaarstaan voor de conceptofferte. Richtprijzen zijn indicatief."
-              : "Zet inmeetregels klaar zodat je ze in een offerte kunt overnemen. Richtprijzen zijn indicatief; de definitieve prijs bepaal je in de offerte."
+              ? `Dit zijn de hoeveelheden die klaarstaan voor de conceptofferte. Richtprijzen zijn indicatief en ${showPricesIncVat ? "incl." : "excl."} btw.`
+              : `Zet inmeetregels klaar zodat je ze in een offerte kunt overnemen. Richtprijzen zijn indicatief en ${showPricesIncVat ? "incl." : "excl."} btw; de definitieve prijs bepaal je in de offerte.`
           }
           actions={
             <Button
               size="sm"
-              variant="ghost"
+              variant="secondary"
+              style={{ whiteSpace: "nowrap" }}
               onClick={() => setShowPricesIncVat((current) => !current)}
             >
-              {showPricesIncVat ? "Toon excl. btw" : "Toon incl. btw"}
+              {showPricesIncVat ? "Excl. btw" : "Incl. btw"}
             </Button>
           }
         />
@@ -2513,6 +2509,7 @@ export default function MeasurementPanel({
                       : null
                   }
                   selectedProductId={lineCorrectionDraft.productId}
+                  selectedProductLabel={lineCorrectionDraft.productName || undefined}
                   onSelect={(product) => void selectEditLineProduct(product)}
                   label="Product (optioneel)"
                   emptyOptionLabel="Geen product gekozen"
@@ -2573,8 +2570,8 @@ export default function MeasurementPanel({
         productGroupHint={productGroup === "other" ? null : productGroup}
         selectedProductId={tabProducts[tool]?.id ?? ""}
         onSelect={(product) => void selectTabProduct(tool, product)}
-        label="Product (optioneel)"
-        description="Kies een product om direct een richtprijs te zien. De definitieve prijs bepaal je in de offerte."
+        label="Richtprijs: kies een product (optioneel)"
+        description="De richtprijs verschijnt direct in de live berekening."
         emptyOptionLabel="Geen product gekozen"
       />
     );

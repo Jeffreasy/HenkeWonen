@@ -364,6 +364,64 @@ export const repairTexdecorCategoriesChunk = mutation({
   }
 });
 
+/**
+ * Herstelt packageContentM2-waarden die door een komma-als-duizendtal-misser
+ * in de bron (bv. "4,861" m² als 4861) duizend keer te groot zijn opgeslagen.
+ * Pakinhoud is in werkelijkheid hooguit tientallen m²; waarden ≥ 100 worden
+ * door 1000 gedeeld. Idempotent (gerepareerde waarden vallen onder de 100).
+ */
+export const repairPackageContentChunk = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    confirm: v.literal("REPAIR_PACKAGE_CONTENT"),
+    dryRun: v.optional(v.boolean()),
+    batchSize: v.optional(v.number()),
+    cursor: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const batchSize = Math.min(Math.max(args.batchSize ?? 1000, 100), 2000);
+    const dryRun = args.dryRun ?? true;
+
+    const paginated = await ctx.db
+      .query("products")
+      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+      .paginate({ numItems: batchSize, cursor: args.cursor ?? null });
+
+    let matched = 0;
+    const breakdown: Record<string, number> = {};
+
+    for (const product of paginated.page) {
+      const value = product.packageContentM2;
+
+      if (typeof value !== "number" || value < 100) {
+        continue;
+      }
+
+      matched += 1;
+      const key = `${value} -> ${value / 1000}`;
+      breakdown[key] = (breakdown[key] ?? 0) + 1;
+
+      if (!dryRun) {
+        await ctx.db.patch(product._id, { packageContentM2: value / 1000 });
+      }
+    }
+
+    return {
+      dryRun,
+      scanned: paginated.page.length,
+      matched,
+      patched: dryRun ? 0 : matched,
+      breakdown: Object.entries(breakdown)
+        .slice(0, 50)
+        .map(([key, count]) => ({ key, count })),
+      isDone: paginated.isDone,
+      continueCursor: paginated.continueCursor
+    };
+  }
+});
+
 export const deletePseudoPriceRowsChunk = mutation({
   args: {
     tenantSlug: v.string(),

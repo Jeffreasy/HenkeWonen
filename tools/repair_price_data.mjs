@@ -52,11 +52,12 @@ const apply = hasFlag(toolEnv.args, "--apply");
 const dryRun = !apply;
 const skipVat = hasFlag(toolEnv.args, "--skip-vat");
 const skipPseudo = hasFlag(toolEnv.args, "--skip-pseudo");
+const skipPackageContent = hasFlag(toolEnv.args, "--skip-package-content");
 const rulesFile = optionValue(toolEnv.args, "--rules-file");
 const batchSize = Number(optionValue(toolEnv.args, "--batch-size") ?? 1000);
 
-if (skipVat && skipPseudo) {
-  throw new Error("Niets te doen: --skip-vat en --skip-pseudo sluiten elkaar uit.");
+if (skipVat && skipPseudo && skipPackageContent) {
+  throw new Error("Niets te doen: alle stappen zijn overgeslagen.");
 }
 
 requireCatalogToolTarget(toolEnv, {
@@ -162,6 +163,19 @@ if (!skipPseudo) {
       tenantSlug: toolEnv.tenantSlug,
       actor,
       confirm: "DELETE_PSEUDO_PRICE_ROWS",
+      dryRun,
+      batchSize,
+      cursor
+    })
+  );
+}
+
+if (!skipPackageContent) {
+  report.packageContent = await runChunked("package-content", (cursor) =>
+    client.mutation(api.catalog.maintenance.repairPackageContentChunk, {
+      tenantSlug: toolEnv.tenantSlug,
+      actor,
+      confirm: "REPAIR_PACKAGE_CONTENT",
       dryRun,
       batchSize,
       cursor

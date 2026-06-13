@@ -210,19 +210,19 @@ export default function MeasurementLinePicker({
       },
       {
         key: "calculation",
-        header: "Manier van berekenen",
+        header: "Berekening",
+        hideOnMobile: true,
         render: (item) => formatMeasurementCalculationType(item.line.calculationType)
       },
       {
         key: "quantity",
         header: "Hoeveelheid",
         align: "right",
-        render: (item) => formatNumber(item.line.quantity)
-      },
-      {
-        key: "unit",
-        header: "Eenheid",
-        render: (item) => formatUnit(item.line.unit)
+        render: (item) => (
+          <span style={{ whiteSpace: "nowrap" }}>
+            {formatNumber(item.line.quantity)} {formatUnit(item.line.unit)}
+          </span>
+        )
       },
       {
         key: "waste",

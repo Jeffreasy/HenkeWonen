@@ -278,8 +278,8 @@ export default function QuoteLineEditor({
             productGroupHint={productGroupHint}
             selectedProductId={selectedProduct?.id ?? ""}
             onSelect={applyProduct}
+            label="Product kiezen"
             required
-            showFilterHint={isFieldMode}
             showPriceInLabel
           />
           {productError ? <Alert variant="warning" description={productError} /> : null}

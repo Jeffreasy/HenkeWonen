@@ -4,7 +4,6 @@ import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatEuro } from "../../lib/money";
 import type { MeasurementProductGroup, PortalProduct } from "../../lib/portalTypes";
-import { getAllowedCategories } from "../../lib/quotes/measurementCatalogMapping";
 import { Alert } from "../ui/Alert";
 import { Field } from "../ui/Field";
 import { SearchInput } from "../ui/SearchInput";
@@ -14,42 +13,40 @@ type CatalogProductPickerProps = {
   session: AppSession;
   /** Uniek prefix voor DOM-ids zodat meerdere pickers op één pagina kunnen staan. */
   idPrefix: string;
-  /** Filtert de catalogus op de categorieën van deze meetproductgroep. */
+  /** Filtert de catalogus server-side op de categorieën van deze meetproductgroep. */
   productGroupHint?: MeasurementProductGroup | null;
   selectedProductId: string;
+  /** Weergavenaam van de huidige keuze, voor als die buiten de zoekresultaten valt. */
+  selectedProductLabel?: string;
   onSelect: (product: PortalProduct | null) => void;
   label?: string;
   description?: string;
   emptyOptionLabel?: string;
   required?: boolean;
-  showFilterHint?: boolean;
-  /** Toon de portal-prijs in het optielabel (offertebouwer-gedrag). */
+  /** Toon de verkoopprijs in het optielabel (offertebouwer-gedrag). */
   showPriceInLabel?: boolean;
 };
 
 const SEARCH_DEBOUNCE_MS = 300;
 
 /**
- * Herbruikbare catalogus-productkiezer (zoekveld + select), geëxtraheerd uit
- * QuoteLineEditor zodat de inmeetmodule dezelfde picker gebruikt.
- * Pilotregels (PVC Click verborgen, Roots→Moduleo) gelden automatisch via
- * listProductsForPortal.
+ * Herbruikbare catalogus-productkiezer: label → zoekveld → keuzelijst.
+ * Zoekt server-side via searchPickerProducts (search-index + categorie-indexen
+ * van de productgroep); pilotregels en klantveilige prijzen gelden automatisch.
  */
 export default function CatalogProductPicker({
   session,
   idPrefix,
   productGroupHint = null,
   selectedProductId,
+  selectedProductLabel,
   onSelect,
-  label = "Product kiezen",
+  label = "Product",
   description,
-  emptyOptionLabel = "Kies een zichtbaar product",
+  emptyOptionLabel = "Geen product gekozen",
   required = false,
-  showFilterHint = false,
   showPriceInLabel = false
 }: CatalogProductPickerProps) {
-  const allowedCategories = getAllowedCategories(productGroupHint);
-  const allowedCategoriesKey = allowedCategories?.join("|") ?? "";
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [products, setProducts] = useState<PortalProduct[]>([]);
@@ -77,12 +74,11 @@ export default function CatalogProductPicker({
       setError(null);
 
       try {
-        const result = (await client.query(api.catalog.core.listProductsForPortal, {
+        const result = (await client.query(api.catalog.pickerSearch.searchPickerProducts, {
           tenantSlug: session.tenantId,
           search: debouncedSearch || undefined,
-          status: "active",
-          limit: 60,
-          ...(allowedCategories ? { categories: allowedCategories } : {})
+          limit: 30,
+          ...(productGroupHint ? { productGroup: productGroupHint } : {})
         })) as { items: PortalProduct[] };
 
         if (isActive) {
@@ -106,35 +102,44 @@ export default function CatalogProductPicker({
     return () => {
       isActive = false;
     };
-    // allowedCategoriesKey dekt de inhoud van allowedCategories (afgeleid van productGroupHint).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, session.tenantId, allowedCategoriesKey]);
+  }, [debouncedSearch, session.tenantId, productGroupHint]);
 
   const selectedProduct = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? null,
     [products, selectedProductId]
   );
 
+  function optionLabel(product: PortalProduct) {
+    const parts = [
+      product.displayName ?? product.name,
+      product.colorName,
+      product.displaySupplierName ?? product.supplier
+    ].filter(Boolean);
+
+    let text = parts.join(" — ");
+
+    if (showPriceInLabel && product.priceExVat > 0) {
+      text += ` — ${formatEuro(product.priceExVat)}`;
+    }
+
+    return text;
+  }
+
   return (
-    <div className="grid">
-      {showFilterHint && allowedCategories ? (
-        <p className="quote-catalog-filter-hint muted">
-          Gefilterd op: {allowedCategories.join(", ")}
-        </p>
-      ) : null}
-      <SearchInput
-        aria-label="Catalogusproduct zoeken"
-        placeholder="Zoek product, Moduleo, kleur, artikelnummer of leverancier"
-        value={search}
-        onChange={setSearch}
-        onKeyDown={(event) => {
-          // Enter in het zoekveld mag het omliggende (rekenhulp)formulier niet submitten.
-          if (event.key === "Enter") {
-            event.preventDefault();
-          }
-        }}
-      />
-      <Field htmlFor={`${idPrefix}-product`} label={label} description={description} required={required}>
+    <Field htmlFor={`${idPrefix}-product`} label={label} description={description} required={required}>
+      <div className="grid" style={{ gap: 8 }}>
+        <SearchInput
+          aria-label="Catalogusproduct zoeken"
+          placeholder="Zoek op naam, kleur, artikelnummer of merk"
+          value={search}
+          onChange={setSearch}
+          onKeyDown={(event) => {
+            // Enter in het zoekveld mag het omliggende (rekenhulp)formulier niet submitten.
+            if (event.key === "Enter") {
+              event.preventDefault();
+            }
+          }}
+        />
         <Select
           id={`${idPrefix}-product`}
           required={required}
@@ -151,19 +156,28 @@ export default function CatalogProductPicker({
             onSelect(product);
           }}
         >
-          <option value="">{isLoading ? "Catalogus laden..." : emptyOptionLabel}</option>
+          <option value="">
+            {isLoading
+              ? "Catalogus laden..."
+              : products.length === 0
+                ? debouncedSearch
+                  ? "Geen producten gevonden — pas de zoekterm aan"
+                  : emptyOptionLabel
+                : emptyOptionLabel}
+          </option>
           {selectedProductId && !selectedProduct ? (
-            <option value={selectedProductId}>Gekozen product (buiten huidige zoekresultaten)</option>
+            <option value={selectedProductId}>
+              {selectedProductLabel ?? "Gekozen product (buiten huidige zoekresultaten)"}
+            </option>
           ) : null}
           {products.map((product) => (
             <option value={product.id} key={product.id}>
-              {(product.displayName ?? product.name)} - {product.displaySupplierName ?? product.supplier}
-              {showPriceInLabel ? ` - ${formatEuro(product.priceExVat)}` : ""}
+              {optionLabel(product)}
             </option>
           ))}
         </Select>
-      </Field>
-      {error ? <Alert variant="warning" description={error} /> : null}
-    </div>
+        {error ? <Alert variant="warning" description={error} /> : null}
+      </div>
+    </Field>
   );
 }

@@ -329,6 +329,17 @@ def intish(value: float | None) -> int | float | None:
     return int(value) if value.is_integer() else value
 
 
+def sane_package_content_m2(value: float | None) -> float | None:
+    """Pakinhoud in m² is hooguit tientallen. Bronnen met komma-als-duizendtal
+    (bv. "4,861" m² geparsed als 4861) terugschalen. Centraal zodat zowel
+    set_dimension_fields als set_quantity_fields dezelfde correctie toepassen."""
+    if value is None:
+        return None
+    if value >= 100:
+        return value / 1000
+    return value
+
+
 def headers_for(ws) -> tuple[int | None, list[str]]:
     max_col = min(ws.max_column or 80, 80)
     header_row = detect_header_row(ws, 100, max_col)
@@ -798,6 +809,7 @@ def set_dimension_fields(row: dict[str, Any], headers: list[str], values: list[A
         row["thicknessMm"] = thickness
     if wear is not None:
         row["wearLayerMm"] = wear
+    package_m2 = sane_package_content_m2(package_m2)
     if package_m2 is not None:
         row["packageContentM2"] = package_m2
     if pieces is not None:
@@ -822,11 +834,11 @@ def set_quantity_fields(row: dict[str, Any], headers: list[str], values: list[An
         elif "planken per pak" in lower and number is not None:
             row["piecesPerPackage"] = intish(number)
         elif "pakinhoud" in lower and number is not None:
-            row["packageContentM2"] = number
+            row["packageContentM2"] = sane_package_content_m2(number)
         elif "besteleenheid" in lower or "afname" in lower:
             row["orderUnit"] = text
         elif "m2 per pak" in lower or "m² per pak" in lower:
-            row["packageContentM2"] = number
+            row["packageContentM2"] = sane_package_content_m2(number)
 
 
 def valid_from_for(path: Path, header: str | None = None) -> int | None:

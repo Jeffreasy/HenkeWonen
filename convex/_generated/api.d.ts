@@ -20,6 +20,7 @@ import type * as catalog_core from "../catalog/core.js";
 import type * as catalog_import from "../catalog/import.js";
 import type * as catalog_imports from "../catalog/imports.js";
 import type * as catalog_maintenance from "../catalog/maintenance.js";
+import type * as catalog_pickerSearch from "../catalog/pickerSearch.js";
 import type * as catalog_pilot from "../catalog/pilot.js";
 import type * as catalog_pricing from "../catalog/pricing.js";
 import type * as catalog_pricingRules from "../catalog/pricingRules.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   "catalog/import": typeof catalog_import;
   "catalog/imports": typeof catalog_imports;
   "catalog/maintenance": typeof catalog_maintenance;
+  "catalog/pickerSearch": typeof catalog_pickerSearch;
   "catalog/pilot": typeof catalog_pilot;
   "catalog/pricing": typeof catalog_pricing;
   "catalog/pricingRules": typeof catalog_pricingRules;

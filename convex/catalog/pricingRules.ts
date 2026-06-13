@@ -45,6 +45,22 @@ export type IndicativePriceSelection = {
 /** Prijstypes die klantzichtbaar mogen zijn. Bewust géén fallback naar andere types. */
 const CUSTOMER_FACING_PRICE_TYPES = new Set(["advice_retail", "retail"]);
 
+/**
+ * Plausibele pakinhoud in m² voor de pak→m²-conversie. Buiten dit bereik is
+ * het veld vrijwel zeker een datafout (bv. "4,861" als 4861 geïmporteerd door
+ * een komma-als-duizendtal-misser) en zou de conversie een onzinprijs tonen.
+ */
+const PACKAGE_CONTENT_M2_MIN = 0.2;
+const PACKAGE_CONTENT_M2_MAX = 50;
+
+function isPlausiblePackageContent(value: number | undefined): value is number {
+  return (
+    typeof value === "number" &&
+    value >= PACKAGE_CONTENT_M2_MIN &&
+    value <= PACKAGE_CONTENT_M2_MAX
+  );
+}
+
 /** Meeteenheid → toegestane priceUnits (exacte match, geen aannames). */
 const UNIT_COMPATIBILITY: Record<string, string[]> = {
   m2: ["m2"],
@@ -186,12 +202,11 @@ export function selectIndicativePrice(
       continue;
     }
 
-    // Enige toegestane conversie: meeteenheid m² + pakprijs + bekende pakinhoud.
+    // Enige toegestane conversie: meeteenheid m² + pakprijs + plausibele pakinhoud.
     if (
       wantsM2 &&
       (priceUnit === "pack" || priceUnit === "package") &&
-      typeof product.packageContentM2 === "number" &&
-      product.packageContentM2 > 0
+      isPlausiblePackageContent(product.packageContentM2)
     ) {
       candidates.push({ row, conversionApplied: "package_to_m2" });
     }

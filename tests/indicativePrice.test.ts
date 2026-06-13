@@ -129,6 +129,27 @@ describe("selectIndicativePrice — eenheden", () => {
     ).toBeNull();
   });
 
+  it("converteert geen pakprijs bij een onmogelijke pakinhoud (datafout)", () => {
+    // 4861 i.p.v. 4,861 m² (komma-als-duizendtal-misser): zou €0,06/m² tonen.
+    expect(
+      selectIndicativePrice(
+        [row({ id: "pak", priceUnit: "pack", amount: 228.22 })],
+        { packageContentM2: 4861 },
+        "m2",
+        NOW
+      )
+    ).toBeNull();
+    // Te kleine waarde is net zo onbetrouwbaar.
+    expect(
+      selectIndicativePrice(
+        [row({ id: "pak", priceUnit: "pack", amount: 50 })],
+        { packageContentM2: 0.01 },
+        "m2",
+        NOW
+      )
+    ).toBeNull();
+  });
+
   it("laat een directe m²-match altijd winnen van een pak-conversie", () => {
     const selection = selectIndicativePrice(
       [
