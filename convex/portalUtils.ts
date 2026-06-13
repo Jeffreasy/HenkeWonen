@@ -203,6 +203,17 @@ export function calculateLineTotals(
     return { lineTotalExVat: 0, lineVatTotal: 0, lineTotalIncVat: 0 };
   }
 
+  // Bedragvalidatie (chokepoint voor alle regeltotalen). Bewust GEEN >= 0-guard op
+  // quantity/unitPrice: kortingsregels (lineType "discount") gebruiken legitiem een
+  // negatieve unitPriceExVat. Wel: niet-eindige waarden (NaN/Infinity) weren — die
+  // corrumperen offerte-/factuurtotalen — en het btw-percentage begrenzen.
+  if (![quantity, unitPriceExVat, vatRate, discountExVat ?? 0].every((n) => Number.isFinite(n))) {
+    throw new Error("Ongeldige regelbedragen: aantal, prijs, btw en korting moeten eindige getallen zijn.");
+  }
+  if (vatRate < 0 || vatRate > 100) {
+    throw new Error("Ongeldig btw-percentage: moet tussen 0 en 100 liggen.");
+  }
+
   const lineTotalExVat = roundMoney(quantity * unitPriceExVat - (discountExVat ?? 0));
   const lineVatTotal = roundMoney(lineTotalExVat * (vatRate / 100));
 
