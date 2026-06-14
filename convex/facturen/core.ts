@@ -8,6 +8,7 @@ import {
   requireQueryRole
 } from "../authz";
 import type { Doc } from "../_generated/dataModel";
+import type { PortalInvoice } from "../../src/lib/portalTypes";
 import {
   completeInvoiceWorkflow,
   existingInvoiceForQuote,
@@ -19,7 +20,7 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function toInvoice(tenantSlug: string, invoice: Doc<"invoices">) {
+function toInvoice(tenantSlug: string, invoice: Doc<"invoices">): PortalInvoice {
   return {
     id: String(invoice._id),
     tenantId: tenantSlug,

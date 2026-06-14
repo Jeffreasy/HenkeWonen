@@ -2,6 +2,16 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { readActorValidator, requireQueryRole } from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
+import type {
+  PortalCustomer,
+  PortalRoom,
+  PortalProject,
+  PortalProjectTask,
+  PortalQuoteLine,
+  PortalQuote,
+  QuoteTemplate,
+  FieldWorkspaceCard
+} from "../../src/lib/portalTypes";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -25,36 +35,36 @@ function taskPriority(dueAt: number, now = Date.now()) {
   return { level: "green" as const, label: "Groen" as const, tone: "success" as const, rank: 2 };
 }
 
-function toCustomer(tenantSlug: string, customer: Doc<"customers">) {
+function toCustomer(tenantSlug: string, customer: Doc<"customers">): PortalCustomer {
   return {
     id: String(customer._id),
     tenantId: tenantSlug,
     type: customer.type,
-    displayName: customer.weergaveNaam,
+    weergaveNaam: customer.weergaveNaam,
     email: customer.email,
-    phone: customer.telefoon,
-    street: customer.straat,
-    houseNumber: customer.huisnummer,
-    postalCode: customer.postcode,
-    city: customer.plaats,
-    notes: customer.notities,
+    telefoon: customer.telefoon,
+    straat: customer.straat,
+    huisnummer: customer.huisnummer,
+    postcode: customer.postcode,
+    plaats: customer.plaats,
+    notities: customer.notities,
     status: customer.status,
-    createdAt: customer.aangemaaktOp,
-    updatedAt: customer.gewijzigdOp
+    aangemaaktOp: customer.aangemaaktOp,
+    gewijzigdOp: customer.gewijzigdOp
   };
 }
 
-function toRoom(room: Doc<"projectRooms">) {
+function toRoom(room: Doc<"projectRooms">): PortalRoom {
   return {
     id: String(room._id),
     projectId: String(room.projectId),
-    name: room.naam,
-    floor: room.verdieping,
-    widthCm: room.breedteCm,
-    lengthCm: room.lengteCm,
-    areaM2: room.oppervlakteM2,
-    perimeterMeter: room.omtrekMeter,
-    notes: room.notities,
+    naam: room.naam,
+    verdieping: room.verdieping,
+    breedteCm: room.breedteCm,
+    lengteCm: room.lengteCm,
+    oppervlakteM2: room.oppervlakteM2,
+    omtrekMeter: room.omtrekMeter,
+    notities: room.notities,
     sortOrder: room.sortOrder
   };
 }
@@ -70,35 +80,39 @@ async function getRooms(ctx: any, tenantId: Id<"tenants">, projectId: Id<"projec
   });
 }
 
-async function toProject(ctx: any, tenantSlug: string, project: Doc<"projects">) {
+async function toProject(
+  ctx: any,
+  tenantSlug: string,
+  project: Doc<"projects">
+): Promise<PortalProject> {
   const rooms = await getRooms(ctx, project.tenantId, project._id);
 
   return {
     id: String(project._id),
     tenantId: tenantSlug,
-    customerId: String(project.klantId),
-    title: project.titel,
-    description: project.omschrijving,
+    klantId: String(project.klantId),
+    titel: project.titel,
+    omschrijving: project.omschrijving,
     status: project.status,
-    measurementDate: project.inmeetdatum,
-    executionDate: project.uitvoerdatum,
-    internalNotes: project.interneNotities,
-    customerNotes: project.klantNotities,
-    acceptedAt: project.geaccepteerdOp,
-    measurementPlannedAt: project.inmeetGeplandOp,
-    executionPlannedAt: project.uitvoerGeplandOp,
-    orderedAt: project.besteldOp,
-    invoicedAt: project.gefactureerdOp,
-    paidAt: project.betaaldOp,
-    closedAt: project.afgeslotenOp,
+    inmeetdatum: project.inmeetdatum,
+    uitvoerdatum: project.uitvoerdatum,
+    interneNotities: project.interneNotities,
+    klantNotities: project.klantNotities,
+    geaccepteerdOp: project.geaccepteerdOp,
+    inmeetGeplandOp: project.inmeetGeplandOp,
+    uitvoerGeplandOp: project.uitvoerGeplandOp,
+    besteldOp: project.besteldOp,
+    gefactureerdOp: project.gefactureerdOp,
+    betaaldOp: project.betaaldOp,
+    afgeslotenOp: project.afgeslotenOp,
     rooms: rooms.map(toRoom),
     createdByExternalUserId: project.createdByExternalUserId,
-    createdAt: project.aangemaaktOp,
-    updatedAt: project.gewijzigdOp
+    aangemaaktOp: project.aangemaaktOp,
+    gewijzigdOp: project.gewijzigdOp
   };
 }
 
-function toProjectTask(tenantSlug: string, task: Doc<"projectTasks">) {
+function toProjectTask(tenantSlug: string, task: Doc<"projectTasks">): PortalProjectTask {
   const priority = taskPriority(task.vervaltOp);
 
   return {
@@ -107,40 +121,44 @@ function toProjectTask(tenantSlug: string, task: Doc<"projectTasks">) {
     projectId: String(task.projectId),
     quoteId: task.quoteId ? String(task.quoteId) : undefined,
     type: task.type,
-    title: task.titel,
-    dueAt: task.vervaltOp,
+    titel: task.titel,
+    vervaltOp: task.vervaltOp,
     status: task.status,
     priority,
-    completedAt: task.voltooidOp,
-    dismissedAt: task.afgewezenOp,
-    createdAt: task.aangemaaktOp,
-    updatedAt: task.gewijzigdOp
+    voltooidOp: task.voltooidOp,
+    afgewezenOp: task.afgewezenOp,
+    aangemaaktOp: task.aangemaaktOp,
+    gewijzigdOp: task.gewijzigdOp
   };
 }
 
-function toQuoteLine(line: Doc<"quoteLines">) {
+function toQuoteLine(line: Doc<"quoteLines">): PortalQuoteLine {
   return {
     id: String(line._id),
     quoteId: String(line.quoteId),
-    projectRoomId: line.projectRuimteId ? String(line.projectRuimteId) : undefined,
+    projectRuimteId: line.projectRuimteId ? String(line.projectRuimteId) : undefined,
     productId: line.productId ? String(line.productId) : undefined,
-    lineType: line.regelType,
-    title: line.titel,
-    description: line.omschrijving,
-    quantity: line.aantal,
-    unit: line.eenheid,
-    unitPriceExVat: line.eenheidsprijsExBtw,
-    vatRate: line.btwTarief,
-    discountExVat: line.kortingExBtw,
-    lineTotalExVat: line.regelTotaalExBtw,
-    lineVatTotal: line.regelBtwTotaal,
-    lineTotalIncVat: line.regelTotaalInclBtw,
+    regelType: line.regelType,
+    titel: line.titel,
+    omschrijving: line.omschrijving,
+    aantal: line.aantal,
+    eenheid: line.eenheid,
+    eenheidsprijsExBtw: line.eenheidsprijsExBtw,
+    btwTarief: line.btwTarief,
+    kortingExBtw: line.kortingExBtw,
+    regelTotaalExBtw: line.regelTotaalExBtw,
+    regelBtwTotaal: line.regelBtwTotaal,
+    regelTotaalInclBtw: line.regelTotaalInclBtw,
     sortOrder: line.sortOrder,
     metadata: line.metadata
   };
 }
 
-async function toQuote(ctx: any, tenantSlug: string, quote: Doc<"quotes">) {
+async function toQuote(
+  ctx: any,
+  tenantSlug: string,
+  quote: Doc<"quotes">
+): Promise<PortalQuote> {
   const lines = await ctx.db
     .query("quoteLines")
     .withIndex("by_quote", (q: any) => q.eq("tenantId", quote.tenantId).eq("quoteId", quote._id))
@@ -150,61 +168,64 @@ async function toQuote(ctx: any, tenantSlug: string, quote: Doc<"quotes">) {
     id: String(quote._id),
     tenantId: tenantSlug,
     projectId: String(quote.projectId),
-    customerId: String(quote.klantId),
-    quoteNumber: quote.offertenummer,
-    title: quote.titel,
+    klantId: String(quote.klantId),
+    offertenummer: quote.offertenummer,
+    titel: quote.titel,
     status: quote.status,
-    sentAt: quote.verzondenOp,
-    validUntil: quote.geldigTot,
-    introText: quote.inleidingTekst,
-    closingText: quote.afsluitTekst,
-    terms: quote.voorwaarden,
-    paymentTerms: quote.betalingsvoorwaarden,
-    subtotalExVat: quote.subtotaalExBtw,
-    vatTotal: quote.btwTotaal,
-    totalIncVat: quote.totaalInclBtw,
+    verzondenOp: quote.verzondenOp,
+    geldigTot: quote.geldigTot,
+    inleidingTekst: quote.inleidingTekst,
+    afsluitTekst: quote.afsluitTekst,
+    voorwaarden: quote.voorwaarden,
+    betalingsvoorwaarden: quote.betalingsvoorwaarden,
+    subtotaalExBtw: quote.subtotaalExBtw,
+    btwTotaal: quote.btwTotaal,
+    totaalInclBtw: quote.totaalInclBtw,
     lines: lines
       .sort((left: Doc<"quoteLines">, right: Doc<"quoteLines">) => left.sortOrder - right.sortOrder)
       .map(toQuoteLine),
     createdByExternalUserId: quote.createdByExternalUserId,
-    createdAt: quote.aangemaaktOp,
-    updatedAt: quote.gewijzigdOp
+    aangemaaktOp: quote.aangemaaktOp,
+    gewijzigdOp: quote.gewijzigdOp
   };
 }
 
-function toQuoteSummary(tenantSlug: string, quote: Doc<"quotes">) {
+function toQuoteSummary(
+  tenantSlug: string,
+  quote: Doc<"quotes">
+): Omit<PortalQuote, "lines"> {
   return {
     id: String(quote._id),
     tenantId: tenantSlug,
     projectId: String(quote.projectId),
-    customerId: String(quote.klantId),
-    quoteNumber: quote.offertenummer,
-    title: quote.titel,
+    klantId: String(quote.klantId),
+    offertenummer: quote.offertenummer,
+    titel: quote.titel,
     status: quote.status,
-    sentAt: quote.verzondenOp,
-    validUntil: quote.geldigTot,
-    subtotalExVat: quote.subtotaalExBtw,
-    vatTotal: quote.btwTotaal,
-    totalIncVat: quote.totaalInclBtw,
+    verzondenOp: quote.verzondenOp,
+    geldigTot: quote.geldigTot,
+    subtotaalExBtw: quote.subtotaalExBtw,
+    btwTotaal: quote.btwTotaal,
+    totaalInclBtw: quote.totaalInclBtw,
     createdByExternalUserId: quote.createdByExternalUserId,
-    createdAt: quote.aangemaaktOp,
-    updatedAt: quote.gewijzigdOp
+    aangemaaktOp: quote.aangemaaktOp,
+    gewijzigdOp: quote.gewijzigdOp
   };
 }
 
-function toQuoteTemplate(tenantSlug: string, template: Doc<"quoteTemplates">) {
+function toQuoteTemplate(tenantSlug: string, template: Doc<"quoteTemplates">): QuoteTemplate {
   return {
     id: String(template._id),
     tenantId: tenantSlug,
-    name: template.naam,
+    naam: template.naam,
     type: template.type,
     status: template.status,
-    introText: template.inleidingTekst,
-    closingText: template.afsluitTekst,
-    sections: template.secties ?? [],
-    defaultTerms: template.standaardVoorwaarden,
-    paymentTerms: template.betalingsvoorwaarden ?? [],
-    defaultLines: template.standaardRegels
+    inleidingTekst: template.inleidingTekst,
+    afsluitTekst: template.afsluitTekst,
+    secties: template.secties ?? [],
+    standaardVoorwaarden: template.standaardVoorwaarden,
+    betalingsvoorwaarden: template.betalingsvoorwaarden ?? [],
+    standaardRegels: template.standaardRegels
   };
 }
 
@@ -431,7 +452,7 @@ export const fieldServiceWorkspace = query({
     const cards = await Promise.all(
       projects
         .filter((project: Doc<"projects">) => allowedStatuses.includes(project.status))
-        .map(async (project: Doc<"projects">) => {
+        .map(async (project: Doc<"projects">): Promise<FieldWorkspaceCard> => {
           const customer = customerById.get(String(project.klantId));
           const quote = activeFieldQuote(quotes, project._id);
           const measurement = latestMeasurement(measurements, project._id);
@@ -447,9 +468,9 @@ export const fieldServiceWorkspace = query({
             nextAction: nextTask?.titel ?? fieldNextAction(bucket),
             visitAt,
             address: customerAddress(customer),
-            phone: customer?.telefoon,
+            telefoon: customer?.telefoon,
             email: customer?.email,
-            updatedAt: Math.max(
+            gewijzigdOp: Math.max(
               project.gewijzigdOp,
               quote?.gewijzigdOp ?? 0,
               measurement?.gewijzigdOp ?? 0,
@@ -463,15 +484,15 @@ export const fieldServiceWorkspace = query({
               ? {
                   id: String(measurement._id),
                   status: measurement.status,
-                  measurementDate: measurement.inmeetdatum,
-                  updatedAt: measurement.gewijzigdOp
+                  inmeetdatum: measurement.inmeetdatum,
+                  gewijzigdOp: measurement.gewijzigdOp
                 }
               : null
           };
         })
     );
 
-    for (const card of cards.sort((left, right) => right.updatedAt - left.updatedAt)) {
+    for (const card of cards.sort((left, right) => right.gewijzigdOp - left.gewijzigdOp)) {
       grouped[card.bucket as keyof typeof grouped].push(card);
     }
 

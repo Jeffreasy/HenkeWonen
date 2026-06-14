@@ -340,45 +340,55 @@ async function importNormalizedCatalogRow(ctx: any, tenantId: any, row: any, now
   );
   const priceListId = await ensurePriceList(ctx, tenantId, supplierId, rowWithImportKey);
   const existing = await findExistingProduct(ctx, tenantId, supplierId, rowWithImportKey);
-  const productPatch: any = {
-    categoryId,
-    supplierId,
-    brandId,
-    collectionId,
-    importKey,
-    articleNumber: optionalString(rowWithImportKey.articleNumber),
+  // Sleutels = NL schema-velden; waarden lezen nog het Engelse preview/normalized-
+  // contract (rowWithImportKey.*), dat bewust EN blijft. De geneste commercialNames
+  // krijgen hun binnenste sleutels hier (de bridge) van EN naar NL.
+  const commercialNames = Array.isArray(rowWithImportKey.commercialNames)
+    ? rowWithImportKey.commercialNames.map((cn: any) => ({
+        merknaam: cn.brandName ?? cn.merknaam,
+        collectieNaam: cn.collectionName ?? cn.collectieNaam,
+        kleurnaam: cn.colorName ?? cn.kleurnaam,
+        weergaveNaam: cn.displayName ?? cn.weergaveNaam
+      }))
+    : undefined;
+
+  const productPatch = {
+    categorieId: categoryId,
+    leverancierId: supplierId,
+    merkId: brandId,
+    collectieId: collectionId,
+    importSleutel: importKey,
+    artikelnummer: optionalString(rowWithImportKey.articleNumber),
     ean: optionalString(rowWithImportKey.ean),
     sku: optionalString(rowWithImportKey.sku),
-    supplierCode: optionalString(rowWithImportKey.supplierCode),
-    commercialCode: optionalString(rowWithImportKey.commercialCode),
-    supplierProductGroup: optionalString(rowWithImportKey.supplierProductGroup),
-    name: productName,
-    colorName: optionalString(rowWithImportKey.colorName),
-    description: optionalString(rowWithImportKey.description),
-    productType: stringValue(rowWithImportKey.productType, "standard"),
-    productKind: optionalString(rowWithImportKey.productKind),
-    commercialNames: Array.isArray(rowWithImportKey.commercialNames)
-      ? rowWithImportKey.commercialNames
-      : undefined,
-    unit: stringValue(rowWithImportKey.unit, "piece"),
-    widthMm: numberValue(rowWithImportKey.widthMm),
-    lengthMm: numberValue(rowWithImportKey.lengthMm),
-    thicknessMm: numberValue(rowWithImportKey.thicknessMm),
-    wearLayerMm: numberValue(rowWithImportKey.wearLayerMm),
-    packageContentM2: numberValue(rowWithImportKey.packageContentM2),
-    piecesPerPackage: numberValue(rowWithImportKey.piecesPerPackage),
-    packagesPerPallet: numberValue(rowWithImportKey.packagesPerPallet),
-    salesUnit: optionalString(rowWithImportKey.salesUnit),
-    purchaseUnit: optionalString(rowWithImportKey.purchaseUnit),
-    orderUnit: optionalString(rowWithImportKey.orderUnit),
-    minimumOrderQuantity: numberValue(rowWithImportKey.minimumOrderQuantity),
-    orderMultiple: numberValue(rowWithImportKey.orderMultiple),
-    palletQuantity: numberValue(rowWithImportKey.palletQuantity),
-    trailerQuantity: numberValue(rowWithImportKey.trailerQuantity),
-    bundleSize: numberValue(rowWithImportKey.bundleSize),
-    attributes: rowWithImportKey.attributes ?? undefined,
+    leverancierCode: optionalString(rowWithImportKey.supplierCode),
+    commercieleCode: optionalString(rowWithImportKey.commercialCode),
+    leverancierProductGroep: optionalString(rowWithImportKey.supplierProductGroup),
+    naam: productName,
+    kleurnaam: optionalString(rowWithImportKey.colorName),
+    omschrijving: optionalString(rowWithImportKey.description),
+    productAard: stringValue(rowWithImportKey.productType, "standard"),
+    productSoort: optionalString(rowWithImportKey.productKind),
+    commercialNames,
+    eenheid: stringValue(rowWithImportKey.unit, "piece"),
+    breedteMm: numberValue(rowWithImportKey.widthMm),
+    lengteMm: numberValue(rowWithImportKey.lengthMm),
+    dikteMm: numberValue(rowWithImportKey.thicknessMm),
+    slijtlaagMm: numberValue(rowWithImportKey.wearLayerMm),
+    pakinhoudM2: numberValue(rowWithImportKey.packageContentM2),
+    stuksPerPak: numberValue(rowWithImportKey.piecesPerPackage),
+    pakkenPerPallet: numberValue(rowWithImportKey.packagesPerPallet),
+    verkoopEenheid: optionalString(rowWithImportKey.salesUnit),
+    inkoopEenheid: optionalString(rowWithImportKey.purchaseUnit),
+    bestelEenheid: optionalString(rowWithImportKey.orderUnit),
+    minimumBestelAantal: numberValue(rowWithImportKey.minimumOrderQuantity),
+    bestelVeelvoud: numberValue(rowWithImportKey.orderMultiple),
+    palletAantal: numberValue(rowWithImportKey.palletQuantity),
+    vrachtwagenAantal: numberValue(rowWithImportKey.trailerQuantity),
+    bundelGrootte: numberValue(rowWithImportKey.bundleSize),
+    attributen: rowWithImportKey.attributes ?? undefined,
     status: "active" as const,
-    updatedAt: now
+    gewijzigdOp: now
   };
 
   const productId = existing
@@ -432,25 +442,27 @@ async function importNormalizedCatalogRow(ctx: any, tenantId: any, row: any, now
     const existingPrice =
       sourceKeyMatches.find((row: any) => row.productId === productId) ?? null;
 
-    const pricePatch: any = {
+    // Sleutels = NL schema-velden; waarden lezen nog het Engelse preview/normalized-
+    // contract (price.*/rowWithImportKey.*), dat bewust EN blijft.
+    const pricePatch = {
       productId,
-      priceListId,
-      sourceKey,
-      priceType: stringValue(price.priceType, "manual"),
-      priceUnit: stringValue(price.priceUnit, "custom"),
-      amount,
-      vatRate: numberValue(price.vatRate) ?? 21,
-      vatMode: stringValue(price.vatMode, "unknown"),
+      prijslijstId: priceListId,
+      bronSleutel: sourceKey,
+      prijsSoort: stringValue(price.priceType, "manual"),
+      prijsEenheid: stringValue(price.priceUnit, "custom"),
+      bedrag: amount,
+      btwTarief: numberValue(price.vatRate) ?? 21,
+      btwModus: stringValue(price.vatMode, "unknown"),
       currency: stringValue(price.currency, "EUR"),
-      validFrom: numberValue(price.validFrom),
-      validUntil: numberValue(price.validUntil),
-      sourceFileName: optionalString(rowWithImportKey.sourceFileName),
-      sourceSheetName: optionalString(rowWithImportKey.sourceSheetName),
-      sourceColumnName: optionalString(price.sourceColumnName),
-      sourceColumnIndex: numberValue(price.sourceColumnIndex),
-      sourceRowNumber: numberValue(rowWithImportKey.sourceRowNumber),
-      sourceValue: optionalString(price.sourceValue),
-      updatedAt: now
+      geldigVanaf: numberValue(price.validFrom),
+      geldigTot: numberValue(price.validUntil),
+      bronBestandsnaam: optionalString(rowWithImportKey.sourceFileName),
+      bronBladNaam: optionalString(rowWithImportKey.sourceSheetName),
+      bronKolomNaam: optionalString(price.sourceColumnName),
+      bronKolomIndex: numberValue(price.sourceColumnIndex),
+      bronRijNummer: numberValue(rowWithImportKey.sourceRowNumber),
+      bronWaarde: optionalString(price.sourceValue),
+      gewijzigdOp: now
     };
 
     if (existingPrice) {
