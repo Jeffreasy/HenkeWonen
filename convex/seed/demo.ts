@@ -398,10 +398,25 @@ async function ensureQuoteLine(
   );
   const timestamp = now();
 
+  // Het demo-line-contract is Engels; map expliciet naar de NL offerteregel-velden
+  // (geen spread — anders lekken Engelse sleutels de NL-tabel in).
+  const lineDoc = {
+    regelType: line.lineType,
+    titel: line.title,
+    aantal: line.quantity,
+    eenheid: line.unit,
+    eenheidsprijsExBtw: line.unitPriceExVat,
+    btwTarief: line.vatRate,
+    kortingExBtw: line.discountExVat,
+    sortOrder: line.sortOrder,
+    regelTotaalExBtw: totals.lineTotalExVat,
+    regelBtwTotaal: totals.lineVatTotal,
+    regelTotaalInclBtw: totals.lineTotalIncVat
+  };
+
   if (existing) {
     await ctx.db.patch(existing._id, {
-      ...line,
-      ...totals,
+      ...lineDoc,
       gewijzigdOp: timestamp
     });
 
@@ -411,8 +426,7 @@ async function ensureQuoteLine(
   return await ctx.db.insert("quoteLines", {
     tenantId,
     quoteId,
-    ...line,
-    ...totals,
+    ...lineDoc,
     aangemaaktOp: timestamp,
     gewijzigdOp: timestamp
   });
