@@ -67,6 +67,36 @@ Backup vóór elke stap: `npx convex export [--prod] --path <duurzaam pad>.zip` 
 Rollback = `npx convex import [--prod] --replace …` (destructief; eigenaarsactie).
 **Een AI muteert prod niet** — levert kant-en-klare commando's; de eigenaar draait apply/deploy/import.
 
+## Codemod-engine (gebouwd) + trial-apply-bevindingen
+
+`tools/rename_nl_fields.mjs` (ts-morph, dev-dep `ts-morph` via `npm i ts-morph --no-save`):
+- **Pass 2 (eerst):** type-bewuste rename van property-access + object-keys waar het symbool in
+  schema/_generated/portalTypes declareert OF de receiver een Convex-doc is (`_creationTime` in
+  het type); + positionele veld-strings (`q.eq/q.field/q.search` 1e arg, `.index([...])`-arrays,
+  `searchField`/`filterFields`). **Pass 1 (daarna):** structurele key-rename in `schema.ts`
+  (incl. shorthand-validators `priceType,`→`prijsSoort: priceType`) en `portalTypes.ts`.
+  Volgorde is cruciaal (anders resolven oude accesses niet meer). Scope-bewust: `--scope convex`
+  doet schema+backend, `--scope src` doet portalTypes+frontend (onafhankelijk).
+- Draaien: `node tools/rename_nl_fields.mjs --apply --scope convex` → `npx convex codegen` → `npm run check`.
+
+**Trial-apply backend (scope=convex):** 376 schema-keys + 936 accesses + 925 object-keys + 132
+strings toegepast; codegen groen; **33 resterende type-errors** (alleen backend, frontend ontkoppeld),
+in 3 categorieën:
+1. **Lokale spiegel-types** — `convex/catalog/pilot.ts` `PilotProductLike` (en zijn functies) gebruiken
+   nog EN-velden terwijl callers NL-docs doorgeven (~13). Fix: die interface + interne accesses NL maken.
+2. **args|doc-unie** — `convex/projecten/measurements.ts` snapshot-logica leest een union van mutation-
+   args (EN) en de doc (NL) → één naam past niet op beide (~9). Fix: vertak args/doc, of NL-args.
+3. **Const-data + mutation-args met EN-subkeys** naar NL-schemavelden — `seed/core.ts`
+   (quoteTemplateSections/Lines), `offertes/templates.ts` (sections/defaultLines-args),
+   `catalog/core.ts` (commercialNames-arg) (~11). Fix: const-data-keys NL + args mappen óf NL.
+
+### ⚠️ OPEN STRATEGISCHE BESLISSING: worden de mutation-arg-validators (de frontend↔backend-API) óók NL?
+- **Args EN houden** (NL-DB, EN-API): backend kan zelfstandig groen (args EN, expliciete EN→NL-mapping
+  bij inserts van sub-objecten). Frontend ongemoeid tot de aparte frontend-stap.
+- **Args NL maken** (volledig NL): schoner eindresultaat, maar backend + frontend moeten samen groen
+  (één big-bang gate; frontend-callers passen de NL-arg-namen meteen mee).
+Deze keuze bepaalt hoe de 33-residue wordt opgelost en de uitvoeringsvolgorde.
+
 ## Verificatie per gebied
 
 `npm run check` · `npm run test` (vitest portal + convex) · `npm run lint` · `npm run build` ·
