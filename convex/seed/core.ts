@@ -1,6 +1,7 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireConvexToolingEnabled } from "../authz";
+import { toAsciiFieldKey } from "../catalog/priceColumnKey";
 
 const categories = [
   "PVC Vloeren",
@@ -1118,7 +1119,7 @@ export const run = internalMutation({
         ? existing.priceColumnMappings
         : [];
       const existingVatModeForColumn = (header: string, sourceColumnIndex: number) => {
-        const mappedVatMode = existingVatModeByPriceColumn[header];
+        const mappedVatMode = existingVatModeByPriceColumn[toAsciiFieldKey(header)];
 
         if (
           mappedVatMode === "inclusive" ||
@@ -1171,13 +1172,22 @@ export const run = internalMutation({
         priceColumns: priceColumnObjects
       };
       const vatModeByPriceColumn = Object.fromEntries(
-        priceColumnObjects.map((column: any) => [column.header, column.vatMode ?? "unknown"])
+        priceColumnObjects.map((column: any) => [
+          toAsciiFieldKey(column.header),
+          column.vatMode ?? "unknown"
+        ])
       );
       const unitByPriceColumn = Object.fromEntries(
-        priceColumnObjects.map((column: any) => [column.header, column.priceUnit ?? "custom"])
+        priceColumnObjects.map((column: any) => [
+          toAsciiFieldKey(column.header),
+          column.priceUnit ?? "custom"
+        ])
       );
       const priceTypeByPriceColumn = Object.fromEntries(
-        priceColumnObjects.map((column: any) => [column.header, column.priceType ?? "manual"])
+        priceColumnObjects.map((column: any) => [
+          toAsciiFieldKey(column.header),
+          column.priceType ?? "manual"
+        ])
       );
       const profileFields = {
         supplierId: supplier?._id,

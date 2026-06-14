@@ -1,6 +1,7 @@
 import { mutation, query } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
 import { mutationActorValidator, readActorValidator, requireMutationRole, requireQueryRole } from "../authz";
+import { toAsciiFieldKey } from "./priceColumnKey";
 
 const vatMode = v.union(v.literal("inclusive"), v.literal("exclusive"), v.literal("unknown"));
 const duplicateEanDecision = v.union(
@@ -378,11 +379,11 @@ export const updateProfileVatMode = mutation({
     };
     const vatModeByPriceColumn = {
       ...(profile.vatModeByPriceColumn ?? {}),
-      [args.sourceColumnName]: args.vatMode
+      [toAsciiFieldKey(args.sourceColumnName)]: args.vatMode
     };
     const vatModeReview = {
       ...(profile.vatModeReview ?? {}),
-      [args.sourceColumnName]: {
+      [toAsciiFieldKey(args.sourceColumnName)]: {
         sourceColumnIndex: args.sourceColumnIndex,
         vatMode: args.vatMode,
         updatedByExternalUserId: externalUserId,
@@ -453,9 +454,10 @@ export const bulkUpdateProfileVatModes = mutation({
     };
 
     for (const column of args.columns) {
-      vatModeByPriceColumn[column.sourceColumnName] = args.vatMode;
-      vatModeReview[column.sourceColumnName] = {
-        ...(vatModeReview[column.sourceColumnName] ?? {}),
+      const columnKey = toAsciiFieldKey(column.sourceColumnName);
+      vatModeByPriceColumn[columnKey] = args.vatMode;
+      vatModeReview[columnKey] = {
+        ...(vatModeReview[columnKey] ?? {}),
         sourceColumnIndex: column.sourceColumnIndex,
         vatMode: args.vatMode,
         updatedByExternalUserId: externalUserId,
@@ -512,13 +514,14 @@ export const markProfileVatColumnsReviewed = mutation({
     };
 
     for (const column of args.columns) {
+      const columnKey = toAsciiFieldKey(column.sourceColumnName);
       const currentVatMode =
-        profile.vatModeByPriceColumn?.[column.sourceColumnName] ??
+        profile.vatModeByPriceColumn?.[columnKey] ??
         reviewForColumn(profile, column.sourceColumnName, column.sourceColumnIndex)?.vatMode ??
         "unknown";
 
-      vatModeReview[column.sourceColumnName] = {
-        ...(vatModeReview[column.sourceColumnName] ?? {}),
+      vatModeReview[columnKey] = {
+        ...(vatModeReview[columnKey] ?? {}),
         sourceColumnIndex: column.sourceColumnIndex,
         vatMode: currentVatMode,
         reviewedByExternalUserId: externalUserId,

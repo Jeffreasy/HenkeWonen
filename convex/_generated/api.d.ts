@@ -24,6 +24,7 @@ import type * as catalog_imports from "../catalog/imports.js";
 import type * as catalog_maintenance from "../catalog/maintenance.js";
 import type * as catalog_pickerSearch from "../catalog/pickerSearch.js";
 import type * as catalog_pilot from "../catalog/pilot.js";
+import type * as catalog_priceColumnKey from "../catalog/priceColumnKey.js";
 import type * as catalog_priceMatrices from "../catalog/priceMatrices.js";
 import type * as catalog_priceMatricesSeed from "../catalog/priceMatricesSeed.js";
 import type * as catalog_pricing from "../catalog/pricing.js";
@@ -67,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   "catalog/maintenance": typeof catalog_maintenance;
   "catalog/pickerSearch": typeof catalog_pickerSearch;
   "catalog/pilot": typeof catalog_pilot;
+  "catalog/priceColumnKey": typeof catalog_priceColumnKey;
   "catalog/priceMatrices": typeof catalog_priceMatrices;
   "catalog/priceMatricesSeed": typeof catalog_priceMatricesSeed;
   "catalog/pricing": typeof catalog_pricing;
