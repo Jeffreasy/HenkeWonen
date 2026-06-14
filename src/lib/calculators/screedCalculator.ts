@@ -43,8 +43,12 @@ export function calculateScreed(input: ScreedCalculationInput): ScreedCalculatio
     return invalidScreedResult("packKg must be greater than 0.", consumption, packKg);
   }
 
-  const kgNeeded = roundToTwoDecimals(input.areaM2 * input.layerThicknessMm * consumption);
-  const packsNeeded = Math.ceil(kgNeeded / packKg);
+  // De pack-ceil draait op de RUWE kg (zoals DATA); afronden vóór de ceil zou een fractie net
+  // boven een zak-veelvoud wissen en zo één zak te weinig adviseren. kgNeeded wordt alleen voor
+  // weergave afgerond.
+  const kgNeededRaw = input.areaM2 * input.layerThicknessMm * consumption;
+  const packsNeeded = Math.ceil(kgNeededRaw / packKg);
+  const kgNeeded = roundToTwoDecimals(kgNeededRaw);
 
   return {
     kgNeeded,

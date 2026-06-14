@@ -114,6 +114,14 @@ describe("calculateScreed (egaliseren)", () => {
     expect(r.packsNeeded).toBe(20);
   });
 
+  it("rondt zakken naar boven af op de ruwe kg (geen onder-offerte door tussenafronding)", () => {
+    // 16,667 × 3 × 1,5 = 75,00150 kg → ceil(75,00150/25) = 4 zakken.
+    // Afronden vóór de ceil zou 75,00 → 3 zakken geven (één te weinig).
+    const r = calculateScreed({ areaM2: 16.667, layerThicknessMm: 3 });
+    expect(r.packsNeeded).toBe(4);
+    expect(r.kgNeeded).toBe(75); // kgNeeded blijft afgerond voor weergave
+  });
+
   it("valideert ongeldige invoer", () => {
     expect(calculateScreed({ areaM2: 0, layerThicknessMm: 3 }).validationError).toBeTruthy();
     expect(calculateScreed({ areaM2: 20, layerThicknessMm: 0 }).validationError).toBeTruthy();
