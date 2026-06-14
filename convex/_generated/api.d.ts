@@ -12,6 +12,7 @@ import type * as authz from "../authz.js";
 import type * as beheer_categories from "../beheer/categories.js";
 import type * as beheer_clearTenantData from "../beheer/clearTenantData.js";
 import type * as beheer_customers from "../beheer/customers.js";
+import type * as beheer_migrateNlFields from "../beheer/migrateNlFields.js";
 import type * as beheer_serviceCostRules from "../beheer/serviceCostRules.js";
 import type * as beheer_suppliers from "../beheer/suppliers.js";
 import type * as beheer_tenants from "../beheer/tenants.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   "beheer/categories": typeof beheer_categories;
   "beheer/clearTenantData": typeof beheer_clearTenantData;
   "beheer/customers": typeof beheer_customers;
+  "beheer/migrateNlFields": typeof beheer_migrateNlFields;
   "beheer/serviceCostRules": typeof beheer_serviceCostRules;
   "beheer/suppliers": typeof beheer_suppliers;
   "beheer/tenants": typeof beheer_tenants;

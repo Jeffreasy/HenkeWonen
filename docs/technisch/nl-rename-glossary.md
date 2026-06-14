@@ -67,6 +67,38 @@ Backup vóór elke stap: `npx convex export [--prod] --path <duurzaam pad>.zip` 
 Rollback = `npx convex import [--prod] --replace …` (destructief; eigenaarsactie).
 **Een AI muteert prod niet** — levert kant-en-klare commando's; de eigenaar draait apply/deploy/import.
 
+### Geïmplementeerde tooling (gebouwd + bevroren)
+- `tools/build_rename_spec.mjs` → genereert de BEVROREN spec `tools/nl-rename-spec.json`
+  uit het schema-diff (EN-commit `791774b` ↔ huidig NL-schema), POSITIONEEL uitgelijnd en
+  gekruist met `fieldMap` (0 mismatches: 357 top-level + 17 geneste renames, 30 tabellen).
+- `convex/beheer/migrateNlFields.ts` → `renameFieldsChunk` (gated: admin + `confirm:"RENAME_NL_FIELDS"`
+  + dryRun-default, hele-tabel-scan, idempotent) en `countRemainingOldFields` (read-only verificatie).
+- `tools/migrate_nl_fields.mjs` → driver (cursor-loop, dryRun-default, `--apply`, `--verify`, `--only=`).
+
+### Uitvoering DEV — afgerond & gevalideerd (2026-06-14)
+1. Backup: `C:\Users\jeffrey\HenkeBackups\dev-pre-nl-rename-20260614.zip` (123 MB, EN-velden bevestigd).
+2. `{ schemaValidation: false }` → `npx convex dev --once` (NL-schema + functies live).
+3. `node tools/migrate_nl_fields.mjs --apply` → **294.008 docs gemigreerd over 30 tabellen**
+   (matched===patched===scanned per tabel).
+4. `--verify` → **0 resterende EN-velden** (alle `docsWithAnyOld: 0`).
+5. `{ schemaValidation: true }` → `npx convex dev --once` → deploy-validatie van ~294k docs **groen** (41s).
+6. `npm run test` → 190/190 groen (incl. portal-HTTP-smoke tegen de gemigreerde dev-DB).
+
+### Prod-runbook (EIGENAARSACTIE — exact dezelfde sequentie, prod-flags)
+```
+# 1. Backup (buiten repo/temp; bevat PII)
+npx convex export --prod --path <pad>\prod-pre-nl-rename-<datum>.zip
+# 2. schemaValidation:false in convex/schema.ts → deploy
+npx convex deploy   # of: npx convex deploy --prod, afhankelijk van CONVEX_DEPLOY_KEY
+# 3. Backfill (dryRun eerst, dan apply)
+node tools/migrate_nl_fields.mjs --env-file .env.production --production --target=production
+node tools/migrate_nl_fields.mjs --apply --env-file .env.production --production \
+  --target=production --confirm-production-nl-rename      # vereist AUTHZ_TOKEN_SECRET
+# 4. Verifieer 0 resterende EN-velden
+node tools/migrate_nl_fields.mjs --verify --env-file .env.production --production --target=production
+# 5. schemaValidation:true terug → deploy (deploy-validatie = extra vangnet)
+```
+
 ## Codemod-engine (gebouwd) + trial-apply-bevindingen
 
 `tools/rename_nl_fields.mjs` (ts-morph, dev-dep `ts-morph` via `npm i ts-morph --no-save`):
