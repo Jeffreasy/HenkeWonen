@@ -19,6 +19,7 @@
  * │ productImportBatches    │ Import-runs met statistieken en status                │
  * │ productImportRows       │ Individuele rijen per import-batch                    │
  * │ priceMatrices           │ Breedte×hoogte-prijsmatrices (raambekleding)          │
+ * │ calculatorRules         │ Marge-delers + placeholder-bedrijfsregels per tool    │
  * │ importProfiles          │ Herbruikbare import-configuraties per leverancier     │
  * │ catalogDataIssues       │ Datakwaliteitsissues voor catalogusreview             │
  * │ supplierOrders          │ Leveranciersbestellingen per project                  │
@@ -173,6 +174,29 @@ const projectTaskStatus = v.union(
   v.literal("open"),
   v.literal("done"),
   v.literal("dismissed")
+);
+
+/**
+ * Soort calculator-regel (marge-deler of placeholder-bedrijfsregel) — enum-waarden blijven Engels
+ * (data-identifiers, overgenomen uit de prijslijst-formules in HenkeWonenDATA).
+ */
+const calculatorRuleType = v.union(
+  v.literal("commission_divisor"),
+  v.literal("pallet_divisor"),
+  v.literal("trailer_divisor"),
+  v.literal("coupage_divisor"),
+  v.literal("roll_divisor"),
+  v.literal("markup_factor"),
+  v.literal("waste_pct"),
+  v.literal("labor_surcharge"),
+  v.literal("fullness"),
+  v.literal("hem_cm"),
+  v.literal("side_hem_cm"),
+  v.literal("confectie_per_unit"),
+  v.literal("consumption_kg_m2_mm"),
+  v.literal("pack_kg"),
+  v.literal("min_max"),
+  v.literal("dependency")
 );
 
 export default defineSchema({
@@ -655,6 +679,28 @@ export default defineSchema({
     .index("by_tenant", ["tenantId"])
     .index("by_tool", ["tenantId", "productToolSleutel"])
     .index("by_tool_group", ["tenantId", "productToolSleutel", "prijsgroep"]),
+
+  /**
+   * Marge-delers/opslagen uit de prijslijst-formules (advies ÷ deler = pallet/commissie/coupage/
+   * rolprijs) + placeholder-bedrijfsregels (snijverlies/arbeid/plooi/zoom/verbruik) — geconsolideerd
+   * uit HenkeWonenDATA. NIEUWE tabel: Nederlandse veldnamen; `regelSoort`-enum-waarden blijven Engels.
+   * `vereistKlantInput=true` markeert placeholders die met de eigenaar bevestigd moeten worden.
+   */
+  calculatorRules: defineTable({
+    tenantId: v.id("tenants"),
+    productToolSleutel: v.string(),
+    regelSoort: calculatorRuleType,
+    waarde: v.optional(v.number()),
+    bronCel: v.optional(v.string()),
+    notitie: v.optional(v.string()),
+    vereistKlantInput: v.boolean(),
+    status: statusActive,
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
+  })
+    .index("by_tenant", ["tenantId"])
+    .index("by_tool", ["tenantId", "productToolSleutel"])
+    .index("by_tool_rule", ["tenantId", "productToolSleutel", "regelSoort"]),
 
   projects: defineTable({
     tenantId: v.id("tenants"),

@@ -16,6 +16,8 @@ import type * as beheer_serviceCostRules from "../beheer/serviceCostRules.js";
 import type * as beheer_suppliers from "../beheer/suppliers.js";
 import type * as beheer_tenants from "../beheer/tenants.js";
 import type * as beheer_users from "../beheer/users.js";
+import type * as catalog_calculatorRules from "../catalog/calculatorRules.js";
+import type * as catalog_calculatorRulesSeed from "../catalog/calculatorRulesSeed.js";
 import type * as catalog_core from "../catalog/core.js";
 import type * as catalog_import from "../catalog/import.js";
 import type * as catalog_imports from "../catalog/imports.js";
@@ -57,6 +59,8 @@ declare const fullApi: ApiFromModules<{
   "beheer/suppliers": typeof beheer_suppliers;
   "beheer/tenants": typeof beheer_tenants;
   "beheer/users": typeof beheer_users;
+  "catalog/calculatorRules": typeof catalog_calculatorRules;
+  "catalog/calculatorRulesSeed": typeof catalog_calculatorRulesSeed;
   "catalog/core": typeof catalog_core;
   "catalog/import": typeof catalog_import;
   "catalog/imports": typeof catalog_imports;
