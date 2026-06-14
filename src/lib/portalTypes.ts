@@ -88,6 +88,7 @@ export type MeasurementCalculationType =
   | "rolls"
   | "panels"
   | "stairs"
+  | "matrix"
   | "manual";
 
 export type QuotePreparationStatus = "draft" | "ready_for_quote" | "converted";

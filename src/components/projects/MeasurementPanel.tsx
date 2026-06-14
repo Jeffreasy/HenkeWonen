@@ -52,6 +52,8 @@ import { Textarea } from "../ui/Textarea";
 import type {
   FieldMeasureTool,
   IndicativePriceResult,
+  MatrixIndicativePriceResult,
+  MatrixOptions,
   MeasurementData,
   MeasurementLineDoc,
   MeasurementRoomDoc,
@@ -167,6 +169,18 @@ export default function MeasurementPanel({
   const [riserCount, setRiserCount] = useState("0");
   const [stripLengthM, setStripLengthM] = useState("");
   const [stairNotes, setStairNotes] = useState("");
+
+  // Raambekleding (matrix): geen catalogusproduct, maar prijsgroep + type + breedte×hoogte → richtprijs.
+  const [wcRoomId, setWcRoomId] = useState("");
+  const [wcType, setWcType] = useState(""); // bronBlad, bv. "16 mm" / "Duo Rolgordijn"
+  const [wcPriceGroup, setWcPriceGroup] = useState("");
+  const [wcWidthCm, setWcWidthCm] = useState("");
+  const [wcHeightCm, setWcHeightCm] = useState("");
+  const [wcQuantity, setWcQuantity] = useState("1");
+  const [wcNotes, setWcNotes] = useState("");
+  const [wcOptions, setWcOptions] = useState<MatrixOptions | null>(null);
+  const [wcPrice, setWcPrice] = useState<MatrixIndicativePriceResult | null>(null);
+  const [wcPriceLoading, setWcPriceLoading] = useState(false);
 
   const [manualRoomId, setManualRoomId] = useState("");
   const [manualProductGroup, setManualProductGroup] = useState<MeasurementProductGroup>("other");
@@ -426,6 +440,8 @@ export default function MeasurementPanel({
           return "roll";
         case "wall_panels":
           return "piece";
+        case "window_covering":
+          return "piece";
         case "stairs":
           return "stairs";
         case "manual":
@@ -513,6 +529,105 @@ export default function MeasurementPanel({
     // Alleen heruitvoeren bij eenheid-/groepswijziging, niet bij elke productwissel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manualUnit, manualProductGroup]);
+
+  // ── Raambekleding-matrix (productloze richtprijs) ───────────────────────────
+  const fetchMatrixOptions = useCallback(async () => {
+    const client = createConvexHttpClient(session);
+
+    if (!client) {
+      return null;
+    }
+
+    return (await client.query(api.catalog.pricing.listMatrixOptions, {
+      tenantSlug: tenantId,
+      productToolSleutel: "raambekleding"
+    })) as MatrixOptions;
+  }, [session, tenantId]);
+
+  const fetchMatrixPrice = useCallback(
+    async (bronBlad: string, prijsgroep: string, breedteCm: number, hoogteCm: number) => {
+      const client = createConvexHttpClient(session);
+
+      if (!client) {
+        return null;
+      }
+
+      return (await client.query(api.catalog.pricing.getMatrixIndicativePrice, {
+        tenantSlug: tenantId,
+        productToolSleutel: "raambekleding",
+        prijsgroep,
+        bronBlad,
+        breedteCm,
+        hoogteCm
+      })) as MatrixIndicativePriceResult;
+    },
+    [session, tenantId]
+  );
+
+  // Laad de beschikbare matrices (type + prijsgroep) één keer voor de dropdowns.
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const result = await fetchMatrixOptions();
+
+        if (!cancelled) {
+          setWcOptions(result);
+        }
+      } catch (optionsError) {
+        console.error(optionsError);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchMatrixOptions]);
+
+  // Live matrix-richtprijs: gedebounced + volgorde-guard (zelfde patroon als selectTabProduct).
+  useEffect(() => {
+    const breedteCm = parseDecimal(wcWidthCm);
+    const hoogteCm = parseDecimal(wcHeightCm);
+
+    if (!wcType || !wcPriceGroup || !breedteCm || !hoogteCm) {
+      setWcPrice(null);
+      setWcPriceLoading(false);
+      return;
+    }
+
+    const requestSeq = (priceRequestSeq.current.window_covering ?? 0) + 1;
+    priceRequestSeq.current.window_covering = requestSeq;
+    setWcPriceLoading(true);
+
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const result = await fetchMatrixPrice(wcType, wcPriceGroup, breedteCm, hoogteCm);
+
+          if (priceRequestSeq.current.window_covering !== requestSeq) {
+            return;
+          }
+
+          setWcPrice(result);
+        } catch (priceError) {
+          console.error(priceError);
+
+          if (priceRequestSeq.current.window_covering !== requestSeq) {
+            return;
+          }
+
+          setWcPrice(null);
+        } finally {
+          if (priceRequestSeq.current.window_covering === requestSeq) {
+            setWcPriceLoading(false);
+          }
+        }
+      })();
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [wcType, wcPriceGroup, wcWidthCm, wcHeightCm, fetchMatrixPrice]);
 
   /** Prijsresultaat van een tab, maar alleen als het bij het gekozen product hoort. */
   function matchedTabPrice(tool: FieldMeasureTool) {
@@ -603,6 +718,69 @@ export default function MeasurementPanel({
       : line.indicativeUnitPriceExVat;
 
     return formatEuro(roundMoney(line.quantity * unitAmount));
+  }
+
+  /** SummaryList-regels voor de live matrix-richtprijs (raambekleding). */
+  function windowCoveringSummaryItems() {
+    const items: Array<{ label: string; value: string }> = [];
+    const indicative = wcPrice?.indicative ?? null;
+
+    if (indicative) {
+      items.push({
+        label: "Maatklasse",
+        value: `${indicative.matchedWidthCm} × ${indicative.matchedHeightCm} cm`
+      });
+    }
+
+    if (wcPriceLoading) {
+      items.push({ label: "Richtprijs", value: "Laden..." });
+      return items;
+    }
+
+    if (wcPrice?.outOfRange) {
+      items.push({ label: "Richtprijs", value: "Buiten matrixbereik — offerte op maat" });
+      return items;
+    }
+
+    if (!indicative) {
+      items.push({ label: "Richtprijs", value: "Nog niet beschikbaar" });
+      return items;
+    }
+
+    const quantity = parseDecimal(wcQuantity) ?? 1;
+    const unitAmount = showPricesIncVat ? indicative.unitPriceIncVat : indicative.unitPriceExVat;
+    const vatLabel = showPricesIncVat ? "incl. btw" : "excl. btw";
+
+    items.push({
+      label: `Richtprijs ${vatLabel}`,
+      value: `${formatEuro(roundMoney(quantity * unitAmount))} (${formatEuro(unitAmount)} per stuk)`
+    });
+
+    return items;
+  }
+
+  /** Blokkeer opslaan van een matrix-regel tot er een geldige richtprijs is. */
+  function windowCoveringValidationError(): string | undefined {
+    if (!wcType || !wcPriceGroup) {
+      return "Kies type en prijsgroep.";
+    }
+    if (!parseDecimal(wcWidthCm) || !parseDecimal(wcHeightCm)) {
+      return "Vul breedte en hoogte in.";
+    }
+    const quantity = parseDecimal(wcQuantity);
+    if (!quantity || quantity <= 0) {
+      return "Vul een geldig aantal in.";
+    }
+    if (wcPriceLoading) {
+      return "Richtprijs wordt nog geladen.";
+    }
+    if (wcPrice?.outOfRange) {
+      return "Buiten matrixbereik — gebruik een vrije regel voor offerte op maat.";
+    }
+    if (!wcPrice?.indicative) {
+      return "Geen richtprijs beschikbaar voor deze keuze.";
+    }
+    return undefined;
   }
 
   function requireClientAndMeasurement() {
@@ -2241,6 +2419,146 @@ export default function MeasurementPanel({
               <Input id="stair-notes" value={stairNotes} onChange={(e) => setStairNotes(e.target.value)} />
             </Field>
             {renderProductPicker("stairs", "stairs")}
+          </>
+        )
+      },
+      {
+        id: "window_covering",
+        label: isFieldMode ? "Raambekleding meten" : "Raambekleding",
+        icon: CALC_TAB_ICONS.window_covering,
+        resultKey: `${wcType}-${wcPriceGroup}-${wcWidthCm}-${wcHeightCm}-${wcQuantity}`,
+        hasInput: Boolean(wcType || wcWidthCm || wcHeightCm),
+        validationError:
+          wcType || wcWidthCm || wcHeightCm ? windowCoveringValidationError() : undefined,
+        isSaving,
+        onSubmit: (event) => {
+          const breedteCm = parseDecimal(wcWidthCm);
+          const hoogteCm = parseDecimal(wcHeightCm);
+          const quantity = parseDecimal(wcQuantity) ?? 1;
+          const indicative = wcPrice?.indicative ?? null;
+          const label = `Raambekleding ${[wcType, wcPriceGroup].filter(Boolean).join(" – ")}`;
+
+          void addLine(event, {
+            roomId: wcRoomId || undefined,
+            productGroup: "curtains",
+            calculationType: "matrix",
+            input: {
+              source: "raambekleding-matrix",
+              productToolSleutel: "raambekleding",
+              bronBlad: wcType,
+              prijsgroep: wcPriceGroup,
+              breedteCm,
+              hoogteCm,
+              matchedWidthCm: indicative?.matchedWidthCm,
+              matchedHeightCm: indicative?.matchedHeightCm,
+              quantity
+            },
+            result: {
+              unitPriceExVat: indicative?.unitPriceExVat,
+              matchedWidthCm: indicative?.matchedWidthCm,
+              matchedHeightCm: indicative?.matchedHeightCm,
+              quantity,
+              outOfRange: wcPrice?.outOfRange ?? false,
+              isIndicative: true
+            },
+            quantity,
+            unit: "piece",
+            notes: wcNotes.trim() || undefined,
+            quoteLineType: "product",
+            ...(indicative
+              ? {
+                  productName: `${label} – ${indicative.matchedWidthCm}×${indicative.matchedHeightCm} cm`,
+                  indicativeUnitPriceExVat: indicative.unitPriceExVat,
+                  indicativeVatRate: indicative.vatRate,
+                  indicativePriceUnit: "piece",
+                  indicativePriceType: "matrix",
+                  indicativeCapturedAt: Date.now()
+                }
+              : {}),
+            validationError: windowCoveringValidationError(),
+            successMessage: "Raambekleding-inmeting opgeslagen."
+          });
+        },
+        result: (
+          <SummaryList
+            items={[
+              { label: "Type", value: wcType || "-" },
+              { label: "Prijsgroep", value: wcPriceGroup || "-" },
+              {
+                label: "Maat (B×H)",
+                value: wcWidthCm && wcHeightCm ? `${wcWidthCm} × ${wcHeightCm} cm` : "-"
+              },
+              { label: "Aantal", value: wcQuantity || "1" },
+              ...windowCoveringSummaryItems()
+            ]}
+          />
+        ),
+        fields: (
+          <>
+            {renderRoomSelect("wc-room", "Ruimte", wcRoomId, setWcRoomId)}
+            <Field htmlFor="wc-type" label="Type raambekleding">
+              <Select
+                id="wc-type"
+                value={wcType}
+                onChange={(e) => {
+                  setWcType(e.target.value);
+                  setWcPriceGroup("");
+                }}
+              >
+                <option value="">Kies type</option>
+                {(wcOptions?.types ?? []).map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field htmlFor="wc-group" label="Prijsgroep">
+              <Select
+                id="wc-group"
+                value={wcPriceGroup}
+                onChange={(e) => setWcPriceGroup(e.target.value)}
+                disabled={!wcType}
+              >
+                <option value="">Kies prijsgroep</option>
+                {(wcOptions?.combinations ?? [])
+                  .filter((combo) => combo.bronBlad === wcType)
+                  .map((combo) => combo.prijsgroep)
+                  .filter((group, index, all) => all.indexOf(group) === index)
+                  .map((group) => (
+                    <option key={group} value={group}>
+                      {group}
+                    </option>
+                  ))}
+              </Select>
+            </Field>
+            <Field htmlFor="wc-width" label="Breedte in cm">
+              <Input
+                id="wc-width"
+                inputMode="decimal"
+                value={wcWidthCm}
+                onChange={(e) => setWcWidthCm(e.target.value)}
+              />
+            </Field>
+            <Field htmlFor="wc-height" label="Hoogte in cm">
+              <Input
+                id="wc-height"
+                inputMode="decimal"
+                value={wcHeightCm}
+                onChange={(e) => setWcHeightCm(e.target.value)}
+              />
+            </Field>
+            <Field htmlFor="wc-qty" label="Aantal">
+              <Input
+                id="wc-qty"
+                inputMode="decimal"
+                value={wcQuantity}
+                onChange={(e) => setWcQuantity(e.target.value)}
+              />
+            </Field>
+            <Field htmlFor="wc-notes" label="Notitie">
+              <Input id="wc-notes" value={wcNotes} onChange={(e) => setWcNotes(e.target.value)} />
+            </Field>
           </>
         )
       },

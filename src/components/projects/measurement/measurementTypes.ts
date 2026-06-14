@@ -109,8 +109,34 @@ export type FieldMeasureTool =
   | "plinths"
   | "wallpaper"
   | "wall_panels"
+  | "window_covering"
   | "stairs"
   | "manual";
+
+/** Beschikbare raambekleding-matrices van api.catalog.pricing.listMatrixOptions. */
+export type MatrixOptions = {
+  types: string[];
+  priceGroups: string[];
+  combinations: { bronBlad: string | null; prijsgroep: string }[];
+};
+
+/** Matrix-richtprijs-respons van api.catalog.pricing.getMatrixIndicativePrice. */
+export type MatrixIndicativePriceResult = {
+  indicative: {
+    unitPriceExVat: number;
+    unitPriceIncVat: number;
+    vatRate: number;
+    priceType: string;
+    priceUnit: string;
+    vatModeUsed: "exclusive" | "inclusive";
+    prijsgroep: string;
+    bronBlad: string | null;
+    matchedWidthCm: number;
+    matchedHeightCm: number;
+  } | null;
+  outOfRange: boolean;
+  reason: "ok" | "out_of_range" | "matrix_not_found" | "vat_unknown";
+};
 
 // ─── Constanten ───────────────────────────────────────────────────────────────
 

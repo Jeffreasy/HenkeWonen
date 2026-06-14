@@ -1,6 +1,7 @@
 import {
   ArrowUpDown,
   Layers,
+  LayoutGrid,
   Minus,
   PanelRight,
   Pencil,
@@ -19,6 +20,7 @@ export type CalcTabId =
   | "plinths"
   | "wallpaper"
   | "wall_panels"
+  | "window_covering"
   | "stairs"
   | "manual";
 
@@ -52,6 +54,7 @@ export const CALC_TAB_ICONS: Record<CalcTabId, ReactNode> = {
   plinths: <Minus size={15} aria-hidden="true" />,
   wallpaper: <Layers size={15} aria-hidden="true" />,
   wall_panels: <PanelRight size={15} aria-hidden="true" />,
+  window_covering: <LayoutGrid size={15} aria-hidden="true" />,
   stairs: <ArrowUpDown size={15} aria-hidden="true" />,
   manual: <Pencil size={15} aria-hidden="true" />
 };
