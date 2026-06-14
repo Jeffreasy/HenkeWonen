@@ -1088,8 +1088,12 @@ export const importMeasurementLinesToQuote = mutation({
         }
       }
 
+      // Een raambekleding-matrix-regel heeft géén catalogusproduct maar wél een richtprijs;
+      // die mag wél overgenomen worden. Een verwijderd/inactief catalogusproduct (productId stond
+      // er ooit, maar valideert niet meer) blijft bewust leeg-geprijsd binnenkomen.
+      const isMatrixLine = line.indicativePriceType === "matrix";
       const hasIndicativePrice =
-        prefilledProductId !== undefined &&
+        (prefilledProductId !== undefined || isMatrixLine) &&
         line.indicativeUnitPriceExVat !== undefined &&
         line.indicativeVatRate !== undefined;
       const unitPriceExVat = hasIndicativePrice ? line.indicativeUnitPriceExVat! : 0;
@@ -1121,10 +1125,11 @@ export const importMeasurementLinesToQuote = mutation({
           wastePercent: line.wastePercent,
           isIndicative: true,
           productId: prefilledProductId ? line.productId : undefined,
-          productName: prefilledProductId ? line.productName : undefined,
+          productName: prefilledProductId || isMatrixLine ? line.productName : undefined,
           indicativePriceType: hasIndicativePrice ? line.indicativePriceType : undefined,
           indicativePriceUnit: hasIndicativePrice ? line.indicativePriceUnit : undefined,
-          requiresManualProductReview: !prefilledProductId,
+          // Matrix-regels (raambekleding) hebben bewust geen catalogusproduct nodig.
+          requiresManualProductReview: !prefilledProductId && !isMatrixLine,
           requiresManualPriceReview: true,
           requiresManualVatReview: !hasIndicativePrice
         },

@@ -10,7 +10,7 @@ import { query } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
 import { readActorValidator, requireQueryRole } from "../authz";
 import { cleanProductDisplayName, pilotHiddenReason } from "./pilot";
-import { selectIndicativePrice } from "./pricingRules";
+import { buildMatrixSelection, lookupMatrixPrice, selectIndicativePrice } from "./pricingRules";
 
 export const getIndicativePrice = query({
   args: {
@@ -89,6 +89,120 @@ export const getIndicativePrice = query({
             conversionApplied: selection.conversionApplied
           }
         : null
+    };
+  }
+});
+
+/**
+ * Beschikbare raambekleding-matrices voor de inmeet-tab: distinct (type=bronBlad, prijsgroep).
+ * Voedt de twee dropdowns; geen prijzen, dus geen btw-/pilot-gevoeligheid.
+ */
+export const listMatrixOptions = query({
+  args: {
+    tenantSlug: v.string(),
+    actor: readActorValidator,
+    productToolSleutel: v.string()
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+
+    const matrices = await ctx.db
+      .query("priceMatrices")
+      .withIndex("by_tool", (q) =>
+        q.eq("tenantId", tenant._id).eq("productToolSleutel", args.productToolSleutel)
+      )
+      .collect();
+
+    const types = [...new Set(matrices.map((m) => m.bronBlad ?? "").filter(Boolean))].sort();
+    const priceGroups = [...new Set(matrices.map((m) => m.prijsgroep))].sort();
+    const combinations = matrices.map((m) => ({
+      bronBlad: m.bronBlad ?? null,
+      prijsgroep: m.prijsgroep
+    }));
+
+    return { types, priceGroups, combinations };
+  }
+});
+
+/**
+ * Matrix-richtprijs voor raambekleding: kies (tool, prijsgroep, type) + breedte×hoogte → richtprijs.
+ * Loopt NIET via een catalogusproduct. Dezelfde vorm/afronding als getIndicativePrice
+ * (ex 4 dec, incl uit ex 2 dec, btwModus "unknown" → geen prijs). Buiten matrixbereik → offerte op maat.
+ */
+export const getMatrixIndicativePrice = query({
+  args: {
+    tenantSlug: v.string(),
+    actor: readActorValidator,
+    productToolSleutel: v.string(),
+    prijsgroep: v.string(),
+    bronBlad: v.optional(v.string()),
+    breedteCm: v.number(),
+    hoogteCm: v.number()
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+
+    const candidates = await ctx.db
+      .query("priceMatrices")
+      .withIndex("by_tool_group", (q) =>
+        q
+          .eq("tenantId", tenant._id)
+          .eq("productToolSleutel", args.productToolSleutel)
+          .eq("prijsgroep", args.prijsgroep)
+      )
+      .collect();
+
+    const matrix =
+      args.bronBlad !== undefined
+        ? candidates.find((c) => (c.bronBlad ?? null) === args.bronBlad)
+        : candidates[0];
+
+    if (!matrix) {
+      return { indicative: null, outOfRange: false, reason: "matrix_not_found" as const };
+    }
+
+    const hit = lookupMatrixPrice(
+      matrix.breedteAs,
+      matrix.hoogteAs,
+      matrix.prijzen,
+      args.breedteCm,
+      args.hoogteCm
+    );
+
+    if (hit == null) {
+      // Buiten matrixbereik → "offerte op maat", geen richtprijs.
+      return { indicative: null, outOfRange: true, reason: "out_of_range" as const };
+    }
+
+    const selection = buildMatrixSelection(hit.amount, matrix.btwModus);
+
+    if (!selection) {
+      return { indicative: null, outOfRange: false, reason: "vat_unknown" as const };
+    }
+
+    return {
+      indicative: {
+        unitPriceExVat: selection.unitPriceExVat,
+        unitPriceIncVat: selection.unitPriceIncVat,
+        vatRate: selection.vatRate,
+        priceType: "advice_retail" as const,
+        priceUnit: "piece" as const,
+        vatModeUsed: selection.vatModeUsed,
+        prijsgroep: matrix.prijsgroep,
+        bronBlad: matrix.bronBlad ?? null,
+        matchedWidthCm: hit.matchedWidthCm,
+        matchedHeightCm: hit.matchedHeightCm
+      },
+      outOfRange: false,
+      reason: "ok" as const
     };
   }
 });

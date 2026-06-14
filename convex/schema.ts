@@ -154,6 +154,7 @@ const measurementCalculationType = v.union(
   v.literal("rolls"),
   v.literal("panels"),
   v.literal("stairs"),
+  v.literal("matrix"),
   v.literal("manual")
 );
 

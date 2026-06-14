@@ -33,6 +33,7 @@ const calculationType = v.union(
   v.literal("rolls"),
   v.literal("panels"),
   v.literal("stairs"),
+  v.literal("matrix"),
   v.literal("manual")
 );
 
@@ -567,6 +568,10 @@ export const addMeasurementLine = mutation({
 
     const now = Date.now();
 
+    // Richtprijs-snapshot bewaren bij een gekozen product óf bij een productloze richtprijs
+    // (raambekleding-matrix: geen catalogusproduct, maar wél een indicatieve prijs).
+    const keepSnapshot = Boolean(args.productId) || args.indicativeUnitPriceExVat !== undefined;
+
     const lineId = await ctx.db.insert("measurementLines", {
       tenantId: args.tenantId,
       measurementId: args.measurementId,
@@ -582,12 +587,12 @@ export const addMeasurementLine = mutation({
       quoteLineType: args.quoteLineType,
       quotePreparationStatus: "draft",
       productId: args.productId,
-      productName: args.productId ? args.productName : undefined,
-      indicativeUnitPriceExVat: args.productId ? args.indicativeUnitPriceExVat : undefined,
-      indicativeVatRate: args.productId ? args.indicativeVatRate : undefined,
-      indicativePriceUnit: args.productId ? args.indicativePriceUnit : undefined,
-      indicativePriceType: args.productId ? args.indicativePriceType : undefined,
-      indicativeCapturedAt: args.productId ? args.indicativeCapturedAt ?? now : undefined,
+      productName: keepSnapshot ? args.productName : undefined,
+      indicativeUnitPriceExVat: keepSnapshot ? args.indicativeUnitPriceExVat : undefined,
+      indicativeVatRate: keepSnapshot ? args.indicativeVatRate : undefined,
+      indicativePriceUnit: keepSnapshot ? args.indicativePriceUnit : undefined,
+      indicativePriceType: keepSnapshot ? args.indicativePriceType : undefined,
+      indicativeCapturedAt: keepSnapshot ? args.indicativeCapturedAt ?? now : undefined,
       createdAt: now,
       updatedAt: now
     });
@@ -684,16 +689,28 @@ export const updateMeasurementLine = mutation({
     // expliciet wist via clearProduct (undefined overleeft JSON-serialisatie niet).
     const touchesProduct = hasArg(args, "productId") || args.clearProduct === true;
     const nextProductId = args.clearProduct === true ? undefined : touchesProduct ? args.productId : line.productId;
-    const snapshotSource = touchesProduct ? args : line;
 
-    // Een behouden prijssnapshot is alleen geldig zolang de prijseenheid bij de
-    // (mogelijk gewijzigde) meeteenheid past; anders vervalt de prijs (het
-    // product blijft gekozen) zodat geen m²-prijs × meters de offerte in stroomt.
+    // Een productloze matrix-richtprijs (raambekleding) wordt herkend aan indicativePriceType "matrix".
+    // De aanroeper mag zo'n snapshot opnieuw meesturen (her-prijzen bij gewijzigde maten) zónder product.
+    const sendsMatrixSnapshot =
+      args.indicativePriceType === "matrix" && args.indicativeUnitPriceExVat !== undefined;
+    const usesArgsSnapshot = touchesProduct || sendsMatrixSnapshot;
+    const snapshotSource = usesArgsSnapshot ? args : line;
+    const isMatrixSnapshot =
+      snapshotSource.indicativePriceType === "matrix" &&
+      snapshotSource.indicativeUnitPriceExVat !== undefined;
+
+    // Behoud een prijssnapshot wanneer er een product is én de prijseenheid bij de (mogelijk
+    // gewijzigde) meeteenheid past, OF wanneer het een productloze matrix-richtprijs is. Anders
+    // vervalt de prijs zodat geen m²-prijs × meters de offerte in stroomt. clearProduct wist altijd.
     const keepPriceSnapshot = Boolean(
-      nextProductId &&
-        snapshotSource.indicativeUnitPriceExVat !== undefined &&
-        (touchesProduct || isUnitCompatible(args.unit, snapshotSource.indicativePriceUnit))
+      args.clearProduct !== true &&
+        ((nextProductId &&
+          snapshotSource.indicativeUnitPriceExVat !== undefined &&
+          (touchesProduct || isUnitCompatible(args.unit, snapshotSource.indicativePriceUnit))) ||
+          (!nextProductId && isMatrixSnapshot))
     );
+    const keepProductName = args.clearProduct !== true && (Boolean(nextProductId) || isMatrixSnapshot);
 
     await ctx.db.patch(line._id, {
       roomId: args.roomId,
@@ -708,13 +725,13 @@ export const updateMeasurementLine = mutation({
       quoteLineType: args.quoteLineType,
       quotePreparationStatus: args.quotePreparationStatus ?? line.quotePreparationStatus,
       productId: nextProductId,
-      productName: nextProductId ? snapshotSource.productName : undefined,
+      productName: keepProductName ? snapshotSource.productName : undefined,
       indicativeUnitPriceExVat: keepPriceSnapshot ? snapshotSource.indicativeUnitPriceExVat : undefined,
       indicativeVatRate: keepPriceSnapshot ? snapshotSource.indicativeVatRate : undefined,
       indicativePriceUnit: keepPriceSnapshot ? snapshotSource.indicativePriceUnit : undefined,
       indicativePriceType: keepPriceSnapshot ? snapshotSource.indicativePriceType : undefined,
       indicativeCapturedAt: keepPriceSnapshot
-        ? touchesProduct
+        ? usesArgsSnapshot
           ? args.indicativeCapturedAt ?? Date.now()
           : line.indicativeCapturedAt
         : undefined,

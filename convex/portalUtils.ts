@@ -861,6 +861,7 @@ export const measurementCalculationTypeLabels: Record<string, string> = {
   rolls: "Rollen",
   panels: "Panelen",
   stairs: "Trap",
+  matrix: "Matrix (breedte × hoogte)",
   manual: "Handmatig"
 };
 
@@ -890,17 +891,32 @@ export function importedMeasurementLineDescription(
   line: Doc<"measurementLines">,
   priceWasPrefilled?: boolean
 ) {
+  const isMatrixLine = line.indicativePriceType === "matrix";
   const hasIndicativePrice =
     priceWasPrefilled ??
-    (line.productId !== undefined &&
+    ((line.productId !== undefined || isMatrixLine) &&
       line.indicativeUnitPriceExVat !== undefined &&
       line.indicativeVatRate !== undefined);
 
+  const matrixInput = isMatrixLine && line.input ? (line.input as any) : null;
+  const matrixContext = matrixInput
+    ? `Raambekleding (matrix): ${[matrixInput.bronBlad, matrixInput.prijsgroep]
+        .filter(Boolean)
+        .join(" – ")}${
+        matrixInput.breedteCm && matrixInput.hoogteCm
+          ? ` – ${matrixInput.breedteCm}×${matrixInput.hoogteCm} cm`
+          : ""
+      }.`
+    : undefined;
+
   return [
     "Overgenomen uit inmeting.",
-    hasIndicativePrice
-      ? "Richtprijs uit de inmeting overgenomen. Controleer product, verkoopprijs en btw bewust voordat je de offerte verstuurt."
-      : "Richtprijs. Kies product, verkoopprijs en btw bewust voordat je de offerte verstuurt.",
+    isMatrixLine
+      ? "Matrix-richtprijs uit de inmeting overgenomen. Controleer verkoopprijs en btw bewust voordat je de offerte verstuurt."
+      : hasIndicativePrice
+        ? "Richtprijs uit de inmeting overgenomen. Controleer product, verkoopprijs en btw bewust voordat je de offerte verstuurt."
+        : "Richtprijs. Kies product, verkoopprijs en btw bewust voordat je de offerte verstuurt.",
+    matrixContext,
     line.wastePercent !== undefined ? `Snijverlies: ${line.wastePercent}%.` : undefined,
     line.notes ? `Meetnotitie: ${line.notes}` : undefined
   ]
