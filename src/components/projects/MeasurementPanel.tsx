@@ -16,6 +16,10 @@ import { createConvexHttpClient } from "../../lib/convex/client";
 import type { SubmitEventLike } from "../../lib/events";
 import { calculateIncVat, formatEuro, roundMoney } from "../../lib/money";
 import { showToast } from "../../lib/toast";
+import {
+  MEASUREMENT_AUTOSTART_PARAM,
+  shouldAutostartMeasurement
+} from "../../lib/measurementIntent";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import {
   formatLineType,
@@ -221,6 +225,7 @@ export default function MeasurementPanel({
   });
   const roomEditFormRef = useRef<HTMLFormElement>(null);
   const lineEditFormRef = useRef<HTMLFormElement>(null);
+  const hasAutoStartedRef = useRef(false);
 
   const measurement = data?.measurement ?? null;
   const rooms = data?.rooms ?? [];
@@ -263,6 +268,53 @@ export default function MeasurementPanel({
   useEffect(() => {
     void loadMeasurement();
   }, [loadMeasurement]);
+
+  // Snelroute "maten bekend": als de klant/dossier-aanmaak hierheen heeft doorgestuurd met de
+  // intent-vlag, start de inmeting automatisch (status → measurement_planned via
+  // startOrPlanMeasurement). Wacht tot de data geladen is zodat we weten of er al een inmeting is,
+  // draait exact één keer, en wist daarna de vlag uit de URL zodat een refresh niets herstart.
+  useEffect(() => {
+    if (data === null) {
+      return;
+    }
+    if (
+      !shouldAutostartMeasurement({
+        search: typeof window === "undefined" ? "" : window.location.search,
+        hasMeasurement: Boolean(measurement),
+        canEdit: canEditMeasurement,
+        alreadyAutostarted: hasAutoStartedRef.current
+      })
+    ) {
+      return;
+    }
+
+    hasAutoStartedRef.current = true;
+
+    void (async () => {
+      const client = createConvexHttpClient(session);
+
+      if (client) {
+        try {
+          await client.mutation(api.portal.startOrPlanMeasurement, {
+            tenantSlug: tenantId,
+            actor: mutationActorFromSession(session),
+            projectId,
+            gemetenDoor: session.name ?? session.email
+          });
+          await loadMeasurement();
+        } catch (autostartError) {
+          console.error(autostartError);
+          setError("Inmeting kon niet automatisch worden gestart. Start handmatig met 'Inmeting starten'.");
+        }
+      }
+
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete(MEASUREMENT_AUTOSTART_PARAM);
+        window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      }
+    })();
+  }, [data, measurement, canEditMeasurement, loadMeasurement, projectId, session, tenantId]);
 
   useAutoFocusPanel(Boolean(editingRoomId), roomEditFormRef);
   useAutoFocusPanel(Boolean(editingLineId), lineEditFormRef);

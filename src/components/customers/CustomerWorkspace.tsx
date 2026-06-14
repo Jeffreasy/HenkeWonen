@@ -4,6 +4,7 @@ import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
+import { measurementAutostartQuery } from "../../lib/measurementIntent";
 import type { PortalCustomer } from "../../lib/portalTypes";
 import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/Alert";
@@ -67,7 +68,7 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
     }
 
     try {
-      const { createDossier } = customer;
+      const createDossier = customer.intent !== "customer";
       const customerId = await client.mutation(api.portal.createCustomer, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
@@ -92,7 +93,13 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
           titel: `${customer.displayName} - nieuw dossier`,
           createdByExternalUserId: session.userId
         });
-        window.location.assign(`/portal/projecten/${String(projectId)}`);
+        // Snelroute "maten bekend": land op het dossier met de auto-start-vlag zodat de
+        // inmeting meteen begint en de medewerker direct ruimtes/maten kan invoeren.
+        const suffix =
+          customer.intent === "snelroute"
+            ? `${measurementAutostartQuery()}#project-measurement`
+            : "";
+        window.location.assign(`/portal/projecten/${String(projectId)}${suffix}`);
       } else {
         window.location.assign(`/portal/klanten/${String(customerId)}`);
       }
