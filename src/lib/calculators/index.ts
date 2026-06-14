@@ -4,4 +4,5 @@ export * from "./plinthCalculator";
 export * from "./wallPanelCalculator";
 export * from "./stairCalculator";
 export * from "./wallpaperCalculator";
+export * from "./matrixCalculator";
 

@@ -18,6 +18,7 @@
  * │ productPrices           │ Individuele prijsregels per product + priceType       │
  * │ productImportBatches    │ Import-runs met statistieken en status                │
  * │ productImportRows       │ Individuele rijen per import-batch                    │
+ * │ priceMatrices           │ Breedte×hoogte-prijsmatrices (raambekleding)          │
  * │ importProfiles          │ Herbruikbare import-configuraties per leverancier     │
  * │ catalogDataIssues       │ Datakwaliteitsissues voor catalogusreview             │
  * │ supplierOrders          │ Leveranciersbestellingen per project                  │
@@ -627,6 +628,33 @@ export default defineSchema({
     .index("by_tenant", ["tenantId"])
     .index("by_category", ["tenantId", "categoryId"])
     .index("by_status", ["tenantId", "status"]),
+
+  /**
+   * Breedte×hoogte-prijsmatrices voor raambekleding (Duo, Geweven Hout, Horizontaal, Hout) —
+   * geconsolideerd uit HenkeWonenDATA. NIEUWE tabel: Nederlandse veldnamen conform het
+   * migratieplan (zo hoeft die straks niet opnieuw gemigreerd te worden). De enum-waarden van
+   * `btwModus` blijven gedeeld met `productPrices` (validator `vatMode`).
+   * `prijzen[hoogte-index][breedte-index]`; assen in cm, oplopend. De lookup rondt breedte/hoogte
+   * omhoog naar de eerstvolgende maatklasse (zie src/lib/calculators/matrixCalculator.ts);
+   * buiten bereik → "offerte op maat".
+   */
+  priceMatrices: defineTable({
+    tenantId: v.id("tenants"),
+    productToolSleutel: v.string(),
+    prijsgroep: v.string(),
+    bronBestand: v.optional(v.string()),
+    bronBlad: v.optional(v.string()),
+    breedteAs: v.array(v.number()),
+    hoogteAs: v.array(v.number()),
+    prijzen: v.array(v.array(v.number())),
+    btwModus: vatMode,
+    notities: v.optional(v.string()),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
+  })
+    .index("by_tenant", ["tenantId"])
+    .index("by_tool", ["tenantId", "productToolSleutel"])
+    .index("by_tool_group", ["tenantId", "productToolSleutel", "prijsgroep"]),
 
   projects: defineTable({
     tenantId: v.id("tenants"),
