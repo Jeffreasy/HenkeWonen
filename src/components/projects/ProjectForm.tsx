@@ -72,7 +72,7 @@ export default function ProjectForm({ customers, onCreate }: ProjectFormProps) {
         >
           {customers.map((customer) => (
             <option value={customer.id} key={customer.id}>
-              {customer.displayName}
+              {customer.weergaveNaam}
             </option>
           ))}
         </Select>

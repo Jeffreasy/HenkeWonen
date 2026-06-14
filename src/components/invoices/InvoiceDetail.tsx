@@ -71,7 +71,7 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
   }, [loadDetail]);
 
   function openMarkPaid() {
-    const totalStr = detail?.invoice.totalIncVat.toFixed(2).replace(".", ",") ?? "";
+    const totalStr = detail?.invoice.totaalInclBtw.toFixed(2).replace(".", ",") ?? "";
     setPaidAmount(totalStr);
     setPendingAction({ type: "mark_paid" });
   }
@@ -100,7 +100,7 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
           tenantSlug: session.tenantId,
           actor: mutationActorFromSession(session),
           invoiceId,
-          paidAmount: parsedAmount
+          betaaldBedrag: parsedAmount
         });
       } else if (pendingAction?.type === "mark_overdue") {
         await client.mutation(api.portal.updateInvoiceStatus, {
@@ -195,7 +195,7 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
             <Field
               htmlFor="paid-amount"
               label="Ontvangen bedrag (incl. btw)"
-              description={`Totaalbedrag factuur: ${formatEuro(invoice.totalIncVat)}`}
+              description={`Totaalbedrag factuur: ${formatEuro(invoice.totaalInclBtw)}`}
             >
               <Input
                 id="paid-amount"
@@ -224,11 +224,11 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
         <SectionHeader
           title={
             <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
-              {invoice.invoiceNumber}
+              {invoice.factuurnummer}
               <InvoiceStatusBadge status={invoice.status} />
             </span>
           }
-          description={`Factuur voor ${customer?.displayName ?? "Onbekende klant"}`}
+          description={`Factuur voor ${customer?.weergaveNaam ?? "Onbekende klant"}`}
           actions={
             isEditable ? (
               <div className="project-action-row">
@@ -263,8 +263,8 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
           <SectionHeader compact title="Factuurgegevens" />
           <SummaryList
             items={[
-              { label: "Factuurnummer", value: invoice.invoiceNumber },
-              { label: "Factuurdatum", value: formatDate(invoice.invoiceDate) },
+              { label: "Factuurnummer", value: invoice.factuurnummer },
+              { label: "Factuurdatum", value: formatDate(invoice.factuurdatum) },
               {
                 label: "Vervaldatum",
                 value: (
@@ -272,34 +272,34 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
                     style={
                       invoice.status !== "paid" &&
                       invoice.status !== "cancelled" &&
-                      invoice.dueDate < Date.now()
+                      invoice.vervaldatum < Date.now()
                         ? { color: "var(--color-danger, #b91c1c)", fontWeight: 700 }
                         : undefined
                     }
                   >
-                    {formatDate(invoice.dueDate)}
+                    {formatDate(invoice.vervaldatum)}
                   </span>
                 )
               },
               {
                 label: "Excl. btw",
-                value: formatEuro(invoice.subtotalExVat)
+                value: formatEuro(invoice.subtotaalExBtw)
               },
-              { label: "Btw", value: formatEuro(invoice.vatTotal) },
+              { label: "Btw", value: formatEuro(invoice.btwTotaal) },
               {
                 label: "Totaal incl. btw",
-                value: <strong>{formatEuro(invoice.totalIncVat)}</strong>
+                value: <strong>{formatEuro(invoice.totaalInclBtw)}</strong>
               },
               {
                 label: "Betaald",
-                value: formatEuro(invoice.paidAmount),
-                description: invoice.paidAt ? `op ${formatDate(invoice.paidAt)}` : undefined
+                value: formatEuro(invoice.betaaldBedrag),
+                description: invoice.betaaldOp ? `op ${formatDate(invoice.betaaldOp)}` : undefined
               },
               {
                 label: "Nog te ontvangen",
                 value: (
                   <strong>
-                    {formatEuro(Math.max(0, invoice.totalIncVat - invoice.paidAmount))}
+                    {formatEuro(Math.max(0, invoice.totaalInclBtw - invoice.betaaldBedrag))}
                   </strong>
                 )
               }
@@ -315,7 +315,7 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
               {
                 label: "Klant",
                 value: customer ? (
-                  <a href={`/portal/klanten/${customer.id}`}>{customer.displayName}</a>
+                  <a href={`/portal/klanten/${customer.id}`}>{customer.weergaveNaam}</a>
                 ) : (
                   "-"
                 )
@@ -323,7 +323,7 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
               {
                 label: "Project",
                 value: project ? (
-                  <a href={`/portal/projecten/${project.id}`}>{project.title}</a>
+                  <a href={`/portal/projecten/${project.id}`}>{project.titel}</a>
                 ) : (
                   "-"
                 )
@@ -331,7 +331,7 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
               {
                 label: "Gekoppelde offerte",
                 value: quote ? (
-                  <a href={`/portal/offertes/${quote.id}`}>{quote.quoteNumber}</a>
+                  <a href={`/portal/offertes/${quote.id}`}>{quote.offertenummer}</a>
                 ) : (
                   <span className="muted">Geen offerte gekoppeld</span>
                 )
@@ -339,8 +339,8 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
               ...(customer?.email
                 ? [{ label: "E-mail", value: customer.email }]
                 : []),
-              ...(customer?.phone
-                ? [{ label: "Telefoon", value: customer.phone }]
+              ...(customer?.telefoon
+                ? [{ label: "Telefoon", value: customer.telefoon }]
                 : [])
             ]}
           />

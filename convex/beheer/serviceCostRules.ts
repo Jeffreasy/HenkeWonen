@@ -40,12 +40,12 @@ export const create = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    categoryId: v.optional(v.id("categories")),
-    name: v.string(),
-    description: v.optional(v.string()),
-    calculationType,
-    priceExVat: v.number(),
-    vatRate: v.number(),
+    categorieId: v.optional(v.id("categories")),
+    naam: v.string(),
+    omschrijving: v.optional(v.string()),
+    berekeningType: calculationType,
+    prijsExBtw: v.number(),
+    btwTarief: v.number(),
     minQuantity: v.optional(v.number()),
     maxQuantity: v.optional(v.number()),
     metadata: v.optional(v.any())
@@ -56,18 +56,18 @@ export const create = mutation({
 
     return await ctx.db.insert("serviceCostRules", {
       tenantId: args.tenantId,
-      categoryId: args.categoryId,
-      name: args.name,
-      description: args.description,
-      calculationType: args.calculationType,
-      priceExVat: args.priceExVat,
-      vatRate: args.vatRate,
+      categorieId: args.categorieId,
+      naam: args.naam,
+      omschrijving: args.omschrijving,
+      berekeningType: args.berekeningType,
+      prijsExBtw: args.prijsExBtw,
+      btwTarief: args.btwTarief,
       minQuantity: args.minQuantity,
       maxQuantity: args.maxQuantity,
       metadata: args.metadata,
       status: "active",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -86,16 +86,16 @@ export const listServiceRules = query({
 
     return rules
       .sort((left: Doc<"serviceCostRules">, right: Doc<"serviceCostRules">) =>
-        left.name.localeCompare(right.name, "nl")
+        left.naam.localeCompare(right.naam, "nl")
       )
       .map((rule: Doc<"serviceCostRules">) => ({
         id: String(rule._id),
         tenantId: tenant.slug,
-        name: rule.name,
-        description: rule.description,
-        calculationType: rule.calculationType,
-        priceExVat: rule.priceExVat,
-        vatRate: rule.vatRate,
+        name: rule.naam,
+        description: rule.omschrijving,
+        calculationType: rule.berekeningType,
+        priceExVat: rule.prijsExBtw,
+        vatRate: rule.btwTarief,
         status: rule.status
       }));
   }
@@ -106,11 +106,11 @@ export const upsertServiceRule = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     ruleId: v.optional(v.string()),
-    name: v.string(),
-    description: v.optional(v.string()),
-    calculationType: serviceRuleCalculationType,
-    priceExVat: v.number(),
-    vatRate: v.number(),
+    naam: v.string(),
+    omschrijving: v.optional(v.string()),
+    berekeningType: serviceRuleCalculationType,
+    prijsExBtw: v.number(),
+    btwTarief: v.number(),
     status: activeStatus
   },
   handler: async (ctx, args) => {
@@ -125,13 +125,13 @@ export const upsertServiceRule = mutation({
       }
 
       await ctx.db.patch(rule._id, {
-        name: args.name,
-        description: args.description,
-        calculationType: args.calculationType,
-        priceExVat: args.priceExVat,
-        vatRate: args.vatRate,
+        naam: args.naam,
+        omschrijving: args.omschrijving,
+        berekeningType: args.berekeningType,
+        prijsExBtw: args.prijsExBtw,
+        btwTarief: args.btwTarief,
         status: args.status,
-        updatedAt: now
+        gewijzigdOp: now
       });
 
       return rule._id;
@@ -139,14 +139,14 @@ export const upsertServiceRule = mutation({
 
     return await ctx.db.insert("serviceCostRules", {
       tenantId: tenant._id,
-      name: args.name,
-      description: args.description,
-      calculationType: args.calculationType,
-      priceExVat: args.priceExVat,
-      vatRate: args.vatRate,
+      naam: args.naam,
+      omschrijving: args.omschrijving,
+      berekeningType: args.berekeningType,
+      prijsExBtw: args.prijsExBtw,
+      btwTarief: args.btwTarief,
       status: args.status,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });

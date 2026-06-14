@@ -12,9 +12,9 @@ export default function ImportWarnings({ warnings }: ImportWarningsProps) {
   return (
     <div className="grid">
       {warnings.map((warning) => (
-        <div className="card" key={`${warning.rowNumber}-${warning.message}`}>
-          <span className={warning.severity === "error" ? "badge danger" : "badge warning"}>
-            regel {warning.rowNumber}
+        <div className="card" key={`${warning.rijNummer}-${warning.message}`}>
+          <span className={warning.ernst === "error" ? "badge danger" : "badge warning"}>
+            regel {warning.rijNummer}
           </span>
           <p>{warning.message}</p>
         </div>

@@ -13,7 +13,7 @@ export type BatchStatusFilter = "all" | ProductImportBatch["status"];
 export type DetailTab = "summary" | "rows" | "warnings" | "reconciliation";
 
 /** Was gedupliceerd in ImportDetailPanel + ImportPreview */
-export type RowKindFilter = "all" | ProductImportRow["rowKind"];
+export type RowKindFilter = "all" | ProductImportRow["rijSoort"];
 
 /** Was gedupliceerd in ImportDetailPanel + ImportPreview */
 export type RowStatusFilter = "all" | ProductImportRow["status"];

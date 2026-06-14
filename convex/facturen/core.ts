@@ -24,20 +24,20 @@ function toInvoice(tenantSlug: string, invoice: Doc<"invoices">) {
     id: String(invoice._id),
     tenantId: tenantSlug,
     projectId: String(invoice.projectId),
-    customerId: String(invoice.customerId),
+    klantId: String(invoice.klantId),
     quoteId: invoice.quoteId ? String(invoice.quoteId) : undefined,
-    invoiceNumber: invoice.invoiceNumber,
+    factuurnummer: invoice.factuurnummer,
     status: invoice.status,
-    invoiceDate: invoice.invoiceDate,
-    dueDate: invoice.dueDate,
-    subtotalExVat: invoice.subtotalExVat,
-    vatTotal: invoice.vatTotal,
-    totalIncVat: invoice.totalIncVat,
-    paidAmount: invoice.paidAmount,
-    paidAt: invoice.paidAt,
-    reminderSentAt: invoice.reminderSentAt,
-    createdAt: invoice.createdAt,
-    updatedAt: invoice.updatedAt
+    factuurdatum: invoice.factuurdatum,
+    vervaldatum: invoice.vervaldatum,
+    subtotaalExBtw: invoice.subtotaalExBtw,
+    btwTotaal: invoice.btwTotaal,
+    totaalInclBtw: invoice.totaalInclBtw,
+    betaaldBedrag: invoice.betaaldBedrag,
+    betaaldOp: invoice.betaaldOp,
+    herinneringVerzondenOp: invoice.herinneringVerzondenOp,
+    aangemaaktOp: invoice.aangemaaktOp,
+    gewijzigdOp: invoice.gewijzigdOp
   };
 }
 
@@ -90,18 +90,18 @@ export const listInvoices = query({
 
     const invoices: Doc<"invoices">[] = invoicesByStatus
       .flat()
-      .sort((left, right) => right.createdAt - left.createdAt);
+      .sort((left, right) => right.aangemaaktOp - left.aangemaaktOp);
 
     const customerById = new Map(
-      customers.map((c: Doc<"customers">) => [String(c._id), c.displayName])
+      customers.map((c: Doc<"customers">) => [String(c._id), c.weergaveNaam])
     );
     const projectById = new Map(
-      projects.map((p: Doc<"projects">) => [String(p._id), p.title])
+      projects.map((p: Doc<"projects">) => [String(p._id), p.titel])
     );
 
     return invoices.map((invoice: Doc<"invoices">) => ({
       ...toInvoice(tenant.slug, invoice),
-      customerName: customerById.get(String(invoice.customerId)) ?? "-",
+      customerName: customerById.get(String(invoice.klantId)) ?? "-",
       projectTitle: projectById.get(String(invoice.projectId)) ?? "-"
     }));
   }
@@ -134,7 +134,7 @@ export const invoiceDetail = query({
     }
 
     const [customer, project, quote] = await Promise.all([
-      ctx.db.get(invoice.customerId),
+      ctx.db.get(invoice.klantId),
       ctx.db.get(invoice.projectId),
       invoice.quoteId ? ctx.db.get(invoice.quoteId) : Promise.resolve(null)
     ]);
@@ -144,24 +144,24 @@ export const invoiceDetail = query({
       customer: customer && customer.tenantId === tenant._id
         ? {
             id: String(customer._id),
-            displayName: customer.displayName,
+            weergaveNaam: customer.weergaveNaam,
             email: customer.email,
-            phone: customer.phone,
+            telefoon: customer.telefoon,
             type: customer.type
           }
         : null,
       project: project && project.tenantId === tenant._id
         ? {
             id: String(project._id),
-            title: project.title,
+            titel: project.titel,
             status: project.status
           }
         : null,
       quote: quote && quote.tenantId === tenant._id
         ? {
             id: String(quote._id),
-            quoteNumber: quote.quoteNumber,
-            title: quote.title,
+            offertenummer: quote.offertenummer,
+            titel: quote.titel,
             status: quote.status
           }
         : null
@@ -178,12 +178,12 @@ export const createInvoice = mutation({
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
     projectId: v.id("projects"),
-    customerId: v.id("customers"),
+    klantId: v.id("customers"),
     quoteId: v.optional(v.id("quotes")),
-    dueDate: v.number(),
-    subtotalExVat: v.number(),
-    vatTotal: v.number(),
-    totalIncVat: v.number()
+    vervaldatum: v.number(),
+    subtotaalExBtw: v.number(),
+    btwTotaal: v.number(),
+    totaalInclBtw: v.number()
   },
   handler: async (ctx, args) => {
     const { externalUserId } = await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
@@ -198,7 +198,7 @@ export const createInvoice = mutation({
       throw new ConvexError("Project niet gevonden.");
     }
 
-    const customer = await ctx.db.get(args.customerId);
+    const customer = await ctx.db.get(args.klantId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
       throw new ConvexError("Klant niet gevonden.");
@@ -206,11 +206,11 @@ export const createInvoice = mutation({
 
     // Vertrouw client-aangeleverde bedragen niet blind. Valideer vorm + consistentie,
     // en bind aan de vertrouwde offerte-totalen als er een offerte aan hangt.
-    const { subtotalExVat, vatTotal, totalIncVat } = args;
-    if (![subtotalExVat, vatTotal, totalIncVat].every((n) => Number.isFinite(n) && n >= 0)) {
+    const { subtotaalExBtw, btwTotaal, totaalInclBtw } = args;
+    if (![subtotaalExBtw, btwTotaal, totaalInclBtw].every((n) => Number.isFinite(n) && n >= 0)) {
       throw new ConvexError("Factuurbedragen moeten eindige, niet-negatieve getallen zijn.");
     }
-    if (Math.abs(totalIncVat - (subtotalExVat + vatTotal)) > 0.01) {
+    if (Math.abs(totaalInclBtw - (subtotaalExBtw + btwTotaal)) > 0.01) {
       throw new ConvexError("Factuurtotaal is inconsistent (totaal incl. btw moet subtotaal + btw zijn).");
     }
     if (args.quoteId) {
@@ -219,9 +219,9 @@ export const createInvoice = mutation({
         throw new ConvexError("Gekoppelde offerte niet gevonden.");
       }
       if (
-        Math.abs(linkedQuote.subtotalExVat - subtotalExVat) > 0.01 ||
-        Math.abs(linkedQuote.vatTotal - vatTotal) > 0.01 ||
-        Math.abs(linkedQuote.totalIncVat - totalIncVat) > 0.01
+        Math.abs(linkedQuote.subtotaalExBtw - subtotaalExBtw) > 0.01 ||
+        Math.abs(linkedQuote.btwTotaal - btwTotaal) > 0.01 ||
+        Math.abs(linkedQuote.totaalInclBtw - totaalInclBtw) > 0.01
       ) {
         throw new ConvexError("Factuurbedragen wijken af van de gekoppelde offerte.");
       }
@@ -233,26 +233,26 @@ export const createInvoice = mutation({
     const invoiceId = await ctx.db.insert("invoices", {
       tenantId: args.tenantId,
       projectId: args.projectId,
-      customerId: args.customerId,
+      klantId: args.klantId,
       quoteId: args.quoteId,
-      invoiceNumber,
+      factuurnummer: invoiceNumber,
       status: "sent",
-      invoiceDate: now,
-      dueDate: args.dueDate,
-      subtotalExVat: args.subtotalExVat,
-      vatTotal: args.vatTotal,
-      totalIncVat: args.totalIncVat,
-      paidAmount: 0,
-      createdAt: now,
-      updatedAt: now
+      factuurdatum: now,
+      vervaldatum: args.vervaldatum,
+      subtotaalExBtw: args.subtotaalExBtw,
+      btwTotaal: args.btwTotaal,
+      totaalInclBtw: args.totaalInclBtw,
+      betaaldBedrag: 0,
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
 
     await ctx.db.patch(args.projectId, {
       status: "invoiced",
-      invoicedAt: now,
-      updatedAt: now
+      gefactureerdOp: now,
+      gewijzigdOp: now
     });
-    await completeInvoiceWorkflow(ctx, args.tenantId, project, args.dueDate, externalUserId);
+    await completeInvoiceWorkflow(ctx, args.tenantId, project, args.vervaldatum, externalUserId);
 
     return { invoiceId: String(invoiceId), invoiceNumber };
   }
@@ -263,7 +263,7 @@ export const createInvoiceFromQuote = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     quoteId: v.string(),
-    dueDate: v.number()
+    vervaldatum: v.number()
   },
   handler: async (ctx, args) => {
     const tenant = await requireTenant(ctx, args.tenantSlug);
@@ -305,16 +305,16 @@ export const createInvoiceFromQuote = mutation({
           const invoicedAt = Date.now();
           await ctx.db.patch(project._id, {
             status: "invoiced",
-            invoicedAt: project.invoicedAt ?? invoicedAt,
-            updatedAt: invoicedAt
+            gefactureerdOp: project.gefactureerdOp ?? invoicedAt,
+            gewijzigdOp: invoicedAt
           });
         }
-        await completeInvoiceWorkflow(ctx, tenant._id, project, existing.dueDate, externalUserId);
+        await completeInvoiceWorkflow(ctx, tenant._id, project, existing.vervaldatum, externalUserId);
       }
 
       return {
         invoiceId: String(existing._id),
-        invoiceNumber: existing.invoiceNumber,
+        invoiceNumber: existing.factuurnummer,
         alreadyExists: true
       };
     }
@@ -325,27 +325,27 @@ export const createInvoiceFromQuote = mutation({
     const invoiceId = await ctx.db.insert("invoices", {
       tenantId: tenant._id,
       projectId: quote.projectId,
-      customerId: quote.customerId,
+      klantId: quote.klantId,
       quoteId,
-      invoiceNumber,
+      factuurnummer: invoiceNumber,
       status: "sent",
-      invoiceDate: now,
-      dueDate: args.dueDate,
-      subtotalExVat: quote.subtotalExVat,
-      vatTotal: quote.vatTotal,
-      totalIncVat: quote.totalIncVat,
-      paidAmount: 0,
-      createdAt: now,
-      updatedAt: now
+      factuurdatum: now,
+      vervaldatum: args.vervaldatum,
+      subtotaalExBtw: quote.subtotaalExBtw,
+      btwTotaal: quote.btwTotaal,
+      totaalInclBtw: quote.totaalInclBtw,
+      betaaldBedrag: 0,
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
 
     // Projectstatus → gefactureerd
     await ctx.db.patch(quote.projectId, {
       status: "invoiced",
-      invoicedAt: now,
-      updatedAt: now
+      gefactureerdOp: now,
+      gewijzigdOp: now
     });
-    await completeInvoiceWorkflow(ctx, tenant._id, project, args.dueDate, externalUserId);
+    await completeInvoiceWorkflow(ctx, tenant._id, project, args.vervaldatum, externalUserId);
 
     return {
       invoiceId: String(invoiceId),
@@ -395,12 +395,12 @@ export const updateInvoiceStatus = mutation({
 
     await ctx.db.patch(invoiceId, {
       status: args.status,
-      reminderSentAt:
-        args.status === "overdue" ? invoice.reminderSentAt ?? now : invoice.reminderSentAt,
+      herinneringVerzondenOp:
+        args.status === "overdue" ? invoice.herinneringVerzondenOp ?? now : invoice.herinneringVerzondenOp,
       // Bij handmatig op 'paid' zetten: betaalbedrag/-datum verzoenen met het totaal.
-      paidAmount: markingPaid ? invoice.totalIncVat : invoice.paidAmount,
-      paidAt: markingPaid ? invoice.paidAt ?? now : invoice.paidAt,
-      updatedAt: now
+      betaaldBedrag: markingPaid ? invoice.totaalInclBtw : invoice.betaaldBedrag,
+      betaaldOp: markingPaid ? invoice.betaaldOp ?? now : invoice.betaaldOp,
+      gewijzigdOp: now
     });
 
     // Als betaald: projectstatus bijwerken
@@ -410,8 +410,8 @@ export const updateInvoiceStatus = mutation({
       if (project && project.tenantId === tenant._id) {
         await ctx.db.patch(invoice.projectId, {
           status: "paid",
-          paidAt: now,
-          updatedAt: now
+          betaaldOp: now,
+          gewijzigdOp: now
         });
       }
     }
@@ -425,8 +425,8 @@ export const markInvoicePaid = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     invoiceId: v.string(),
-    paidAmount: v.number(),
-    paidAt: v.optional(v.number())
+    betaaldBedrag: v.number(),
+    betaaldOp: v.optional(v.number())
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
@@ -452,21 +452,21 @@ export const markInvoicePaid = mutation({
     }
 
     const now = Date.now();
-    const paidAt = args.paidAt ?? now;
+    const paidAt = args.betaaldOp ?? now;
 
     // Bepaal nieuwe status op basis van betaald bedrag
-    const isFullyPaid = args.paidAmount >= invoice.totalIncVat;
+    const isFullyPaid = args.betaaldBedrag >= invoice.totaalInclBtw;
     const newStatus = isFullyPaid
       ? ("paid" as const)
-      : args.paidAmount > 0
+      : args.betaaldBedrag > 0
       ? ("partially_paid" as const)
       : invoice.status;
 
     await ctx.db.patch(invoiceId, {
-      paidAmount: args.paidAmount,
-      paidAt: isFullyPaid ? paidAt : invoice.paidAt,
+      betaaldBedrag: args.betaaldBedrag,
+      betaaldOp: isFullyPaid ? paidAt : invoice.betaaldOp,
       status: newStatus,
-      updatedAt: now
+      gewijzigdOp: now
     });
 
     // Projectstatus naar 'paid' als volledig betaald
@@ -476,8 +476,8 @@ export const markInvoicePaid = mutation({
       if (project && project.tenantId === tenant._id) {
         await ctx.db.patch(invoice.projectId, {
           status: "paid",
-          paidAt,
-          updatedAt: now
+          betaaldOp: paidAt,
+          gewijzigdOp: now
         });
       }
     }

@@ -14,10 +14,10 @@ test("nextInvoiceNumber genereert een gatloze jaarreeks per tenant", async () =>
   const tenantId = await t.run(async (ctx) => {
     return await ctx.db.insert("tenants", {
       slug: "henke-wonen",
-      name: "Henke Wonen",
+      naam: "Henke Wonen",
       status: "active",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   });
 
@@ -54,52 +54,52 @@ test("createInvoiceFromQuote is idempotent: één factuur per offerte met gatloo
   const quoteId = await t.run(async (ctx) => {
     const tenantId = await ctx.db.insert("tenants", {
       slug: "henke-wonen",
-      name: "Henke Wonen",
+      naam: "Henke Wonen",
       status: "active",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
     await ctx.db.insert("users", {
       tenantId,
       externalUserId,
       email: "admin@henke.nl",
       role: "admin",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
     const customerId = await ctx.db.insert("customers", {
       tenantId,
       type: "private",
-      displayName: "Testklant",
+      weergaveNaam: "Testklant",
       status: "active",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
     const projectId = await ctx.db.insert("projects", {
       tenantId,
-      customerId,
-      title: "Testproject",
+      klantId: customerId,
+      titel: "Testproject",
       status: "quote_accepted",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
     return await ctx.db.insert("quotes", {
       tenantId,
       projectId,
-      customerId,
-      quoteNumber: "OFF-2026-1",
-      title: "Testofferte",
+      klantId: customerId,
+      offertenummer: "OFF-2026-1",
+      titel: "Testofferte",
       status: "accepted",
-      subtotalExVat: 100,
-      vatTotal: 21,
-      totalIncVat: 121,
-      createdAt: now,
-      updatedAt: now
+      subtotaalExBtw: 100,
+      btwTotaal: 21,
+      totaalInclBtw: 121,
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   });
 
   const actor = { externalUserId, authzToken: `dev.actor.henke-wonen.${externalUserId}` };
-  const args = { tenantSlug: "henke-wonen", actor, quoteId, dueDate: now + 14 * 24 * 60 * 60 * 1000 };
+  const args = { tenantSlug: "henke-wonen", actor, quoteId, vervaldatum: now + 14 * 24 * 60 * 60 * 1000 };
 
   const first = await t.mutation(api.facturen.core.createInvoiceFromQuote, args);
   const second = await t.mutation(api.facturen.core.createInvoiceFromQuote, args);

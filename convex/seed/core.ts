@@ -218,51 +218,51 @@ const serviceCostRules: ServiceRuleSeed[] = [
 
 const quoteTemplateSections = [
   {
-    key: "vloeren",
-    title: "Vloeren",
-    description: "Ondervloer, egaliseren, vloerproduct en legwerk.",
+    sleutel: "vloeren",
+    titel: "Vloeren",
+    omschrijving: "Ondervloer, egaliseren, vloerproduct en legwerk.",
     sortOrder: 1
   },
   {
-    key: "plinten",
-    title: "Plinten",
-    description: "Plinten geleverd en geplaatst.",
+    sleutel: "plinten",
+    titel: "Plinten",
+    omschrijving: "Plinten geleverd en geplaatst.",
     sortOrder: 2
   },
   {
-    key: "raamdecoratie",
-    title: "Gordijnen & raamdecoratie",
-    description: "Gordijnen, rails, plissés, jaloezieën en duettes.",
+    sleutel: "raamdecoratie",
+    titel: "Gordijnen & raamdecoratie",
+    omschrijving: "Gordijnen, rails, plissés, jaloezieën en duettes.",
     sortOrder: 3
   },
   {
-    key: "traprenovatie",
-    title: "Traprenovatie",
-    description: "PVC traprenovatie inclusief kleur en stripkeuze.",
+    sleutel: "traprenovatie",
+    titel: "Traprenovatie",
+    omschrijving: "PVC traprenovatie inclusief kleur en stripkeuze.",
     sortOrder: 4
   },
   {
-    key: "wandafwerking",
-    title: "Wandafwerking",
-    description: "Wandpanelen inclusief montagebenodigdheden.",
+    sleutel: "wandafwerking",
+    titel: "Wandafwerking",
+    omschrijving: "Wandpanelen inclusief montagebenodigdheden.",
     sortOrder: 5
   },
   {
-    key: "behang",
-    title: "Behang",
-    description: "Behang geleverd en aanbrengen behang als aparte arbeidsregel.",
+    sleutel: "behang",
+    titel: "Behang",
+    omschrijving: "Behang geleverd en aanbrengen behang als aparte arbeidsregel.",
     sortOrder: 6
   },
   {
-    key: "voorwaarden",
-    title: "Voorwaarden",
-    description: "Standaard uitvoeringsvoorwaarden.",
+    sleutel: "voorwaarden",
+    titel: "Voorwaarden",
+    omschrijving: "Standaard uitvoeringsvoorwaarden.",
     sortOrder: 7
   },
   {
-    key: "facturering",
-    title: "Facturering",
-    description: "Betaling, aanbetaling en betaaltermijnen.",
+    sleutel: "facturering",
+    titel: "Facturering",
+    omschrijving: "Betaling, aanbetaling en betaaltermijnen.",
     sortOrder: 8
   }
 ];
@@ -289,181 +289,181 @@ const paymentTerms = [
 
 const quoteTemplateLines = [
   {
-    sectionKey: "vloeren",
-    lineType: "material",
-    title: "Zwevende zelfklevende ondervloer t.b.v. PVC",
-    description: "Ondervloer voor PVC, hoeveelheid per m² invullen.",
-    unit: "m2",
-    defaultQuantity: 1,
+    sectieSleutel: "vloeren",
+    regelType: "material",
+    titel: "Zwevende zelfklevende ondervloer t.b.v. PVC",
+    omschrijving: "Ondervloer voor PVC, hoeveelheid per m² invullen.",
+    eenheid: "m2",
+    standaardAantal: 1,
     sortOrder: 1,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "Ondervloer",
-    productKindHint: "underlay"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "Ondervloer",
+    productSoortHint: "underlay"
   },
   {
-    sectionKey: "vloeren",
-    lineType: "labor",
-    title: "Primeren en egaliseren",
-    description: "Voorbehandeling en egaliseren per m².",
-    unit: "m2",
-    defaultQuantity: 1,
+    sectieSleutel: "vloeren",
+    regelType: "labor",
+    titel: "Primeren en egaliseren",
+    omschrijving: "Voorbehandeling en egaliseren per m².",
+    eenheid: "m2",
+    standaardAantal: 1,
     sortOrder: 2,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "Egaline"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "Egaline"
   },
   {
-    sectionKey: "vloeren",
-    lineType: "product",
-    title: "PVC/tapijt/vinyl fabrikant, naam, kleur",
-    description: "Vloerproduct inclusief fabrikant, collectie/naam en kleur.",
-    unit: "m2",
-    defaultQuantity: 1,
+    sectieSleutel: "vloeren",
+    regelType: "product",
+    titel: "PVC/tapijt/vinyl fabrikant, naam, kleur",
+    omschrijving: "Vloerproduct inclusief fabrikant, collectie/naam en kleur.",
+    eenheid: "m2",
+    standaardAantal: 1,
     sortOrder: 3,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "PVC Vloeren / Tapijt / Vinyl"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "PVC Vloeren / Tapijt / Vinyl"
   },
   {
-    sectionKey: "vloeren",
-    lineType: "labor",
-    title: "Legkosten PVC visgraat/rechte plank/tapijt/vinyl",
-    description: "Legwerk als aparte arbeidsregel per m².",
-    unit: "m2",
-    defaultQuantity: 1,
+    sectieSleutel: "vloeren",
+    regelType: "labor",
+    titel: "Legkosten PVC visgraat/rechte plank/tapijt/vinyl",
+    omschrijving: "Legwerk als aparte arbeidsregel per m².",
+    eenheid: "m2",
+    standaardAantal: 1,
     sortOrder: 4,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "Werkzaamheden"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "Werkzaamheden"
   },
   {
-    sectionKey: "plinten",
-    lineType: "product",
-    title: "Plinten maat kleur geplaatst",
-    description: "Plintmaat en kleur invullen; montage apart in tekst of prijs opnemen.",
-    unit: "meter",
-    defaultQuantity: 1,
+    sectieSleutel: "plinten",
+    regelType: "product",
+    titel: "Plinten maat kleur geplaatst",
+    omschrijving: "Plintmaat en kleur invullen; montage apart in tekst of prijs opnemen.",
+    eenheid: "meter",
+    standaardAantal: 1,
     sortOrder: 5,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "Plinten",
-    productKindHint: "plinth"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "Plinten",
+    productSoortHint: "plinth"
   },
   {
-    sectionKey: "raamdecoratie",
-    lineType: "manual",
-    title: "Gordijnen fabrikant, stof en kleur",
-    description: "Maatwerkregel voor gordijnen, stofkwaliteit en kleur.",
-    unit: "custom",
-    defaultQuantity: 1,
+    sectieSleutel: "raamdecoratie",
+    regelType: "manual",
+    titel: "Gordijnen fabrikant, stof en kleur",
+    omschrijving: "Maatwerkregel voor gordijnen, stofkwaliteit en kleur.",
+    eenheid: "custom",
+    standaardAantal: 1,
     sortOrder: 6,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "Gordijnen",
-    productKindHint: "curtain_fabric"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "Gordijnen",
+    productSoortHint: "curtain_fabric"
   },
   {
-    sectionKey: "raamdecoratie",
-    lineType: "product",
-    title: "Gordijnrails merk, kleur",
-    description: "Rail/roede met merk, kleur en lengte.",
-    unit: "meter",
-    defaultQuantity: 1,
+    sectieSleutel: "raamdecoratie",
+    regelType: "product",
+    titel: "Gordijnrails merk, kleur",
+    omschrijving: "Rail/roede met merk, kleur en lengte.",
+    eenheid: "meter",
+    standaardAantal: 1,
     sortOrder: 7,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "Roedes/Railsen",
-    productKindHint: "rail"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "Roedes/Railsen",
+    productSoortHint: "rail"
   },
   {
-    sectionKey: "raamdecoratie",
-    lineType: "manual",
-    title: "Plissés fabrikant, kleur",
-    description: "Maatwerkregel voor plissé raamdecoratie.",
-    unit: "custom",
-    defaultQuantity: 1,
+    sectieSleutel: "raamdecoratie",
+    regelType: "manual",
+    titel: "Plissés fabrikant, kleur",
+    omschrijving: "Maatwerkregel voor plissé raamdecoratie.",
+    eenheid: "custom",
+    standaardAantal: 1,
     sortOrder: 8,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "Raambekleding",
-    productKindHint: "plisse"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "Raambekleding",
+    productSoortHint: "plisse"
   },
   {
-    sectionKey: "raamdecoratie",
-    lineType: "manual",
-    title: "Houten/bamboe jaloezieën fabrikant, kleur",
-    description: "Maatwerkregel voor houten of bamboe jaloezieën.",
-    unit: "custom",
-    defaultQuantity: 1,
+    sectieSleutel: "raamdecoratie",
+    regelType: "manual",
+    titel: "Houten/bamboe jaloezieën fabrikant, kleur",
+    omschrijving: "Maatwerkregel voor houten of bamboe jaloezieën.",
+    eenheid: "custom",
+    standaardAantal: 1,
     sortOrder: 9,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "Raambekleding",
-    productKindHint: "jaloezie"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "Raambekleding",
+    productSoortHint: "jaloezie"
   },
   {
-    sectionKey: "raamdecoratie",
-    lineType: "manual",
-    title: "Duettes fabrikant, kleur",
-    description: "Maatwerkregel voor duette raamdecoratie.",
-    unit: "custom",
-    defaultQuantity: 1,
+    sectieSleutel: "raamdecoratie",
+    regelType: "manual",
+    titel: "Duettes fabrikant, kleur",
+    omschrijving: "Maatwerkregel voor duette raamdecoratie.",
+    eenheid: "custom",
+    standaardAantal: 1,
     sortOrder: 10,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "Raambekleding",
-    productKindHint: "duette"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "Raambekleding",
+    productSoortHint: "duette"
   },
   {
-    sectionKey: "traprenovatie",
-    lineType: "manual",
-    title: "Traprenovatie PVC fabrikant, kleur, kleur strip",
-    description: "Traprenovatie inclusief fabrikant, kleur en stripkleur.",
-    unit: "stairs",
-    defaultQuantity: 1,
+    sectieSleutel: "traprenovatie",
+    regelType: "manual",
+    titel: "Traprenovatie PVC fabrikant, kleur, kleur strip",
+    omschrijving: "Traprenovatie inclusief fabrikant, kleur en stripkleur.",
+    eenheid: "stairs",
+    standaardAantal: 1,
     sortOrder: 11,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "Traprenovatie"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "Traprenovatie"
   },
   {
-    sectionKey: "wandafwerking",
-    lineType: "product",
-    title: "Wandpanelen merk, kleur",
-    description: "Wandpanelen geplaatst inclusief benodigde lijm waar van toepassing.",
-    unit: "m2",
-    defaultQuantity: 1,
+    sectieSleutel: "wandafwerking",
+    regelType: "product",
+    titel: "Wandpanelen merk, kleur",
+    omschrijving: "Wandpanelen geplaatst inclusief benodigde lijm waar van toepassing.",
+    eenheid: "m2",
+    standaardAantal: 1,
     sortOrder: 12,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "Wandpanelen",
-    productKindHint: "panel"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "Wandpanelen",
+    productSoortHint: "panel"
   },
   {
-    sectionKey: "behang",
-    lineType: "product",
-    title: "Behang merk, kleur",
-    description: "Behang geleverd; aantal rollen kan met de behangcalculator worden voorbereid.",
-    unit: "roll",
-    defaultQuantity: 1,
+    sectieSleutel: "behang",
+    regelType: "product",
+    titel: "Behang merk, kleur",
+    omschrijving: "Behang geleverd; aantal rollen kan met de behangcalculator worden voorbereid.",
+    eenheid: "roll",
+    standaardAantal: 1,
     sortOrder: 13,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "Behang",
-    productKindHint: "wallpaper"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "Behang",
+    productSoortHint: "wallpaper"
   },
   {
-    sectionKey: "behang",
-    lineType: "labor",
-    title: "Aanbrengen behang",
-    description: "Arbeidsregel voor aanbrengen behang per rol.",
-    unit: "roll",
-    defaultQuantity: 1,
+    sectieSleutel: "behang",
+    regelType: "labor",
+    titel: "Aanbrengen behang",
+    omschrijving: "Arbeidsregel voor aanbrengen behang per rol.",
+    eenheid: "roll",
+    standaardAantal: 1,
     sortOrder: 14,
-    optional: true,
-    defaultEnabled: false,
-    categoryHint: "Behang"
+    optioneel: true,
+    standaardIngeschakeld: false,
+    categorieHint: "Behang"
   }
 ] as const;
 
@@ -952,10 +952,10 @@ export const run = internalMutation({
       ({
         _id: await ctx.db.insert("tenants", {
           slug: "henke-wonen",
-          name: "Henke Wonen",
+          naam: "Henke Wonen",
           status: "active",
-          createdAt: now,
-          updatedAt: now
+          aangemaaktOp: now,
+          gewijzigdOp: now
         })
       } as const);
 
@@ -972,12 +972,12 @@ export const run = internalMutation({
       if (!existing) {
         await ctx.db.insert("categories", {
           tenantId,
-          name,
+          naam: name,
           slug,
           sortOrder: index + 1,
           status: "active",
-          createdAt: now,
-          updatedAt: now
+          aangemaaktOp: now,
+          gewijzigdOp: now
         });
       }
     }
@@ -986,16 +986,16 @@ export const run = internalMutation({
       const existing = await ctx.db
         .query("suppliers")
         .withIndex("by_tenant", (q) => q.eq("tenantId", tenantId))
-        .filter((q) => q.eq(q.field("name"), supplierName))
+        .filter((q) => q.eq(q.field("naam"), supplierName))
         .first();
 
       if (!existing) {
         await ctx.db.insert("suppliers", {
           tenantId,
-          name: supplierName,
-          productListStatus: "received",
-          createdAt: now,
-          updatedAt: now
+          naam: supplierName,
+          prijslijstStatus: "received",
+          aangemaaktOp: now,
+          gewijzigdOp: now
         });
       }
     }
@@ -1004,17 +1004,17 @@ export const run = internalMutation({
       const existing = await ctx.db
         .query("suppliers")
         .withIndex("by_tenant", (q) => q.eq("tenantId", tenantId))
-        .filter((q) => q.eq(q.field("name"), supplierName))
+        .filter((q) => q.eq(q.field("naam"), supplierName))
         .first();
 
       if (!existing) {
         await ctx.db.insert("suppliers", {
           tenantId,
-          name: supplierName,
-          productListStatus: "requested",
-          notes: "Genoemd in overzicht, prijslijst nog niet aangeleverd.",
-          createdAt: now,
-          updatedAt: now
+          naam: supplierName,
+          prijslijstStatus: "requested",
+          notities: "Genoemd in overzicht, prijslijst nog niet aangeleverd.",
+          aangemaaktOp: now,
+          gewijzigdOp: now
         });
       }
     }
@@ -1023,20 +1023,20 @@ export const run = internalMutation({
       const existing = await ctx.db
         .query("serviceCostRules")
         .withIndex("by_tenant", (q) => q.eq("tenantId", tenantId))
-        .filter((q) => q.eq(q.field("name"), rule.name))
+        .filter((q) => q.eq(q.field("naam"), rule.name))
         .first();
 
       if (!existing) {
         await ctx.db.insert("serviceCostRules", {
           tenantId,
-          name: rule.name,
-          description: rule.description,
-          calculationType: rule.calculationType,
-          priceExVat: rule.priceExVat,
-          vatRate: rule.vatRate,
+          naam: rule.name,
+          omschrijving: rule.description,
+          berekeningType: rule.calculationType,
+          prijsExBtw: rule.priceExVat,
+          btwTarief: rule.vatRate,
           status: "active",
-          createdAt: now,
-          updatedAt: now
+          aangemaaktOp: now,
+          gewijzigdOp: now
         });
       }
     }
@@ -1044,7 +1044,7 @@ export const run = internalMutation({
     const existingTemplate = await ctx.db
       .query("quoteTemplates")
       .withIndex("by_type", (q) => q.eq("tenantId", tenantId).eq("type", "default"))
-      .filter((q) => q.eq(q.field("name"), "Standaard offerte woninginrichting"))
+      .filter((q) => q.eq(q.field("naam"), "Standaard offerte woninginrichting"))
       .first();
 
     const legacyTemplate = existingTemplate
@@ -1052,7 +1052,7 @@ export const run = internalMutation({
       : await ctx.db
           .query("quoteTemplates")
           .withIndex("by_type", (q) => q.eq("tenantId", tenantId).eq("type", "default"))
-          .filter((q) => q.eq(q.field("name"), "Henke Wonen standaard offerte"))
+          .filter((q) => q.eq(q.field("naam"), "Henke Wonen standaard offerte"))
           .first();
 
     const templateToUpdate = existingTemplate ?? legacyTemplate;
@@ -1060,26 +1060,26 @@ export const run = internalMutation({
 
     if (templateToUpdate) {
       await ctx.db.patch(templateToUpdate._id, {
-        name: "Standaard offerte woninginrichting",
-        sections: quoteTemplateSections,
-        defaultTerms: quoteTerms,
-        paymentTerms,
-        defaultLines,
+        naam: "Standaard offerte woninginrichting",
+        secties: quoteTemplateSections,
+        standaardVoorwaarden: quoteTerms,
+        betalingsvoorwaarden: paymentTerms,
+        standaardRegels: defaultLines,
         status: "active",
-        updatedAt: now
+        gewijzigdOp: now
       });
     } else {
       await ctx.db.insert("quoteTemplates", {
         tenantId,
-        name: "Standaard offerte woninginrichting",
+        naam: "Standaard offerte woninginrichting",
         type: "default",
-        sections: quoteTemplateSections,
-        defaultTerms: quoteTerms,
-        paymentTerms,
-        defaultLines,
+        secties: quoteTemplateSections,
+        standaardVoorwaarden: quoteTerms,
+        betalingsvoorwaarden: paymentTerms,
+        standaardRegels: defaultLines,
         status: "active",
-        createdAt: now,
-        updatedAt: now
+        aangemaaktOp: now,
+        gewijzigdOp: now
       });
     }
 
@@ -1087,9 +1087,9 @@ export const run = internalMutation({
       const existing = await ctx.db
         .query("importProfiles")
         .withIndex("by_supplier", (q) =>
-          q.eq("tenantId", tenantId).eq("supplierName", profile.supplierName)
+          q.eq("tenantId", tenantId).eq("leverancierNaam", profile.supplierName)
         )
-        .filter((q) => q.eq(q.field("name"), profile.name))
+        .filter((q) => q.eq(q.field("naam"), profile.name))
         .first();
 
       const mapping = {
@@ -1103,7 +1103,7 @@ export const run = internalMutation({
       const supplier = await ctx.db
         .query("suppliers")
         .withIndex("by_tenant", (q) => q.eq("tenantId", tenantId))
-        .filter((q) => q.eq(q.field("name"), profile.supplierName))
+        .filter((q) => q.eq(q.field("naam"), profile.supplierName))
         .first();
       const mappedCategorySlug =
         typeof mapping.category === "string" ? slugify(mapping.category) : undefined;
@@ -1114,9 +1114,9 @@ export const run = internalMutation({
             .first()
         : null;
       const priceColumns = Array.isArray(mapping.priceColumns) ? mapping.priceColumns : [];
-      const existingVatModeByPriceColumn = existing?.vatModeByPriceColumn ?? {};
-      const existingPriceColumnMappings = Array.isArray(existing?.priceColumnMappings)
-        ? existing.priceColumnMappings
+      const existingVatModeByPriceColumn = existing?.btwModusPerPrijskolom ?? {};
+      const existingPriceColumnMappings = Array.isArray(existing?.prijskolomMappings)
+        ? existing.prijskolomMappings
         : [];
       const existingVatModeForColumn = (header: string, sourceColumnIndex: number) => {
         const mappedVatMode = existingVatModeByPriceColumn[toAsciiFieldKey(header)];
@@ -1190,71 +1190,71 @@ export const run = internalMutation({
         ])
       );
       const profileFields = {
-        supplierId: supplier?._id,
-        categoryId: category?._id,
-        expectedFileExtension:
+        leverancierId: supplier?._id,
+        categorieId: category?._id,
+        verwachteBestandsextensie:
           profile.supportsXls && !profile.supportsXlsx ? (".xls" as const) : (".xlsx" as const),
-        filePattern: profile.filePattern,
-        sheetPattern: profile.sheetPattern,
-        supportsXlsx: profile.supportsXlsx,
-        supportsXls: profile.supportsXls,
-        sheetMapping: {
+        bestandPatroon: profile.filePattern,
+        bladPatroon: profile.sheetPattern,
+        ondersteuntXlsx: profile.supportsXlsx,
+        ondersteuntXls: profile.supportsXls,
+        bladMapping: {
           pattern: profile.sheetPattern ?? "*",
           strategy: "match_by_name_or_first_usable_sheet"
         },
-        headerRowStrategy: {
+        koprijStrategie: {
           strategy: "detect",
           maxScanRows: 100,
           preserveOriginalHeaders: true
         },
-        sectionRowStrategy: {
+        sectierijStrategie: {
           strategy: mapping.detectSectionRows || mapping.sectionRows ? "detect" : "optional",
           maxFilledCells: 2,
           requireNoCodeAndNoPrice: true
         },
-        productKeyStrategy: {
+        productSleutelStrategie: {
           preserveCodesAsString: true,
           priority: ["articleNumber", "supplierCode", "ean", "commercialCode", "importKey"],
           fallback:
             "tenantId + supplierId + sourceFileName + sourceSheetName + rowHash, daarna supplier + collection + productName + colorName + width + unit"
         },
-        columnMappings: mappingWithPreservedPriceColumns,
-        priceColumnMappings: priceColumnObjects,
-        vatModeByPriceColumn,
-        unitByPriceColumn,
-        priceTypeByPriceColumn,
-        duplicateStrategy: {
+        kolomMappings: mappingWithPreservedPriceColumns,
+        prijskolomMappings: priceColumnObjects,
+        btwModusPerPrijskolom: vatModeByPriceColumn,
+        eenheidPerPrijskolom: unitByPriceColumn,
+        prijsSoortPerPrijskolom: priceTypeByPriceColumn,
+        dubbelenStrategie: {
           product: "tenantId + supplierId + articleNumber/supplierCode/EAN/importKey",
           price: "priceListId + priceType + unit + vatMode + validFrom + sourceColumnIndex",
           updateExistingProducts: true,
           keepPricesPerSourceKey: true
         },
-        zeroPriceStrategy: {
+        nulPrijsStrategie: {
           strategy: "skip",
           warning: true
         },
-        allowUnknownVatMode: existing?.allowUnknownVatMode ?? false,
-        vatModeReview: existing?.vatModeReview,
+        staBtwModusOnbekendToe: existing?.staBtwModusOnbekendToe ?? false,
+        btwModusReview: existing?.btwModusReview,
         vatModeUpdatedByExternalUserId: existing?.vatModeUpdatedByExternalUserId,
-        vatModeUpdatedAt: existing?.vatModeUpdatedAt,
+        btwModusGewijzigdOp: existing?.btwModusGewijzigdOp,
         mapping: mappingWithPreservedPriceColumns,
-        notes: profile.notes,
+        notities: profile.notes,
         status: "active" as const
       };
 
       if (existing) {
         await ctx.db.patch(existing._id, {
           ...profileFields,
-          updatedAt: now
+          gewijzigdOp: now
         });
       } else {
         await ctx.db.insert("importProfiles", {
           tenantId,
-          supplierName: profile.supplierName,
-          name: profile.name,
+          leverancierNaam: profile.supplierName,
+          naam: profile.name,
           ...profileFields,
-          createdAt: now,
-          updatedAt: now
+          aangemaaktOp: now,
+          gewijzigdOp: now
         });
       }
     }
@@ -1270,11 +1270,11 @@ export const run = internalMutation({
         .collect();
 
       for (const profile of tenantImportProfiles) {
-        const key = `${profile.supplierName}::${profile.name}`;
+        const key = `${profile.leverancierNaam}::${profile.naam}`;
         if (!activeImportProfileKeys.has(key) && profile.status !== "inactive") {
           await ctx.db.patch(profile._id, {
             status: "inactive",
-            updatedAt: now
+            gewijzigdOp: now
           });
         }
       }

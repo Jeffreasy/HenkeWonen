@@ -31,29 +31,29 @@ function toDateInputValue(value?: number): string {
 }
 
 export function EditSupplierForm({ supplier, onSaveSupplier, onCancel, isSaving }: EditSupplierFormProps) {
-  const [name, setName] = useState(supplier.name);
-  const [contactName, setContactName] = useState(supplier.contactName ?? "");
+  const [name, setName] = useState(supplier.naam);
+  const [contactName, setContactName] = useState(supplier.contactpersoon ?? "");
   const [email, setEmail] = useState(supplier.email ?? "");
-  const [phone, setPhone] = useState(supplier.phone ?? "");
-  const [productListStatus, setProductListStatus] = useState<ProductListStatus>(supplier.productListStatus);
+  const [phone, setPhone] = useState(supplier.telefoon ?? "");
+  const [productListStatus, setProductListStatus] = useState<ProductListStatus>(supplier.prijslijstStatus);
   const [status, setStatus] = useState<SupplierStatus>(supplier.status ?? "active");
-  const [lastContactDate, setLastContactDate] = useState(toDateInputValue(supplier.lastContactAt));
-  const [expectedDate, setExpectedDate] = useState(toDateInputValue(supplier.expectedAt));
-  const [notes, setNotes] = useState(supplier.notes ?? "");
+  const [lastContactDate, setLastContactDate] = useState(toDateInputValue(supplier.laatsteContactOp));
+  const [expectedDate, setExpectedDate] = useState(toDateInputValue(supplier.verwachtOp));
+  const [notes, setNotes] = useState(supplier.notities ?? "");
 
   const formRef = useRef<HTMLFormElement>(null);
   useAutoFocusPanel(true, formRef);
 
   useEffect(() => {
-    setName(supplier.name);
-    setContactName(supplier.contactName ?? "");
+    setName(supplier.naam);
+    setContactName(supplier.contactpersoon ?? "");
     setEmail(supplier.email ?? "");
-    setPhone(supplier.phone ?? "");
-    setProductListStatus(supplier.productListStatus);
+    setPhone(supplier.telefoon ?? "");
+    setProductListStatus(supplier.prijslijstStatus);
     setStatus(supplier.status ?? "active");
-    setLastContactDate(toDateInputValue(supplier.lastContactAt));
-    setExpectedDate(toDateInputValue(supplier.expectedAt));
-    setNotes(supplier.notes ?? "");
+    setLastContactDate(toDateInputValue(supplier.laatsteContactOp));
+    setExpectedDate(toDateInputValue(supplier.verwachtOp));
+    setNotes(supplier.notities ?? "");
   }, [supplier]);
 
   const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
@@ -80,7 +80,7 @@ export function EditSupplierForm({ supplier, onSaveSupplier, onCancel, isSaving 
       <form className="form-grid edit-work-panel" onSubmit={handleSubmit} ref={formRef}>
         <SectionHeader
           compact
-          title={`Leverancier bewerken: ${supplier.name}`}
+          title={`Leverancier bewerken: ${supplier.naam}`}
           description="Je past nu deze leverancier aan. Producten, imports en historie blijven bewaard."
           actions={
             <StatusBadge

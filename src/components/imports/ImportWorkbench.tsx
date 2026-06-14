@@ -91,9 +91,9 @@ export function ImportWorkbench({
           <p className="eyebrow">Nu eerst</p>
           <strong>
             {nextAttentionBatch
-              ? `${nextAttentionBatch.supplierName} · ${nextAttentionBatch.fileName}`
+              ? `${nextAttentionBatch.leverancierNaam} · ${nextAttentionBatch.bestandsnaam}`
               : selectedBatch
-                ? selectedBatch.fileName
+                ? selectedBatch.bestandsnaam
                 : "Geen open blokkades"}
           </strong>
           <p className="muted">

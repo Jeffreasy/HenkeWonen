@@ -137,9 +137,9 @@ export async function nextInvoiceNumber(ctx: any, tenantId: Id<"tenants">): Prom
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
       .collect();
     const highest = existing
-      .filter((inv: Doc<"invoices">) => inv.invoiceNumber.startsWith(prefix))
+      .filter((inv: Doc<"invoices">) => inv.factuurnummer.startsWith(prefix))
       .reduce((max: number, inv: Doc<"invoices">) => {
-        const num = parseInt(inv.invoiceNumber.replace(prefix, ""), 10);
+        const num = parseInt(inv.factuurnummer.replace(prefix, ""), 10);
         return isNaN(num) ? max : Math.max(max, num);
       }, 0);
 
@@ -149,7 +149,7 @@ export async function nextInvoiceNumber(ctx: any, tenantId: Id<"tenants">): Prom
   await ctx.db.patch(tenantId, {
     invoiceSequenceYear: year,
     invoiceSequenceValue: nextSequence,
-    updatedAt: now
+    gewijzigdOp: now
   });
 
   return `${prefix}${String(nextSequence).padStart(3, "0")}`;
@@ -236,17 +236,17 @@ export async function recalculateQuote(ctx: any, tenantId: Id<"tenants">, quoteI
     .withIndex("by_quote", (q: any) => q.eq("tenantId", tenantId).eq("quoteId", quoteId))
     .collect();
   const subtotalExVat = roundMoney(
-    lines.reduce((sum: number, line: Doc<"quoteLines">) => sum + line.lineTotalExVat, 0)
+    lines.reduce((sum: number, line: Doc<"quoteLines">) => sum + line.regelTotaalExBtw, 0)
   );
   const vatTotal = roundMoney(
-    lines.reduce((sum: number, line: Doc<"quoteLines">) => sum + line.lineVatTotal, 0)
+    lines.reduce((sum: number, line: Doc<"quoteLines">) => sum + line.regelBtwTotaal, 0)
   );
 
   await ctx.db.patch(quoteId, {
-    subtotalExVat,
-    vatTotal,
-    totalIncVat: roundMoney(subtotalExVat + vatTotal),
-    updatedAt: Date.now()
+    subtotaalExBtw: subtotalExVat,
+    btwTotaal: vatTotal,
+    totaalInclBtw: roundMoney(subtotalExVat + vatTotal),
+    gewijzigdOp: Date.now()
   });
 }
 
@@ -255,17 +255,17 @@ export function toCustomer(tenantSlug: string, customer: Doc<"customers">) {
     id: String(customer._id),
     tenantId: tenantSlug,
     type: customer.type,
-    displayName: customer.displayName,
+    displayName: customer.weergaveNaam,
     email: customer.email,
-    phone: customer.phone,
-    street: customer.street,
-    houseNumber: customer.houseNumber,
-    postalCode: customer.postalCode,
-    city: customer.city,
-    notes: customer.notes,
+    phone: customer.telefoon,
+    street: customer.straat,
+    houseNumber: customer.huisnummer,
+    postalCode: customer.postcode,
+    city: customer.plaats,
+    notes: customer.notities,
     status: customer.status,
-    createdAt: customer.createdAt,
-    updatedAt: customer.updatedAt
+    createdAt: customer.aangemaaktOp,
+    updatedAt: customer.gewijzigdOp
   };
 }
 
@@ -273,13 +273,13 @@ export function toRoom(room: Doc<"projectRooms">) {
   return {
     id: String(room._id),
     projectId: String(room.projectId),
-    name: room.name,
-    floor: room.floor,
-    widthCm: room.widthCm,
-    lengthCm: room.lengthCm,
-    areaM2: room.areaM2,
-    perimeterMeter: room.perimeterMeter,
-    notes: room.notes,
+    name: room.naam,
+    floor: room.verdieping,
+    widthCm: room.breedteCm,
+    lengthCm: room.lengteCm,
+    areaM2: room.oppervlakteM2,
+    perimeterMeter: room.omtrekMeter,
+    notes: room.notities,
     sortOrder: room.sortOrder
   };
 }
@@ -301,25 +301,25 @@ export async function toProject(ctx: any, tenantSlug: string, project: Doc<"proj
   return {
     id: String(project._id),
     tenantId: tenantSlug,
-    customerId: String(project.customerId),
-    title: project.title,
-    description: project.description,
+    customerId: String(project.klantId),
+    title: project.titel,
+    description: project.omschrijving,
     status: project.status,
-    measurementDate: project.measurementDate,
-    executionDate: project.executionDate,
-    internalNotes: project.internalNotes,
-    customerNotes: project.customerNotes,
-    acceptedAt: project.acceptedAt,
-    measurementPlannedAt: project.measurementPlannedAt,
-    executionPlannedAt: project.executionPlannedAt,
-    orderedAt: project.orderedAt,
-    invoicedAt: project.invoicedAt,
-    paidAt: project.paidAt,
-    closedAt: project.closedAt,
+    measurementDate: project.inmeetdatum,
+    executionDate: project.uitvoerdatum,
+    internalNotes: project.interneNotities,
+    customerNotes: project.klantNotities,
+    acceptedAt: project.geaccepteerdOp,
+    measurementPlannedAt: project.inmeetGeplandOp,
+    executionPlannedAt: project.uitvoerGeplandOp,
+    orderedAt: project.besteldOp,
+    invoicedAt: project.gefactureerdOp,
+    paidAt: project.betaaldOp,
+    closedAt: project.afgeslotenOp,
     rooms: rooms.map(toRoom),
     createdByExternalUserId: project.createdByExternalUserId,
-    createdAt: project.createdAt,
-    updatedAt: project.updatedAt
+    createdAt: project.aangemaaktOp,
+    updatedAt: project.gewijzigdOp
   };
 }
 
@@ -327,16 +327,16 @@ export function toContact(tenantSlug: string, contact: Doc<"customerContacts">) 
   return {
     id: String(contact._id),
     tenantId: tenantSlug,
-    customerId: String(contact.customerId),
+    customerId: String(contact.klantId),
     type: contact.type,
-    title: contact.title,
-    description: contact.description,
-    loanedItemName: contact.loanedItemName,
-    expectedReturnDate: contact.expectedReturnDate,
-    returnedAt: contact.returnedAt,
-    visibleToCustomer: contact.visibleToCustomer,
-    createdAt: contact.createdAt,
-    updatedAt: contact.updatedAt
+    title: contact.titel,
+    description: contact.omschrijving,
+    loanedItemName: contact.uitgeleendItemNaam,
+    expectedReturnDate: contact.verwachteRetourdatum,
+    returnedAt: contact.geretourneerdOp,
+    visibleToCustomer: contact.zichtbaarVoorKlant,
+    createdAt: contact.aangemaaktOp,
+    updatedAt: contact.gewijzigdOp
   };
 }
 
@@ -346,15 +346,15 @@ export function toWorkflowEvent(tenantSlug: string, event: Doc<"projectWorkflowE
     tenantId: tenantSlug,
     projectId: String(event.projectId),
     type: event.type,
-    title: event.title,
-    description: event.description,
-    visibleToCustomer: event.visibleToCustomer,
-    createdAt: event.createdAt
+    title: event.titel,
+    description: event.omschrijving,
+    visibleToCustomer: event.zichtbaarVoorKlant,
+    createdAt: event.aangemaaktOp
   };
 }
 
 export function toProjectTask(tenantSlug: string, task: Doc<"projectTasks">) {
-  const priority = taskPriority(task.dueAt);
+  const priority = taskPriority(task.vervaltOp);
 
   return {
     id: String(task._id),
@@ -362,14 +362,14 @@ export function toProjectTask(tenantSlug: string, task: Doc<"projectTasks">) {
     projectId: String(task.projectId),
     quoteId: task.quoteId ? String(task.quoteId) : undefined,
     type: task.type,
-    title: task.title,
-    dueAt: task.dueAt,
+    title: task.titel,
+    dueAt: task.vervaltOp,
     status: task.status,
     priority,
-    completedAt: task.completedAt,
-    dismissedAt: task.dismissedAt,
-    createdAt: task.createdAt,
-    updatedAt: task.updatedAt
+    completedAt: task.voltooidOp,
+    dismissedAt: task.afgewezenOp,
+    createdAt: task.aangemaaktOp,
+    updatedAt: task.gewijzigdOp
   };
 }
 
@@ -377,19 +377,19 @@ export function toQuoteLine(line: Doc<"quoteLines">) {
   return {
     id: String(line._id),
     quoteId: String(line.quoteId),
-    projectRoomId: line.projectRoomId ? String(line.projectRoomId) : undefined,
+    projectRoomId: line.projectRuimteId ? String(line.projectRuimteId) : undefined,
     productId: line.productId ? String(line.productId) : undefined,
-    lineType: line.lineType,
-    title: line.title,
-    description: line.description,
-    quantity: line.quantity,
-    unit: line.unit,
-    unitPriceExVat: line.unitPriceExVat,
-    vatRate: line.vatRate,
-    discountExVat: line.discountExVat,
-    lineTotalExVat: line.lineTotalExVat,
-    lineVatTotal: line.lineVatTotal,
-    lineTotalIncVat: line.lineTotalIncVat,
+    lineType: line.regelType,
+    title: line.titel,
+    description: line.omschrijving,
+    quantity: line.aantal,
+    unit: line.eenheid,
+    unitPriceExVat: line.eenheidsprijsExBtw,
+    vatRate: line.btwTarief,
+    discountExVat: line.kortingExBtw,
+    lineTotalExVat: line.regelTotaalExBtw,
+    lineVatTotal: line.regelBtwTotaal,
+    lineTotalIncVat: line.regelTotaalInclBtw,
     sortOrder: line.sortOrder,
     metadata: line.metadata
   };
@@ -405,25 +405,25 @@ export async function toQuote(ctx: any, tenantSlug: string, quote: Doc<"quotes">
     id: String(quote._id),
     tenantId: tenantSlug,
     projectId: String(quote.projectId),
-    customerId: String(quote.customerId),
-    quoteNumber: quote.quoteNumber,
-    title: quote.title,
+    customerId: String(quote.klantId),
+    quoteNumber: quote.offertenummer,
+    title: quote.titel,
     status: quote.status,
-    sentAt: quote.sentAt,
-    validUntil: quote.validUntil,
-    introText: quote.introText,
-    closingText: quote.closingText,
-    terms: quote.terms,
-    paymentTerms: quote.paymentTerms,
-    subtotalExVat: quote.subtotalExVat,
-    vatTotal: quote.vatTotal,
-    totalIncVat: quote.totalIncVat,
+    sentAt: quote.verzondenOp,
+    validUntil: quote.geldigTot,
+    introText: quote.inleidingTekst,
+    closingText: quote.afsluitTekst,
+    terms: quote.voorwaarden,
+    paymentTerms: quote.betalingsvoorwaarden,
+    subtotalExVat: quote.subtotaalExBtw,
+    vatTotal: quote.btwTotaal,
+    totalIncVat: quote.totaalInclBtw,
     lines: lines
       .sort((left: Doc<"quoteLines">, right: Doc<"quoteLines">) => left.sortOrder - right.sortOrder)
       .map(toQuoteLine),
     createdByExternalUserId: quote.createdByExternalUserId,
-    createdAt: quote.createdAt,
-    updatedAt: quote.updatedAt
+    createdAt: quote.aangemaaktOp,
+    updatedAt: quote.gewijzigdOp
   };
 }
 
@@ -432,18 +432,18 @@ export function toQuoteSummary(tenantSlug: string, quote: Doc<"quotes">) {
     id: String(quote._id),
     tenantId: tenantSlug,
     projectId: String(quote.projectId),
-    customerId: String(quote.customerId),
-    quoteNumber: quote.quoteNumber,
-    title: quote.title,
+    customerId: String(quote.klantId),
+    quoteNumber: quote.offertenummer,
+    title: quote.titel,
     status: quote.status,
-    sentAt: quote.sentAt,
-    validUntil: quote.validUntil,
-    subtotalExVat: quote.subtotalExVat,
-    vatTotal: quote.vatTotal,
-    totalIncVat: quote.totalIncVat,
+    sentAt: quote.verzondenOp,
+    validUntil: quote.geldigTot,
+    subtotalExVat: quote.subtotaalExBtw,
+    vatTotal: quote.btwTotaal,
+    totalIncVat: quote.totaalInclBtw,
     createdByExternalUserId: quote.createdByExternalUserId,
-    createdAt: quote.createdAt,
-    updatedAt: quote.updatedAt
+    createdAt: quote.aangemaaktOp,
+    updatedAt: quote.gewijzigdOp
   };
 }
 
@@ -451,15 +451,15 @@ export function toQuoteTemplate(tenantSlug: string, template: Doc<"quoteTemplate
   return {
     id: String(template._id),
     tenantId: tenantSlug,
-    name: template.name,
+    name: template.naam,
     type: template.type,
     status: template.status,
-    introText: template.introText,
-    closingText: template.closingText,
-    sections: template.sections ?? [],
-    defaultTerms: template.defaultTerms,
-    paymentTerms: template.paymentTerms ?? [],
-    defaultLines: template.defaultLines
+    introText: template.inleidingTekst,
+    closingText: template.afsluitTekst,
+    sections: template.secties ?? [],
+    defaultTerms: template.standaardVoorwaarden,
+    paymentTerms: template.betalingsvoorwaarden ?? [],
+    defaultLines: template.standaardRegels
   };
 }
 
@@ -468,7 +468,7 @@ export function customerAddress(customer: Doc<"customers"> | undefined | null) {
     return undefined;
   }
 
-  return [customer.street, customer.houseNumber, customer.postalCode, customer.city]
+  return [customer.straat, customer.huisnummer, customer.postcode, customer.plaats]
     .filter(Boolean)
     .join(" ");
 }
@@ -481,13 +481,13 @@ export function activeFieldQuote(quotes: Doc<"quotes">[], projectId: Id<"project
       quote.status === "sent" ||
       quote.status === "accepted"
     )
-    .sort((left, right) => right.updatedAt - left.updatedAt)[0];
+    .sort((left, right) => right.gewijzigdOp - left.gewijzigdOp)[0];
 }
 
 export function latestMeasurement(measurements: Doc<"measurements">[], projectId: Id<"projects">) {
   return measurements
     .filter((measurement) => measurement.projectId === projectId)
-    .sort((left, right) => right.updatedAt - left.updatedAt)[0];
+    .sort((left, right) => right.gewijzigdOp - left.gewijzigdOp)[0];
 }
 
 export function fieldVisitTimestamp(
@@ -495,10 +495,10 @@ export function fieldVisitTimestamp(
   measurement: Doc<"measurements"> | undefined
 ) {
   if (project.status === "execution_planned" || project.status === "in_progress") {
-    return project.executionDate ?? project.measurementDate ?? measurement?.measurementDate;
+    return project.uitvoerdatum ?? project.inmeetdatum ?? measurement?.inmeetdatum;
   }
 
-  return project.measurementDate ?? measurement?.measurementDate;
+  return project.inmeetdatum ?? measurement?.inmeetdatum;
 }
 
 export function isDueTodayOrEarlier(timestamp: number | undefined, now: number) {
@@ -515,7 +515,7 @@ export function isDueTodayOrEarlier(timestamp: number | undefined, now: number) 
 export function sortProjectTasks(tasks: Doc<"projectTasks">[]) {
   return tasks.slice().sort((left, right) => {
     if (left.status === right.status) {
-      return left.dueAt - right.dueAt || right.updatedAt - left.updatedAt;
+      return left.vervaltOp - right.vervaltOp || right.gewijzigdOp - left.gewijzigdOp;
     }
 
     return left.status === "open" ? -1 : 1;
@@ -531,7 +531,7 @@ export function fieldBucket(
 ) {
   const firstOpenTask = sortProjectTasks(tasks).find((task) => task.status === "open");
 
-  if (isDueTodayOrEarlier(firstOpenTask?.dueAt, now)) {
+  if (isDueTodayOrEarlier(firstOpenTask?.vervaltOp, now)) {
     return "today";
   }
 
@@ -599,15 +599,15 @@ export function toSupplier(
   return {
     id: String(supplier._id),
     tenantId: tenantSlug,
-    name: supplier.name,
-    contactName: supplier.contactName,
+    name: supplier.naam,
+    contactName: supplier.contactpersoon,
     email: supplier.email,
-    phone: supplier.phone,
-    productListStatus: supplier.productListStatus,
+    phone: supplier.telefoon,
+    productListStatus: supplier.prijslijstStatus,
     status: supplier.status ?? "active",
-    notes: supplier.notes,
-    lastContactAt: supplier.lastContactAt,
-    expectedAt: supplier.expectedAt,
+    notes: supplier.notities,
+    lastContactAt: supplier.laatsteContactOp,
+    expectedAt: supplier.verwachtOp,
     activeProductCount: metrics?.activeProductCount ?? 0,
     importProfileCount: metrics?.importProfileCount ?? 0,
     importBatchCount: metrics?.importBatchCount ?? 0,
@@ -615,7 +615,7 @@ export function toSupplier(
     sourceFileNames: metrics?.sourceFileNames ?? [],
     latestImportStatus: metrics?.latestImportStatus,
     latestImportAt: metrics?.latestImportAt,
-    updatedAt: supplier.updatedAt
+    updatedAt: supplier.gewijzigdOp
   };
 }
 
@@ -623,7 +623,7 @@ export async function findSupplierByName(ctx: any, tenantId: Id<"tenants">, name
   return await ctx.db
     .query("suppliers")
     .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
-    .filter((q: any) => q.eq(q.field("name"), name))
+    .filter((q: any) => q.eq(q.field("naam"), name))
     .first();
 }
 
@@ -633,7 +633,7 @@ export async function latestQuoteForProject(ctx: any, tenantId: Id<"tenants">, p
     .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
     .collect();
 
-  return quotes.sort((left: Doc<"quotes">, right: Doc<"quotes">) => right.updatedAt - left.updatedAt)[0];
+  return quotes.sort((left: Doc<"quotes">, right: Doc<"quotes">) => right.gewijzigdOp - left.gewijzigdOp)[0];
 }
 
 export async function latestAcceptedQuoteForProject(
@@ -648,7 +648,7 @@ export async function latestAcceptedQuoteForProject(
 
   return quotes
     .filter((quote: Doc<"quotes">) => quote.status === "accepted")
-    .sort((left: Doc<"quotes">, right: Doc<"quotes">) => right.updatedAt - left.updatedAt)[0];
+    .sort((left: Doc<"quotes">, right: Doc<"quotes">) => right.gewijzigdOp - left.gewijzigdOp)[0];
 }
 
 export async function existingInvoiceForQuote(
@@ -674,7 +674,7 @@ export async function latestMeasurementForProject(
     .collect();
 
   return measurements.sort((left: Doc<"measurements">, right: Doc<"measurements">) =>
-    right.updatedAt - left.updatedAt
+    right.gewijzigdOp - left.gewijzigdOp
   )[0];
 }
 
@@ -705,11 +705,11 @@ export async function addProjectEvent(
     tenantId,
     projectId,
     type,
-    title,
-    description,
-    visibleToCustomer: false,
+    titel: title,
+    omschrijving: description,
+    zichtbaarVoorKlant: false,
     createdByExternalUserId: externalUserId,
-    createdAt: Date.now()
+    aangemaaktOp: Date.now()
   });
 }
 
@@ -738,9 +738,9 @@ export async function upsertProjectTask(
 
   if (existing) {
     await ctx.db.patch(existing._id, {
-      title,
-      dueAt,
-      updatedAt: now
+      titel: title,
+      vervaltOp: dueAt,
+      gewijzigdOp: now
     });
     return existing._id;
   }
@@ -750,12 +750,12 @@ export async function upsertProjectTask(
     projectId,
     quoteId,
     type,
-    title,
-    dueAt,
+    titel: title,
+    vervaltOp: dueAt,
     status: "open",
     createdByExternalUserId: externalUserId,
-    createdAt: now,
-    updatedAt: now
+    aangemaaktOp: now,
+    gewijzigdOp: now
   });
 }
 
@@ -784,9 +784,9 @@ export async function closeOpenProjectTasks(
       .map((task: Doc<"projectTasks">) =>
         ctx.db.patch(task._id, {
           status,
-          completedAt: status === "done" ? now : task.completedAt,
-          dismissedAt: status === "dismissed" ? now : task.dismissedAt,
-          updatedAt: now
+          voltooidOp: status === "done" ? now : task.voltooidOp,
+          afgewezenOp: status === "dismissed" ? now : task.afgewezenOp,
+          gewijzigdOp: now
         })
       )
   );
@@ -873,15 +873,15 @@ export function importedMeasurementLineTitle(
   line: Doc<"measurementLines">,
   room: Doc<"measurementRooms"> | null
 ) {
-  if (line.productName) {
-    return [line.productName, room?.name].filter(Boolean).join(" - ");
+  if (line.productNaam) {
+    return [line.productNaam, room?.naam].filter(Boolean).join(" - ");
   }
 
   return [
-    measurementProductGroupLabels[line.productGroup] ?? readableMeasurementFallback(line.productGroup),
-    measurementCalculationTypeLabels[line.calculationType] ??
-      readableMeasurementFallback(line.calculationType),
-    room?.name
+    measurementProductGroupLabels[line.productGroep] ?? readableMeasurementFallback(line.productGroep),
+    measurementCalculationTypeLabels[line.berekeningType] ??
+      readableMeasurementFallback(line.berekeningType),
+    room?.naam
   ]
     .filter(Boolean)
     .join(" - ");
@@ -891,14 +891,14 @@ export function importedMeasurementLineDescription(
   line: Doc<"measurementLines">,
   priceWasPrefilled?: boolean
 ) {
-  const isMatrixLine = line.indicativePriceType === "matrix";
+  const isMatrixLine = line.indicatievePrijsSoort === "matrix";
   const hasIndicativePrice =
     priceWasPrefilled ??
     ((line.productId !== undefined || isMatrixLine) &&
-      line.indicativeUnitPriceExVat !== undefined &&
-      line.indicativeVatRate !== undefined);
+      line.indicatieveEenheidsprijsExBtw !== undefined &&
+      line.indicatiefBtwTarief !== undefined);
 
-  const matrixInput = isMatrixLine && line.input ? (line.input as any) : null;
+  const matrixInput = isMatrixLine && line.invoer ? (line.invoer as any) : null;
   const matrixContext = matrixInput
     ? `Raambekleding (matrix): ${[matrixInput.bronBlad, matrixInput.prijsgroep]
         .filter(Boolean)
@@ -917,8 +917,8 @@ export function importedMeasurementLineDescription(
         ? "Richtprijs uit de inmeting overgenomen. Controleer product, verkoopprijs en btw bewust voordat je de offerte verstuurt."
         : "Richtprijs. Kies product, verkoopprijs en btw bewust voordat je de offerte verstuurt.",
     matrixContext,
-    line.wastePercent !== undefined ? `Snijverlies: ${line.wastePercent}%.` : undefined,
-    line.notes ? `Meetnotitie: ${line.notes}` : undefined
+    line.snijverliesPct !== undefined ? `Snijverlies: ${line.snijverliesPct}%.` : undefined,
+    line.notities ? `Meetnotitie: ${line.notities}` : undefined
   ]
     .filter(Boolean)
     .join("\n");

@@ -138,16 +138,16 @@ const emptyWorkspace: FieldServiceWorkspaceResult = {
 
 function cardSearchText(card: FieldWorkspaceCard) {
   return [
-    card.project.title,
-    card.project.description,
-    card.customer?.displayName,
+    card.project.titel,
+    card.project.omschrijving,
+    card.customer?.weergaveNaam,
     card.customer?.email,
-    card.customer?.phone,
+    card.customer?.telefoon,
     card.address,
-    card.latestQuote?.quoteNumber,
-    card.latestQuote?.title,
+    card.latestQuote?.offertenummer,
+    card.latestQuote?.titel,
     card.nextAction,
-    ...(card.tasks ?? []).map((task) => task.title)
+    ...(card.tasks ?? []).map((task) => task.titel)
   ]
     .filter(Boolean)
     .join(" ")
@@ -262,23 +262,23 @@ export default function FieldServiceWorkspace({
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         type: values.type,
-        displayName,
+        weergaveNaam: displayName,
         email: values.email,
-        phone: values.phone,
-        street: values.street,
-        houseNumber: values.houseNumber,
-        postalCode: values.postalCode,
-        city: values.city,
-        notes: values.notes
+        telefoon: values.phone,
+        straat: values.street,
+        huisnummer: values.houseNumber,
+        postcode: values.postalCode,
+        plaats: values.city,
+        notities: values.notes
       });
 
       if (values.createDossier) {
         const newProjectId = await client.mutation(api.portal.createProject, {
           tenantSlug: session.tenantId,
           actor: mutationActorFromSession(session),
-          customerId: String(customerId),
-          title: values.projectTitle || `${displayName} - inmeten`,
-          description: values.notes,
+          klantId: String(customerId),
+          titel: values.projectTitle || `${displayName} - inmeten`,
+          omschrijving: values.notes,
           createdByExternalUserId: session.userId
         });
 

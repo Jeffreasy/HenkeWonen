@@ -67,11 +67,19 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
     }
 
     try {
-      const { createDossier, ...customerData } = customer;
+      const { createDossier } = customer;
       const customerId = await client.mutation(api.portal.createCustomer, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        ...customerData
+        type: customer.type,
+        weergaveNaam: customer.displayName,
+        email: customer.email,
+        telefoon: customer.phone,
+        straat: customer.street,
+        huisnummer: customer.houseNumber,
+        postcode: customer.postalCode,
+        plaats: customer.city,
+        notities: customer.notes
       });
       setIsModalOpen(false);
       showToast({ title: "Klant aangemaakt", description: customer.displayName, tone: "success" });
@@ -80,8 +88,8 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
         const projectId = await client.mutation(api.portal.createProject, {
           tenantSlug: session.tenantId,
           actor: mutationActorFromSession(session),
-          customerId: String(customerId),
-          title: `${customer.displayName} - nieuw dossier`,
+          klantId: String(customerId),
+          titel: `${customer.displayName} - nieuw dossier`,
           createdByExternalUserId: session.userId
         });
         window.location.assign(`/portal/projecten/${String(projectId)}`);

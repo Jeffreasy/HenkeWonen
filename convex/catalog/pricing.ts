@@ -32,21 +32,21 @@ export const getIndicativePrice = query({
       throw new ConvexError("Product niet gevonden.");
     }
 
-    const category = await ctx.db.get(product.categoryId);
-    const categoryName = category?.name ?? "Overig";
+    const category = await ctx.db.get(product.categorieId);
+    const categoryName = category?.naam ?? "Overig";
 
     if (pilotHiddenReason(product, categoryName)) {
       throw new ConvexError("Dit product is in de pilot niet beschikbaar.");
     }
 
-    const supplier = product.supplierId ? await ctx.db.get(product.supplierId) : null;
+    const supplier = product.leverancierId ? await ctx.db.get(product.leverancierId) : null;
 
     // Geen richtprijs voor niet-actieve producten (draft/inactive/archived): die zijn
     // niet verkoopbaar en mogen geen indicatieve verkoopprijs opleveren.
     if (product.status !== "active") {
       return {
         productId: String(product._id),
-        productName: cleanProductDisplayName(product, categoryName, supplier?.name),
+        productName: cleanProductDisplayName(product, categoryName, supplier?.naam),
         indicative: null
       };
     }
@@ -59,16 +59,16 @@ export const getIndicativePrice = query({
     const selection = selectIndicativePrice(
       prices.map((price) => ({
         id: String(price._id),
-        priceType: price.priceType,
-        priceUnit: price.priceUnit,
-        amount: price.amount,
-        vatRate: price.vatRate,
-        vatMode: price.vatMode,
-        validFrom: price.validFrom,
-        updatedAt: price.updatedAt,
+        priceType: price.prijsSoort,
+        priceUnit: price.prijsEenheid,
+        amount: price.bedrag,
+        vatRate: price.btwTarief,
+        vatMode: price.btwModus,
+        validFrom: price.geldigVanaf,
+        updatedAt: price.gewijzigdOp,
         creationTime: price._creationTime
       })),
-      { packageContentM2: product.packageContentM2 },
+      { packageContentM2: product.pakinhoudM2 },
       args.measurementUnit,
       Date.now()
     );
@@ -76,7 +76,7 @@ export const getIndicativePrice = query({
     // Alleen afgeleide klantgerichte velden teruggeven — nooit ruwe inkoopdata.
     return {
       productId: String(product._id),
-      productName: cleanProductDisplayName(product, categoryName, supplier?.name),
+      productName: cleanProductDisplayName(product, categoryName, supplier?.naam),
       indicative: selection
         ? {
             unitPriceExVat: selection.unitPriceExVat,

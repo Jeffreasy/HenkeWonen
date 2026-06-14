@@ -78,9 +78,9 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
       await client.mutation(api.portal.createProject, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        customerId: project.customerId,
-        title: project.title,
-        description: project.description,
+        klantId: project.customerId,
+        titel: project.title,
+        omschrijving: project.description,
         createdByExternalUserId: session.userId
       });
       await loadProjects();
@@ -97,7 +97,7 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
     return projects.filter((project) => {
       const matchesSearch =
         !normalizedSearch ||
-        [project.title, project.description, project.customerName, project.status]
+        [project.titel, project.omschrijving, project.customerName, project.status]
           .filter(Boolean)
           .join(" ")
           .toLowerCase()

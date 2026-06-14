@@ -76,13 +76,13 @@ export function ImportDetailPanel({
         key: "rowNumber",
         header: "Regel",
         width: "80px",
-        render: (row) => row.rowNumber
+        render: (row) => row.rijNummer
       },
       {
         key: "kind",
         header: "Soort regel",
         width: "120px",
-        render: (row) => formatRowKind(row.rowKind)
+        render: (row) => formatRowKind(row.rijSoort)
       },
       {
         key: "status",
@@ -94,17 +94,17 @@ export function ImportDetailPanel({
         key: "product",
         header: "Product of groep",
         render: (row) => {
-          const normalized = row.normalized ?? {};
+          const normalized = row.genormaliseerd ?? {};
           const title =
             typeof normalized.productName === "string"
               ? normalized.productName
-              : row.sectionLabel ?? "-";
+              : row.sectieLabel ?? "-";
 
           return (
             <>
               <strong>{title}</strong>
-              <div className="muted">{row.sourceSheetName ?? ""}</div>
-              {row.importedProductId ? (
+              <div className="muted">{row.bronBladNaam ?? ""}</div>
+              {row.geimporteerdProductId ? (
                 <div className="muted">verwerkt als product</div>
               ) : null}
             </>
@@ -117,9 +117,9 @@ export function ImportDetailPanel({
         hideOnMobile: true,
         render: (row) => (
           <>
-            {row.warnings.length > 0 ? <div className="muted">{row.warnings.join(", ")}</div> : null}
-            {row.errors.length > 0 ? <div className="muted">{row.errors.join(", ")}</div> : null}
-            {row.warnings.length === 0 && row.errors.length === 0 ? "-" : null}
+            {row.waarschuwingen.length > 0 ? <div className="muted">{row.waarschuwingen.join(", ")}</div> : null}
+            {row.fouten.length > 0 ? <div className="muted">{row.fouten.join(", ")}</div> : null}
+            {row.waarschuwingen.length === 0 && row.fouten.length === 0 ? "-" : null}
           </>
         )
       }
@@ -132,9 +132,9 @@ export function ImportDetailPanel({
       <div className="import-detail-header">
         <div>
           <p className="eyebrow">Geselecteerde controle</p>
-          <h2>{selectedBatch.fileName}</h2>
+          <h2>{selectedBatch.bestandsnaam}</h2>
           <p className="muted">
-            {selectedBatch.supplierName}
+            {selectedBatch.leverancierNaam}
             {selectedBatch.profileName ? ` · ${selectedBatch.profileName}` : ""} · {lifecycleText(selectedBatch)}
           </p>
         </div>
@@ -145,11 +145,11 @@ export function ImportDetailPanel({
         />
       </div>
 
-      {selectedBatch.errorMessage ? (
+      {selectedBatch.foutmelding ? (
         <Alert
           variant="danger"
           title="Verwerken mislukt"
-          description={selectedBatch.errorMessage}
+          description={selectedBatch.foutmelding}
         />
       ) : null}
 
@@ -176,7 +176,7 @@ export function ImportDetailPanel({
         {[
           { value: "summary", label: "Samenvatting" },
           { value: "rows", label: `Regels ${numberText(rows.length)}` },
-          { value: "warnings", label: `Meldingen ${numberText(selectedBatch.warningRows + selectedBatch.errorRows)}` },
+          { value: "warnings", label: `Meldingen ${numberText(selectedBatch.waarschuwingRijen + selectedBatch.foutRijen)}` },
           { value: "reconciliation", label: "Controle" }
         ].map((tab) => (
           <button
@@ -197,32 +197,32 @@ export function ImportDetailPanel({
           <div className="import-detail-summary">
             <div className="import-summary-item">
               <span>Productregels</span>
-              <strong>{numberText(selectedBatch.productRows)}</strong>
+              <strong>{numberText(selectedBatch.productRijen)}</strong>
             </div>
             <div className="import-summary-item import-summary-success">
               <span>Producten verwerkt</span>
-              <strong>{numberText(selectedBatch.importedProducts + selectedBatch.updatedProducts)}</strong>
+              <strong>{numberText(selectedBatch.geimporteerdeProducten + selectedBatch.bijgewerkteProducten)}</strong>
             </div>
             <div className="import-summary-item import-summary-info">
               <span>Prijsregels</span>
-              <strong>{numberText(selectedBatch.importedPrices)}</strong>
+              <strong>{numberText(selectedBatch.geimporteerdePrijzen)}</strong>
             </div>
             <div className="import-summary-item import-summary-warning">
               <span>Rijmeldingen</span>
-              <strong>{numberText(selectedBatch.warningRows)}</strong>
+              <strong>{numberText(selectedBatch.waarschuwingRijen)}</strong>
               <small>
-                {selectedBatch.unknownVatModeRows > 0
-                  ? `${numberText(selectedBatch.unknownVatModeRows)} btw onbekend`
+                {selectedBatch.onbekendeBtwModusRijen > 0
+                  ? `${numberText(selectedBatch.onbekendeBtwModusRijen)} btw onbekend`
                   : "Geen btw-meldingen"}
               </small>
             </div>
             <div className="import-summary-item import-summary-danger">
               <span>Fouten</span>
-              <strong>{numberText(selectedBatch.errorRows)}</strong>
+              <strong>{numberText(selectedBatch.foutRijen)}</strong>
             </div>
             <div className="import-summary-item">
               <span>Overgeslagen</span>
-              <strong>{numberText(selectedBatch.ignoredRows)}</strong>
+              <strong>{numberText(selectedBatch.genegeerdeRijen)}</strong>
             </div>
           </div>
 
@@ -247,8 +247,8 @@ export function ImportDetailPanel({
                 />
                 <span>Onbekende btw toestaan</span>
               </label>
-              <Badge variant={selectedBatch.unknownVatModeRows > 0 ? "warning" : "success"}>
-                Btw onbekend {numberText(selectedBatch.unknownVatModeRows)}
+              <Badge variant={selectedBatch.onbekendeBtwModusRijen > 0 ? "warning" : "success"}>
+                Btw onbekend {numberText(selectedBatch.onbekendeBtwModusRijen)}
               </Badge>
               <Button
                 variant="secondary"
@@ -340,12 +340,12 @@ export function ImportDetailPanel({
               density="compact"
               mobileMode="cards"
               renderMobileCard={(row) => {
-                const normalized = row.normalized ?? {};
+                const normalized = row.genormaliseerd ?? {};
                 const title =
                   typeof normalized.productName === "string"
                     ? normalized.productName
-                    : row.sectionLabel ?? "-";
-                const messages = [...row.errors, ...row.warnings];
+                    : row.sectieLabel ?? "-";
+                const messages = [...row.fouten, ...row.waarschuwingen];
 
                 return (
                   <div className="mobile-card-section">
@@ -353,14 +353,14 @@ export function ImportDetailPanel({
                       <div className="mobile-card-title">
                         <strong>{title}</strong>
                         <small className="muted">
-                          Regel {row.rowNumber} · {formatRowKind(row.rowKind)}
+                          Regel {row.rijNummer} · {formatRowKind(row.rijSoort)}
                         </small>
                       </div>
                       <StatusBadge status={row.status} label={formatRowStatus(row.status)} />
                     </div>
                     <div className="mobile-card-meta">
-                      {row.sourceSheetName ? <span>{row.sourceSheetName}</span> : null}
-                      {row.importedProductId ? <span>verwerkt als product</span> : null}
+                      {row.bronBladNaam ? <span>{row.bronBladNaam}</span> : null}
+                      {row.geimporteerdProductId ? <span>verwerkt als product</span> : null}
                     </div>
                     {messages.length > 0 ? (
                       <div className="mobile-card-section">
@@ -393,19 +393,19 @@ export function ImportDetailPanel({
 
       {detailTab === "warnings" ? (
         <div style={{ marginTop: 16 }}>
-          {selectedBatch.warningRows > 0 || selectedBatch.errorRows > 0 ? (
+          {selectedBatch.waarschuwingRijen > 0 || selectedBatch.foutRijen > 0 ? (
             <Alert
-              variant={selectedBatch.errorRows > 0 ? "danger" : "warning"}
+              variant={selectedBatch.foutRijen > 0 ? "danger" : "warning"}
               title="Rijmeldingen in deze prijslijst"
               description={
-                selectedBatch.unknownVatModeRows > 0
-                  ? `${numberText(selectedBatch.warningRows)} productregels hebben een melding. In deze import komt dat vooral door btw-modus onbekend; de prijslijst kan verwerkt zijn wanneer onbekende btw bewust is toegestaan.`
-                  : `${numberText(selectedBatch.warningRows)} productregels hebben een importmelding. Open de tab Regels en filter op status Waarschuwing voor de exacte regels.`
+                selectedBatch.onbekendeBtwModusRijen > 0
+                  ? `${numberText(selectedBatch.waarschuwingRijen)} productregels hebben een melding. In deze import komt dat vooral door btw-modus onbekend; de prijslijst kan verwerkt zijn wanneer onbekende btw bewust is toegestaan.`
+                  : `${numberText(selectedBatch.waarschuwingRijen)} productregels hebben een importmelding. Open de tab Regels en filter op status Waarschuwing voor de exacte regels.`
               }
             />
           ) : null}
-          {selectedBatch.warnings.length > 0 ? <ImportWarnings warnings={selectedBatch.warnings} /> : null}
-          {selectedBatch.warningRows === 0 && selectedBatch.errorRows === 0 ? (
+          {selectedBatch.waarschuwingen.length > 0 ? <ImportWarnings warnings={selectedBatch.waarschuwingen} /> : null}
+          {selectedBatch.waarschuwingRijen === 0 && selectedBatch.foutRijen === 0 ? (
             <Alert
               variant="success"
               title="Geen waarschuwingen of fouten"
@@ -422,31 +422,31 @@ export function ImportDetailPanel({
             items={[
               {
                 label: "Dubbele productmatches",
-                value: numberText(selectedBatch.duplicateProductMatches)
+                value: numberText(selectedBatch.dubbeleProductMatches)
               },
               {
                 label: "Dubbele prijslijstregels",
-                value: numberText(selectedBatch.duplicateSourceKeys),
+                value: numberText(selectedBatch.dubbeleBronSleutels),
                 description:
-                  selectedBatch.duplicateSourceKeys > 0
+                  selectedBatch.dubbeleBronSleutels > 0
                     ? "Blokkeert definitief verwerken."
                     : "Geen dubbele prijslijstregels."
               },
               {
                 label: "Regels met nulprijs",
-                value: numberText(selectedBatch.zeroPriceRows)
+                value: numberText(selectedBatch.nulPrijsRijen)
               },
               {
                 label: "Producten zonder leverancierscode",
-                value: numberText(selectedBatch.productsWithoutSupplierCode)
+                value: numberText(selectedBatch.productenZonderLeverancierCode)
               },
               {
                 label: "Prijsregels zonder product",
-                value: numberText(selectedBatch.orphanPriceRules)
+                value: numberText(selectedBatch.weesPrijsRegels)
               },
               {
                 label: "Overgeslagen prijsregels",
-                value: numberText(selectedBatch.skippedPrices)
+                value: numberText(selectedBatch.overgeslagenPrijzen)
               }
             ]}
           />

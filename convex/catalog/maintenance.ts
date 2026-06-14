@@ -62,7 +62,7 @@ export const supplierProductAudit = query({
   args: {
     tenantSlug: v.string(),
     actor: readActorValidator,
-    supplierName: v.string(),
+    leverancierNaam: v.string(),
     batchSize: v.optional(v.number()),
     cursor: v.optional(v.string())
   },
@@ -73,7 +73,7 @@ export const supplierProductAudit = query({
     const supplier = await ctx.db
       .query("suppliers")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-      .filter((q: any) => q.eq(q.field("name"), args.supplierName))
+      .filter((q: any) => q.eq(q.field("naam"), args.leverancierNaam))
       .first();
 
     if (!supplier) {
@@ -83,7 +83,7 @@ export const supplierProductAudit = query({
     const paginated = await ctx.db
       .query("products")
       .withIndex("by_supplier", (q: any) =>
-        q.eq("tenantId", tenant._id).eq("supplierId", supplier._id)
+        q.eq("tenantId", tenant._id).eq("leverancierId", supplier._id)
       )
       .paginate({ numItems: batchSize, cursor: args.cursor ?? null });
 
@@ -92,25 +92,25 @@ export const supplierProductAudit = query({
     const samples: Array<Record<string, unknown>> = [];
 
     for (const product of paginated.page) {
-      let categoryName = categoryNames.get(String(product.categoryId));
+      let categoryName = categoryNames.get(String(product.categorieId));
 
       if (!categoryName) {
-        const category = await ctx.db.get(product.categoryId);
-        categoryName = category?.name ?? "?";
-        categoryNames.set(String(product.categoryId), categoryName);
+        const category = await ctx.db.get(product.categorieId);
+        categoryName = category?.naam ?? "?";
+        categoryNames.set(String(product.categorieId), categoryName);
       }
 
-      const key = `${categoryName}|${product.productKind ?? "?"}|${product.unit}`;
+      const key = `${categoryName}|${product.productSoort ?? "?"}|${product.eenheid}`;
       groups[key] = (groups[key] ?? 0) + 1;
 
       if (samples.length < 3) {
         samples.push({
-          name: product.name,
+          name: product.naam,
           category: categoryName,
-          productKind: product.productKind,
-          unit: product.unit,
-          articleNumber: product.articleNumber,
-          attributes: product.attributes
+          productKind: product.productSoort,
+          unit: product.eenheid,
+          articleNumber: product.artikelnummer,
+          attributes: product.attributen
         });
       }
     }
@@ -168,31 +168,31 @@ export const repairPriceVatModesChunk = mutation({
     const breakdown: Record<string, number> = {};
 
     for (const price of paginated.page) {
-      const mode = price.vatMode ?? "unknown";
+      const mode = price.btwModus ?? "unknown";
 
       if (!fromModes.has(mode)) {
         continue;
       }
 
-      if (priceTypes && !priceTypes.has(price.priceType)) {
+      if (priceTypes && !priceTypes.has(price.prijsSoort)) {
         continue;
       }
 
-      if (sourceColumnNames && !sourceColumnNames.has(normalizedText(price.sourceColumnName))) {
+      if (sourceColumnNames && !sourceColumnNames.has(normalizedText(price.bronKolomNaam))) {
         continue;
       }
 
-      if (sourceFileNames && !sourceFileNames.has(normalizedText(price.sourceFileName))) {
+      if (sourceFileNames && !sourceFileNames.has(normalizedText(price.bronBestandsnaam))) {
         continue;
       }
 
       matched += 1;
-      const key = `${price.priceType}|${mode}|${price.sourceColumnName ?? "?"}`;
+      const key = `${price.prijsSoort}|${mode}|${price.bronKolomNaam ?? "?"}`;
       breakdown[key] = (breakdown[key] ?? 0) + 1;
 
       if (!dryRun) {
         // Bewust geen updatedAt-patch: dat veld blijft het importmoment.
-        await ctx.db.patch(price._id, { vatMode: args.rule.toMode });
+        await ctx.db.patch(price._id, { btwModus: args.rule.toMode });
       }
     }
 
@@ -243,7 +243,7 @@ export const repairTexdecorCategoriesChunk = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     confirm: v.literal("REPAIR_TEXDECOR_CATEGORIES"),
-    supplierName: v.string(),
+    leverancierNaam: v.string(),
     dryRun: v.optional(v.boolean()),
     batchSize: v.optional(v.number()),
     cursor: v.optional(v.string())
@@ -256,7 +256,7 @@ export const repairTexdecorCategoriesChunk = mutation({
     const supplier = await ctx.db
       .query("suppliers")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-      .filter((q: any) => q.eq(q.field("name"), args.supplierName))
+      .filter((q: any) => q.eq(q.field("naam"), args.leverancierNaam))
       .first();
 
     if (!supplier) {
@@ -277,7 +277,7 @@ export const repairTexdecorCategoriesChunk = mutation({
     const paginated = await ctx.db
       .query("products")
       .withIndex("by_supplier", (q: any) =>
-        q.eq("tenantId", tenant._id).eq("supplierId", supplier._id)
+        q.eq("tenantId", tenant._id).eq("leverancierId", supplier._id)
       )
       .paginate({ numItems: batchSize, cursor: args.cursor ?? null });
 
@@ -288,7 +288,7 @@ export const repairTexdecorCategoriesChunk = mutation({
 
     for (const product of paginated.page) {
       const supportType = normalizedText(
-        (product.attributes as Record<string, unknown> | undefined)?.["nom_type_support"] as
+        (product.attributen as Record<string, unknown> | undefined)?.["nom_type_support"] as
           | string
           | undefined
       );
@@ -305,9 +305,9 @@ export const repairTexdecorCategoriesChunk = mutation({
       }
 
       const needsProductPatch =
-        String(product.categoryId) !== String(targetCategoryId) ||
-        product.productKind !== target.productKind ||
-        product.unit !== target.unit;
+        String(product.categorieId) !== String(targetCategoryId) ||
+        product.productSoort !== target.productKind ||
+        product.eenheid !== target.unit;
 
       const advicePrices = await ctx.db
         .query("productPrices")
@@ -324,7 +324,7 @@ export const repairTexdecorCategoriesChunk = mutation({
       }
 
       matched += 1;
-      const fromCategory = categoryNameById.get(String(product.categoryId)) ?? "?";
+      const fromCategory = categoryNameById.get(String(product.categorieId)) ?? "?";
       const key = `${fromCategory} -> ${target.categoryName} (${supportType})`;
       breakdown[key] = (breakdown[key] ?? 0) + 1;
 
@@ -335,17 +335,17 @@ export const repairTexdecorCategoriesChunk = mutation({
 
       if (needsProductPatch) {
         await ctx.db.patch(product._id, {
-          categoryId: targetCategoryId,
-          productKind: target.productKind as any,
-          unit: target.unit as any,
-          updatedAt: Date.now()
+          categorieId: targetCategoryId,
+          productSoort: target.productKind as any,
+          eenheid: target.unit as any,
+          gewijzigdOp: Date.now()
         });
         productsPatched += 1;
       }
 
       for (const price of stalePriceRows) {
         // Bewust geen updatedAt-patch: dat veld blijft het importmoment.
-        await ctx.db.patch(price._id, { priceUnit: target.unit as any });
+        await ctx.db.patch(price._id, { prijsEenheid: target.unit as any });
         priceRowsPatched += 1;
       }
     }
@@ -393,7 +393,7 @@ export const repairPackageContentChunk = mutation({
     const breakdown: Record<string, number> = {};
 
     for (const product of paginated.page) {
-      const value = product.packageContentM2;
+      const value = product.pakinhoudM2;
 
       if (typeof value !== "number" || value < 100) {
         continue;
@@ -404,7 +404,7 @@ export const repairPackageContentChunk = mutation({
       breakdown[key] = (breakdown[key] ?? 0) + 1;
 
       if (!dryRun) {
-        await ctx.db.patch(product._id, { packageContentM2: value / 1000 });
+        await ctx.db.patch(product._id, { pakinhoudM2: value / 1000 });
       }
     }
 
@@ -463,7 +463,7 @@ export const stripLeakedFilenameFromNamesChunk = mutation({
     const samples: Array<{ from: string; to: string }> = [];
 
     for (const product of paginated.page) {
-      const name = product.name ?? "";
+      const name = product.naam ?? "";
 
       if (!/artikeloverzicht?/i.test(name) && !/\bhenke-[a-z0-9-]/i.test(name)) {
         continue;
@@ -483,7 +483,7 @@ export const stripLeakedFilenameFromNamesChunk = mutation({
       }
 
       if (!dryRun) {
-        await ctx.db.patch(product._id, { name: cleaned, updatedAt: Date.now() });
+        await ctx.db.patch(product._id, { naam: cleaned, gewijzigdOp: Date.now() });
         patched += 1;
       }
     }
@@ -524,12 +524,12 @@ export const deletePseudoPriceRowsChunk = mutation({
     const breakdown: Record<string, number> = {};
 
     for (const price of paginated.page) {
-      if (!isPseudoPriceColumn(price.sourceColumnName)) {
+      if (!isPseudoPriceColumn(price.bronKolomNaam)) {
         continue;
       }
 
       matched += 1;
-      const key = price.sourceColumnName ?? "?";
+      const key = price.bronKolomNaam ?? "?";
       breakdown[key] = (breakdown[key] ?? 0) + 1;
 
       if (!dryRun) {

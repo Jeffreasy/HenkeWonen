@@ -203,12 +203,12 @@ const calculatorRuleType = v.union(
 export default defineSchema({
   tenants: defineTable({
     slug: v.string(),
-    name: v.string(),
+    naam: v.string(),
     status: statusActive,
     invoiceSequenceYear: v.optional(v.number()),
     invoiceSequenceValue: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_slug", ["slug"])
     .index("by_status", ["status"]),
@@ -217,11 +217,11 @@ export default defineSchema({
     tenantId: v.id("tenants"),
     externalUserId: v.string(),
     email: v.string(),
-    name: v.optional(v.string()),
+    naam: v.optional(v.string()),
     role,
     workspaceMode: v.optional(workspaceMode),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
     .index("by_external_user", ["externalUserId"])
@@ -229,39 +229,39 @@ export default defineSchema({
 
   customers: defineTable({
     tenantId: v.id("tenants"),
-    customerNumber: v.optional(v.string()),
+    klantnummer: v.optional(v.string()),
     type: v.union(v.literal("private"), v.literal("business")),
-    displayName: v.string(),
-    firstName: v.optional(v.string()),
-    lastName: v.optional(v.string()),
-    companyName: v.optional(v.string()),
+    weergaveNaam: v.string(),
+    voornaam: v.optional(v.string()),
+    achternaam: v.optional(v.string()),
+    bedrijfsnaam: v.optional(v.string()),
     email: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    street: v.optional(v.string()),
-    houseNumber: v.optional(v.string()),
-    postalCode: v.optional(v.string()),
-    city: v.optional(v.string()),
-    country: v.optional(v.string()),
-    notes: v.optional(v.string()),
+    telefoon: v.optional(v.string()),
+    straat: v.optional(v.string()),
+    huisnummer: v.optional(v.string()),
+    postcode: v.optional(v.string()),
+    plaats: v.optional(v.string()),
+    land: v.optional(v.string()),
+    notities: v.optional(v.string()),
     status: v.union(
       v.literal("lead"),
       v.literal("active"),
       v.literal("inactive"),
       v.literal("archived")
     ),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
     .index("by_status", ["tenantId", "status"])
     .searchIndex("search_customer", {
-      searchField: "displayName",
+      searchField: "weergaveNaam",
       filterFields: ["tenantId", "status"]
     }),
 
   customerContacts: defineTable({
     tenantId: v.id("tenants"),
-    customerId: v.id("customers"),
+    klantId: v.id("customers"),
     type: v.union(
       v.literal("note"),
       v.literal("call"),
@@ -270,42 +270,42 @@ export default defineSchema({
       v.literal("loaned_item"),
       v.literal("agreement")
     ),
-    title: v.string(),
-    description: v.optional(v.string()),
-    loanedItemName: v.optional(v.string()),
-    expectedReturnDate: v.optional(v.number()),
-    returnedAt: v.optional(v.number()),
-    visibleToCustomer: v.boolean(),
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
+    uitgeleendItemNaam: v.optional(v.string()),
+    verwachteRetourdatum: v.optional(v.number()),
+    geretourneerdOp: v.optional(v.number()),
+    zichtbaarVoorKlant: v.boolean(),
     createdByExternalUserId: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
-    .index("by_customer", ["tenantId", "customerId"])
+    .index("by_customer", ["tenantId", "klantId"])
     .index("by_type", ["tenantId", "type"]),
 
   categories: defineTable({
     tenantId: v.id("tenants"),
-    name: v.string(),
+    naam: v.string(),
     slug: v.string(),
-    parentCategoryId: v.optional(v.id("categories")),
+    bovenliggendeCategorieId: v.optional(v.id("categories")),
     sortOrder: v.number(),
     status: statusActive,
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
     .index("by_slug", ["tenantId", "slug"])
-    .index("by_parent", ["tenantId", "parentCategoryId"]),
+    .index("by_parent", ["tenantId", "bovenliggendeCategorieId"]),
 
   suppliers: defineTable({
     tenantId: v.id("tenants"),
-    name: v.string(),
-    contactName: v.optional(v.string()),
+    naam: v.string(),
+    contactpersoon: v.optional(v.string()),
     email: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    notes: v.optional(v.string()),
+    telefoon: v.optional(v.string()),
+    notities: v.optional(v.string()),
     status: v.optional(v.union(v.literal("active"), v.literal("inactive"), v.literal("archived"))),
-    productListStatus: v.union(
+    prijslijstStatus: v.union(
       v.literal("unknown"),
       v.literal("requested"),
       v.literal("received"),
@@ -313,76 +313,76 @@ export default defineSchema({
       v.literal("not_available"),
       v.literal("manual_only")
     ),
-    lastContactAt: v.optional(v.number()),
-    expectedAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    laatsteContactOp: v.optional(v.number()),
+    verwachtOp: v.optional(v.number()),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
     .index("by_status", ["tenantId", "status"])
-    .index("by_product_list_status", ["tenantId", "productListStatus"])
+    .index("by_product_list_status", ["tenantId", "prijslijstStatus"])
     .searchIndex("search_supplier", {
-      searchField: "name",
-      filterFields: ["tenantId", "productListStatus"]
+      searchField: "naam",
+      filterFields: ["tenantId", "prijslijstStatus"]
     }),
 
   brands: defineTable({
     tenantId: v.id("tenants"),
-    supplierId: v.optional(v.id("suppliers")),
-    categoryId: v.optional(v.id("categories")),
-    name: v.string(),
-    notes: v.optional(v.string()),
+    leverancierId: v.optional(v.id("suppliers")),
+    categorieId: v.optional(v.id("categories")),
+    naam: v.string(),
+    notities: v.optional(v.string()),
     status: statusActive,
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
-    .index("by_supplier", ["tenantId", "supplierId"])
-    .index("by_category", ["tenantId", "categoryId"]),
+    .index("by_supplier", ["tenantId", "leverancierId"])
+    .index("by_category", ["tenantId", "categorieId"]),
 
   productCollections: defineTable({
     tenantId: v.id("tenants"),
-    supplierId: v.optional(v.id("suppliers")),
-    brandId: v.optional(v.id("brands")),
-    categoryId: v.optional(v.id("categories")),
-    name: v.string(),
+    leverancierId: v.optional(v.id("suppliers")),
+    merkId: v.optional(v.id("brands")),
+    categorieId: v.optional(v.id("categories")),
+    naam: v.string(),
     year: v.optional(v.number()),
-    validFrom: v.optional(v.number()),
-    validUntil: v.optional(v.number()),
-    notes: v.optional(v.string()),
+    geldigVanaf: v.optional(v.number()),
+    geldigTot: v.optional(v.number()),
+    notities: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("inactive"), v.literal("archived")),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
-    .index("by_supplier", ["tenantId", "supplierId"])
-    .index("by_brand", ["tenantId", "brandId"])
-    .index("by_category", ["tenantId", "categoryId"]),
+    .index("by_supplier", ["tenantId", "leverancierId"])
+    .index("by_brand", ["tenantId", "merkId"])
+    .index("by_category", ["tenantId", "categorieId"]),
 
   products: defineTable({
     tenantId: v.id("tenants"),
-    categoryId: v.id("categories"),
-    supplierId: v.optional(v.id("suppliers")),
-    brandId: v.optional(v.id("brands")),
-    collectionId: v.optional(v.id("productCollections")),
-    importKey: v.optional(v.string()),
-    articleNumber: v.optional(v.string()),
+    categorieId: v.id("categories"),
+    leverancierId: v.optional(v.id("suppliers")),
+    merkId: v.optional(v.id("brands")),
+    collectieId: v.optional(v.id("productCollections")),
+    importSleutel: v.optional(v.string()),
+    artikelnummer: v.optional(v.string()),
     ean: v.optional(v.string()),
     sku: v.optional(v.string()),
-    supplierCode: v.optional(v.string()),
-    commercialCode: v.optional(v.string()),
-    supplierProductGroup: v.optional(v.string()),
-    name: v.string(),
-    colorName: v.optional(v.string()),
-    description: v.optional(v.string()),
-    productType: v.union(
+    leverancierCode: v.optional(v.string()),
+    commercieleCode: v.optional(v.string()),
+    leverancierProductGroep: v.optional(v.string()),
+    naam: v.string(),
+    kleurnaam: v.optional(v.string()),
+    omschrijving: v.optional(v.string()),
+    productAard: v.union(
       v.literal("standard"),
       v.literal("with_variants"),
       v.literal("made_to_measure"),
       v.literal("service"),
       v.literal("manual")
     ),
-    productKind: v.optional(
+    productSoort: v.optional(
       v.union(
         v.literal("click"),
         v.literal("dryback"),
@@ -414,65 +414,65 @@ export default defineSchema({
     commercialNames: v.optional(
       v.array(
         v.object({
-          brandName: v.string(),
-          collectionName: v.optional(v.string()),
-          colorName: v.optional(v.string()),
-          displayName: v.string()
+          merknaam: v.string(),
+          collectieNaam: v.optional(v.string()),
+          kleurnaam: v.optional(v.string()),
+          weergaveNaam: v.string()
         })
       )
     ),
-    unit,
-    widthMm: v.optional(v.number()),
-    lengthMm: v.optional(v.number()),
-    thicknessMm: v.optional(v.number()),
-    wearLayerMm: v.optional(v.number()),
-    packageContentM2: v.optional(v.number()),
-    piecesPerPackage: v.optional(v.number()),
-    packagesPerPallet: v.optional(v.number()),
-    salesUnit: v.optional(v.string()),
-    purchaseUnit: v.optional(v.string()),
-    orderUnit: v.optional(v.string()),
-    minimumOrderQuantity: v.optional(v.number()),
-    orderMultiple: v.optional(v.number()),
-    palletQuantity: v.optional(v.number()),
-    trailerQuantity: v.optional(v.number()),
-    bundleSize: v.optional(v.number()),
-    attributes: v.optional(v.any()),
+    eenheid: unit,
+    breedteMm: v.optional(v.number()),
+    lengteMm: v.optional(v.number()),
+    dikteMm: v.optional(v.number()),
+    slijtlaagMm: v.optional(v.number()),
+    pakinhoudM2: v.optional(v.number()),
+    stuksPerPak: v.optional(v.number()),
+    pakkenPerPallet: v.optional(v.number()),
+    verkoopEenheid: v.optional(v.string()),
+    inkoopEenheid: v.optional(v.string()),
+    bestelEenheid: v.optional(v.string()),
+    minimumBestelAantal: v.optional(v.number()),
+    bestelVeelvoud: v.optional(v.number()),
+    palletAantal: v.optional(v.number()),
+    vrachtwagenAantal: v.optional(v.number()),
+    bundelGrootte: v.optional(v.number()),
+    attributen: v.optional(v.any()),
     status: v.union(
       v.literal("draft"),
       v.literal("active"),
       v.literal("inactive"),
       v.literal("archived")
     ),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
-    .index("by_category", ["tenantId", "categoryId"])
-    .index("by_category_status", ["tenantId", "categoryId", "status"])
-    .index("by_supplier", ["tenantId", "supplierId"])
-    .index("by_supplier_status", ["tenantId", "supplierId", "status"])
-    .index("by_brand", ["tenantId", "brandId"])
-    .index("by_collection", ["tenantId", "collectionId"])
+    .index("by_category", ["tenantId", "categorieId"])
+    .index("by_category_status", ["tenantId", "categorieId", "status"])
+    .index("by_supplier", ["tenantId", "leverancierId"])
+    .index("by_supplier_status", ["tenantId", "leverancierId", "status"])
+    .index("by_brand", ["tenantId", "merkId"])
+    .index("by_collection", ["tenantId", "collectieId"])
     .index("by_status", ["tenantId", "status"])
-    .index("by_import_key", ["tenantId", "importKey"])
-    .index("by_article_number", ["tenantId", "supplierId", "articleNumber"])
-    .index("by_supplier_code", ["tenantId", "supplierId", "supplierCode"])
+    .index("by_import_key", ["tenantId", "importSleutel"])
+    .index("by_article_number", ["tenantId", "leverancierId", "artikelnummer"])
+    .index("by_supplier_code", ["tenantId", "leverancierId", "leverancierCode"])
     .index("by_ean", ["tenantId", "ean"])
     .searchIndex("search_products", {
-      searchField: "name",
-      filterFields: ["tenantId", "categoryId", "status"]
+      searchField: "naam",
+      filterFields: ["tenantId", "categorieId", "status"]
     }),
 
   priceLists: defineTable({
     tenantId: v.id("tenants"),
-    supplierId: v.optional(v.id("suppliers")),
-    name: v.string(),
-    sourceFileName: v.string(),
-    sourceSheetName: v.optional(v.string()),
+    leverancierId: v.optional(v.id("suppliers")),
+    naam: v.string(),
+    bronBestandsnaam: v.string(),
+    bronBladNaam: v.optional(v.string()),
     year: v.optional(v.number()),
-    validFrom: v.optional(v.number()),
-    validUntil: v.optional(v.number()),
+    geldigVanaf: v.optional(v.number()),
+    geldigTot: v.optional(v.number()),
     status: v.union(
       v.literal("uploaded"),
       v.literal("mapped"),
@@ -481,55 +481,55 @@ export default defineSchema({
       v.literal("failed"),
       v.literal("archived")
     ),
-    sourcePath: v.optional(v.string()),
-    fileHash: v.optional(v.string()),
-    notes: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    bronPad: v.optional(v.string()),
+    bestandHash: v.optional(v.string()),
+    notities: v.optional(v.string()),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
-    .index("by_supplier", ["tenantId", "supplierId"])
+    .index("by_supplier", ["tenantId", "leverancierId"])
     .index("by_status", ["tenantId", "status"]),
 
   productPrices: defineTable({
     tenantId: v.id("tenants"),
     productId: v.id("products"),
-    priceListId: v.optional(v.id("priceLists")),
-    sourceKey: v.optional(v.string()),
-    priceType,
-    priceUnit,
-    amount: v.number(),
-    vatRate: v.number(),
-    vatMode,
+    prijslijstId: v.optional(v.id("priceLists")),
+    bronSleutel: v.optional(v.string()),
+    prijsSoort: priceType,
+    prijsEenheid: priceUnit,
+    bedrag: v.number(),
+    btwTarief: v.number(),
+    btwModus: vatMode,
     currency: v.string(),
-    validFrom: v.optional(v.number()),
-    validUntil: v.optional(v.number()),
-    sourceFileName: v.optional(v.string()),
-    sourceSheetName: v.optional(v.string()),
-    sourceColumnName: v.optional(v.string()),
-    sourceColumnIndex: v.optional(v.number()),
-    sourceRowNumber: v.optional(v.number()),
-    sourceValue: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    geldigVanaf: v.optional(v.number()),
+    geldigTot: v.optional(v.number()),
+    bronBestandsnaam: v.optional(v.string()),
+    bronBladNaam: v.optional(v.string()),
+    bronKolomNaam: v.optional(v.string()),
+    bronKolomIndex: v.optional(v.number()),
+    bronRijNummer: v.optional(v.number()),
+    bronWaarde: v.optional(v.string()),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
     .index("by_product", ["tenantId", "productId"])
-    .index("by_price_list", ["tenantId", "priceListId"])
-    .index("by_source_key", ["tenantId", "sourceKey"])
-    .index("by_source_file_column", ["tenantId", "sourceFileName", "sourceColumnIndex"])
-    .index("by_price_type", ["tenantId", "priceType"]),
+    .index("by_price_list", ["tenantId", "prijslijstId"])
+    .index("by_source_key", ["tenantId", "bronSleutel"])
+    .index("by_source_file_column", ["tenantId", "bronBestandsnaam", "bronKolomIndex"])
+    .index("by_price_type", ["tenantId", "prijsSoort"]),
 
   productImportBatches: defineTable({
     tenantId: v.id("tenants"),
-    priceListId: v.optional(v.id("priceLists")),
-    supplierId: v.optional(v.id("suppliers")),
-    importProfileId: v.optional(v.id("importProfiles")),
-    fileName: v.string(),
-    fileType: v.string(),
-    sourceFileName: v.optional(v.string()),
-    sourcePath: v.optional(v.string()),
-    fileHash: v.optional(v.string()),
+    prijslijstId: v.optional(v.id("priceLists")),
+    leverancierId: v.optional(v.id("suppliers")),
+    importProfielId: v.optional(v.id("importProfiles")),
+    bestandsnaam: v.string(),
+    bestandsType: v.string(),
+    bronBestandsnaam: v.optional(v.string()),
+    bronPad: v.optional(v.string()),
+    bestandHash: v.optional(v.string()),
     status: v.union(
       v.literal("uploaded"),
       v.literal("analyzing"),
@@ -540,7 +540,7 @@ export default defineSchema({
       v.literal("failed"),
       v.literal("archived")
     ),
-    archivedFromStatus: v.optional(
+    gearchiveerdVanafStatus: v.optional(
       v.union(
         v.literal("uploaded"),
         v.literal("analyzing"),
@@ -551,53 +551,53 @@ export default defineSchema({
         v.literal("failed")
       )
     ),
-    archivedAt: v.optional(v.number()),
+    gearchiveerdOp: v.optional(v.number()),
     archivedByExternalUserId: v.optional(v.string()),
-    totalRows: v.number(),
-    previewRows: v.optional(v.number()),
-    productRows: v.optional(v.number()),
-    validRows: v.number(),
-    warningRows: v.number(),
-    errorRows: v.number(),
-    ignoredRows: v.optional(v.number()),
-    importedProducts: v.optional(v.number()),
-    updatedProducts: v.optional(v.number()),
-    skippedProducts: v.optional(v.number()),
-    importedPrices: v.optional(v.number()),
-    skippedPrices: v.optional(v.number()),
-    duplicateProductMatches: v.optional(v.number()),
-    zeroPriceRows: v.optional(v.number()),
-    unknownVatModeRows: v.optional(v.number()),
-    productsWithoutSupplierCode: v.optional(v.number()),
-    orphanPriceRules: v.optional(v.number()),
-    duplicateSourceKeys: v.optional(v.number()),
-    allowUnknownVatMode: v.optional(v.boolean()),
-    reconciliation: v.optional(v.any()),
+    totaalRijen: v.number(),
+    voorbeeldRijen: v.optional(v.number()),
+    productRijen: v.optional(v.number()),
+    geldigeRijen: v.number(),
+    waarschuwingRijen: v.number(),
+    foutRijen: v.number(),
+    genegeerdeRijen: v.optional(v.number()),
+    geimporteerdeProducten: v.optional(v.number()),
+    bijgewerkteProducten: v.optional(v.number()),
+    overgeslagenProducten: v.optional(v.number()),
+    geimporteerdePrijzen: v.optional(v.number()),
+    overgeslagenPrijzen: v.optional(v.number()),
+    dubbeleProductMatches: v.optional(v.number()),
+    nulPrijsRijen: v.optional(v.number()),
+    onbekendeBtwModusRijen: v.optional(v.number()),
+    productenZonderLeverancierCode: v.optional(v.number()),
+    weesPrijsRegels: v.optional(v.number()),
+    dubbeleBronSleutels: v.optional(v.number()),
+    staBtwModusOnbekendToe: v.optional(v.boolean()),
+    reconciliatie: v.optional(v.any()),
     mapping: v.optional(v.any()),
     createdByExternalUserId: v.optional(v.string()),
     importedByExternalUserId: v.optional(v.string()),
-    importedAt: v.optional(v.number()),
-    committedAt: v.optional(v.number()),
-    failedAt: v.optional(v.number()),
-    errorMessage: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    geimporteerdOp: v.optional(v.number()),
+    vastgelegdOp: v.optional(v.number()),
+    misluktOp: v.optional(v.number()),
+    foutmelding: v.optional(v.string()),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
-    .index("by_supplier", ["tenantId", "supplierId"])
+    .index("by_supplier", ["tenantId", "leverancierId"])
     .index("by_status", ["tenantId", "status"]),
 
   productImportRows: defineTable({
     tenantId: v.id("tenants"),
     batchId: v.id("productImportBatches"),
-    sourceFileName: v.optional(v.string()),
-    sourceSheetName: v.optional(v.string()),
-    rowNumber: v.number(),
-    rowHash: v.optional(v.string()),
-    importKey: v.optional(v.string()),
-    sourceKey: v.optional(v.string()),
-    raw: v.any(),
-    normalized: v.optional(v.any()),
+    bronBestandsnaam: v.optional(v.string()),
+    bronBladNaam: v.optional(v.string()),
+    rijNummer: v.number(),
+    rijHash: v.optional(v.string()),
+    importSleutel: v.optional(v.string()),
+    bronSleutel: v.optional(v.string()),
+    ruweData: v.any(),
+    genormaliseerd: v.optional(v.any()),
     status: v.union(
       v.literal("valid"),
       v.literal("warning"),
@@ -605,7 +605,7 @@ export default defineSchema({
       v.literal("ignored"),
       v.literal("imported")
     ),
-    rowKind: v.union(
+    rijSoort: v.union(
       v.literal("header"),
       v.literal("section"),
       v.literal("product"),
@@ -614,25 +614,25 @@ export default defineSchema({
       v.literal("error"),
       v.literal("ignored")
     ),
-    sectionLabel: v.optional(v.string()),
-    warnings: v.array(v.string()),
-    errors: v.array(v.string()),
-    importedProductId: v.optional(v.id("products")),
-    importedPriceIds: v.optional(v.array(v.id("productPrices"))),
-    importedAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    sectieLabel: v.optional(v.string()),
+    waarschuwingen: v.array(v.string()),
+    fouten: v.array(v.string()),
+    geimporteerdProductId: v.optional(v.id("products")),
+    geimporteerdePrijsIds: v.optional(v.array(v.id("productPrices"))),
+    geimporteerdOp: v.optional(v.number()),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_batch", ["tenantId", "batchId"])
-    .index("by_row_kind", ["tenantId", "batchId", "rowKind"])
+    .index("by_row_kind", ["tenantId", "batchId", "rijSoort"])
     .index("by_status", ["tenantId", "batchId", "status"]),
 
   serviceCostRules: defineTable({
     tenantId: v.id("tenants"),
-    categoryId: v.optional(v.id("categories")),
-    name: v.string(),
-    description: v.optional(v.string()),
-    calculationType: v.union(
+    categorieId: v.optional(v.id("categories")),
+    naam: v.string(),
+    omschrijving: v.optional(v.string()),
+    berekeningType: v.union(
       v.literal("fixed"),
       v.literal("per_m2"),
       v.literal("per_meter"),
@@ -641,17 +641,17 @@ export default defineSchema({
       v.literal("per_staircase"),
       v.literal("manual")
     ),
-    priceExVat: v.number(),
-    vatRate: v.number(),
+    prijsExBtw: v.number(),
+    btwTarief: v.number(),
     minQuantity: v.optional(v.number()),
     maxQuantity: v.optional(v.number()),
     metadata: v.optional(v.any()),
     status: statusActive,
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
-    .index("by_category", ["tenantId", "categoryId"])
+    .index("by_category", ["tenantId", "categorieId"])
     .index("by_status", ["tenantId", "status"]),
 
   /**
@@ -705,10 +705,10 @@ export default defineSchema({
 
   projects: defineTable({
     tenantId: v.id("tenants"),
-    customerId: v.id("customers"),
-    projectNumber: v.optional(v.string()),
-    title: v.string(),
-    description: v.optional(v.string()),
+    klantId: v.id("customers"),
+    projectnummer: v.optional(v.string()),
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
     status: v.union(
       v.literal("lead"),
       v.literal("quote_draft"),
@@ -724,130 +724,130 @@ export default defineSchema({
       v.literal("closed"),
       v.literal("cancelled")
     ),
-    preferredExecutionDate: v.optional(v.number()),
-    measurementDate: v.optional(v.number()),
-    executionDate: v.optional(v.number()),
-    internalNotes: v.optional(v.string()),
-    customerNotes: v.optional(v.string()),
+    gewensteUitvoerdatum: v.optional(v.number()),
+    inmeetdatum: v.optional(v.number()),
+    uitvoerdatum: v.optional(v.number()),
+    interneNotities: v.optional(v.string()),
+    klantNotities: v.optional(v.string()),
     createdByExternalUserId: v.optional(v.string()),
-    acceptedAt: v.optional(v.number()),
-    measurementPlannedAt: v.optional(v.number()),
-    executionPlannedAt: v.optional(v.number()),
-    orderedAt: v.optional(v.number()),
-    invoicedAt: v.optional(v.number()),
-    paidAt: v.optional(v.number()),
-    closedAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    geaccepteerdOp: v.optional(v.number()),
+    inmeetGeplandOp: v.optional(v.number()),
+    uitvoerGeplandOp: v.optional(v.number()),
+    besteldOp: v.optional(v.number()),
+    gefactureerdOp: v.optional(v.number()),
+    betaaldOp: v.optional(v.number()),
+    afgeslotenOp: v.optional(v.number()),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
-    .index("by_customer", ["tenantId", "customerId"])
+    .index("by_customer", ["tenantId", "klantId"])
     .index("by_status", ["tenantId", "status"])
-    .index("by_execution_date", ["tenantId", "executionDate"]),
+    .index("by_execution_date", ["tenantId", "uitvoerdatum"]),
 
   projectRooms: defineTable({
     tenantId: v.id("tenants"),
     projectId: v.id("projects"),
-    name: v.string(),
-    floor: v.optional(v.string()),
-    widthCm: v.optional(v.number()),
-    lengthCm: v.optional(v.number()),
-    heightCm: v.optional(v.number()),
-    areaM2: v.optional(v.number()),
-    perimeterMeter: v.optional(v.number()),
-    notes: v.optional(v.string()),
+    naam: v.string(),
+    verdieping: v.optional(v.string()),
+    breedteCm: v.optional(v.number()),
+    lengteCm: v.optional(v.number()),
+    hoogteCm: v.optional(v.number()),
+    oppervlakteM2: v.optional(v.number()),
+    omtrekMeter: v.optional(v.number()),
+    notities: v.optional(v.string()),
     sortOrder: v.number(),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   }).index("by_project", ["tenantId", "projectId"]),
 
   measurements: defineTable({
     tenantId: v.id("tenants"),
     projectId: v.id("projects"),
-    customerId: v.id("customers"),
+    klantId: v.id("customers"),
     status: measurementStatus,
-    measurementDate: v.optional(v.number()),
-    measuredBy: v.optional(v.string()),
-    notes: v.optional(v.string()),
+    inmeetdatum: v.optional(v.number()),
+    gemetenDoor: v.optional(v.string()),
+    notities: v.optional(v.string()),
     createdByExternalUserId: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_project", ["tenantId", "projectId"])
     .index("by_status", ["tenantId", "status"])
-    .index("by_measurement_date", ["tenantId", "measurementDate"]),
+    .index("by_measurement_date", ["tenantId", "inmeetdatum"]),
 
   measurementRooms: defineTable({
     tenantId: v.id("tenants"),
-    measurementId: v.id("measurements"),
-    projectRoomId: v.optional(v.id("projectRooms")),
-    name: v.string(),
-    floor: v.optional(v.string()),
-    widthM: v.optional(v.number()),
-    lengthM: v.optional(v.number()),
-    heightM: v.optional(v.number()),
-    areaM2: v.optional(v.number()),
-    perimeterM: v.optional(v.number()),
-    notes: v.optional(v.string()),
+    inmetingId: v.id("measurements"),
+    projectRuimteId: v.optional(v.id("projectRooms")),
+    naam: v.string(),
+    verdieping: v.optional(v.string()),
+    breedteM: v.optional(v.number()),
+    lengteM: v.optional(v.number()),
+    hoogteM: v.optional(v.number()),
+    oppervlakteM2: v.optional(v.number()),
+    omtrekM: v.optional(v.number()),
+    notities: v.optional(v.string()),
     sortOrder: v.number(),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
-    .index("by_measurement", ["tenantId", "measurementId"])
-    .index("by_project_room", ["tenantId", "projectRoomId"]),
+    .index("by_measurement", ["tenantId", "inmetingId"])
+    .index("by_project_room", ["tenantId", "projectRuimteId"]),
 
   measurementLines: defineTable({
     tenantId: v.id("tenants"),
-    measurementId: v.id("measurements"),
-    roomId: v.optional(v.id("measurementRooms")),
-    productGroup: measurementProductGroup,
-    calculationType: measurementCalculationType,
-    input: v.any(),
-    result: v.any(),
-    wastePercent: v.optional(v.number()),
-    quantity: v.number(),
-    unit: v.string(),
-    notes: v.optional(v.string()),
-    quoteLineType,
+    inmetingId: v.id("measurements"),
+    ruimteId: v.optional(v.id("measurementRooms")),
+    productGroep: measurementProductGroup,
+    berekeningType: measurementCalculationType,
+    invoer: v.any(),
+    resultaat: v.any(),
+    snijverliesPct: v.optional(v.number()),
+    aantal: v.number(),
+    eenheid: v.string(),
+    notities: v.optional(v.string()),
+    offerteRegelType: quoteLineType,
     quotePreparationStatus,
     // Optionele productkeuze tijdens het inmeten + richtprijs-snapshot.
     // Snapshot = prijs op keuzemoment; de offerte blijft de plek voor de definitieve prijs.
     productId: v.optional(v.id("products")),
-    productName: v.optional(v.string()),
-    indicativeUnitPriceExVat: v.optional(v.number()),
-    indicativeVatRate: v.optional(v.number()),
-    indicativePriceUnit: v.optional(v.string()),
-    indicativePriceType: v.optional(v.string()),
-    indicativeCapturedAt: v.optional(v.number()),
-    convertedQuoteId: v.optional(v.id("quotes")),
-    convertedQuoteLineId: v.optional(v.id("quoteLines")),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    productNaam: v.optional(v.string()),
+    indicatieveEenheidsprijsExBtw: v.optional(v.number()),
+    indicatiefBtwTarief: v.optional(v.number()),
+    indicatievePrijsEenheid: v.optional(v.string()),
+    indicatievePrijsSoort: v.optional(v.string()),
+    indicatiefVastgelegdOp: v.optional(v.number()),
+    geconverteerdeOfferteId: v.optional(v.id("quotes")),
+    geconverteerdeOfferteregelId: v.optional(v.id("quoteLines")),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
-    .index("by_measurement", ["tenantId", "measurementId"])
-    .index("by_room", ["tenantId", "roomId"])
+    .index("by_measurement", ["tenantId", "inmetingId"])
+    .index("by_room", ["tenantId", "ruimteId"])
     .index("by_quote_status", ["tenantId", "quotePreparationStatus"])
-    .index("by_product_group", ["tenantId", "productGroup"]),
+    .index("by_product_group", ["tenantId", "productGroep"]),
 
   wasteProfiles: defineTable({
     tenantId: v.id("tenants"),
-    productGroup: measurementProductGroup,
-    name: v.string(),
-    defaultWastePercent: v.number(),
-    description: v.optional(v.string()),
+    productGroep: measurementProductGroup,
+    naam: v.string(),
+    standaardSnijverliesPct: v.number(),
+    omschrijving: v.optional(v.string()),
     status: statusActive,
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
-    .index("by_product_group", ["tenantId", "productGroup"])
+    .index("by_product_group", ["tenantId", "productGroep"])
     .index("by_status", ["tenantId", "status"]),
 
   quotes: defineTable({
     tenantId: v.id("tenants"),
     projectId: v.id("projects"),
-    customerId: v.id("customers"),
-    quoteNumber: v.string(),
-    title: v.string(),
+    klantId: v.id("customers"),
+    offertenummer: v.string(),
+    titel: v.string(),
     status: v.union(
       v.literal("draft"),
       v.literal("sent"),
@@ -856,34 +856,34 @@ export default defineSchema({
       v.literal("expired"),
       v.literal("cancelled")
     ),
-    sentAt: v.optional(v.number()),
-    validUntil: v.optional(v.number()),
-    introText: v.optional(v.string()),
-    closingText: v.optional(v.string()),
-    terms: v.optional(v.array(v.string())),
-    paymentTerms: v.optional(v.array(v.string())),
-    subtotalExVat: v.number(),
-    vatTotal: v.number(),
-    totalIncVat: v.number(),
-    acceptedAt: v.optional(v.number()),
-    rejectedAt: v.optional(v.number()),
+    verzondenOp: v.optional(v.number()),
+    geldigTot: v.optional(v.number()),
+    inleidingTekst: v.optional(v.string()),
+    afsluitTekst: v.optional(v.string()),
+    voorwaarden: v.optional(v.array(v.string())),
+    betalingsvoorwaarden: v.optional(v.array(v.string())),
+    subtotaalExBtw: v.number(),
+    btwTotaal: v.number(),
+    totaalInclBtw: v.number(),
+    geaccepteerdOp: v.optional(v.number()),
+    afgewezenOp: v.optional(v.number()),
     createdByExternalUserId: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
     .index("by_project", ["tenantId", "projectId"])
-    .index("by_customer", ["tenantId", "customerId"])
-    .index("by_quote_number", ["tenantId", "quoteNumber"])
+    .index("by_customer", ["tenantId", "klantId"])
+    .index("by_quote_number", ["tenantId", "offertenummer"])
     .index("by_status", ["tenantId", "status"]),
 
   quoteLines: defineTable({
     tenantId: v.id("tenants"),
     quoteId: v.id("quotes"),
-    projectRoomId: v.optional(v.id("projectRooms")),
+    projectRuimteId: v.optional(v.id("projectRooms")),
     productId: v.optional(v.id("products")),
-    serviceCostRuleId: v.optional(v.id("serviceCostRules")),
-    lineType: v.union(
+    werktariefRegelId: v.optional(v.id("serviceCostRules")),
+    regelType: v.union(
       v.literal("product"),
       v.literal("service"),
       v.literal("labor"),
@@ -892,27 +892,27 @@ export default defineSchema({
       v.literal("text"),
       v.literal("manual")
     ),
-    title: v.string(),
-    description: v.optional(v.string()),
-    quantity: v.number(),
-    unit: v.string(),
-    unitPriceExVat: v.number(),
-    vatRate: v.number(),
-    discountExVat: v.optional(v.number()),
-    lineTotalExVat: v.number(),
-    lineVatTotal: v.number(),
-    lineTotalIncVat: v.number(),
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
+    aantal: v.number(),
+    eenheid: v.string(),
+    eenheidsprijsExBtw: v.number(),
+    btwTarief: v.number(),
+    kortingExBtw: v.optional(v.number()),
+    regelTotaalExBtw: v.number(),
+    regelBtwTotaal: v.number(),
+    regelTotaalInclBtw: v.number(),
     sortOrder: v.number(),
     metadata: v.optional(v.any()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_quote", ["tenantId", "quoteId"])
-    .index("by_room", ["tenantId", "projectRoomId"]),
+    .index("by_room", ["tenantId", "projectRuimteId"]),
 
   quoteTemplates: defineTable({
     tenantId: v.id("tenants"),
-    name: v.string(),
+    naam: v.string(),
     type: v.union(
       v.literal("default"),
       v.literal("flooring"),
@@ -920,38 +920,38 @@ export default defineSchema({
       v.literal("wall_panels"),
       v.literal("custom")
     ),
-    introText: v.optional(v.string()),
-    closingText: v.optional(v.string()),
-    sections: v.optional(
+    inleidingTekst: v.optional(v.string()),
+    afsluitTekst: v.optional(v.string()),
+    secties: v.optional(
       v.array(
         v.object({
-          key: v.string(),
-          title: v.string(),
-          description: v.optional(v.string()),
+          sleutel: v.string(),
+          titel: v.string(),
+          omschrijving: v.optional(v.string()),
           sortOrder: v.number()
         })
       )
     ),
-    defaultTerms: v.array(v.string()),
-    paymentTerms: v.optional(v.array(v.string())),
-    defaultLines: v.array(
+    standaardVoorwaarden: v.array(v.string()),
+    betalingsvoorwaarden: v.optional(v.array(v.string())),
+    standaardRegels: v.array(
       v.object({
-        sectionKey: v.optional(v.string()),
-        lineType: quoteLineType,
-        title: v.string(),
-        unit: v.string(),
-        description: v.optional(v.string()),
-        defaultQuantity: v.optional(v.number()),
+        sectieSleutel: v.optional(v.string()),
+        regelType: quoteLineType,
+        titel: v.string(),
+        eenheid: v.string(),
+        omschrijving: v.optional(v.string()),
+        standaardAantal: v.optional(v.number()),
         sortOrder: v.number(),
-        optional: v.optional(v.boolean()),
-        defaultEnabled: v.optional(v.boolean()),
-        categoryHint: v.optional(v.string()),
-        productKindHint: v.optional(v.string())
+        optioneel: v.optional(v.boolean()),
+        standaardIngeschakeld: v.optional(v.boolean()),
+        categorieHint: v.optional(v.string()),
+        productSoortHint: v.optional(v.string())
       })
     ),
     status: statusActive,
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
     .index("by_type", ["tenantId", "type"])
@@ -976,11 +976,11 @@ export default defineSchema({
       v.literal("bookkeeper_export_sent"),
       v.literal("closed")
     ),
-    title: v.string(),
-    description: v.optional(v.string()),
-    visibleToCustomer: v.boolean(),
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
+    zichtbaarVoorKlant: v.boolean(),
     createdByExternalUserId: v.optional(v.string()),
-    createdAt: v.number()
+    aangemaaktOp: v.number()
   })
     .index("by_project", ["tenantId", "projectId"])
     .index("by_type", ["tenantId", "type"]),
@@ -990,83 +990,83 @@ export default defineSchema({
     projectId: v.id("projects"),
     quoteId: v.optional(v.id("quotes")),
     type: projectTaskType,
-    title: v.string(),
-    dueAt: v.number(),
+    titel: v.string(),
+    vervaltOp: v.number(),
     status: projectTaskStatus,
-    completedAt: v.optional(v.number()),
-    dismissedAt: v.optional(v.number()),
+    voltooidOp: v.optional(v.number()),
+    afgewezenOp: v.optional(v.number()),
     createdByExternalUserId: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_project", ["tenantId", "projectId"])
     .index("by_quote", ["tenantId", "quoteId"])
     .index("by_status", ["tenantId", "status"])
-    .index("by_due_date", ["tenantId", "dueAt"]),
+    .index("by_due_date", ["tenantId", "vervaltOp"]),
 
   importProfiles: defineTable({
     tenantId: v.id("tenants"),
-    supplierId: v.optional(v.id("suppliers")),
-    categoryId: v.optional(v.id("categories")),
-    supplierName: v.string(),
-    name: v.string(),
-    filePattern: v.optional(v.string()),
-    sheetPattern: v.optional(v.string()),
-    expectedFileExtension: v.optional(v.union(v.literal(".xlsx"), v.literal(".xls"))),
-    supportsXlsx: v.boolean(),
-    supportsXls: v.boolean(),
-    sheetMapping: v.optional(v.any()),
-    headerRowStrategy: v.optional(v.any()),
-    sectionRowStrategy: v.optional(v.any()),
-    productKeyStrategy: v.optional(v.any()),
-    columnMappings: v.optional(v.any()),
-    priceColumnMappings: v.optional(v.any()),
-    vatModeByPriceColumn: v.optional(v.any()),
-    unitByPriceColumn: v.optional(v.any()),
-    priceTypeByPriceColumn: v.optional(v.any()),
-    allowUnknownVatMode: v.optional(v.boolean()),
-    vatModeReview: v.optional(v.any()),
+    leverancierId: v.optional(v.id("suppliers")),
+    categorieId: v.optional(v.id("categories")),
+    leverancierNaam: v.string(),
+    naam: v.string(),
+    bestandPatroon: v.optional(v.string()),
+    bladPatroon: v.optional(v.string()),
+    verwachteBestandsextensie: v.optional(v.union(v.literal(".xlsx"), v.literal(".xls"))),
+    ondersteuntXlsx: v.boolean(),
+    ondersteuntXls: v.boolean(),
+    bladMapping: v.optional(v.any()),
+    koprijStrategie: v.optional(v.any()),
+    sectierijStrategie: v.optional(v.any()),
+    productSleutelStrategie: v.optional(v.any()),
+    kolomMappings: v.optional(v.any()),
+    prijskolomMappings: v.optional(v.any()),
+    btwModusPerPrijskolom: v.optional(v.any()),
+    eenheidPerPrijskolom: v.optional(v.any()),
+    prijsSoortPerPrijskolom: v.optional(v.any()),
+    staBtwModusOnbekendToe: v.optional(v.boolean()),
+    btwModusReview: v.optional(v.any()),
     vatModeUpdatedByExternalUserId: v.optional(v.string()),
-    vatModeUpdatedAt: v.optional(v.number()),
-    duplicateStrategy: v.optional(v.any()),
-    zeroPriceStrategy: v.optional(v.any()),
+    btwModusGewijzigdOp: v.optional(v.number()),
+    dubbelenStrategie: v.optional(v.any()),
+    nulPrijsStrategie: v.optional(v.any()),
     mapping: v.any(),
-    notes: v.optional(v.string()),
+    notities: v.optional(v.string()),
     status: statusActive,
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
-    .index("by_supplier", ["tenantId", "supplierName"])
+    .index("by_supplier", ["tenantId", "leverancierNaam"])
     .index("by_status", ["tenantId", "status"]),
 
   catalogDataIssues: defineTable({
     tenantId: v.id("tenants"),
-    issueType: v.union(v.literal("duplicate_ean")),
-    severity: v.union(v.literal("info"), v.literal("warning"), v.literal("error")),
+    kwestieSoort: v.union(v.literal("duplicate_ean")),
+    ernst: v.union(v.literal("info"), v.literal("warning"), v.literal("error")),
     status: v.union(
       v.literal("open"),
       v.literal("reviewed"),
       v.literal("accepted"),
       v.literal("resolved")
     ),
-    supplierId: v.optional(v.id("suppliers")),
+    leverancierId: v.optional(v.id("suppliers")),
     ean: v.optional(v.string()),
     productIds: v.array(v.id("products")),
-    notes: v.optional(v.string()),
+    notities: v.optional(v.string()),
     metadata: v.optional(v.any()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
-    .index("by_type_status", ["tenantId", "issueType", "status"])
-    .index("by_supplier_ean", ["tenantId", "supplierId", "ean"]),
+    .index("by_type_status", ["tenantId", "kwestieSoort", "status"])
+    .index("by_supplier_ean", ["tenantId", "leverancierId", "ean"]),
 
   supplierOrders: defineTable({
     tenantId: v.id("tenants"),
     projectId: v.id("projects"),
-    supplierId: v.optional(v.id("suppliers")),
-    orderNumber: v.optional(v.string()),
+    leverancierId: v.optional(v.id("suppliers")),
+    bestelnummer: v.optional(v.string()),
     status: v.union(
       v.literal("draft"),
       v.literal("ordered"),
@@ -1075,23 +1075,23 @@ export default defineSchema({
       v.literal("received"),
       v.literal("cancelled")
     ),
-    orderedAt: v.optional(v.number()),
-    expectedDeliveryAt: v.optional(v.number()),
-    receivedAt: v.optional(v.number()),
-    notes: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    besteldOp: v.optional(v.number()),
+    verwachteLeverdatumOp: v.optional(v.number()),
+    ontvangenOp: v.optional(v.number()),
+    notities: v.optional(v.string()),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_project", ["tenantId", "projectId"])
-    .index("by_supplier", ["tenantId", "supplierId"])
+    .index("by_supplier", ["tenantId", "leverancierId"])
     .index("by_status", ["tenantId", "status"]),
 
   invoices: defineTable({
     tenantId: v.id("tenants"),
     projectId: v.id("projects"),
-    customerId: v.id("customers"),
+    klantId: v.id("customers"),
     quoteId: v.optional(v.id("quotes")),
-    invoiceNumber: v.string(),
+    factuurnummer: v.string(),
     status: v.union(
       v.literal("draft"),
       v.literal("sent"),
@@ -1100,28 +1100,28 @@ export default defineSchema({
       v.literal("overdue"),
       v.literal("cancelled")
     ),
-    invoiceDate: v.number(),
-    dueDate: v.number(),
-    subtotalExVat: v.number(),
-    vatTotal: v.number(),
-    totalIncVat: v.number(),
-    paidAmount: v.number(),
-    paidAt: v.optional(v.number()),
-    reminderSentAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number()
+    factuurdatum: v.number(),
+    vervaldatum: v.number(),
+    subtotaalExBtw: v.number(),
+    btwTotaal: v.number(),
+    totaalInclBtw: v.number(),
+    betaaldBedrag: v.number(),
+    betaaldOp: v.optional(v.number()),
+    herinneringVerzondenOp: v.optional(v.number()),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
     .index("by_project", ["tenantId", "projectId"])
-    .index("by_customer", ["tenantId", "customerId"])
-    .index("by_invoice_number", ["tenantId", "invoiceNumber"])
+    .index("by_customer", ["tenantId", "klantId"])
+    .index("by_invoice_number", ["tenantId", "factuurnummer"])
     .index("by_status", ["tenantId", "status"])
-    .index("by_due_date", ["tenantId", "dueDate"]),
+    .index("by_due_date", ["tenantId", "vervaldatum"]),
 
   timelineEvents: defineTable({
     tenantId: v.id("tenants"),
     projectId: v.id("projects"),
-    customerId: v.optional(v.id("customers")),
+    klantId: v.optional(v.id("customers")),
     type: v.union(
       v.literal("created"),
       v.literal("note"),
@@ -1135,13 +1135,13 @@ export default defineSchema({
       v.literal("payment_received"),
       v.literal("closed")
     ),
-    title: v.string(),
-    description: v.optional(v.string()),
-    visibleToCustomer: v.boolean(),
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
+    zichtbaarVoorKlant: v.boolean(),
     createdByExternalUserId: v.optional(v.string()),
-    createdAt: v.number()
+    aangemaaktOp: v.number()
   })
     .index("by_project", ["tenantId", "projectId"])
-    .index("by_customer", ["tenantId", "customerId"])
+    .index("by_customer", ["tenantId", "klantId"])
     .index("by_type", ["tenantId", "type"])
 });

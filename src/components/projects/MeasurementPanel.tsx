@@ -654,7 +654,7 @@ export default function MeasurementPanel({
 
     return {
       productId: product.id as Id<"products">,
-      productName: priceResult?.productName ?? product.displayName ?? product.name,
+      productName: priceResult?.productName ?? product.weergaveNaam ?? product.naam,
       ...(indicative
         ? {
             indicativeUnitPriceExVat: indicative.unitPriceExVat,
@@ -677,7 +677,7 @@ export default function MeasurementPanel({
 
     const priceResult = matchedTabPrice(tool);
     const items: Array<{ label: string; value: string }> = [
-      { label: "Product", value: priceResult?.productName ?? product.displayName ?? product.name }
+      { label: "Product", value: priceResult?.productName ?? product.weergaveNaam ?? product.naam }
     ];
 
     if (tabPriceLoading[tool]) {
@@ -819,8 +819,8 @@ export default function MeasurementPanel({
         tenantId: tenantConvexId as Id<"tenants">,
         actor: mutationActorFromSession(session),
         projectId: projectId as Id<"projects">,
-        customerId: customerId as Id<"customers">,
-        measuredBy: session.name ?? session.email,
+        klantId: customerId as Id<"customers">,
+        gemetenDoor: session.name ?? session.email,
         createdByExternalUserId: session.userId
       });
       showToast({ title: "Inmeting gestart", tone: "success" });
@@ -854,11 +854,11 @@ export default function MeasurementPanel({
       await context.client.mutation(api.projecten.measurements.updateMeasurement, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
-        measurementId: context.measurementId,
+        inmetingId: context.measurementId,
         status: measurementStatus,
-        measurementDate: fromDateInputValue(measurementDate),
-        measuredBy: measuredBy.trim(),
-        notes: measurementNotes.trim()
+        inmeetdatum: fromDateInputValue(measurementDate),
+        gemetenDoor: measuredBy.trim(),
+        notities: measurementNotes.trim()
       });
       showToast({ title: "Inmeting bijgewerkt", tone: "success" });
       await loadMeasurement();
@@ -896,16 +896,16 @@ export default function MeasurementPanel({
       await context.client.mutation(api.projecten.measurements.addMeasurementRoom, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
-        measurementId: context.measurementId,
-        projectRoomId: projectRoomId ? (projectRoomId as Id<"projectRooms">) : undefined,
-        name: roomName.trim(),
-        floor: roomFloor.trim() || undefined,
-        widthM,
-        lengthM,
-        heightM: parseDecimal(roomHeightM),
-        areaM2,
-        perimeterM,
-        notes: roomNotes.trim() || undefined
+        inmetingId: context.measurementId,
+        projectRuimteId: projectRoomId ? (projectRoomId as Id<"projectRooms">) : undefined,
+        naam: roomName.trim(),
+        verdieping: roomFloor.trim() || undefined,
+        breedteM: widthM,
+        lengteM: lengthM,
+        hoogteM: parseDecimal(roomHeightM),
+        oppervlakteM2: areaM2,
+        omtrekM: perimeterM,
+        notities: roomNotes.trim() || undefined
       });
       setProjectRoomId("");
       setRoomName("");
@@ -940,8 +940,8 @@ export default function MeasurementPanel({
       await context.client.mutation(api.projecten.measurements.addMeasurementRoom, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
-        measurementId: context.measurementId,
-        name: presetName
+        inmetingId: context.measurementId,
+        naam: presetName
       });
       showToast({ title: `${presetName} toegevoegd`, tone: "success" });
       await loadMeasurement();
@@ -1009,24 +1009,24 @@ export default function MeasurementPanel({
       await context.client.mutation(api.projecten.measurements.addMeasurementLine, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
-        measurementId: context.measurementId,
-        roomId: line.roomId ? (line.roomId as Id<"measurementRooms">) : undefined,
-        productGroup: line.productGroup,
-        calculationType: line.calculationType,
-        input: line.input,
-        result: line.result,
-        wastePercent: line.wastePercent,
-        quantity: line.quantity,
-        unit: line.unit,
-        notes: line.notes,
-        quoteLineType: line.quoteLineType,
+        inmetingId: context.measurementId,
+        ruimteId: line.roomId ? (line.roomId as Id<"measurementRooms">) : undefined,
+        productGroep: line.productGroup,
+        berekeningType: line.calculationType,
+        invoer: line.input,
+        resultaat: line.result,
+        snijverliesPct: line.wastePercent,
+        aantal: line.quantity,
+        eenheid: line.unit,
+        notities: line.notes,
+        offerteRegelType: line.quoteLineType,
         productId: line.productId,
-        productName: line.productName,
-        indicativeUnitPriceExVat: line.indicativeUnitPriceExVat,
-        indicativeVatRate: line.indicativeVatRate,
-        indicativePriceUnit: line.indicativePriceUnit,
-        indicativePriceType: line.indicativePriceType,
-        indicativeCapturedAt: line.indicativeCapturedAt
+        productNaam: line.productName,
+        indicatieveEenheidsprijsExBtw: line.indicativeUnitPriceExVat,
+        indicatiefBtwTarief: line.indicativeVatRate,
+        indicatievePrijsEenheid: line.indicativePriceUnit,
+        indicatievePrijsSoort: line.indicativePriceType,
+        indicatiefVastgelegdOp: line.indicativeCapturedAt
       });
       showToast({ title: line.successMessage, tone: "success" });
       await loadMeasurement();
@@ -1104,15 +1104,15 @@ export default function MeasurementPanel({
       await context.client.mutation(api.projecten.measurements.updateMeasurementRoom, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
-        roomId: editingRoomId as Id<"measurementRooms">,
-        name: roomCorrectionDraft.name.trim(),
-        floor: roomCorrectionDraft.floor.trim() || undefined,
-        widthM: parseDecimal(roomCorrectionDraft.widthM),
-        lengthM: parseDecimal(roomCorrectionDraft.lengthM),
-        heightM: parseDecimal(roomCorrectionDraft.heightM),
-        areaM2: parseDecimal(roomCorrectionDraft.areaM2),
-        perimeterM: parseDecimal(roomCorrectionDraft.perimeterM),
-        notes: roomCorrectionDraft.notes.trim() || undefined
+        ruimteId: editingRoomId as Id<"measurementRooms">,
+        naam: roomCorrectionDraft.name.trim(),
+        verdieping: roomCorrectionDraft.floor.trim() || undefined,
+        breedteM: parseDecimal(roomCorrectionDraft.widthM),
+        lengteM: parseDecimal(roomCorrectionDraft.lengthM),
+        hoogteM: parseDecimal(roomCorrectionDraft.heightM),
+        oppervlakteM2: parseDecimal(roomCorrectionDraft.areaM2),
+        omtrekM: parseDecimal(roomCorrectionDraft.perimeterM),
+        notities: roomCorrectionDraft.notes.trim() || undefined
       });
       showToast({ title: "Meetruimte bijgewerkt", tone: "success" });
       setEditingRoomId(null);
@@ -1143,7 +1143,7 @@ export default function MeasurementPanel({
       await context.client.mutation(api.projecten.measurements.deleteMeasurementRoom, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
-        roomId: pendingRoomDelete._id as Id<"measurementRooms">
+        ruimteId: pendingRoomDelete._id as Id<"measurementRooms">
       });
       showToast({ title: "Meetruimte verwijderd", tone: "warning" });
       setPendingRoomDelete(null);
@@ -1191,7 +1191,7 @@ export default function MeasurementPanel({
     setLineCorrectionDraft((current) => ({
       ...current,
       productId: product?.id ?? "",
-      productName: product ? product.displayName ?? product.name : "",
+      productName: product ? product.weergaveNaam ?? product.naam : "",
       indicativeUnitPriceExVat: undefined,
       indicativeVatRate: undefined,
       indicativePriceUnit: undefined,
@@ -1303,20 +1303,20 @@ export default function MeasurementPanel({
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
         lineId: line._id as Id<"measurementLines">,
-        roomId: lineCorrectionDraft.roomId ? (lineCorrectionDraft.roomId as Id<"measurementRooms">) : undefined,
-        productGroup: line.productGroup,
-        calculationType: line.calculationType,
-        input: line.input,
-        result: {
+        ruimteId: lineCorrectionDraft.roomId ? (lineCorrectionDraft.roomId as Id<"measurementRooms">) : undefined,
+        productGroep: line.productGroup,
+        berekeningType: line.calculationType,
+        invoer: line.input,
+        resultaat: {
           ...line.result,
           correctedQuantity: quantity,
           correctedAt: Date.now()
         },
-        wastePercent: parseDecimal(lineCorrectionDraft.wastePercent),
-        quantity,
-        unit: finalUnit,
-        notes: lineCorrectionDraft.notes.trim() || undefined,
-        quoteLineType: line.quoteLineType,
+        snijverliesPct: parseDecimal(lineCorrectionDraft.wastePercent),
+        aantal: quantity,
+        eenheid: finalUnit,
+        notities: lineCorrectionDraft.notes.trim() || undefined,
+        offerteRegelType: line.quoteLineType,
         quotePreparationStatus: lineCorrectionDraft.quotePreparationStatus,
         ...productArgs
       });
@@ -1372,13 +1372,13 @@ export default function MeasurementPanel({
       return;
     }
 
-    setRoomName(sourceRoom.name);
-    setRoomFloor(sourceRoom.floor ?? "");
-    setRoomWidthM(decimalText(sourceRoom.widthCm ? sourceRoom.widthCm / 100 : undefined));
-    setRoomLengthM(decimalText(sourceRoom.lengthCm ? sourceRoom.lengthCm / 100 : undefined));
-    setRoomAreaM2(decimalText(sourceRoom.areaM2));
-    setRoomPerimeterM(decimalText(sourceRoom.perimeterMeter));
-    setRoomNotes(sourceRoom.notes ?? "");
+    setRoomName(sourceRoom.naam);
+    setRoomFloor(sourceRoom.verdieping ?? "");
+    setRoomWidthM(decimalText(sourceRoom.breedteCm ? sourceRoom.breedteCm / 100 : undefined));
+    setRoomLengthM(decimalText(sourceRoom.lengteCm ? sourceRoom.lengteCm / 100 : undefined));
+    setRoomAreaM2(decimalText(sourceRoom.oppervlakteM2));
+    setRoomPerimeterM(decimalText(sourceRoom.omtrekMeter));
+    setRoomNotes(sourceRoom.notities ?? "");
   }
 
   function applyMeasurementRoomToFloor(roomId: string) {
@@ -1845,7 +1845,7 @@ export default function MeasurementPanel({
                     <option value="">{isFieldMode ? "Nieuwe ruimte" : "Geen basisruimte"}</option>
                     {projectRooms.map((room) => (
                       <option key={room.id} value={room.id}>
-                        {room.name}
+                        {room.naam}
                       </option>
                     ))}
                   </Select>

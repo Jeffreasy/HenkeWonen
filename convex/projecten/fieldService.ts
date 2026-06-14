@@ -30,17 +30,17 @@ function toCustomer(tenantSlug: string, customer: Doc<"customers">) {
     id: String(customer._id),
     tenantId: tenantSlug,
     type: customer.type,
-    displayName: customer.displayName,
+    displayName: customer.weergaveNaam,
     email: customer.email,
-    phone: customer.phone,
-    street: customer.street,
-    houseNumber: customer.houseNumber,
-    postalCode: customer.postalCode,
-    city: customer.city,
-    notes: customer.notes,
+    phone: customer.telefoon,
+    street: customer.straat,
+    houseNumber: customer.huisnummer,
+    postalCode: customer.postcode,
+    city: customer.plaats,
+    notes: customer.notities,
     status: customer.status,
-    createdAt: customer.createdAt,
-    updatedAt: customer.updatedAt
+    createdAt: customer.aangemaaktOp,
+    updatedAt: customer.gewijzigdOp
   };
 }
 
@@ -48,13 +48,13 @@ function toRoom(room: Doc<"projectRooms">) {
   return {
     id: String(room._id),
     projectId: String(room.projectId),
-    name: room.name,
-    floor: room.floor,
-    widthCm: room.widthCm,
-    lengthCm: room.lengthCm,
-    areaM2: room.areaM2,
-    perimeterMeter: room.perimeterMeter,
-    notes: room.notes,
+    name: room.naam,
+    floor: room.verdieping,
+    widthCm: room.breedteCm,
+    lengthCm: room.lengteCm,
+    areaM2: room.oppervlakteM2,
+    perimeterMeter: room.omtrekMeter,
+    notes: room.notities,
     sortOrder: room.sortOrder
   };
 }
@@ -76,30 +76,30 @@ async function toProject(ctx: any, tenantSlug: string, project: Doc<"projects">)
   return {
     id: String(project._id),
     tenantId: tenantSlug,
-    customerId: String(project.customerId),
-    title: project.title,
-    description: project.description,
+    customerId: String(project.klantId),
+    title: project.titel,
+    description: project.omschrijving,
     status: project.status,
-    measurementDate: project.measurementDate,
-    executionDate: project.executionDate,
-    internalNotes: project.internalNotes,
-    customerNotes: project.customerNotes,
-    acceptedAt: project.acceptedAt,
-    measurementPlannedAt: project.measurementPlannedAt,
-    executionPlannedAt: project.executionPlannedAt,
-    orderedAt: project.orderedAt,
-    invoicedAt: project.invoicedAt,
-    paidAt: project.paidAt,
-    closedAt: project.closedAt,
+    measurementDate: project.inmeetdatum,
+    executionDate: project.uitvoerdatum,
+    internalNotes: project.interneNotities,
+    customerNotes: project.klantNotities,
+    acceptedAt: project.geaccepteerdOp,
+    measurementPlannedAt: project.inmeetGeplandOp,
+    executionPlannedAt: project.uitvoerGeplandOp,
+    orderedAt: project.besteldOp,
+    invoicedAt: project.gefactureerdOp,
+    paidAt: project.betaaldOp,
+    closedAt: project.afgeslotenOp,
     rooms: rooms.map(toRoom),
     createdByExternalUserId: project.createdByExternalUserId,
-    createdAt: project.createdAt,
-    updatedAt: project.updatedAt
+    createdAt: project.aangemaaktOp,
+    updatedAt: project.gewijzigdOp
   };
 }
 
 function toProjectTask(tenantSlug: string, task: Doc<"projectTasks">) {
-  const priority = taskPriority(task.dueAt);
+  const priority = taskPriority(task.vervaltOp);
 
   return {
     id: String(task._id),
@@ -107,14 +107,14 @@ function toProjectTask(tenantSlug: string, task: Doc<"projectTasks">) {
     projectId: String(task.projectId),
     quoteId: task.quoteId ? String(task.quoteId) : undefined,
     type: task.type,
-    title: task.title,
-    dueAt: task.dueAt,
+    title: task.titel,
+    dueAt: task.vervaltOp,
     status: task.status,
     priority,
-    completedAt: task.completedAt,
-    dismissedAt: task.dismissedAt,
-    createdAt: task.createdAt,
-    updatedAt: task.updatedAt
+    completedAt: task.voltooidOp,
+    dismissedAt: task.afgewezenOp,
+    createdAt: task.aangemaaktOp,
+    updatedAt: task.gewijzigdOp
   };
 }
 
@@ -122,19 +122,19 @@ function toQuoteLine(line: Doc<"quoteLines">) {
   return {
     id: String(line._id),
     quoteId: String(line.quoteId),
-    projectRoomId: line.projectRoomId ? String(line.projectRoomId) : undefined,
+    projectRoomId: line.projectRuimteId ? String(line.projectRuimteId) : undefined,
     productId: line.productId ? String(line.productId) : undefined,
-    lineType: line.lineType,
-    title: line.title,
-    description: line.description,
-    quantity: line.quantity,
-    unit: line.unit,
-    unitPriceExVat: line.unitPriceExVat,
-    vatRate: line.vatRate,
-    discountExVat: line.discountExVat,
-    lineTotalExVat: line.lineTotalExVat,
-    lineVatTotal: line.lineVatTotal,
-    lineTotalIncVat: line.lineTotalIncVat,
+    lineType: line.regelType,
+    title: line.titel,
+    description: line.omschrijving,
+    quantity: line.aantal,
+    unit: line.eenheid,
+    unitPriceExVat: line.eenheidsprijsExBtw,
+    vatRate: line.btwTarief,
+    discountExVat: line.kortingExBtw,
+    lineTotalExVat: line.regelTotaalExBtw,
+    lineVatTotal: line.regelBtwTotaal,
+    lineTotalIncVat: line.regelTotaalInclBtw,
     sortOrder: line.sortOrder,
     metadata: line.metadata
   };
@@ -150,25 +150,25 @@ async function toQuote(ctx: any, tenantSlug: string, quote: Doc<"quotes">) {
     id: String(quote._id),
     tenantId: tenantSlug,
     projectId: String(quote.projectId),
-    customerId: String(quote.customerId),
-    quoteNumber: quote.quoteNumber,
-    title: quote.title,
+    customerId: String(quote.klantId),
+    quoteNumber: quote.offertenummer,
+    title: quote.titel,
     status: quote.status,
-    sentAt: quote.sentAt,
-    validUntil: quote.validUntil,
-    introText: quote.introText,
-    closingText: quote.closingText,
-    terms: quote.terms,
-    paymentTerms: quote.paymentTerms,
-    subtotalExVat: quote.subtotalExVat,
-    vatTotal: quote.vatTotal,
-    totalIncVat: quote.totalIncVat,
+    sentAt: quote.verzondenOp,
+    validUntil: quote.geldigTot,
+    introText: quote.inleidingTekst,
+    closingText: quote.afsluitTekst,
+    terms: quote.voorwaarden,
+    paymentTerms: quote.betalingsvoorwaarden,
+    subtotalExVat: quote.subtotaalExBtw,
+    vatTotal: quote.btwTotaal,
+    totalIncVat: quote.totaalInclBtw,
     lines: lines
       .sort((left: Doc<"quoteLines">, right: Doc<"quoteLines">) => left.sortOrder - right.sortOrder)
       .map(toQuoteLine),
     createdByExternalUserId: quote.createdByExternalUserId,
-    createdAt: quote.createdAt,
-    updatedAt: quote.updatedAt
+    createdAt: quote.aangemaaktOp,
+    updatedAt: quote.gewijzigdOp
   };
 }
 
@@ -177,18 +177,18 @@ function toQuoteSummary(tenantSlug: string, quote: Doc<"quotes">) {
     id: String(quote._id),
     tenantId: tenantSlug,
     projectId: String(quote.projectId),
-    customerId: String(quote.customerId),
-    quoteNumber: quote.quoteNumber,
-    title: quote.title,
+    customerId: String(quote.klantId),
+    quoteNumber: quote.offertenummer,
+    title: quote.titel,
     status: quote.status,
-    sentAt: quote.sentAt,
-    validUntil: quote.validUntil,
-    subtotalExVat: quote.subtotalExVat,
-    vatTotal: quote.vatTotal,
-    totalIncVat: quote.totalIncVat,
+    sentAt: quote.verzondenOp,
+    validUntil: quote.geldigTot,
+    subtotalExVat: quote.subtotaalExBtw,
+    vatTotal: quote.btwTotaal,
+    totalIncVat: quote.totaalInclBtw,
     createdByExternalUserId: quote.createdByExternalUserId,
-    createdAt: quote.createdAt,
-    updatedAt: quote.updatedAt
+    createdAt: quote.aangemaaktOp,
+    updatedAt: quote.gewijzigdOp
   };
 }
 
@@ -196,15 +196,15 @@ function toQuoteTemplate(tenantSlug: string, template: Doc<"quoteTemplates">) {
   return {
     id: String(template._id),
     tenantId: tenantSlug,
-    name: template.name,
+    name: template.naam,
     type: template.type,
     status: template.status,
-    introText: template.introText,
-    closingText: template.closingText,
-    sections: template.sections ?? [],
-    defaultTerms: template.defaultTerms,
-    paymentTerms: template.paymentTerms ?? [],
-    defaultLines: template.defaultLines
+    introText: template.inleidingTekst,
+    closingText: template.afsluitTekst,
+    sections: template.secties ?? [],
+    defaultTerms: template.standaardVoorwaarden,
+    paymentTerms: template.betalingsvoorwaarden ?? [],
+    defaultLines: template.standaardRegels
   };
 }
 
@@ -213,7 +213,7 @@ function customerAddress(customer: Doc<"customers"> | undefined | null) {
     return undefined;
   }
 
-  return [customer.street, customer.houseNumber, customer.postalCode, customer.city]
+  return [customer.straat, customer.huisnummer, customer.postcode, customer.plaats]
     .filter(Boolean)
     .join(" ");
 }
@@ -226,13 +226,13 @@ function activeFieldQuote(quotes: Doc<"quotes">[], projectId: Id<"projects">) {
       quote.status === "sent" ||
       quote.status === "accepted"
     )
-    .sort((left, right) => right.updatedAt - left.updatedAt)[0];
+    .sort((left, right) => right.gewijzigdOp - left.gewijzigdOp)[0];
 }
 
 function latestMeasurement(measurements: Doc<"measurements">[], projectId: Id<"projects">) {
   return measurements
     .filter((measurement) => measurement.projectId === projectId)
-    .sort((left, right) => right.updatedAt - left.updatedAt)[0];
+    .sort((left, right) => right.gewijzigdOp - left.gewijzigdOp)[0];
 }
 
 function fieldVisitTimestamp(
@@ -240,10 +240,10 @@ function fieldVisitTimestamp(
   measurement: Doc<"measurements"> | undefined
 ) {
   if (project.status === "execution_planned" || project.status === "in_progress") {
-    return project.executionDate ?? project.measurementDate ?? measurement?.measurementDate;
+    return project.uitvoerdatum ?? project.inmeetdatum ?? measurement?.inmeetdatum;
   }
 
-  return project.measurementDate ?? measurement?.measurementDate;
+  return project.inmeetdatum ?? measurement?.inmeetdatum;
 }
 
 function isDueTodayOrEarlier(timestamp: number | undefined, now: number) {
@@ -260,7 +260,7 @@ function isDueTodayOrEarlier(timestamp: number | undefined, now: number) {
 function sortProjectTasks(tasks: Doc<"projectTasks">[]) {
   return tasks.slice().sort((left, right) => {
     if (left.status === right.status) {
-      return left.dueAt - right.dueAt || right.updatedAt - left.updatedAt;
+      return left.vervaltOp - right.vervaltOp || right.gewijzigdOp - left.gewijzigdOp;
     }
 
     return left.status === "open" ? -1 : 1;
@@ -276,7 +276,7 @@ function fieldBucket(
 ) {
   const firstOpenTask = sortProjectTasks(tasks).find((task) => task.status === "open");
 
-  if (isDueTodayOrEarlier(firstOpenTask?.dueAt, now)) {
+  if (isDueTodayOrEarlier(firstOpenTask?.vervaltOp, now)) {
     return "today";
   }
 
@@ -361,7 +361,7 @@ export const fieldServiceWorkspace = query({
         .collect()
     );
     const projectsList = await Promise.all(projectsPromises);
-    const projects = projectsList.flat().sort((left, right) => right.createdAt - left.createdAt);
+    const projects = projectsList.flat().sort((left, right) => right.aangemaaktOp - left.aangemaaktOp);
 
     if (projects.length === 0) {
       return {
@@ -374,7 +374,7 @@ export const fieldServiceWorkspace = query({
     }
 
     const projectIds = projects.map((p) => p._id);
-    const customerIds = [...new Set(projects.map((p) => p.customerId))];
+    const customerIds = [...new Set(projects.map((p) => p.klantId))];
 
     // Fetch related records scoped to the active projects/customers
     const [customers, quotesList, measurementsList, projectTasksList] = await Promise.all([
@@ -432,7 +432,7 @@ export const fieldServiceWorkspace = query({
       projects
         .filter((project: Doc<"projects">) => allowedStatuses.includes(project.status))
         .map(async (project: Doc<"projects">) => {
-          const customer = customerById.get(String(project.customerId));
+          const customer = customerById.get(String(project.klantId));
           const quote = activeFieldQuote(quotes, project._id);
           const measurement = latestMeasurement(measurements, project._id);
           const tasks = sortProjectTasks(tasksByProjectId.get(String(project._id)) ?? []);
@@ -444,16 +444,16 @@ export const fieldServiceWorkspace = query({
             id: String(project._id),
             href: `/portal/buitendienst/projecten/${project._id}`,
             bucket,
-            nextAction: nextTask?.title ?? fieldNextAction(bucket),
+            nextAction: nextTask?.titel ?? fieldNextAction(bucket),
             visitAt,
             address: customerAddress(customer),
-            phone: customer?.phone,
+            phone: customer?.telefoon,
             email: customer?.email,
             updatedAt: Math.max(
-              project.updatedAt,
-              quote?.updatedAt ?? 0,
-              measurement?.updatedAt ?? 0,
-              nextTask?.updatedAt ?? 0
+              project.gewijzigdOp,
+              quote?.gewijzigdOp ?? 0,
+              measurement?.gewijzigdOp ?? 0,
+              nextTask?.gewijzigdOp ?? 0
             ),
             project: await toProject(ctx, tenant.slug, project),
             customer: customer ? toCustomer(tenant.slug, customer) : null,
@@ -463,8 +463,8 @@ export const fieldServiceWorkspace = query({
               ? {
                   id: String(measurement._id),
                   status: measurement.status,
-                  measurementDate: measurement.measurementDate,
-                  updatedAt: measurement.updatedAt
+                  measurementDate: measurement.inmeetdatum,
+                  updatedAt: measurement.gewijzigdOp
                 }
               : null
           };
@@ -516,7 +516,7 @@ export const fieldProjectWorkspace = query({
     }
 
     const [customer, quotes, templates, measurements, projectTasks] = await Promise.all([
-      ctx.db.get(project.customerId),
+      ctx.db.get(project.klantId),
       ctx.db
         .query("quotes")
         .withIndex("by_project", (q: any) =>

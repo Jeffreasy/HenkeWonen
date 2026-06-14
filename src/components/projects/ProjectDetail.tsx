@@ -168,9 +168,9 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
       projectId,
-      name,
-      areaM2,
-      perimeterMeter
+      naam: name,
+      oppervlakteM2: areaM2,
+      omtrekMeter: perimeterMeter
     });
     await loadProject();
   }
@@ -199,7 +199,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         projectId,
-        measuredBy: session.name ?? session.email
+        gemetenDoor: session.name ?? session.email
       });
       await loadProject();
       focusMeasurementPanel();
@@ -228,12 +228,12 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
       projectId,
-      title: data.title,
-      description: data.description,
-      measurementDate: data.measurementDate,
-      executionDate: data.executionDate,
-      internalNotes: data.internalNotes,
-      customerNotes: data.customerNotes,
+      titel: data.title,
+      omschrijving: data.description,
+      inmeetdatum: data.measurementDate,
+      uitvoerdatum: data.executionDate,
+      interneNotities: data.internalNotes,
+      klantNotities: data.customerNotes,
       status: detail.project.status
     });
     setEditingProject(false);
@@ -258,12 +258,12 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     await client.mutation(api.portal.updateProjectRoom, {
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
-      roomId,
-      name: data.name,
-      floor: data.floor,
-      areaM2: data.areaM2,
-      perimeterMeter: data.perimeterMeter,
-      notes: data.notes
+      ruimteId: roomId,
+      naam: data.name,
+      verdieping: data.floor,
+      oppervlakteM2: data.areaM2,
+      omtrekMeter: data.perimeterMeter,
+      notities: data.notes
     });
     await loadProject();
   }
@@ -282,7 +282,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       await client.mutation(api.portal.deleteProjectRoom, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        roomId: pendingRoomDelete.id
+        ruimteId: pendingRoomDelete.id
       });
       setPendingRoomDelete(null);
       await loadProject();
@@ -506,7 +506,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
 
       <div id="project-measurement">
         <MeasurementPanel
-          customerId={project.customerId}
+          customerId={project.klantId}
           projectId={project.id}
           projectRooms={project.rooms}
           session={session}

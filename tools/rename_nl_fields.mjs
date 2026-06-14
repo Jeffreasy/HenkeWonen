@@ -75,6 +75,36 @@ function isSchemaFieldAccess(nameNode, receiverExpr) {
   }
 }
 
+/** API-arg-object-key: het object is een Convex arg-validator ( args:{...} of v.object({...}) )
+ *  of een 2e+ argument van een .mutation()/.query()/.action()-call (frontend-aanroep). */
+function isApiArgObjectKey(propAssignment, isConvexFile) {
+  try {
+    const obj = propAssignment.getParent();
+    if (!obj || !Node.isObjectLiteralExpression(obj)) return false;
+    const parent = obj.getParent();
+    // `args: { ... }` in een functiedefinitie.
+    if (Node.isPropertyAssignment(parent) && parent.getNameNode().getText() === "args") return true;
+    if (Node.isCallExpression(parent)) {
+      const callee = parent.getExpression();
+      // geneste validator `v.object({ ... })` in convex (arg-validators).
+      if (isConvexFile && Node.isIdentifier(callee) && callee.getText() === "v") return false; // v.object is PropertyAccess, niet Identifier
+      if (Node.isPropertyAccessExpression(callee)) {
+        const m = callee.getName();
+        if (isConvexFile && m === "object" && callee.getExpression().getText() === "v") return true;
+        if (
+          (m === "mutation" || m === "query" || m === "action") &&
+          parent.getArguments().includes(obj)
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 /** Object-key {veld:...}: schemaveld als symbool uit types komt OF het object het arg is van
  *  insert/patch/replace (dan is het een document-vorm; contextuele type mist _creationTime). */
 function isSchemaObjectKey(propAssignment, nameNode) {
@@ -130,15 +160,21 @@ for (const sf of project.getSourceFiles()) {
   if (!inScope(fp)) continue;
   const short = sf.getFilePath().split(/[\\/]/).slice(-2).join("/");
   const isDecl = isDeclFile(fp);
+  const isConvexFile = fp.includes("/convex/") || fp.includes("\\convex\\");
 
   for (const node of sf.getDescendants()) {
-    // 2a. Property-access: doc.veld -> doc.nieuwVeld (alleen als symbool uit schema/types komt).
+    // 2a. Property-access: doc.veld -> doc.nieuwVeld (symbool uit schema/types OF Convex-doc-receiver
+    //     OF `args.veld` in een convex-handler, want de arg-validators worden ook NL).
     if (Node.isPropertyAccessExpression(node)) {
       const nameNode = node.getNameNode();
       const name = nameNode.getText();
-      if (fieldMap[name] && isSchemaFieldAccess(nameNode, node.getExpression())) {
-        nameNode.replaceWithText(fieldMap[name]);
-        bump(short, "access");
+      if (fieldMap[name]) {
+        const recv = node.getExpression();
+        const isArgsRecv = isConvexFile && Node.isIdentifier(recv) && recv.getText() === "args";
+        if (isArgsRecv || isSchemaFieldAccess(nameNode, recv)) {
+          nameNode.replaceWithText(fieldMap[name]);
+          bump(short, "access");
+        }
       }
       continue;
     }
@@ -149,17 +185,20 @@ for (const sf of project.getSourceFiles()) {
     if (!isDecl && Node.isPropertyAssignment(node)) {
       const nameNode = node.getNameNode();
       const name = nameNode.getText().replace(/^["']|["']$/g, "");
-      if (fieldMap[name] && isSchemaObjectKey(node, nameNode)) {
+      if (fieldMap[name] && (isSchemaObjectKey(node, nameNode) || isApiArgObjectKey(node, isConvexFile))) {
         nameNode.replaceWithText(fieldMap[name]);
         bump(short, "objkey");
       }
       continue;
     }
 
-    // 2b'. Shorthand object-key in een schema-insert/patch: { veld } -> { nieuwVeld: veld }.
+    // 2b'. Shorthand object-key in een schema-insert/patch of API-arg: { veld } -> { nieuwVeld: veld }.
     if (!isDecl && Node.isShorthandPropertyAssignment(node)) {
       const name = node.getName();
-      if (fieldMap[name] && isSchemaObjectKey(node, node.getNameNode())) {
+      if (
+        fieldMap[name] &&
+        (isSchemaObjectKey(node, node.getNameNode()) || isApiArgObjectKey(node, isConvexFile))
+      ) {
         shorthandEdits.push({ node, text: `${fieldMap[name]}: ${name}`, file: short, kind: "objkey" });
       }
       continue;

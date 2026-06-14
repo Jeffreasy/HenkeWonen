@@ -281,7 +281,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
         actor: mutationActorFromSession(session),
         issueId: issue.issueId,
         decision: draft?.decision ?? "keep_separate",
-        notes: draft?.notes,
+        notities: draft?.notes,
         reviewedByExternalUserId: session.userId
       });
       await loadReview();

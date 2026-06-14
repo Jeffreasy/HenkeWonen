@@ -136,49 +136,49 @@ export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
 
   const rows = useMemo<DossierSearchRow[]>(() => {
     const customerRows = workspace.customers.map((customer) => {
-      const subtitle = joinParts([customer.email, customer.phone, customer.city]);
+      const subtitle = joinParts([customer.email, customer.telefoon, customer.plaats]);
 
       return {
         id: `customer-${customer.id}`,
         type: "customer" as const,
         typeLabel: "Klant",
-        title: customer.displayName,
+        title: customer.weergaveNaam,
         subtitle: subtitle || "Geen contactgegevens",
         status: customer.status,
         statusLabel: formatCustomerStatus(customer.status),
         href: `/portal/klanten/${customer.id}`,
-        updatedAt: customer.updatedAt,
+        updatedAt: customer.gewijzigdOp,
         searchText: joinParts([
-          customer.displayName,
+          customer.weergaveNaam,
           customer.email,
-          customer.phone,
-          customer.city,
-          customer.notes,
+          customer.telefoon,
+          customer.plaats,
+          customer.notities,
           customer.status
         ]).toLowerCase()
       };
     });
 
     const projectRows = workspace.projects.map((project) => {
-      const customer = customerById.get(project.customerId);
+      const customer = customerById.get(project.klantId);
 
       return {
         id: `project-${project.id}`,
         type: "project" as const,
         typeLabel: "Project",
-        title: project.title,
-        subtitle: joinParts([customer?.displayName, project.description]) || "Geen omschrijving",
+        title: project.titel,
+        subtitle: joinParts([customer?.weergaveNaam, project.omschrijving]) || "Geen omschrijving",
         status: project.status,
         statusLabel: formatProjectStatus(project.status),
         href: `/portal/projecten/${project.id}`,
-        updatedAt: project.updatedAt,
+        updatedAt: project.gewijzigdOp,
         searchText: joinParts([
-          project.title,
-          project.description,
+          project.titel,
+          project.omschrijving,
           project.status,
-          customer?.displayName,
-          project.internalNotes,
-          project.customerNotes
+          customer?.weergaveNaam,
+          project.interneNotities,
+          project.klantNotities
         ]).toLowerCase()
       };
     });
@@ -192,7 +192,7 @@ export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
         type: "quote" as const,
         typeLabel: "Offerte",
         title: `${quote.quoteNumber} - ${quote.title}`,
-        subtitle: joinParts([customer?.displayName, project?.title]) || "Geen gekoppeld dossier",
+        subtitle: joinParts([customer?.weergaveNaam, project?.titel]) || "Geen gekoppeld dossier",
         status: quote.status,
         statusLabel: formatQuoteStatus(quote.status),
         href: `/portal/offertes/${quote.id}`,
@@ -202,8 +202,8 @@ export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
           quote.quoteNumber,
           quote.title,
           quote.status,
-          customer?.displayName,
-          project?.title
+          customer?.weergaveNaam,
+          project?.titel
         ]).toLowerCase()
       };
     });

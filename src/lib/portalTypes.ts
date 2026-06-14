@@ -5,17 +5,17 @@ export type PortalCustomer = {
   id: string;
   tenantId: string;
   type: CustomerType;
-  displayName: string;
+  weergaveNaam: string;
   email?: string;
-  phone?: string;
-  street?: string;
-  houseNumber?: string;
-  postalCode?: string;
-  city?: string;
-  notes?: string;
+  telefoon?: string;
+  straat?: string;
+  huisnummer?: string;
+  postcode?: string;
+  plaats?: string;
+  notities?: string;
   status: CustomerStatus;
-  createdAt: number;
-  updatedAt: number;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
 };
 
 export type ProjectStatus =
@@ -36,38 +36,38 @@ export type ProjectStatus =
 export type PortalRoom = {
   id: string;
   projectId: string;
-  name: string;
-  floor?: string;
-  widthCm?: number;
-  lengthCm?: number;
-  areaM2?: number;
-  perimeterMeter?: number;
-  notes?: string;
+  naam: string;
+  verdieping?: string;
+  breedteCm?: number;
+  lengteCm?: number;
+  oppervlakteM2?: number;
+  omtrekMeter?: number;
+  notities?: string;
   sortOrder: number;
 };
 
 export type PortalProject = {
   id: string;
   tenantId: string;
-  customerId: string;
-  title: string;
-  description?: string;
+  klantId: string;
+  titel: string;
+  omschrijving?: string;
   status: ProjectStatus;
-  measurementDate?: number;
-  executionDate?: number;
-  internalNotes?: string;
-  customerNotes?: string;
-  acceptedAt?: number;
-  measurementPlannedAt?: number;
-  executionPlannedAt?: number;
-  orderedAt?: number;
-  invoicedAt?: number;
-  paidAt?: number;
-  closedAt?: number;
+  inmeetdatum?: number;
+  uitvoerdatum?: number;
+  interneNotities?: string;
+  klantNotities?: string;
+  geaccepteerdOp?: number;
+  inmeetGeplandOp?: number;
+  uitvoerGeplandOp?: number;
+  besteldOp?: number;
+  gefactureerdOp?: number;
+  betaaldOp?: number;
+  afgeslotenOp?: number;
   rooms: PortalRoom[];
   createdByExternalUserId?: string;
-  createdAt: number;
-  updatedAt: number;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
 };
 
 export type MeasurementStatus = "draft" | "measured" | "reviewed" | "converted_to_quote";
@@ -97,72 +97,72 @@ export type PortalMeasurement = {
   id: string;
   tenantId: string;
   projectId: string;
-  customerId: string;
+  klantId: string;
   status: MeasurementStatus;
-  measurementDate?: number;
-  measuredBy?: string;
-  notes?: string;
+  inmeetdatum?: number;
+  gemetenDoor?: string;
+  notities?: string;
   createdByExternalUserId?: string;
-  createdAt: number;
-  updatedAt: number;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
 };
 
 export type PortalMeasurementRoom = {
   id: string;
   tenantId: string;
-  measurementId: string;
-  projectRoomId?: string;
-  name: string;
-  floor?: string;
-  widthM?: number;
-  lengthM?: number;
-  heightM?: number;
-  areaM2?: number;
-  perimeterM?: number;
-  notes?: string;
+  inmetingId: string;
+  projectRuimteId?: string;
+  naam: string;
+  verdieping?: string;
+  breedteM?: number;
+  lengteM?: number;
+  hoogteM?: number;
+  oppervlakteM2?: number;
+  omtrekM?: number;
+  notities?: string;
   sortOrder: number;
-  createdAt: number;
-  updatedAt: number;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
 };
 
 export type PortalMeasurementLine = {
   id: string;
   tenantId: string;
-  measurementId: string;
-  roomId?: string;
-  productGroup: MeasurementProductGroup;
-  calculationType: MeasurementCalculationType;
-  input: Record<string, unknown>;
-  result: Record<string, unknown>;
-  wastePercent?: number;
-  quantity: number;
-  unit: string;
-  notes?: string;
-  quoteLineType: QuoteLineType;
+  inmetingId: string;
+  ruimteId?: string;
+  productGroep: MeasurementProductGroup;
+  berekeningType: MeasurementCalculationType;
+  invoer: Record<string, unknown>;
+  resultaat: Record<string, unknown>;
+  snijverliesPct?: number;
+  aantal: number;
+  eenheid: string;
+  notities?: string;
+  offerteRegelType: QuoteLineType;
   quotePreparationStatus: QuotePreparationStatus;
   productId?: string;
-  productName?: string;
-  indicativeUnitPriceExVat?: number;
-  indicativeVatRate?: number;
-  indicativePriceUnit?: string;
-  indicativePriceType?: string;
-  indicativeCapturedAt?: number;
-  convertedQuoteId?: string;
-  convertedQuoteLineId?: string;
-  createdAt: number;
-  updatedAt: number;
+  productNaam?: string;
+  indicatieveEenheidsprijsExBtw?: number;
+  indicatiefBtwTarief?: number;
+  indicatievePrijsEenheid?: string;
+  indicatievePrijsSoort?: string;
+  indicatiefVastgelegdOp?: number;
+  geconverteerdeOfferteId?: string;
+  geconverteerdeOfferteregelId?: string;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
 };
 
 export type PortalWasteProfile = {
   id: string;
   tenantId: string;
-  productGroup: MeasurementProductGroup;
-  name: string;
-  defaultWastePercent: number;
-  description?: string;
+  productGroep: MeasurementProductGroup;
+  naam: string;
+  standaardSnijverliesPct: number;
+  omschrijving?: string;
   status: "active" | "inactive";
-  createdAt: number;
-  updatedAt: number;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
 };
 
 export type PortalProjectMeasurementData = {
@@ -192,19 +192,19 @@ export type QuoteLineType =
 export type PortalQuoteLine = {
   id: string;
   quoteId: string;
-  projectRoomId?: string;
+  projectRuimteId?: string;
   productId?: string;
-  lineType: QuoteLineType;
-  title: string;
-  description?: string;
-  quantity: number;
-  unit: string;
-  unitPriceExVat: number;
-  vatRate: number;
-  discountExVat?: number;
-  lineTotalExVat: number;
-  lineVatTotal: number;
-  lineTotalIncVat: number;
+  regelType: QuoteLineType;
+  titel: string;
+  omschrijving?: string;
+  aantal: number;
+  eenheid: string;
+  eenheidsprijsExBtw: number;
+  btwTarief: number;
+  kortingExBtw?: number;
+  regelTotaalExBtw: number;
+  regelBtwTotaal: number;
+  regelTotaalInclBtw: number;
   sortOrder: number;
   metadata?: Record<string, unknown>;
 };
@@ -213,23 +213,23 @@ export type PortalQuote = {
   id: string;
   tenantId: string;
   projectId: string;
-  customerId: string;
-  quoteNumber: string;
-  title: string;
+  klantId: string;
+  offertenummer: string;
+  titel: string;
   status: QuoteStatus;
-  sentAt?: number;
-  validUntil?: number;
-  introText?: string;
-  closingText?: string;
-  terms?: string[];
-  paymentTerms?: string[];
-  subtotalExVat: number;
-  vatTotal: number;
-  totalIncVat: number;
+  verzondenOp?: number;
+  geldigTot?: number;
+  inleidingTekst?: string;
+  afsluitTekst?: string;
+  voorwaarden?: string[];
+  betalingsvoorwaarden?: string[];
+  subtotaalExBtw: number;
+  btwTotaal: number;
+  totaalInclBtw: number;
   lines: PortalQuoteLine[];
   createdByExternalUserId?: string;
-  createdAt: number;
-  updatedAt: number;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
 };
 
 export type ProductListStatus =
@@ -243,15 +243,15 @@ export type ProductListStatus =
 export type PortalSupplier = {
   id: string;
   tenantId: string;
-  name: string;
-  contactName?: string;
+  naam: string;
+  contactpersoon?: string;
   email?: string;
-  phone?: string;
-  productListStatus: ProductListStatus;
+  telefoon?: string;
+  prijslijstStatus: ProductListStatus;
   status?: "active" | "inactive" | "archived";
-  notes?: string;
-  lastContactAt?: number;
-  expectedAt?: number;
+  notities?: string;
+  laatsteContactOp?: number;
+  verwachtOp?: number;
   activeProductCount?: number;
   importProfileCount?: number;
   importBatchCount?: number;
@@ -259,7 +259,7 @@ export type PortalSupplier = {
   sourceFileNames?: string[];
   latestImportStatus?: string;
   latestImportAt?: number;
-  updatedAt: number;
+  gewijzigdOp: number;
 };
 
 export type ProductPriceType =
@@ -338,10 +338,10 @@ export type ProductKind =
   | "other";
 
 export type CommercialName = {
-  brandName: string;
-  collectionName?: string;
-  colorName?: string;
-  displayName: string;
+  merknaam: string;
+  collectieNaam?: string;
+  kleurnaam?: string;
+  weergaveNaam: string;
 };
 
 export type PortalProduct = {
@@ -352,46 +352,46 @@ export type PortalProduct = {
   displaySupplierName: string;
   brand?: string;
   collection?: string;
-  articleNumber?: string;
-  supplierCode?: string;
-  commercialCode?: string;
-  supplierProductGroup?: string;
-  name: string;
-  displayName: string;
-  colorName?: string;
-  productKind?: ProductKind;
+  artikelnummer?: string;
+  leverancierCode?: string;
+  commercieleCode?: string;
+  leverancierProductGroep?: string;
+  naam: string;
+  weergaveNaam: string;
+  kleurnaam?: string;
+  productSoort?: ProductKind;
   commercialNames?: CommercialName[];
-  unit: ProductUnit;
-  packageContentM2?: number;
-  piecesPerPackage?: number;
-  packagesPerPallet?: number;
-  salesUnit?: string;
-  purchaseUnit?: string;
-  orderUnit?: string;
-  minimumOrderQuantity?: number;
-  orderMultiple?: number;
-  palletQuantity?: number;
-  trailerQuantity?: number;
-  bundleSize?: number;
-  priceExVat: number;
+  eenheid: ProductUnit;
+  pakinhoudM2?: number;
+  stuksPerPak?: number;
+  pakkenPerPallet?: number;
+  verkoopEenheid?: string;
+  inkoopEenheid?: string;
+  bestelEenheid?: string;
+  minimumBestelAantal?: number;
+  bestelVeelvoud?: number;
+  palletAantal?: number;
+  vrachtwagenAantal?: number;
+  bundelGrootte?: number;
+  prijsExBtw: number;
   /** Eenheid waarop priceExVat slaat (m2/m1/rol/pak/...), voor nette weergave. */
-  priceUnit?: string;
-  vatRate: number;
+  prijsEenheid?: string;
+  btwTarief: number;
   pilotHiddenReason?: string;
   status: "draft" | "active" | "inactive" | "archived";
 };
 
 export type ImportWarning = {
-  rowNumber: number;
+  rijNummer: number;
   message: string;
-  severity: "warning" | "error";
+  ernst: "warning" | "error";
 };
 
 export type ProductImportBatch = {
   id: string;
   tenantId: string;
-  fileName: string;
-  supplierName: string;
+  bestandsnaam: string;
+  leverancierNaam: string;
   status:
     | "uploaded"
     | "analyzing"
@@ -401,7 +401,7 @@ export type ProductImportBatch = {
     | "imported"
     | "failed"
     | "archived";
-  archivedFromStatus?:
+  gearchiveerdVanafStatus?:
     | "uploaded"
     | "analyzing"
     | "needs_mapping"
@@ -409,38 +409,38 @@ export type ProductImportBatch = {
     | "importing"
     | "imported"
     | "failed";
-  archivedAt?: number;
+  gearchiveerdOp?: number;
   archivedByExternalUserId?: string;
-  sourcePath?: string;
-  fileHash?: string;
+  bronPad?: string;
+  bestandHash?: string;
   profileName?: string;
-  totalRows: number;
-  previewRows: number;
-  productRows: number;
-  validRows: number;
-  warningRows: number;
-  errorRows: number;
-  ignoredRows: number;
-  importedProducts: number;
-  updatedProducts: number;
-  skippedProducts: number;
-  importedPrices: number;
-  skippedPrices: number;
-  duplicateProductMatches: number;
-  zeroPriceRows: number;
-  unknownVatModeRows: number;
-  productsWithoutSupplierCode: number;
-  orphanPriceRules: number;
-  duplicateSourceKeys: number;
-  allowUnknownVatMode: boolean;
-  importedAt?: number;
-  committedAt?: number;
-  failedAt?: number;
-  errorMessage?: string;
-  reconciliation?: Record<string, unknown>;
-  warnings: ImportWarning[];
-  createdAt: number;
-  updatedAt: number;
+  totaalRijen: number;
+  voorbeeldRijen: number;
+  productRijen: number;
+  geldigeRijen: number;
+  waarschuwingRijen: number;
+  foutRijen: number;
+  genegeerdeRijen: number;
+  geimporteerdeProducten: number;
+  bijgewerkteProducten: number;
+  overgeslagenProducten: number;
+  geimporteerdePrijzen: number;
+  overgeslagenPrijzen: number;
+  dubbeleProductMatches: number;
+  nulPrijsRijen: number;
+  onbekendeBtwModusRijen: number;
+  productenZonderLeverancierCode: number;
+  weesPrijsRegels: number;
+  dubbeleBronSleutels: number;
+  staBtwModusOnbekendToe: boolean;
+  geimporteerdOp?: number;
+  vastgelegdOp?: number;
+  misluktOp?: number;
+  foutmelding?: string;
+  reconciliatie?: Record<string, unknown>;
+  waarschuwingen: ImportWarning[];
+  aangemaaktOp: number;
+  gewijzigdOp: number;
 };
 
 export type ProductImportRowKind =
@@ -456,36 +456,36 @@ export type ProductImportRowStatus = "valid" | "warning" | "error" | "ignored" |
 
 export type ProductImportRow = {
   id: string;
-  sourceFileName?: string;
-  sourceSheetName?: string;
-  rowNumber: number;
-  importKey?: string;
-  sourceKey?: string;
-  rowKind: ProductImportRowKind;
+  bronBestandsnaam?: string;
+  bronBladNaam?: string;
+  rijNummer: number;
+  importSleutel?: string;
+  bronSleutel?: string;
+  rijSoort: ProductImportRowKind;
   status: ProductImportRowStatus;
-  sectionLabel?: string;
-  normalized?: Record<string, unknown>;
-  warnings: string[];
-  errors: string[];
-  importedProductId?: string;
-  importedPriceIds: string[];
+  sectieLabel?: string;
+  genormaliseerd?: Record<string, unknown>;
+  waarschuwingen: string[];
+  fouten: string[];
+  geimporteerdProductId?: string;
+  geimporteerdePrijsIds: string[];
 };
 
 export type NormalizedProductImportRow = {
   sourceFile: string;
   sourceSheet: string;
-  sourceRowNumber: number;
-  rowKind: ProductImportRowKind;
-  supplierName: string;
-  brandName?: string;
-  collectionName?: string;
-  sectionLabel?: string;
-  productName: string;
-  colorName?: string;
-  articleNumber?: string;
-  supplierCode?: string;
-  commercialCode?: string;
-  supplierProductGroup?: string;
+  bronRijNummer: number;
+  rijSoort: ProductImportRowKind;
+  leverancierNaam: string;
+  merknaam?: string;
+  collectieNaam?: string;
+  sectieLabel?: string;
+  productNaam: string;
+  kleurnaam?: string;
+  artikelnummer?: string;
+  leverancierCode?: string;
+  commercieleCode?: string;
+  leverancierProductGroep?: string;
   sku?: string;
   ean?: string;
   category:
@@ -508,48 +508,48 @@ export type NormalizedProductImportRow = {
     | "roedes_railsen"
     | "horren"
     | "overig";
-  productKind?: ProductKind;
-  widthMm?: number;
-  lengthMm?: number;
-  thicknessMm?: number;
-  wearLayerMm?: number;
-  packageContentM2?: number;
-  piecesPerPackage?: number;
-  packagesPerPallet?: number;
-  salesUnit?: string;
-  purchaseUnit?: string;
-  orderUnit?: string;
-  minimumOrderQuantity?: number;
-  orderMultiple?: number;
-  palletQuantity?: number;
-  trailerQuantity?: number;
-  bundleSize?: number;
+  productSoort?: ProductKind;
+  breedteMm?: number;
+  lengteMm?: number;
+  dikteMm?: number;
+  slijtlaagMm?: number;
+  pakinhoudM2?: number;
+  stuksPerPak?: number;
+  pakkenPerPallet?: number;
+  verkoopEenheid?: string;
+  inkoopEenheid?: string;
+  bestelEenheid?: string;
+  minimumBestelAantal?: number;
+  bestelVeelvoud?: number;
+  palletAantal?: number;
+  vrachtwagenAantal?: number;
+  bundelGrootte?: number;
   commercialNames?: CommercialName[];
-  attributes?: Record<string, unknown>;
+  attributen?: Record<string, unknown>;
   prices: Array<{
-    priceType: ProductPriceType;
-    priceUnit: PriceUnit;
-    amount: number;
-    vatRate: number;
-    vatMode: VatMode;
-    sourceColumnName: string;
-    sourceValue?: string;
+    prijsSoort: ProductPriceType;
+    prijsEenheid: PriceUnit;
+    bedrag: number;
+    btwTarief: number;
+    btwModus: VatMode;
+    bronKolomNaam: string;
+    bronWaarde?: string;
   }>;
 };
 
 export type PortalCustomerContact = {
   id: string;
   tenantId: string;
-  customerId: string;
+  klantId: string;
   type: "note" | "call" | "email" | "visit" | "loaned_item" | "agreement";
-  title: string;
-  description?: string;
-  loanedItemName?: string;
-  expectedReturnDate?: number;
-  returnedAt?: number;
-  visibleToCustomer: boolean;
-  createdAt: number;
-  updatedAt: number;
+  titel: string;
+  omschrijving?: string;
+  uitgeleendItemNaam?: string;
+  verwachteRetourdatum?: number;
+  geretourneerdOp?: number;
+  zichtbaarVoorKlant: boolean;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
 };
 
 export type PortalWorkflowEvent = {
@@ -571,10 +571,10 @@ export type PortalWorkflowEvent = {
     | "payment_received"
     | "bookkeeper_export_sent"
     | "closed";
-  title: string;
-  description?: string;
-  visibleToCustomer: boolean;
-  createdAt: number;
+  titel: string;
+  omschrijving?: string;
+  zichtbaarVoorKlant: boolean;
+  aangemaaktOp: number;
 };
 
 export type ProjectTaskType =
@@ -598,49 +598,49 @@ export type PortalProjectTask = {
   projectId: string;
   quoteId?: string;
   type: ProjectTaskType;
-  title: string;
-  dueAt: number;
+  titel: string;
+  vervaltOp: number;
   status: ProjectTaskStatus;
   priority: ProjectTaskPriority;
-  completedAt?: number;
-  dismissedAt?: number;
-  createdAt: number;
-  updatedAt: number;
+  voltooidOp?: number;
+  afgewezenOp?: number;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
 };
 
 export type QuoteTemplateSection = {
-  key: string;
-  title: string;
-  description?: string;
+  sleutel: string;
+  titel: string;
+  omschrijving?: string;
   sortOrder: number;
 };
 
 export type QuoteTemplateLine = {
-  sectionKey?: string;
-  lineType: QuoteLineType;
-  title: string;
-  unit: string;
-  description?: string;
-  defaultQuantity?: number;
+  sectieSleutel?: string;
+  regelType: QuoteLineType;
+  titel: string;
+  eenheid: string;
+  omschrijving?: string;
+  standaardAantal?: number;
   sortOrder: number;
-  optional?: boolean;
-  defaultEnabled?: boolean;
-  categoryHint?: string;
-  productKindHint?: string;
+  optioneel?: boolean;
+  standaardIngeschakeld?: boolean;
+  categorieHint?: string;
+  productSoortHint?: string;
 };
 
 export type QuoteTemplate = {
   id: string;
   tenantId: string;
-  name: string;
+  naam: string;
   type: "default" | "flooring" | "curtains" | "wall_panels" | "custom";
   status?: "active" | "inactive";
-  introText?: string;
-  closingText?: string;
-  sections?: QuoteTemplateSection[];
-  defaultTerms: string[];
-  paymentTerms?: string[];
-  defaultLines: QuoteTemplateLine[];
+  inleidingTekst?: string;
+  afsluitTekst?: string;
+  secties?: QuoteTemplateSection[];
+  standaardVoorwaarden: string[];
+  betalingsvoorwaarden?: string[];
+  standaardRegels: QuoteTemplateLine[];
 };
 
 export type FieldWorkspaceBucket = "today" | "measure" | "quote" | "followUp";
@@ -652,9 +652,9 @@ export type FieldWorkspaceCard = {
   nextAction: string;
   visitAt?: number;
   address?: string;
-  phone?: string;
+  telefoon?: string;
   email?: string;
-  updatedAt: number;
+  gewijzigdOp: number;
   project: PortalProject;
   customer: PortalCustomer | null;
   latestQuote: Omit<PortalQuote, "lines"> | null;
@@ -662,8 +662,8 @@ export type FieldWorkspaceCard = {
   measurement: {
     id: string;
     status: MeasurementStatus;
-    measurementDate?: number;
-    updatedAt: number;
+    inmeetdatum?: number;
+    gewijzigdOp: number;
   } | null;
 };
 
@@ -690,33 +690,33 @@ export type FieldProjectWorkspaceResult = {
 
 export type ImportProfile = {
   id: string;
-  supplierName: string;
-  name: string;
-  expectedFileExtension?: ".xlsx" | ".xls";
-  filePattern?: string;
-  sheetPattern?: string;
-  supportsXlsx: boolean;
-  supportsXls: boolean;
-  priceColumnMappings?: Array<{
+  leverancierNaam: string;
+  naam: string;
+  verwachteBestandsextensie?: ".xlsx" | ".xls";
+  bestandPatroon?: string;
+  bladPatroon?: string;
+  ondersteuntXlsx: boolean;
+  ondersteuntXls: boolean;
+  prijskolomMappings?: Array<{
     header?: string;
-    sourceColumnName?: string;
-    sourceColumnIndex?: number;
-    priceType?: ProductPriceType | string;
-    priceUnit?: PriceUnit | string;
-    vatMode?: VatMode;
+    bronKolomNaam?: string;
+    bronKolomIndex?: number;
+    prijsSoort?: ProductPriceType | string;
+    prijsEenheid?: PriceUnit | string;
+    btwModus?: VatMode;
   }>;
-  vatModeByPriceColumn?: Record<string, VatMode>;
-  unitByPriceColumn?: Record<string, string>;
-  priceTypeByPriceColumn?: Record<string, string>;
-  allowUnknownVatMode?: boolean;
-  vatModeReview?: Record<string, unknown>;
+  btwModusPerPrijskolom?: Record<string, VatMode>;
+  eenheidPerPrijskolom?: Record<string, string>;
+  prijsSoortPerPrijskolom?: Record<string, string>;
+  staBtwModusOnbekendToe?: boolean;
+  btwModusReview?: Record<string, unknown>;
   vatModeUpdatedByExternalUserId?: string;
-  vatModeUpdatedAt?: number;
-  duplicateStrategy?: Record<string, unknown>;
-  zeroPriceStrategy?: Record<string, unknown>;
+  btwModusGewijzigdOp?: number;
+  dubbelenStrategie?: Record<string, unknown>;
+  nulPrijsStrategie?: Record<string, unknown>;
   mapping: Record<string, unknown>;
   status: "active" | "inactive";
-  updatedAt: number;
+  gewijzigdOp: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -735,20 +735,20 @@ export type PortalInvoice = {
   id: string;
   tenantId: string;
   projectId: string;
-  customerId: string;
+  klantId: string;
   quoteId?: string;
-  invoiceNumber: string;
+  factuurnummer: string;
   status: InvoiceStatus;
-  invoiceDate: number;
-  dueDate: number;
-  subtotalExVat: number;
-  vatTotal: number;
-  totalIncVat: number;
-  paidAmount: number;
-  paidAt?: number;
-  reminderSentAt?: number;
-  createdAt: number;
-  updatedAt: number;
+  factuurdatum: number;
+  vervaldatum: number;
+  subtotaalExBtw: number;
+  btwTotaal: number;
+  totaalInclBtw: number;
+  betaaldBedrag: number;
+  betaaldOp?: number;
+  herinneringVerzondenOp?: number;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
 };
 
 export type PortalInvoiceRow = PortalInvoice & {
@@ -760,20 +760,20 @@ export type PortalInvoiceDetail = {
   invoice: PortalInvoice;
   customer: {
     id: string;
-    displayName: string;
+    weergaveNaam: string;
     email?: string;
-    phone?: string;
+    telefoon?: string;
     type: CustomerType;
   } | null;
   project: {
     id: string;
-    title: string;
+    titel: string;
     status: ProjectStatus;
   } | null;
   quote: {
     id: string;
-    quoteNumber: string;
-    title: string;
+    offertenummer: string;
+    titel: string;
     status: QuoteStatus;
   } | null;
 };

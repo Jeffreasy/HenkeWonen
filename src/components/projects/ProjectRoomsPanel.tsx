@@ -78,27 +78,27 @@ export function ProjectRoomsPanel({
         key: "name",
         header: "Ruimte",
         priority: "primary",
-        render: (room) => <strong>{room.name}</strong>
+        render: (room) => <strong>{room.naam}</strong>
       },
       {
         key: "area",
         header: "m2",
         align: "right",
         width: "100px",
-        render: (room) => room.areaM2 ?? "-"
+        render: (room) => room.oppervlakteM2 ?? "-"
       },
       {
         key: "perimeter",
         header: "Omtrek",
         align: "right",
         width: "110px",
-        render: (room) => (room.perimeterMeter ? `${room.perimeterMeter} m` : "-")
+        render: (room) => (room.omtrekMeter ? `${room.omtrekMeter} m` : "-")
       },
       {
         key: "notes",
         header: "Notities",
         hideOnMobile: true,
-        render: (room) => room.notes ?? "-"
+        render: (room) => room.notities ?? "-"
       },
       {
         key: "actions",
@@ -180,14 +180,14 @@ export function ProjectRoomsPanel({
             <div className="mobile-card-section">
               <div className="mobile-card-header">
                 <div className="mobile-card-title">
-                  <strong>{room.name}</strong>
-                  <small className="muted">{room.floor ?? "Geen verdieping"}</small>
+                  <strong>{room.naam}</strong>
+                  <small className="muted">{room.verdieping ?? "Geen verdieping"}</small>
                 </div>
-                <strong>{room.areaM2 ?? "-"} m2</strong>
+                <strong>{room.oppervlakteM2 ?? "-"} m2</strong>
               </div>
               <div className="mobile-card-meta">
-                <span>{room.perimeterMeter ? `${room.perimeterMeter} m omtrek` : "Geen omtrek"}</span>
-                <span>{room.notes ?? "Geen notities"}</span>
+                <span>{room.omtrekMeter ? `${room.omtrekMeter} m omtrek` : "Geen omtrek"}</span>
+                <span>{room.notities ?? "Geen notities"}</span>
               </div>
               {canEdit ? (
                 <div className="mobile-card-actions">

@@ -57,8 +57,8 @@ export type QuoteDocumentModel = {
 export type BuildQuoteDocumentModelInput = {
   quote: PortalQuote;
   customer: PortalCustomer;
-  project?: Pick<PortalProject, "title" | "description">;
-  template?: Pick<QuoteTemplate, "sections">;
+  project?: Pick<PortalProject, "titel" | "omschrijving">;
+  template?: Pick<QuoteTemplate, "secties">;
   companyProfile?: QuoteCompanyProfile;
   salutation?: string;
   timeZone?: string;
@@ -95,8 +95,8 @@ function formatAddressLine(...parts: Array<string | undefined>): string | undefi
 
 function formatCustomerAddress(customer: PortalCustomer): string[] {
   return [
-    formatAddressLine(customer.street, customer.houseNumber),
-    formatAddressLine(customer.postalCode, customer.city)
+    formatAddressLine(customer.straat, customer.huisnummer),
+    formatAddressLine(customer.postcode, customer.plaats)
   ].filter(isText);
 }
 
@@ -117,12 +117,12 @@ function formatDate(timestamp: number | undefined, timeZone: string): string {
 }
 
 function quoteLineDescription(line: PortalQuoteLine): string {
-  return [line.title, line.description].filter(isText).join("\n");
+  return [line.titel, line.omschrijving].filter(isText).join("\n");
 }
 
 function requiresManualReview(line: PortalQuoteLine): boolean {
   return (
-    line.unitPriceExVat === 0 ||
+    line.eenheidsprijsExBtw === 0 ||
     metadataString(line, "source") === "measurement" ||
     metadataString(line, "measurementLineId") !== undefined ||
     metadataBoolean(line, "requiresManualProductReview") ||
@@ -135,8 +135,8 @@ function buildVatLabel(): string {
   return VAT_LABEL;
 }
 
-function sectionMap(template?: Pick<QuoteTemplate, "sections">): Map<string, QuoteTemplateSection> {
-  return new Map((template?.sections ?? []).map((section) => [section.key, section]));
+function sectionMap(template?: Pick<QuoteTemplate, "secties">): Map<string, QuoteTemplateSection> {
+  return new Map((template?.secties ?? []).map((section) => [section.sleutel, section]));
 }
 
 function sortLines(lines: PortalQuoteLine[]): PortalQuoteLine[] {
@@ -145,7 +145,7 @@ function sortLines(lines: PortalQuoteLine[]): PortalQuoteLine[] {
 
 function groupQuoteLines(
   lines: PortalQuoteLine[],
-  template?: Pick<QuoteTemplate, "sections">
+  template?: Pick<QuoteTemplate, "secties">
 ): QuoteDocumentModel["sections"] {
   const sectionsByKey = sectionMap(template);
   const grouped = new Map<string, PortalQuoteLine[]>();
@@ -179,17 +179,17 @@ function groupQuoteLines(
 
       return {
         key,
-        title: templateSection?.title ?? (key === FALLBACK_SECTION_KEY ? FALLBACK_SECTION_TITLE : undefined),
+        title: templateSection?.titel ?? (key === FALLBACK_SECTION_KEY ? FALLBACK_SECTION_TITLE : undefined),
         lines: sectionLines.map((line) => {
           const manualReview = requiresManualReview(line);
 
           return {
-            quantity: line.quantity,
-            unit: line.unit,
+            quantity: line.aantal,
+            unit: line.eenheid,
             description: quoteLineDescription(line),
-            unitPriceExVat: line.unitPriceExVat,
-            vatRate: line.vatRate,
-            lineTotalIncVat: line.lineTotalIncVat,
+            unitPriceExVat: line.eenheidsprijsExBtw,
+            vatRate: line.btwTarief,
+            lineTotalIncVat: line.regelTotaalInclBtw,
             ...(manualReview ? { requiresManualReview: true } : {})
           };
         })
@@ -216,27 +216,27 @@ export function buildQuoteDocumentModel({
       signatoryName: companyProfile.signatoryName
     },
     customer: {
-      name: customer.displayName,
+      name: customer.weergaveNaam,
       addressLines: formatCustomerAddress(customer),
-      salutation: salutation?.trim() || `Beste ${customer.displayName}`
+      salutation: salutation?.trim() || `Beste ${customer.weergaveNaam}`
     },
     quote: {
-      quoteNumber: quote.quoteNumber,
-      quoteDate: formatDate(quote.createdAt, timeZone),
-      validUntil: quote.validUntil ? formatDate(quote.validUntil, timeZone) : undefined,
-      subject: quote.title || project?.title || "",
-      introText: quote.introText,
-      closingText: quote.closingText,
+      quoteNumber: quote.offertenummer,
+      quoteDate: formatDate(quote.aangemaaktOp, timeZone),
+      validUntil: quote.geldigTot ? formatDate(quote.geldigTot, timeZone) : undefined,
+      subject: quote.titel || project?.titel || "",
+      introText: quote.inleidingTekst,
+      closingText: quote.afsluitTekst,
       status: quote.status
     },
     sections: groupQuoteLines(quote.lines, template),
     totals: {
-      subtotalExVat: quote.subtotalExVat,
-      vatTotal: quote.vatTotal,
-      totalIncVat: quote.totalIncVat,
+      subtotalExVat: quote.subtotaalExBtw,
+      vatTotal: quote.btwTotaal,
+      totalIncVat: quote.totaalInclBtw,
       vatLabel: buildVatLabel()
     },
-    terms: normalizeLines(quote.terms),
-    paymentTerms: normalizeLines(quote.paymentTerms)
+    terms: normalizeLines(quote.voorwaarden),
+    paymentTerms: normalizeLines(quote.betalingsvoorwaarden)
   };
 }

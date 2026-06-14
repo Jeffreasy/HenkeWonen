@@ -9,8 +9,8 @@ type TaskPriority = {
 
 type ActionPlanTask = {
   id: string;
-  title: string;
-  dueAt: number;
+  titel: string;
+  vervaltOp: number;
   priority: TaskPriority;
 };
 
@@ -97,9 +97,9 @@ export function FieldActionPlan({
               <span>{task.priority.label.slice(0, 1)}</span>
               <div>
                 <strong>
-                  {task.priority.label}: {task.title}
+                  {task.priority.label}: {task.titel}
                 </strong>
-                <p>Deadline {formatDate(task.dueAt)}</p>
+                <p>Deadline {formatDate(task.vervaltOp)}</p>
               </div>
             </article>
           ))}

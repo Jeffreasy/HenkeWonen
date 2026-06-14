@@ -22,15 +22,15 @@ export const getMetadata = query({
     ]);
 
     return {
-      suppliers: suppliers.map((item) => ({ id: String(item._id), name: item.name })),
+      suppliers: suppliers.map((item) => ({ id: String(item._id), name: item.naam })),
       importProfiles: importProfiles.map((item) => ({
         id: String(item._id),
-        supplierName: item.supplierName,
-        name: item.name,
-        filePattern: item.filePattern ?? null,
-        expectedFileExtension: item.expectedFileExtension ?? null,
-        supportsXlsx: item.supportsXlsx,
-        supportsXls: item.supportsXls,
+        supplierName: item.leverancierNaam,
+        name: item.naam,
+        filePattern: item.bestandPatroon ?? null,
+        expectedFileExtension: item.verwachteBestandsextensie ?? null,
+        supportsXlsx: item.ondersteuntXlsx,
+        supportsXls: item.ondersteuntXls,
         status: item.status,
       })),
     };
@@ -57,9 +57,9 @@ export const getProductsPage = query({
       continueCursor: result.continueCursor,
       page: result.page.map((item) => ({
         id: String(item._id),
-        supplierId: item.supplierId ? String(item.supplierId) : null,
-        articleNumber: item.articleNumber ?? null,
-        name: item.name,
+        supplierId: item.leverancierId ? String(item.leverancierId) : null,
+        articleNumber: item.artikelnummer ?? null,
+        name: item.naam,
         status: item.status,
       })),
     };
@@ -87,16 +87,16 @@ export const getProductPricesPage = query({
       page: result.page.map((item) => ({
         id: String(item._id),
         productId: String(item.productId),
-        sourceKey: item.sourceKey ?? null,
-        sourceFileName: item.sourceFileName ?? null,
-        sourceSheetName: item.sourceSheetName ?? null,
-        sourceRowNumber: item.sourceRowNumber ?? null,
-        sourceColumnIndex: item.sourceColumnIndex ?? null,
-        sourceColumnName: item.sourceColumnName ?? null,
-        sourceValue: item.sourceValue ?? null,
-        amount: item.amount,
-        priceType: item.priceType,
-        vatMode: item.vatMode,
+        sourceKey: item.bronSleutel ?? null,
+        sourceFileName: item.bronBestandsnaam ?? null,
+        sourceSheetName: item.bronBladNaam ?? null,
+        sourceRowNumber: item.bronRijNummer ?? null,
+        sourceColumnIndex: item.bronKolomIndex ?? null,
+        sourceColumnName: item.bronKolomNaam ?? null,
+        sourceValue: item.bronWaarde ?? null,
+        amount: item.bedrag,
+        priceType: item.prijsSoort,
+        vatMode: item.btwModus,
       })),
     };
   },

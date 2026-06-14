@@ -53,7 +53,7 @@ type FieldCardProps = {
 };
 
 export function FieldCard({ card, preferredAction }: FieldCardProps) {
-  const customerName = card.customer?.displayName ?? "Onbekende klant";
+  const customerName = card.customer?.weergaveNaam ?? "Onbekende klant";
   const urgency = cardUrgency(card);
   const statusLabel = card.latestQuote
     ? formatQuoteStatus(card.latestQuote.status)
@@ -84,7 +84,7 @@ export function FieldCard({ card, preferredAction }: FieldCardProps) {
         <div className="field-work-card-title-row">
           <div>
             <span className="field-next-action">{card.nextAction}</span>
-            <h3>{card.project.title}</h3>
+            <h3>{card.project.titel}</h3>
           </div>
           <div className="field-card-status-stack">
             <span className={`field-card-priority field-card-priority-${urgency.level}`}>
@@ -108,15 +108,15 @@ export function FieldCard({ card, preferredAction }: FieldCardProps) {
           ) : null}
           {openTask ? (
             <span>
-              Taak: {openTask.title} ({formatDate(openTask.dueAt)})
+              Taak: {openTask.titel} ({formatDate(openTask.vervaltOp)})
             </span>
           ) : null}
         </div>
       </div>
 
       <div className="field-card-actions">
-        {card.phone ? (
-          <a className="ui-button ui-button-secondary ui-button-md" href={`tel:${card.phone}`}>
+        {card.telefoon ? (
+          <a className="ui-button ui-button-secondary ui-button-md" href={`tel:${card.telefoon}`}>
             <Phone size={17} aria-hidden="true" />
             <span>Bellen</span>
           </a>

@@ -16,6 +16,7 @@ import { EmptyState } from "../ui/EmptyState";
 import { FormModal } from "../ui/overlays/FormModal";
 import QuoteBuilder from "./QuoteBuilder";
 import type { QuoteLineFormValues } from "./quote/quoteTypes";
+import { quoteLineFormToApi } from "./quote/quoteTypes";
 import { QuoteStats } from "./QuoteStats";
 import { CreateQuoteForm } from "./CreateQuoteForm";
 import { QuotesTable } from "./QuotesTable";
@@ -105,7 +106,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
           tenantSlug: session.tenantId,
           actor: mutationActorFromSession(session),
           projectId,
-          title: title.trim(),
+          titel: title.trim(),
           createdByExternalUserId: session.userId
         })
       );
@@ -136,7 +137,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
       quoteId: selectedQuoteId,
-      ...line
+      ...quoteLineFormToApi(line)
     });
     await loadWorkspace();
     return String(lineId);
@@ -170,7 +171,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
       lineId,
-      ...line
+      ...quoteLineFormToApi(line)
     });
     await loadWorkspace();
   }
@@ -191,8 +192,8 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
       quoteId: selectedQuoteId,
-      terms,
-      paymentTerms
+      voorwaarden: terms,
+      betalingsvoorwaarden: paymentTerms
     });
     await loadWorkspace();
   }
@@ -236,7 +237,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
       quoteId: selectedQuoteId,
-      dueDate
+      vervaldatum: dueDate
     }) as { invoiceId: string; invoiceNumber: string; alreadyExists: boolean };
 
     return result.invoiceId;
@@ -251,17 +252,17 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     () => new Map(projects.map((project) => [project.id, project])),
     [projects]
   );
-  const selectedCustomer = selectedQuote ? customerById.get(selectedQuote.customerId) : undefined;
+  const selectedCustomer = selectedQuote ? customerById.get(selectedQuote.klantId) : undefined;
   const selectedProject = selectedQuote ? projectById.get(selectedQuote.projectId) : undefined;
 
   const filteredQuotes = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
     return quotes.filter((quote) => {
-      const customer = customerById.get(quote.customerId);
+      const customer = customerById.get(quote.klantId);
       const matchesSearch =
         !normalizedSearch ||
-        [quote.quoteNumber, quote.title, quote.status, customer?.displayName]
+        [quote.offertenummer, quote.titel, quote.status, customer?.weergaveNaam]
           .filter(Boolean)
           .join(" ")
           .toLowerCase()
@@ -274,7 +275,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
 
   const stats = useMemo(() => {
     const draftCount = quotes.filter((quote) => quote.status === "draft").length;
-    const totalValue = quotes.reduce((sum, quote) => sum + quote.totalIncVat, 0);
+    const totalValue = quotes.reduce((sum, quote) => sum + quote.totaalInclBtw, 0);
     return { draftCount, totalValue, total: quotes.length };
   }, [quotes]);
 

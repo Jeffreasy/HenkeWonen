@@ -15,7 +15,7 @@ export async function syncSessionToConvex(session: AppSession) {
   const syncToken = await createConvexSyncToken(session);
   const tenantId = await client.mutation(api.beheer.tenants.ensureTenant, {
     slug: session.tenantId,
-    name: tenantName,
+    naam: tenantName,
     syncToken
   });
 
@@ -23,7 +23,7 @@ export async function syncSessionToConvex(session: AppSession) {
     tenantId,
     externalUserId: session.userId,
     email: session.email,
-    name: session.name,
+    naam: session.name,
     role: session.role,
     workspaceMode: session.workspaceModeFromAuth ? session.workspaceMode : undefined,
     syncToken

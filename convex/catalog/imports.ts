@@ -174,7 +174,7 @@ export const getBatch = query({
 
     return {
       batch,
-      rows: rows.sort((a, b) => a.rowNumber - b.rowNumber)
+      rows: rows.sort((a, b) => a.rijNummer - b.rijNummer)
     };
   }
 });
@@ -183,15 +183,15 @@ export const createBatch = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    priceListId: v.optional(v.id("priceLists")),
-    supplierId: v.optional(v.id("suppliers")),
-    importProfileId: v.optional(v.id("importProfiles")),
-    fileName: v.string(),
-    fileType: v.string(),
-    sourcePath: v.optional(v.string()),
-    fileHash: v.optional(v.string()),
-    sourceFileName: v.optional(v.string()),
-    allowUnknownVatMode: v.optional(v.boolean()),
+    prijslijstId: v.optional(v.id("priceLists")),
+    leverancierId: v.optional(v.id("suppliers")),
+    importProfielId: v.optional(v.id("importProfiles")),
+    bestandsnaam: v.string(),
+    bestandsType: v.string(),
+    bronPad: v.optional(v.string()),
+    bestandHash: v.optional(v.string()),
+    bronBestandsnaam: v.optional(v.string()),
+    staBtwModusOnbekendToe: v.optional(v.boolean()),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -205,38 +205,38 @@ export const createBatch = mutation({
 
     return await ctx.db.insert("productImportBatches", {
       tenantId: args.tenantId,
-      priceListId: args.priceListId,
-      supplierId: args.supplierId,
-      importProfileId: args.importProfileId,
-      fileName: args.fileName,
-      fileType: args.fileType,
-      sourceFileName: args.sourceFileName ?? args.fileName,
-      sourcePath: args.sourcePath,
-      fileHash: args.fileHash,
+      prijslijstId: args.prijslijstId,
+      leverancierId: args.leverancierId,
+      importProfielId: args.importProfielId,
+      bestandsnaam: args.bestandsnaam,
+      bestandsType: args.bestandsType,
+      bronBestandsnaam: args.bronBestandsnaam ?? args.bestandsnaam,
+      bronPad: args.bronPad,
+      bestandHash: args.bestandHash,
       status: "uploaded",
-      totalRows: 0,
-      previewRows: 0,
-      productRows: 0,
-      validRows: 0,
-      warningRows: 0,
-      errorRows: 0,
-      ignoredRows: 0,
-      importedProducts: 0,
-      updatedProducts: 0,
-      skippedProducts: 0,
-      importedPrices: 0,
-      skippedPrices: 0,
-      duplicateProductMatches: 0,
-      zeroPriceRows: 0,
-      unknownVatModeRows: 0,
-      productsWithoutSupplierCode: 0,
-      orphanPriceRules: 0,
-      duplicateSourceKeys: 0,
-      allowUnknownVatMode: args.allowUnknownVatMode ?? false,
-      reconciliation: {},
+      totaalRijen: 0,
+      voorbeeldRijen: 0,
+      productRijen: 0,
+      geldigeRijen: 0,
+      waarschuwingRijen: 0,
+      foutRijen: 0,
+      genegeerdeRijen: 0,
+      geimporteerdeProducten: 0,
+      bijgewerkteProducten: 0,
+      overgeslagenProducten: 0,
+      geimporteerdePrijzen: 0,
+      overgeslagenPrijzen: 0,
+      dubbeleProductMatches: 0,
+      nulPrijsRijen: 0,
+      onbekendeBtwModusRijen: 0,
+      productenZonderLeverancierCode: 0,
+      weesPrijsRegels: 0,
+      dubbeleBronSleutels: 0,
+      staBtwModusOnbekendToe: args.staBtwModusOnbekendToe ?? false,
+      reconciliatie: {},
       createdByExternalUserId: externalUserId,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -246,19 +246,19 @@ export const addPreviewRow = mutation({
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
     batchId: v.id("productImportBatches"),
-    sourceFileName: v.optional(v.string()),
-    sourceSheetName: v.optional(v.string()),
-    rowNumber: v.number(),
-    rowHash: v.optional(v.string()),
-    importKey: v.optional(v.string()),
-    sourceKey: v.optional(v.string()),
-    raw: v.any(),
-    normalized: v.optional(v.any()),
+    bronBestandsnaam: v.optional(v.string()),
+    bronBladNaam: v.optional(v.string()),
+    rijNummer: v.number(),
+    rijHash: v.optional(v.string()),
+    importSleutel: v.optional(v.string()),
+    bronSleutel: v.optional(v.string()),
+    ruweData: v.any(),
+    genormaliseerd: v.optional(v.any()),
     status: rowStatus,
-    rowKind,
-    sectionLabel: v.optional(v.string()),
-    warnings: v.array(v.string()),
-    errors: v.array(v.string())
+    rijSoort: rowKind,
+    sectieLabel: v.optional(v.string()),
+    waarschuwingen: v.array(v.string()),
+    fouten: v.array(v.string())
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
@@ -272,34 +272,34 @@ export const addPreviewRow = mutation({
     const rowId = await ctx.db.insert("productImportRows", {
       tenantId: args.tenantId,
       batchId: args.batchId,
-      sourceFileName: args.sourceFileName,
-      sourceSheetName: args.sourceSheetName,
-      rowNumber: args.rowNumber,
-      rowHash: args.rowHash,
-      importKey: args.importKey,
-      sourceKey: args.sourceKey,
-      raw: args.raw,
-      normalized: args.normalized,
+      bronBestandsnaam: args.bronBestandsnaam,
+      bronBladNaam: args.bronBladNaam,
+      rijNummer: args.rijNummer,
+      rijHash: args.rijHash,
+      importSleutel: args.importSleutel,
+      bronSleutel: args.bronSleutel,
+      ruweData: args.ruweData,
+      genormaliseerd: args.genormaliseerd,
       status: args.status,
-      rowKind: args.rowKind,
-      sectionLabel: args.sectionLabel,
-      warnings: args.warnings,
-      errors: args.errors,
-      createdAt: now,
-      updatedAt: now
+      rijSoort: args.rijSoort,
+      sectieLabel: args.sectieLabel,
+      waarschuwingen: args.waarschuwingen,
+      fouten: args.fouten,
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
 
     await ctx.db.patch(args.batchId, {
-      totalRows: batch.totalRows + 1,
-      previewRows: (batch.previewRows ?? batch.totalRows) + 1,
-      validRows: batch.validRows + (args.status === "valid" ? 1 : 0),
-      warningRows: batch.warningRows + (args.status === "warning" ? 1 : 0),
-      errorRows: batch.errorRows + (args.status === "error" ? 1 : 0),
+      totaalRijen: batch.totaalRijen + 1,
+      voorbeeldRijen: (batch.voorbeeldRijen ?? batch.totaalRijen) + 1,
+      geldigeRijen: batch.geldigeRijen + (args.status === "valid" ? 1 : 0),
+      waarschuwingRijen: batch.waarschuwingRijen + (args.status === "warning" ? 1 : 0),
+      foutRijen: batch.foutRijen + (args.status === "error" ? 1 : 0),
       status:
-        args.errors.length > 0 || args.warnings.length > 0
+        args.fouten.length > 0 || args.waarschuwingen.length > 0
           ? "needs_mapping"
           : "ready_to_import",
-      updatedAt: now
+      gewijzigdOp: now
     });
 
     return rowId;
@@ -325,28 +325,28 @@ export const upsertProfile = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    supplierName: v.string(),
-    supplierId: v.optional(v.id("suppliers")),
-    categoryId: v.optional(v.id("categories")),
-    name: v.string(),
-    filePattern: v.optional(v.string()),
-    sheetPattern: v.optional(v.string()),
-    expectedFileExtension: v.optional(v.union(v.literal(".xlsx"), v.literal(".xls"))),
-    supportsXlsx: v.boolean(),
-    supportsXls: v.boolean(),
-    sheetMapping: v.optional(v.any()),
-    headerRowStrategy: v.optional(v.any()),
-    sectionRowStrategy: v.optional(v.any()),
-    productKeyStrategy: v.optional(v.any()),
-    columnMappings: v.optional(v.any()),
-    priceColumnMappings: v.optional(v.any()),
-    vatModeByPriceColumn: v.optional(v.any()),
-    unitByPriceColumn: v.optional(v.any()),
-    priceTypeByPriceColumn: v.optional(v.any()),
-    duplicateStrategy: v.optional(v.any()),
-    zeroPriceStrategy: v.optional(v.any()),
+    leverancierNaam: v.string(),
+    leverancierId: v.optional(v.id("suppliers")),
+    categorieId: v.optional(v.id("categories")),
+    naam: v.string(),
+    bestandPatroon: v.optional(v.string()),
+    bladPatroon: v.optional(v.string()),
+    verwachteBestandsextensie: v.optional(v.union(v.literal(".xlsx"), v.literal(".xls"))),
+    ondersteuntXlsx: v.boolean(),
+    ondersteuntXls: v.boolean(),
+    bladMapping: v.optional(v.any()),
+    koprijStrategie: v.optional(v.any()),
+    sectierijStrategie: v.optional(v.any()),
+    productSleutelStrategie: v.optional(v.any()),
+    kolomMappings: v.optional(v.any()),
+    prijskolomMappings: v.optional(v.any()),
+    btwModusPerPrijskolom: v.optional(v.any()),
+    eenheidPerPrijskolom: v.optional(v.any()),
+    prijsSoortPerPrijskolom: v.optional(v.any()),
+    dubbelenStrategie: v.optional(v.any()),
+    nulPrijsStrategie: v.optional(v.any()),
     mapping: v.any(),
-    notes: v.optional(v.string())
+    notities: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
@@ -354,35 +354,35 @@ export const upsertProfile = mutation({
     const existing = await ctx.db
       .query("importProfiles")
       .withIndex("by_supplier", (q) =>
-        q.eq("tenantId", args.tenantId).eq("supplierName", args.supplierName)
+        q.eq("tenantId", args.tenantId).eq("leverancierNaam", args.leverancierNaam)
       )
-      .filter((q) => q.eq(q.field("name"), args.name))
+      .filter((q) => q.eq(q.field("naam"), args.naam))
       .first();
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        filePattern: args.filePattern,
-        sheetPattern: args.sheetPattern,
-        supplierId: args.supplierId,
-        categoryId: args.categoryId,
-        expectedFileExtension: args.expectedFileExtension,
-        supportsXlsx: args.supportsXlsx,
-        supportsXls: args.supportsXls,
-        sheetMapping: args.sheetMapping,
-        headerRowStrategy: args.headerRowStrategy,
-        sectionRowStrategy: args.sectionRowStrategy,
-        productKeyStrategy: args.productKeyStrategy,
-        columnMappings: args.columnMappings,
-        priceColumnMappings: args.priceColumnMappings,
-        vatModeByPriceColumn: args.vatModeByPriceColumn,
-        unitByPriceColumn: args.unitByPriceColumn,
-        priceTypeByPriceColumn: args.priceTypeByPriceColumn,
-        duplicateStrategy: args.duplicateStrategy,
-        zeroPriceStrategy: args.zeroPriceStrategy,
+        bestandPatroon: args.bestandPatroon,
+        bladPatroon: args.bladPatroon,
+        leverancierId: args.leverancierId,
+        categorieId: args.categorieId,
+        verwachteBestandsextensie: args.verwachteBestandsextensie,
+        ondersteuntXlsx: args.ondersteuntXlsx,
+        ondersteuntXls: args.ondersteuntXls,
+        bladMapping: args.bladMapping,
+        koprijStrategie: args.koprijStrategie,
+        sectierijStrategie: args.sectierijStrategie,
+        productSleutelStrategie: args.productSleutelStrategie,
+        kolomMappings: args.kolomMappings,
+        prijskolomMappings: args.prijskolomMappings,
+        btwModusPerPrijskolom: args.btwModusPerPrijskolom,
+        eenheidPerPrijskolom: args.eenheidPerPrijskolom,
+        prijsSoortPerPrijskolom: args.prijsSoortPerPrijskolom,
+        dubbelenStrategie: args.dubbelenStrategie,
+        nulPrijsStrategie: args.nulPrijsStrategie,
         mapping: args.mapping,
-        notes: args.notes,
+        notities: args.notities,
         status: "active",
-        updatedAt: now
+        gewijzigdOp: now
       });
 
       return existing._id;
@@ -390,31 +390,31 @@ export const upsertProfile = mutation({
 
     return await ctx.db.insert("importProfiles", {
       tenantId: args.tenantId,
-      supplierId: args.supplierId,
-      categoryId: args.categoryId,
-      supplierName: args.supplierName,
-      name: args.name,
-      filePattern: args.filePattern,
-      sheetPattern: args.sheetPattern,
-      expectedFileExtension: args.expectedFileExtension,
-      supportsXlsx: args.supportsXlsx,
-      supportsXls: args.supportsXls,
-      sheetMapping: args.sheetMapping,
-      headerRowStrategy: args.headerRowStrategy,
-      sectionRowStrategy: args.sectionRowStrategy,
-      productKeyStrategy: args.productKeyStrategy,
-      columnMappings: args.columnMappings,
-      priceColumnMappings: args.priceColumnMappings,
-      vatModeByPriceColumn: args.vatModeByPriceColumn,
-      unitByPriceColumn: args.unitByPriceColumn,
-      priceTypeByPriceColumn: args.priceTypeByPriceColumn,
-      duplicateStrategy: args.duplicateStrategy,
-      zeroPriceStrategy: args.zeroPriceStrategy,
+      leverancierId: args.leverancierId,
+      categorieId: args.categorieId,
+      leverancierNaam: args.leverancierNaam,
+      naam: args.naam,
+      bestandPatroon: args.bestandPatroon,
+      bladPatroon: args.bladPatroon,
+      verwachteBestandsextensie: args.verwachteBestandsextensie,
+      ondersteuntXlsx: args.ondersteuntXlsx,
+      ondersteuntXls: args.ondersteuntXls,
+      bladMapping: args.bladMapping,
+      koprijStrategie: args.koprijStrategie,
+      sectierijStrategie: args.sectierijStrategie,
+      productSleutelStrategie: args.productSleutelStrategie,
+      kolomMappings: args.kolomMappings,
+      prijskolomMappings: args.prijskolomMappings,
+      btwModusPerPrijskolom: args.btwModusPerPrijskolom,
+      eenheidPerPrijskolom: args.eenheidPerPrijskolom,
+      prijsSoortPerPrijskolom: args.prijsSoortPerPrijskolom,
+      dubbelenStrategie: args.dubbelenStrategie,
+      nulPrijsStrategie: args.nulPrijsStrategie,
       mapping: args.mapping,
-      notes: args.notes,
+      notities: args.notities,
       status: "active",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -532,8 +532,8 @@ export const updateBatchStatusForPortal = mutation({
       args.status === "archived"
         ? {
             status: args.status,
-            archivedFromStatus: batch.status === "archived" ? batch.archivedFromStatus : batch.status,
-            archivedAt: batch.archivedAt ?? now,
+            archivedFromStatus: batch.status === "archived" ? batch.gearchiveerdVanafStatus : batch.status,
+            archivedAt: batch.gearchiveerdOp ?? now,
             archivedByExternalUserId: batch.archivedByExternalUserId ?? externalUserId,
             updatedAt: now
           }
@@ -609,7 +609,7 @@ export const updateProfileStatusForPortal = mutation({
 
     await ctx.db.patch(profile._id, {
       status: args.status,
-      updatedAt: Date.now()
+      gewijzigdOp: Date.now()
     });
 
     return profile._id;
@@ -634,7 +634,7 @@ export const saveMapping = mutation({
     await ctx.db.patch(args.batchId, {
       mapping: args.mapping,
       status: "ready_to_import",
-      updatedAt: Date.now()
+      gewijzigdOp: Date.now()
     });
 
     return args.batchId;

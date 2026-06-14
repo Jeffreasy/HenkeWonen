@@ -63,7 +63,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     try {
       const result = await client.query(api.portal.customerDetail, {
         tenantSlug: session.tenantId,
-        customerId
+        klantId: customerId
       });
 
       setDetail(result as CustomerDetailResult);
@@ -95,17 +95,17 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       await client.mutation(api.portal.updateCustomer, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        customerId,
+        klantId: customerId,
         type: detail.customer.type,
         status: detail.customer.status,
-        displayName: draft.displayName.trim(),
+        weergaveNaam: draft.displayName.trim(),
         email: draft.email.trim() || undefined,
-        phone: draft.phone.trim() || undefined,
-        street: draft.street.trim() || undefined,
-        houseNumber: draft.houseNumber.trim() || undefined,
-        postalCode: draft.postalCode.trim() || undefined,
-        city: draft.city.trim() || undefined,
-        notes: draft.notes.trim() || undefined
+        telefoon: draft.phone.trim() || undefined,
+        straat: draft.street.trim() || undefined,
+        huisnummer: draft.houseNumber.trim() || undefined,
+        postcode: draft.postalCode.trim() || undefined,
+        plaats: draft.city.trim() || undefined,
+        notities: draft.notes.trim() || undefined
       });
       setEditingCustomer(false);
       await loadDetail();
@@ -131,16 +131,16 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       await client.mutation(api.portal.updateCustomer, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        customerId,
+        klantId: customerId,
         type: detail.customer.type,
-        displayName: detail.customer.displayName,
+        weergaveNaam: detail.customer.weergaveNaam,
         email: detail.customer.email,
-        phone: detail.customer.phone,
-        street: detail.customer.street,
-        houseNumber: detail.customer.houseNumber,
-        postalCode: detail.customer.postalCode,
-        city: detail.customer.city,
-        notes: detail.customer.notes,
+        telefoon: detail.customer.telefoon,
+        straat: detail.customer.straat,
+        huisnummer: detail.customer.huisnummer,
+        postcode: detail.customer.postcode,
+        plaats: detail.customer.plaats,
+        notities: detail.customer.notities,
         status: pendingCustomerStatus
       });
       setPendingCustomerStatus(null);
@@ -166,13 +166,13 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       await client.mutation(api.portal.createCustomerContact, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        customerId,
+        klantId: customerId,
         type: values.type,
-        title: values.title,
-        description: values.description,
-        loanedItemName: values.loanedItemName,
-        expectedReturnDate: values.expectedReturnDate,
-        visibleToCustomer: false,
+        titel: values.title,
+        omschrijving: values.description,
+        uitgeleendItemNaam: values.loanedItemName,
+        verwachteRetourdatum: values.expectedReturnDate,
+        zichtbaarVoorKlant: false,
         createdByExternalUserId: session.userId
       });
       await loadDetail();
@@ -197,17 +197,17 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
 
   const { customer, projects, contacts } = detail;
   const loanedItems = contacts.filter((contact) => contact.type === "loaned_item");
-  const openLoanedItems = loanedItems.filter((contact) => !contact.returnedAt);
+  const openLoanedItems = loanedItems.filter((contact) => !contact.geretourneerdOp);
 
   const initialDraft: CustomerDraft = {
-    displayName: customer.displayName,
+    displayName: customer.weergaveNaam,
     email: customer.email ?? "",
-    phone: customer.phone ?? "",
-    street: customer.street ?? "",
-    houseNumber: customer.houseNumber ?? "",
-    postalCode: customer.postalCode ?? "",
-    city: customer.city ?? "",
-    notes: customer.notes ?? ""
+    phone: customer.telefoon ?? "",
+    street: customer.straat ?? "",
+    houseNumber: customer.huisnummer ?? "",
+    postalCode: customer.postcode ?? "",
+    city: customer.plaats ?? "",
+    notes: customer.notities ?? ""
   };
 
   return (

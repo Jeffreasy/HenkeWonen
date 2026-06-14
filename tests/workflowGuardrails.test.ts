@@ -190,7 +190,7 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(processProjectAction).toContain("completeInvoiceWorkflow(ctx, tenant._id, project, invoiceDueAt");
     expect(processProjectAction).toContain('args.action !== "invoice_created"');
     expect(processProjectAction).toContain("if (!existingInvoice)");
-    expect(processProjectAction).toContain("existingInvoice?.dueDate ?? args.invoiceDueAt");
+    expect(processProjectAction).toContain("existingInvoice?.vervaldatum ?? args.invoiceDueAt");
   });
 
   it("should surface execution appointments and accepted quotes in the field workspace", () => {
@@ -198,11 +198,11 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     const portalUtils = read("convex/portalUtils.ts");
 
     expect(fieldServiceSource).toContain('project.status === "execution_planned"');
-    expect(fieldServiceSource).toContain("project.executionDate ?? project.measurementDate");
+    expect(fieldServiceSource).toContain("project.uitvoerdatum ?? project.inmeetdatum");
     expect(fieldServiceSource).toContain('quote.status === "accepted"');
     expect(fieldServiceSource).not.toContain('["lead", "quote_accepted", "measurement_planned"]');
     expect(portalUtils).toContain('quote.status === "accepted"');
-    expect(portalUtils).toContain("project.executionDate ?? project.measurementDate");
+    expect(portalUtils).toContain("project.uitvoerdatum ?? project.inmeetdatum");
     expect(portalUtils).not.toContain('["lead", "quote_accepted", "measurement_planned"]');
   });
 
@@ -312,8 +312,8 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     const responsiveStyles = read("src/styles/layers/16-responsive.css");
 
     expect(customerDetail).toContain('size="md"');
-    expect(customerDetail).toContain("description: values.description");
-    expect(customerDetail).toContain("expectedReturnDate: values.expectedReturnDate");
+    expect(customerDetail).toContain("omschrijving: values.description");
+    expect(customerDetail).toContain("verwachteRetourdatum: values.expectedReturnDate");
     expect(addContactForm).toContain("contact-moment-form");
     expect(addContactForm).toContain("<Select");
     expect(addContactForm).toContain("dateInputToTimestamp");
@@ -344,8 +344,8 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
   it("should check child constraints before deleting a measurement line", () => {
     const deleteMeasurementLine = exportedMutationBlock("convex/projecten/measurements.ts", "deleteMeasurementLine");
     expect(deleteMeasurementLine).toContain('line.quotePreparationStatus === "converted"');
-    expect(deleteMeasurementLine).toContain("line.convertedQuoteId");
-    expect(deleteMeasurementLine).toContain("line.convertedQuoteLineId");
+    expect(deleteMeasurementLine).toContain("line.geconverteerdeOfferteId");
+    expect(deleteMeasurementLine).toContain("line.geconverteerdeOfferteregelId");
     expect(deleteMeasurementLine).toContain("await ctx.db.delete(line._id);");
   });
 
@@ -443,8 +443,8 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
 
   it("should define required search indexes on catalog tables", () => {
     const schemaSource = read("convex/schema.ts");
-    expect(schemaSource).toContain('index("by_category_status", ["tenantId", "categoryId", "status"])');
-    expect(schemaSource).toContain('index("by_supplier_status", ["tenantId", "supplierId", "status"])');
+    expect(schemaSource).toContain('index("by_category_status", ["tenantId", "categorieId", "status"])');
+    expect(schemaSource).toContain('index("by_supplier_status", ["tenantId", "leverancierId", "status"])');
   });
 
   it("should enforce production confirmation flags on all catalog cleanups", () => {

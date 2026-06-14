@@ -24,13 +24,13 @@ function isFollowUpStatus(status: ProductListStatus) {
 
 function supplierSearchText(supplier: PortalSupplier) {
   return [
-    supplier.name,
-    supplier.contactName,
+    supplier.naam,
+    supplier.contactpersoon,
     supplier.email,
-    supplier.phone,
-    supplier.notes,
+    supplier.telefoon,
+    supplier.notities,
     ...(supplier.sourceFileNames ?? []),
-    supplier.productListStatus
+    supplier.prijslijstStatus
   ]
     .filter(Boolean)
     .join(" ")
@@ -85,12 +85,12 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
 
   const summary = useMemo(() => {
     const available = suppliers.filter((supplier) =>
-      ["received", "download_available"].includes(supplier.productListStatus)
+      ["received", "download_available"].includes(supplier.prijslijstStatus)
     ).length;
-    const followUp = suppliers.filter((supplier) => isFollowUpStatus(supplier.productListStatus))
+    const followUp = suppliers.filter((supplier) => isFollowUpStatus(supplier.prijslijstStatus))
       .length;
     const manual = suppliers.filter((supplier) =>
-      ["not_available", "manual_only"].includes(supplier.productListStatus)
+      ["not_available", "manual_only"].includes(supplier.prijslijstStatus)
     ).length;
     const linkedProducts = suppliers.reduce(
       (total, supplier) => total + (supplier.activeProductCount ?? 0),
@@ -109,7 +109,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
 
     return suppliers.filter((supplier) => {
       const matchesStatus =
-        statusFilter === "all" || supplier.productListStatus === statusFilter;
+        statusFilter === "all" || supplier.prijslijstStatus === statusFilter;
       const matchesSupplierStatus =
         supplierStatusFilter === "all" || (supplier.status ?? "active") === supplierStatusFilter;
       const matchesSearch =
@@ -143,7 +143,14 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
       await client.mutation(api.portal.createSupplier, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        ...data
+        naam: data.name,
+        contactpersoon: data.contactName,
+        email: data.email,
+        telefoon: data.phone,
+        notities: data.notes,
+        prijslijstStatus: data.productListStatus,
+        laatsteContactOp: data.lastContactAt,
+        verwachtOp: data.expectedAt
       });
       showToast({ title: "Leverancier opgeslagen", description: data.name, tone: "success" });
       setIsAddModalOpen(false);
@@ -186,8 +193,16 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
       await client.mutation(api.portal.updateSupplier, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        supplierId: editingSupplier.id,
-        ...data
+        leverancierId: editingSupplier.id,
+        naam: data.name,
+        contactpersoon: data.contactName,
+        email: data.email,
+        telefoon: data.phone,
+        notities: data.notes,
+        prijslijstStatus: data.productListStatus,
+        laatsteContactOp: data.lastContactAt,
+        verwachtOp: data.expectedAt,
+        status: data.status
       });
       showToast({ title: `${data.name.trim()} bijgewerkt`, tone: "success" });
       setEditingSupplier(null);
@@ -201,7 +216,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
   }
 
   async function handleChangeProductListStatus(supplier: PortalSupplier, nextStatus: ProductListStatus) {
-    if (supplier.productListStatus === nextStatus) {
+    if (supplier.prijslijstStatus === nextStatus) {
       return;
     }
 
@@ -219,10 +234,10 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
       await client.mutation(api.portal.updateSupplierProductListStatus, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        supplierId: supplier.id,
-        productListStatus: nextStatus
+        leverancierId: supplier.id,
+        prijslijstStatus: nextStatus
       });
-      showToast({ title: `Prijslijststatus bijgewerkt`, description: supplier.name, tone: "success" });
+      showToast({ title: `Prijslijststatus bijgewerkt`, description: supplier.naam, tone: "success" });
       await loadSuppliers();
     } catch (saveError) {
       console.error(saveError);
@@ -252,19 +267,19 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
       await client.mutation(api.portal.updateSupplier, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        supplierId: supplier.id,
-        name: supplier.name,
-        contactName: supplier.contactName,
+        leverancierId: supplier.id,
+        naam: supplier.naam,
+        contactpersoon: supplier.contactpersoon,
         email: supplier.email,
-        phone: supplier.phone,
-        notes: supplier.notes,
-        productListStatus: supplier.productListStatus,
-        lastContactAt: supplier.lastContactAt,
-        expectedAt: supplier.expectedAt,
+        telefoon: supplier.telefoon,
+        notities: supplier.notities,
+        prijslijstStatus: supplier.prijslijstStatus,
+        laatsteContactOp: supplier.laatsteContactOp,
+        verwachtOp: supplier.verwachtOp,
         status: nextStatus
       });
       showToast({
-        title: nextStatus === "archived" ? `${supplier.name} gearchiveerd` : `${supplier.name} hersteld`,
+        title: nextStatus === "archived" ? `${supplier.naam} gearchiveerd` : `${supplier.naam} hersteld`,
         tone: nextStatus === "archived" ? "warning" : "success"
       });
       setPendingSupplierStatus(null);
@@ -289,8 +304,8 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
         description={
           pendingSupplierStatus
             ? pendingSupplierStatus.nextStatus === "archived"
-              ? `Je archiveert ${pendingSupplierStatus.supplier.name}. Producten, imports en historie blijven bewaard.`
-              : `Je herstelt ${pendingSupplierStatus.supplier.name} naar actief.`
+              ? `Je archiveert ${pendingSupplierStatus.supplier.naam}. Producten, imports en historie blijven bewaard.`
+              : `Je herstelt ${pendingSupplierStatus.supplier.naam} naar actief.`
             : ""
         }
         confirmLabel={pendingSupplierStatus?.nextStatus === "archived" ? "Archiveren" : "Herstellen"}

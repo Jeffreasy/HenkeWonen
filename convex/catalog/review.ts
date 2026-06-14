@@ -12,16 +12,16 @@ const duplicateEanDecision = v.union(
   v.literal("resolved")
 );
 const duplicateEanSyncProduct = v.object({
-  importKey: v.optional(v.string()),
-  productName: v.string(),
-  articleNumber: v.optional(v.string()),
-  supplierCode: v.optional(v.string()),
-  sourceFileName: v.optional(v.string()),
-  sourceSheetName: v.optional(v.string()),
-  sourceRowNumber: v.optional(v.number())
+  importSleutel: v.optional(v.string()),
+  productNaam: v.string(),
+  artikelnummer: v.optional(v.string()),
+  leverancierCode: v.optional(v.string()),
+  bronBestandsnaam: v.optional(v.string()),
+  bronBladNaam: v.optional(v.string()),
+  bronRijNummer: v.optional(v.number())
 });
 const duplicateEanSyncGroup = v.object({
-  supplierName: v.string(),
+  leverancierNaam: v.string(),
   ean: v.string(),
   products: v.array(duplicateEanSyncProduct)
 });
@@ -63,10 +63,10 @@ function compactObject<T extends Record<string, any>>(value: T): T {
 }
 
 function priceColumns(profile: any) {
-  const columns = Array.isArray(profile.priceColumnMappings) ? profile.priceColumnMappings : [];
-  const vatByColumn = profile.vatModeByPriceColumn ?? {};
-  const unitByColumn = profile.unitByPriceColumn ?? {};
-  const typeByColumn = profile.priceTypeByPriceColumn ?? {};
+  const columns = Array.isArray(profile.prijskolomMappings) ? profile.prijskolomMappings : [];
+  const vatByColumn = profile.btwModusPerPrijskolom ?? {};
+  const unitByColumn = profile.eenheidPerPrijskolom ?? {};
+  const typeByColumn = profile.prijsSoortPerPrijskolom ?? {};
 
   return columns.map((column: any, index: number) => {
     const sourceColumnName = label(column.header ?? column.sourceColumnName, `Kolom ${index + 1}`);
@@ -86,7 +86,7 @@ function priceColumns(profile: any) {
 }
 
 function reviewForColumn(profile: any, sourceColumnName: string, sourceColumnIndex: number) {
-  const review = profile.vatModeReview ?? {};
+  const review = profile.btwModusReview ?? {};
   const directReview = review[sourceColumnName];
 
   if (directReview) {
@@ -110,8 +110,8 @@ function columnMatches(column: any, index: number, selectedColumns: any[]) {
 }
 
 function patchSelectedColumns(profile: any, selectedColumns: any[], patchColumn: (column: any, index: number) => any) {
-  const priceColumnMappings = Array.isArray(profile.priceColumnMappings)
-    ? profile.priceColumnMappings.map((column: any, index: number) =>
+  const priceColumnMappings = Array.isArray(profile.prijskolomMappings)
+    ? profile.prijskolomMappings.map((column: any, index: number) =>
         columnMatches(column, index, selectedColumns) ? patchColumn(column, index) : column
       )
     : [];
@@ -253,7 +253,7 @@ export const vatMappingReview = query({
 
     const rows = profiles
       .slice()
-      .sort((left: any, right: any) => left.name.localeCompare(right.name, "nl"))
+      .sort((left: any, right: any) => left.naam.localeCompare(right.naam, "nl"))
       .flatMap((profile: any) =>
         priceColumns(profile).map((column: any) => {
           const suggestion = suggestedVatMode(column.sourceColumnName, column.detectedPriceType);
@@ -264,21 +264,21 @@ export const vatMappingReview = query({
 
           return {
             profileId: idString(profile._id),
-            profileName: profile.name,
-            supplier: profile.supplierName,
-            supplierId: profile.supplierId ? idString(profile.supplierId) : undefined,
+            profileName: profile.naam,
+            supplier: profile.leverancierNaam,
+            supplierId: profile.leverancierId ? idString(profile.leverancierId) : undefined,
             category:
-              categoryById.get(idString(profile.categoryId))?.name ??
+              categoryById.get(idString(profile.categorieId))?.naam ??
               (typeof profile.mapping?.category === "string"
                 ? profile.mapping.category
                 : profile.mapping?.categoryFromSectionOrName
                   ? "Uit bron/sectie"
                   : "Onbekend"),
-            categoryId: profile.categoryId ? idString(profile.categoryId) : undefined,
-            sourceFileNamePattern: profile.filePattern,
-            sourceSheetNamePattern: profile.sheetPattern,
+            categoryId: profile.categorieId ? idString(profile.categorieId) : undefined,
+            sourceFileNamePattern: profile.bestandPatroon,
+            sourceSheetNamePattern: profile.bladPatroon,
             sourceColumnName: column.sourceColumnName,
-            sourceColumnIndex: column.sourceColumnIndex,
+            sourceColumnIndex: column.bronKolomIndex,
             detectedPriceType: column.detectedPriceType,
             detectedUnit: column.detectedUnit,
             currentVatMode,
@@ -290,14 +290,14 @@ export const vatMappingReview = query({
               column.sourceColumnIndex
             )?.reviewStatus,
             needsReview:
-              (currentVatMode === "unknown" && !(profile.allowUnknownVatMode ?? false)) ||
+              (currentVatMode === "unknown" && !(profile.staBtwModusOnbekendToe ?? false)) ||
               (suggestion.confidence === "high" &&
                 currentVatMode !== "unknown" &&
                 currentVatMode !== suggestion.suggestedVatMode),
-            allowUnknownVatMode: profile.allowUnknownVatMode ?? false,
+            allowUnknownVatMode: profile.staBtwModusOnbekendToe ?? false,
             reason: suggestion.reason,
             updatedByExternalUserId: profile.vatModeUpdatedByExternalUserId,
-            updatedAt: profile.vatModeUpdatedAt,
+            updatedAt: profile.btwModusGewijzigdOp,
             reviewedByExternalUserId: reviewForColumn(
               profile,
               column.sourceColumnName,
@@ -330,9 +330,9 @@ export const updateProfileVatMode = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     profileId: v.string(),
-    sourceColumnName: v.string(),
-    sourceColumnIndex: v.number(),
-    vatMode,
+    bronKolomNaam: v.string(),
+    bronKolomIndex: v.number(),
+    btwModus: vatMode,
     updatedByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -353,19 +353,19 @@ export const updateProfileVatMode = mutation({
       // Match op de stabiele kolomINDEX (de autoritatieve kolomsleutel). De vorige losse
       // OR op naam kon bij dubbele/hergebruikte kolomnamen de verkeerde btw-kolom
       // overschrijven; de index identificeert de kolom eenduidig.
-      const matches = sourceColumnIndex === args.sourceColumnIndex;
+      const matches = sourceColumnIndex === args.bronKolomIndex;
 
       return matches
         ? {
             ...column,
             header,
             sourceColumnIndex,
-            vatMode: args.vatMode
+            vatMode: args.btwModus
           }
         : column;
     };
-    const priceColumnMappings = Array.isArray(profile.priceColumnMappings)
-      ? profile.priceColumnMappings.map(updateColumn)
+    const priceColumnMappings = Array.isArray(profile.prijskolomMappings)
+      ? profile.prijskolomMappings.map(updateColumn)
       : [];
     const mapping = {
       ...(profile.mapping ?? {}),
@@ -378,14 +378,14 @@ export const updateProfileVatMode = mutation({
         : profile.mapping?.priceColumns
     };
     const vatModeByPriceColumn = {
-      ...(profile.vatModeByPriceColumn ?? {}),
-      [toAsciiFieldKey(args.sourceColumnName)]: args.vatMode
+      ...(profile.btwModusPerPrijskolom ?? {}),
+      [toAsciiFieldKey(args.bronKolomNaam)]: args.btwModus
     };
     const vatModeReview = {
-      ...(profile.vatModeReview ?? {}),
-      [toAsciiFieldKey(args.sourceColumnName)]: {
-        sourceColumnIndex: args.sourceColumnIndex,
-        vatMode: args.vatMode,
+      ...(profile.btwModusReview ?? {}),
+      [toAsciiFieldKey(args.bronKolomNaam)]: {
+        sourceColumnIndex: args.bronKolomIndex,
+        vatMode: args.btwModus,
         updatedByExternalUserId: externalUserId,
         updatedAt: now,
         reviewedByExternalUserId: externalUserId,
@@ -395,13 +395,13 @@ export const updateProfileVatMode = mutation({
     };
 
     await ctx.db.patch(profile._id, {
-      priceColumnMappings,
-      vatModeByPriceColumn,
+      prijskolomMappings: priceColumnMappings,
+      btwModusPerPrijskolom: vatModeByPriceColumn,
       mapping,
-      vatModeReview,
+      btwModusReview: vatModeReview,
       vatModeUpdatedByExternalUserId: externalUserId,
-      vatModeUpdatedAt: now,
-      updatedAt: now
+      btwModusGewijzigdOp: now,
+      gewijzigdOp: now
     });
 
     return profile._id;
@@ -415,11 +415,11 @@ export const bulkUpdateProfileVatModes = mutation({
     profileId: v.string(),
     columns: v.array(
       v.object({
-        sourceColumnName: v.string(),
-        sourceColumnIndex: v.number()
+        bronKolomNaam: v.string(),
+        bronKolomIndex: v.number()
       })
     ),
-    vatMode,
+    btwModus: vatMode,
     updatedByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -442,24 +442,24 @@ export const bulkUpdateProfileVatModes = mutation({
         ...column,
         header,
         sourceColumnIndex,
-        vatMode: args.vatMode
+        vatMode: args.btwModus
       };
     };
     const patched = patchSelectedColumns(profile, args.columns, patchColumn);
     const vatModeByPriceColumn = {
-      ...(profile.vatModeByPriceColumn ?? {})
+      ...(profile.btwModusPerPrijskolom ?? {})
     };
     const vatModeReview = {
-      ...(profile.vatModeReview ?? {})
+      ...(profile.btwModusReview ?? {})
     };
 
     for (const column of args.columns) {
-      const columnKey = toAsciiFieldKey(column.sourceColumnName);
-      vatModeByPriceColumn[columnKey] = args.vatMode;
+      const columnKey = toAsciiFieldKey(column.bronKolomNaam);
+      vatModeByPriceColumn[columnKey] = args.btwModus;
       vatModeReview[columnKey] = {
         ...(vatModeReview[columnKey] ?? {}),
-        sourceColumnIndex: column.sourceColumnIndex,
-        vatMode: args.vatMode,
+        sourceColumnIndex: column.bronKolomIndex,
+        vatMode: args.btwModus,
         updatedByExternalUserId: externalUserId,
         updatedAt: now,
         reviewedByExternalUserId: externalUserId,
@@ -469,13 +469,13 @@ export const bulkUpdateProfileVatModes = mutation({
     }
 
     await ctx.db.patch(profile._id, {
-      priceColumnMappings: patched.priceColumnMappings,
-      vatModeByPriceColumn,
+      prijskolomMappings: patched.priceColumnMappings,
+      btwModusPerPrijskolom: vatModeByPriceColumn,
       mapping: patched.mapping,
-      vatModeReview,
+      btwModusReview: vatModeReview,
       vatModeUpdatedByExternalUserId: externalUserId,
-      vatModeUpdatedAt: now,
-      updatedAt: now
+      btwModusGewijzigdOp: now,
+      gewijzigdOp: now
     });
 
     return {
@@ -492,8 +492,8 @@ export const markProfileVatColumnsReviewed = mutation({
     profileId: v.string(),
     columns: v.array(
       v.object({
-        sourceColumnName: v.string(),
-        sourceColumnIndex: v.number()
+        bronKolomNaam: v.string(),
+        bronKolomIndex: v.number()
       })
     ),
     reviewedByExternalUserId: v.optional(v.string())
@@ -510,19 +510,19 @@ export const markProfileVatColumnsReviewed = mutation({
 
     const now = Date.now();
     const vatModeReview = {
-      ...(profile.vatModeReview ?? {})
+      ...(profile.btwModusReview ?? {})
     };
 
     for (const column of args.columns) {
-      const columnKey = toAsciiFieldKey(column.sourceColumnName);
+      const columnKey = toAsciiFieldKey(column.bronKolomNaam);
       const currentVatMode =
-        profile.vatModeByPriceColumn?.[columnKey] ??
-        reviewForColumn(profile, column.sourceColumnName, column.sourceColumnIndex)?.vatMode ??
+        profile.btwModusPerPrijskolom?.[columnKey] ??
+        reviewForColumn(profile, column.bronKolomNaam, column.bronKolomIndex)?.vatMode ??
         "unknown";
 
       vatModeReview[columnKey] = {
         ...(vatModeReview[columnKey] ?? {}),
-        sourceColumnIndex: column.sourceColumnIndex,
+        sourceColumnIndex: column.bronKolomIndex,
         vatMode: currentVatMode,
         reviewedByExternalUserId: externalUserId,
         reviewedAt: now,
@@ -531,10 +531,10 @@ export const markProfileVatColumnsReviewed = mutation({
     }
 
     await ctx.db.patch(profile._id, {
-      vatModeReview,
+      btwModusReview: vatModeReview,
       vatModeUpdatedByExternalUserId: externalUserId,
-      vatModeUpdatedAt: now,
-      updatedAt: now
+      btwModusGewijzigdOp: now,
+      gewijzigdOp: now
     });
 
     return {
@@ -549,7 +549,7 @@ export const setProfileAllowUnknownVatMode = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     profileId: v.string(),
-    allowUnknownVatMode: v.boolean(),
+    staBtwModusOnbekendToe: v.boolean(),
     updatedByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -564,10 +564,10 @@ export const setProfileAllowUnknownVatMode = mutation({
 
     const now = Date.now();
     await ctx.db.patch(profile._id, {
-      allowUnknownVatMode: args.allowUnknownVatMode,
+      staBtwModusOnbekendToe: args.staBtwModusOnbekendToe,
       vatModeUpdatedByExternalUserId: externalUserId,
-      vatModeUpdatedAt: now,
-      updatedAt: now
+      btwModusGewijzigdOp: now,
+      gewijzigdOp: now
     });
 
     return profile._id;
@@ -594,9 +594,9 @@ export const duplicateEanReview = query({
     const supplierById = new Map(suppliers.map((supplier: any) => [idString(supplier._id), supplier]));
     const duplicateGroups = [];
 
-    for (const issue of issues.filter((item: any) => item.issueType === "duplicate_ean")) {
+    for (const issue of issues.filter((item: any) => item.kwestieSoort === "duplicate_ean")) {
       const metadata = issue.metadata ?? {};
-      const supplier = issue.supplierId ? supplierById.get(idString(issue.supplierId)) : undefined;
+      const supplier = issue.leverancierId ? supplierById.get(idString(issue.leverancierId)) : undefined;
       const productsFromMetadata = Array.isArray(metadata.products) ? metadata.products : [];
       const productRows =
         productsFromMetadata.length > 0
@@ -640,8 +640,8 @@ export const duplicateEanReview = query({
           : "Zelfde EAN komt voor bij verschillende artikelnummers/productnamen; EAN alleen als ondersteunend signaal gebruiken.";
 
       duplicateGroups.push({
-        supplierId: issue.supplierId ? idString(issue.supplierId) : undefined,
-        supplier: metadata.supplierName ?? supplier?.name ?? "Onbekend",
+        supplierId: issue.leverancierId ? idString(issue.leverancierId) : undefined,
+        supplier: metadata.supplierName ?? supplier?.naam ?? "Onbekend",
         ean: issue.ean ?? metadata.ean ?? "-",
         productIds: productRows.map((product: any) => product.productId),
         articleNumbers: productRows.map((product: any) => product.articleNumber).filter(Boolean),
@@ -654,12 +654,12 @@ export const duplicateEanReview = query({
         ),
         products: productRows,
         issueType: "duplicate_ean",
-        severity: issue?.severity ?? "warning",
+        severity: issue?.ernst ?? "warning",
         recommendation,
         reason,
         issueStatus: issue?.status ?? "open",
         issueId: idString(issue._id),
-        notes: issue?.notes,
+        notes: issue?.notities,
         reviewDecision: issue?.metadata?.reviewDecision,
         reviewedByExternalUserId: issue?.metadata?.reviewedByExternalUserId,
         reviewedAt: issue?.metadata?.reviewedAt
@@ -685,7 +685,7 @@ export const updateDuplicateEanIssueReview = mutation({
     actor: mutationActorValidator,
     issueId: v.string(),
     decision: duplicateEanDecision,
-    notes: v.optional(v.string()),
+    notities: v.optional(v.string()),
     reviewedByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -694,7 +694,7 @@ export const updateDuplicateEanIssueReview = mutation({
     ]);
     const issue: any = await ctx.db.get(args.issueId as any);
 
-    if (!issue || issue.tenantId !== tenant._id || issue.issueType !== "duplicate_ean") {
+    if (!issue || issue.tenantId !== tenant._id || issue.kwestieSoort !== "duplicate_ean") {
       throw new ConvexError("Duplicate EAN issue not found");
     }
 
@@ -708,14 +708,14 @@ export const updateDuplicateEanIssueReview = mutation({
 
     await ctx.db.patch(issue._id, {
       status,
-      notes: args.notes,
+      notities: args.notities,
       metadata: {
         ...(issue.metadata ?? {}),
         reviewDecision: args.decision,
         reviewedByExternalUserId: externalUserId,
         reviewedAt: now
       },
-      updatedAt: now
+      gewijzigdOp: now
     });
 
     return issue._id;
@@ -726,17 +726,17 @@ async function supplierByName(ctx: any, tenantId: any, supplierName: string) {
   return await ctx.db
     .query("suppliers")
     .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
-    .filter((q: any) => q.eq(q.field("name"), supplierName))
+    .filter((q: any) => q.eq(q.field("naam"), supplierName))
     .first();
 }
 
 async function productForDuplicateInput(ctx: any, tenantId: any, supplierId: any, product: any) {
-  const importKey = optionalText(product.importKey);
+  const importKey = optionalText(product.importSleutel);
 
   if (importKey) {
     const existing = await ctx.db
       .query("products")
-      .withIndex("by_import_key", (q: any) => q.eq("tenantId", tenantId).eq("importKey", importKey))
+      .withIndex("by_import_key", (q: any) => q.eq("tenantId", tenantId).eq("importSleutel", importKey))
       .first();
 
     if (existing) {
@@ -744,12 +744,12 @@ async function productForDuplicateInput(ctx: any, tenantId: any, supplierId: any
     }
   }
 
-  const articleNumber = optionalText(product.articleNumber);
+  const articleNumber = optionalText(product.artikelnummer);
   if (articleNumber) {
     return await ctx.db
       .query("products")
       .withIndex("by_article_number", (q: any) =>
-        q.eq("tenantId", tenantId).eq("supplierId", supplierId).eq("articleNumber", articleNumber)
+        q.eq("tenantId", tenantId).eq("leverancierId", supplierId).eq("artikelnummer", articleNumber)
       )
       .first();
   }
@@ -786,12 +786,12 @@ export const syncDuplicateEanIssues = mutation({
     let skipped = 0;
 
     for (const group of args.groups) {
-      if (!hasText(group.ean) || !hasText(group.supplierName) || group.products.length <= 1) {
+      if (!hasText(group.ean) || !hasText(group.leverancierNaam) || group.products.length <= 1) {
         skipped += 1;
         continue;
       }
 
-      const supplierName = group.supplierName.trim();
+      const supplierName = group.leverancierNaam.trim();
       let supplier = supplierCache.get(supplierName);
 
       if (supplier === undefined) {
@@ -814,12 +814,12 @@ export const syncDuplicateEanIssues = mutation({
 
         productRows.push(compactObject({
           productId: existingProduct._id,
-          articleNumber: optionalText(product.articleNumber ?? existingProduct.articleNumber),
-          supplierCode: optionalText(product.supplierCode ?? existingProduct.supplierCode),
-          productName: label(product.productName ?? existingProduct.name, "Onbekend product"),
-          sourceFileNames: uniqueTexts([product.sourceFileName]),
-          sourceSheetNames: uniqueTexts([product.sourceSheetName]),
-          sourceRowNumber: product.sourceRowNumber
+          articleNumber: optionalText(product.artikelnummer ?? existingProduct.artikelnummer),
+          supplierCode: optionalText(product.leverancierCode ?? existingProduct.leverancierCode),
+          productName: label(product.productNaam ?? existingProduct.naam, "Onbekend product"),
+          sourceFileNames: uniqueTexts([product.bronBestandsnaam]),
+          sourceSheetNames: uniqueTexts([product.bronBladNaam]),
+          sourceRowNumber: product.bronRijNummer
         }));
       }
 
@@ -862,7 +862,7 @@ export const syncDuplicateEanIssues = mutation({
       const existing = await ctx.db
         .query("catalogDataIssues")
         .withIndex("by_supplier_ean", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("supplierId", supplier._id).eq("ean", group.ean.trim())
+          q.eq("tenantId", tenant._id).eq("leverancierId", supplier._id).eq("ean", group.ean.trim())
         )
         .first();
 
@@ -874,21 +874,21 @@ export const syncDuplicateEanIssues = mutation({
             ...(existing.metadata ?? {}),
             ...metadata
           },
-          updatedAt: now
+          gewijzigdOp: now
         });
         updated += 1;
       } else {
         await ctx.db.insert("catalogDataIssues", {
           tenantId: tenant._id,
-          issueType: "duplicate_ean" as const,
-          severity: "warning" as const,
+          kwestieSoort: "duplicate_ean" as const,
+          ernst: "warning" as const,
           status: "open" as const,
-          supplierId: supplier._id,
+          leverancierId: supplier._id,
           ean: group.ean.trim(),
           productIds,
           metadata,
-          createdAt: now,
-          updatedAt: now
+          aangemaaktOp: now,
+          gewijzigdOp: now
         });
         created += 1;
       }
@@ -919,7 +919,7 @@ export const finalizeDuplicateEanIssueSync = mutation({
     let resolvedStale = 0;
     let active = 0;
 
-    for (const issue of issues.filter((item: any) => item.issueType === "duplicate_ean")) {
+    for (const issue of issues.filter((item: any) => item.kwestieSoort === "duplicate_ean")) {
       if (issue.metadata?.syncRunId === args.syncRunId) {
         active += 1;
         continue;
@@ -933,7 +933,7 @@ export const finalizeDuplicateEanIssueSync = mutation({
             staleAfterSyncRunId: args.syncRunId,
             staleResolvedAt: now
           },
-          updatedAt: now
+          gewijzigdOp: now
         });
         resolvedStale += 1;
       }
@@ -951,15 +951,15 @@ function summarizeBatchRun(rows: any[]) {
   return rows.reduce(
     (summary, batch) => ({
       sourceFiles: summary.sourceFiles + 1,
-      totalRows: summary.totalRows + (batch.totalRows ?? 0),
-      previewRows: summary.previewRows + (batch.previewRows ?? batch.totalRows ?? 0),
-      productRows: summary.productRows + (batch.productRows ?? 0),
-      priceRules: summary.priceRules + (batch.importedPrices ?? 0),
-      warningRows: summary.warningRows + (batch.warningRows ?? 0),
-      errorRows: summary.errorRows + (batch.errorRows ?? 0),
-      unknownVatModeRows: summary.unknownVatModeRows + (batch.unknownVatModeRows ?? 0),
-      startedAt: Math.min(summary.startedAt, batch.createdAt ?? Number.MAX_SAFE_INTEGER),
-      finishedAt: Math.max(summary.finishedAt, batch.committedAt ?? batch.updatedAt ?? 0)
+      totalRows: summary.totalRows + (batch.totaalRijen ?? 0),
+      previewRows: summary.previewRows + (batch.voorbeeldRijen ?? batch.totaalRijen ?? 0),
+      productRows: summary.productRows + (batch.productRijen ?? 0),
+      priceRules: summary.priceRules + (batch.geimporteerdePrijzen ?? 0),
+      warningRows: summary.warningRows + (batch.waarschuwingRijen ?? 0),
+      errorRows: summary.errorRows + (batch.foutRijen ?? 0),
+      unknownVatModeRows: summary.unknownVatModeRows + (batch.onbekendeBtwModusRijen ?? 0),
+      startedAt: Math.min(summary.startedAt, batch.aangemaaktOp ?? Number.MAX_SAFE_INTEGER),
+      finishedAt: Math.max(summary.finishedAt, batch.vastgelegdOp ?? batch.gewijzigdOp ?? 0)
     }),
     {
       sourceFiles: 0,
@@ -979,14 +979,14 @@ function summarizeBatchRun(rows: any[]) {
 function latestCompleteImportRun(batches: any[]) {
   const importedBatches = batches
     .filter((batch) => batch.status === "imported")
-    .sort((left, right) => (left.createdAt ?? 0) - (right.createdAt ?? 0));
+    .sort((left, right) => (left.aangemaaktOp ?? 0) - (right.aangemaaktOp ?? 0));
   const groups: any[][] = [];
 
   for (const batch of importedBatches) {
     const latestGroup = groups.at(-1);
     const latestBatch = latestGroup?.at(-1);
 
-    if (!latestGroup || (batch.createdAt ?? 0) - (latestBatch?.createdAt ?? 0) > 120000) {
+    if (!latestGroup || (batch.aangemaaktOp ?? 0) - (latestBatch?.aangemaaktOp ?? 0) > 120000) {
       groups.push([batch]);
     } else {
       latestGroup.push(batch);
@@ -1018,7 +1018,7 @@ export const productionReadiness = query({
       ctx.db
         .query("catalogDataIssues")
         .withIndex("by_type_status", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("issueType", "duplicate_ean").eq("status", "open")
+          q.eq("tenantId", tenant._id).eq("kwestieSoort", "duplicate_ean").eq("status", "open")
         )
         .collect(),
       ctx.db
@@ -1033,7 +1033,7 @@ export const productionReadiness = query({
           column.currentVatMode === "inclusive" || column.currentVatMode === "exclusive"
             ? column.currentVatMode
             : "unknown",
-        allowUnknownVatMode: profile.allowUnknownVatMode ?? false
+        allowUnknownVatMode: profile.staBtwModusOnbekendToe ?? false
       }))
     );
     const unresolvedVatMappings = rows.filter(

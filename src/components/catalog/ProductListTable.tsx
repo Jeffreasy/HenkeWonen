@@ -34,19 +34,19 @@ export function ProductListTable({
         header: "Product",
         render: (product) => (
           <>
-            <strong>{product.displayName ?? product.name}</strong>
+            <strong>{product.weergaveNaam ?? product.naam}</strong>
             <div className="muted">
               {[
-                product.articleNumber,
-                product.supplierCode,
-                product.commercialCode,
-                product.colorName
+                product.artikelnummer,
+                product.leverancierCode,
+                product.commercieleCode,
+                product.kleurnaam
               ]
                 .filter(Boolean)
                 .join(" · ") || "-"}
             </div>
-            {product.displayName && product.displayName !== product.name ? (
-              <small className="muted">Bron: {product.name}</small>
+            {product.weergaveNaam && product.weergaveNaam !== product.naam ? (
+              <small className="muted">Bron: {product.naam}</small>
             ) : null}
           </>
         )
@@ -78,8 +78,8 @@ export function ProductListTable({
           product.commercialNames?.length ? (
             <>
               {product.commercialNames.map((name) => (
-                <Badge variant="neutral" key={name.displayName} style={{ marginRight: 4 }}>
-                  {name.displayName}
+                <Badge variant="neutral" key={name.weergaveNaam} style={{ marginRight: 4 }}>
+                  {name.weergaveNaam}
                 </Badge>
               ))}
             </>
@@ -91,14 +91,14 @@ export function ProductListTable({
         key: "unit",
         header: "Eenheid",
         width: "90px",
-        render: (product) => formatUnit(product.unit)
+        render: (product) => formatUnit(product.eenheid)
       },
       {
         key: "price",
         header: "Prijs excl. btw",
         align: "right",
         width: "120px",
-        render: (product) => formatEuro(product.priceExVat)
+        render: (product) => formatEuro(product.prijsExBtw)
       },
       {
         key: "status",
@@ -169,9 +169,9 @@ export function ProductListTable({
         <div className="mobile-card-section">
           <div className="mobile-card-header">
             <div className="mobile-card-title">
-              <strong>{product.displayName ?? product.name}</strong>
+              <strong>{product.weergaveNaam ?? product.naam}</strong>
               <small className="muted">
-                {[product.articleNumber, product.supplierCode, product.colorName]
+                {[product.artikelnummer, product.leverancierCode, product.kleurnaam]
                   .filter(Boolean)
                   .join(" · ") || "-"}
               </small>
@@ -181,7 +181,7 @@ export function ProductListTable({
           <div className="mobile-card-meta">
             <span>{product.category}</span>
             <span>{product.displaySupplierName ?? product.supplier}</span>
-            <strong>{formatEuro(product.priceExVat)}</strong>
+            <strong>{formatEuro(product.prijsExBtw)}</strong>
           </div>
           {canManageProducts ? (
             <div className="mobile-card-actions">

@@ -60,7 +60,7 @@ export function batchStatusVariant(batch: ProductImportBatch): BadgeVariant {
     return "success";
   }
 
-  if (batch.unknownVatModeRows > 0) {
+  if (batch.onbekendeBtwModusRijen > 0) {
     return "warning";
   }
 
@@ -77,18 +77,18 @@ export function batchStatusVariant(batch: ProductImportBatch): BadgeVariant {
  */
 export function lifecycleText(batch: ProductImportBatch): string {
   if (batch.status === "archived") {
-    return batch.archivedAt ? `gearchiveerd ${dateText(batch.archivedAt)}` : "gearchiveerd";
+    return batch.gearchiveerdOp ? `gearchiveerd ${dateText(batch.gearchiveerdOp)}` : "gearchiveerd";
   }
 
-  if (batch.failedAt) {
-    return `mislukt ${dateText(batch.failedAt)}`;
+  if (batch.misluktOp) {
+    return `mislukt ${dateText(batch.misluktOp)}`;
   }
 
-  if (batch.committedAt) {
-    return `verwerkt ${dateText(batch.committedAt)}`;
+  if (batch.vastgelegdOp) {
+    return `verwerkt ${dateText(batch.vastgelegdOp)}`;
   }
 
-  return `aangemaakt ${dateText(batch.createdAt)}`;
+  return `aangemaakt ${dateText(batch.aangemaaktOp)}`;
 }
 
 // ─── VAT mapping helpers ───────────────────────────────────────────────────────
@@ -123,7 +123,7 @@ export function archiveActionFor(batch: ProductImportBatch) {
   return batch.status === "archived"
     ? {
         label: "Terugzetten",
-        nextStatus: batch.archivedFromStatus ?? ("uploaded" as ProductImportBatch["status"]),
+        nextStatus: batch.gearchiveerdVanafStatus ?? ("uploaded" as ProductImportBatch["status"]),
         icon: <RotateCcw size={16} aria-hidden="true" />,
         variant: "secondary" as const
       }

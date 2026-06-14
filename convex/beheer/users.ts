@@ -28,7 +28,7 @@ export const ensureUser = mutation({
     tenantId: v.id("tenants"),
     externalUserId: v.string(),
     email: v.string(),
-    name: v.optional(v.string()),
+    naam: v.optional(v.string()),
     role: roleValidator,
     workspaceMode: v.optional(workspaceModeValidator),
     syncToken: v.string()
@@ -55,10 +55,10 @@ export const ensureUser = mutation({
 
       await ctx.db.patch(existing._id, {
         email: args.email,
-        name: args.name,
+        naam: args.naam,
         role: args.role,
         ...(args.workspaceMode ? { workspaceMode: args.workspaceMode } : {}),
-        updatedAt: now
+        gewijzigdOp: now
       });
 
       return existing._id;
@@ -68,11 +68,11 @@ export const ensureUser = mutation({
       tenantId: args.tenantId,
       externalUserId: args.externalUserId,
       email: args.email,
-      name: args.name,
+      naam: args.naam,
       role: args.role,
       workspaceMode: args.workspaceMode ?? "general",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });

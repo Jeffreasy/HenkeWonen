@@ -64,9 +64,9 @@ export function ImportBatchesTable({
                 setSelectedBatchId(batch.id);
               }}
             >
-              {batch.fileName}
+              {batch.bestandsnaam}
             </a>
-            <small className="muted">{batch.supplierName}</small>
+            <small className="muted">{batch.leverancierNaam}</small>
             {batch.profileName ? <small className="muted">{batch.profileName}</small> : null}
           </div>
         )
@@ -92,9 +92,9 @@ export function ImportBatchesTable({
         width: "170px",
         render: (batch) => (
           <div className="import-count-stack">
-            <span>{numberText(batch.previewRows)} gecontroleerde regels</span>
-            <span>{numberText(batch.productRows)} productregels</span>
-            <span>{numberText(batch.importedPrices)} prijsregels</span>
+            <span>{numberText(batch.voorbeeldRijen)} gecontroleerde regels</span>
+            <span>{numberText(batch.productRijen)} productregels</span>
+            <span>{numberText(batch.geimporteerdePrijzen)} prijsregels</span>
           </div>
         )
       },
@@ -104,19 +104,19 @@ export function ImportBatchesTable({
         width: "190px",
         render: (batch) => (
           <div className="import-signal-stack">
-            <Badge variant={batch.errorRows > 0 || batch.status === "failed" ? "danger" : "success"}>
-              Fouten {numberText(batch.errorRows)}
+            <Badge variant={batch.foutRijen > 0 || batch.status === "failed" ? "danger" : "success"}>
+              Fouten {numberText(batch.foutRijen)}
             </Badge>
-            <Badge variant={batch.warningRows > 0 ? "warning" : "neutral"}>
-              Rijmeldingen {numberText(batch.warningRows)}
+            <Badge variant={batch.waarschuwingRijen > 0 ? "warning" : "neutral"}>
+              Rijmeldingen {numberText(batch.waarschuwingRijen)}
             </Badge>
-            <Badge variant={batch.duplicateSourceKeys > 0 ? "danger" : "success"}>
-              Dubbele regels {numberText(batch.duplicateSourceKeys)}
+            <Badge variant={batch.dubbeleBronSleutels > 0 ? "danger" : "success"}>
+              Dubbele regels {numberText(batch.dubbeleBronSleutels)}
             </Badge>
-            <Badge variant={batch.unknownVatModeRows > 0 ? "warning" : "success"}>
-              Btw onbekend {numberText(batch.unknownVatModeRows)}
+            <Badge variant={batch.onbekendeBtwModusRijen > 0 ? "warning" : "success"}>
+              Btw onbekend {numberText(batch.onbekendeBtwModusRijen)}
             </Badge>
-            {batch.errorMessage ? <small className="muted">{batch.errorMessage}</small> : null}
+            {batch.foutmelding ? <small className="muted">{batch.foutmelding}</small> : null}
           </div>
         )
       },
@@ -220,9 +220,9 @@ export function ImportBatchesTable({
                       setSelectedBatchId(batch.id);
                     }}
                   >
-                    <strong>{batch.fileName}</strong>
+                    <strong>{batch.bestandsnaam}</strong>
                   </a>
-                  <span className="muted">{batch.supplierName}</span>
+                  <span className="muted">{batch.leverancierNaam}</span>
                   {batch.profileName ? <span className="muted">{batch.profileName}</span> : null}
                 </div>
                 <StatusBadge
@@ -232,20 +232,20 @@ export function ImportBatchesTable({
                 />
               </div>
               <div className="mobile-card-meta">
-                <Badge variant="neutral">Regels {numberText(batch.previewRows)}</Badge>
-                <Badge variant="neutral">Producten {numberText(batch.productRows)}</Badge>
-                <Badge variant="neutral">Prijsregels {numberText(batch.importedPrices)}</Badge>
-                <Badge variant={batch.duplicateSourceKeys > 0 ? "danger" : "success"}>
-                  Dubbele regels {numberText(batch.duplicateSourceKeys)}
+                <Badge variant="neutral">Regels {numberText(batch.voorbeeldRijen)}</Badge>
+                <Badge variant="neutral">Producten {numberText(batch.productRijen)}</Badge>
+                <Badge variant="neutral">Prijsregels {numberText(batch.geimporteerdePrijzen)}</Badge>
+                <Badge variant={batch.dubbeleBronSleutels > 0 ? "danger" : "success"}>
+                  Dubbele regels {numberText(batch.dubbeleBronSleutels)}
                 </Badge>
-                <Badge variant={batch.unknownVatModeRows > 0 ? "warning" : "success"}>
-                  Btw onbekend {numberText(batch.unknownVatModeRows)}
+                <Badge variant={batch.onbekendeBtwModusRijen > 0 ? "warning" : "success"}>
+                  Btw onbekend {numberText(batch.onbekendeBtwModusRijen)}
                 </Badge>
               </div>
               <div className="mobile-card-section">
                 <p className="mobile-card-section-label">Statusmoment</p>
                 <span className="muted">{lifecycleText(batch)}</span>
-                {batch.errorMessage ? <span className="muted">{batch.errorMessage}</span> : null}
+                {batch.foutmelding ? <span className="muted">{batch.foutmelding}</span> : null}
               </div>
               <div className="mobile-card-actions">
                 <a

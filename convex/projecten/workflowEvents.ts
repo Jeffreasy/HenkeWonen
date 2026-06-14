@@ -53,9 +53,9 @@ export const create = mutation({
     actor: mutationActorValidator,
     projectId: v.id("projects"),
     type: workflowEventType,
-    title: v.string(),
-    description: v.optional(v.string()),
-    visibleToCustomer: v.boolean(),
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
+    zichtbaarVoorKlant: v.boolean(),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -75,11 +75,11 @@ export const create = mutation({
       tenantId: args.tenantId,
       projectId: args.projectId,
       type: args.type,
-      title: args.title,
-      description: args.description,
-      visibleToCustomer: args.visibleToCustomer,
+      titel: args.titel,
+      omschrijving: args.omschrijving,
+      zichtbaarVoorKlant: args.zichtbaarVoorKlant,
       createdByExternalUserId: externalUserId,
-      createdAt: Date.now()
+      aangemaaktOp: Date.now()
     });
   }
 });

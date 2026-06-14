@@ -68,7 +68,7 @@ async function requireMeasurement(ctx: any, tenantId: any, measurementId: any) {
 }
 
 async function touchMeasurement(ctx: any, measurementId: any, updatedAt = Date.now()) {
-  await ctx.db.patch(measurementId, { updatedAt });
+  await ctx.db.patch(measurementId, { gewijzigdOp: updatedAt });
 }
 
 /**
@@ -84,7 +84,7 @@ async function requireSelectableProduct(ctx: any, tenantId: any, productId: any)
 
   const category = product.categoryId ? await ctx.db.get(product.categoryId) : null;
 
-  if (pilotHiddenReason(product, category?.name)) {
+  if (pilotHiddenReason(product, category?.naam)) {
     throw new ConvexError("Dit product is in de pilot niet beschikbaar.");
   }
 
@@ -98,12 +98,12 @@ async function requireSelectableProduct(ctx: any, tenantId: any, productId: any)
 /** Optionele richtprijs-snapshotvelden op een meetregel. */
 const indicativeSnapshotArgs = {
   productId: v.optional(v.id("products")),
-  productName: v.optional(v.string()),
-  indicativeUnitPriceExVat: v.optional(v.number()),
-  indicativeVatRate: v.optional(v.number()),
-  indicativePriceUnit: v.optional(v.string()),
-  indicativePriceType: v.optional(v.string()),
-  indicativeCapturedAt: v.optional(v.number())
+  productNaam: v.optional(v.string()),
+  indicatieveEenheidsprijsExBtw: v.optional(v.number()),
+  indicatiefBtwTarief: v.optional(v.number()),
+  indicatievePrijsEenheid: v.optional(v.string()),
+  indicatievePrijsSoort: v.optional(v.string()),
+  indicatiefVastgelegdOp: v.optional(v.number())
 };
 
 async function getActiveWasteProfiles(ctx: any, tenantId: any, productGroupArg?: string) {
@@ -111,7 +111,7 @@ async function getActiveWasteProfiles(ctx: any, tenantId: any, productGroupArg?:
     return await ctx.db
       .query("wasteProfiles")
       .withIndex("by_product_group", (q: any) =>
-        q.eq("tenantId", tenantId).eq("productGroup", productGroupArg)
+        q.eq("tenantId", tenantId).eq("productGroep", productGroupArg)
       )
       .filter((q: any) => q.eq(q.field("status"), "active"))
       .collect();
@@ -163,20 +163,20 @@ export const getForProject = query({
     const rooms = await ctx.db
       .query("measurementRooms")
       .withIndex("by_measurement", (q) =>
-        q.eq("tenantId", args.tenantId).eq("measurementId", measurement._id)
+        q.eq("tenantId", args.tenantId).eq("inmetingId", measurement._id)
       )
       .collect();
     const lines = await ctx.db
       .query("measurementLines")
       .withIndex("by_measurement", (q) =>
-        q.eq("tenantId", args.tenantId).eq("measurementId", measurement._id)
+        q.eq("tenantId", args.tenantId).eq("inmetingId", measurement._id)
       )
       .collect();
 
     return {
       measurement,
       rooms: rooms.sort((left, right) => left.sortOrder - right.sortOrder),
-      lines: lines.sort((left, right) => left.createdAt - right.createdAt),
+      lines: lines.sort((left, right) => left.aangemaaktOp - right.aangemaaktOp),
       wasteProfiles
     };
   }
@@ -216,13 +216,13 @@ export const listReadyForQuoteByProject = query({
         ctx.db
           .query("measurementRooms")
           .withIndex("by_measurement", (q: any) =>
-            q.eq("tenantId", args.tenantId).eq("measurementId", measurement._id)
+            q.eq("tenantId", args.tenantId).eq("inmetingId", measurement._id)
           )
           .collect(),
         ctx.db
           .query("measurementLines")
           .withIndex("by_measurement", (q: any) =>
-            q.eq("tenantId", args.tenantId).eq("measurementId", measurement._id)
+            q.eq("tenantId", args.tenantId).eq("inmetingId", measurement._id)
           )
           .collect()
       ]);
@@ -233,7 +233,7 @@ export const listReadyForQuoteByProject = query({
           continue;
         }
 
-        const room = line.roomId ? roomsById.get(String(line.roomId)) : null;
+        const room = line.ruimteId ? roomsById.get(String(line.ruimteId)) : null;
 
         readyLines.push({
           line,
@@ -245,7 +245,7 @@ export const listReadyForQuoteByProject = query({
 
     return {
       measurement: latestMeasurement,
-      readyLines: readyLines.sort((left, right) => left.line.createdAt - right.line.createdAt)
+      readyLines: readyLines.sort((left, right) => left.line.aangemaaktOp - right.line.aangemaaktOp)
     };
   }
 });
@@ -255,10 +255,10 @@ export const createForProject = mutation({
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
     projectId: v.id("projects"),
-    customerId: v.id("customers"),
-    measurementDate: v.optional(v.number()),
-    measuredBy: v.optional(v.string()),
-    notes: v.optional(v.string()),
+    klantId: v.id("customers"),
+    inmeetdatum: v.optional(v.number()),
+    gemetenDoor: v.optional(v.string()),
+    notities: v.optional(v.string()),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -274,13 +274,13 @@ export const createForProject = mutation({
       throw new ConvexError("Project not found");
     }
 
-    const customer = await ctx.db.get(args.customerId);
+    const customer = await ctx.db.get(args.klantId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
       throw new ConvexError("Customer not found");
     }
 
-    if (project.customerId !== args.customerId) {
+    if (project.klantId !== args.klantId) {
       throw new ConvexError("Customer does not belong to project");
     }
 
@@ -296,22 +296,22 @@ export const createForProject = mutation({
     if (existing) {
       const patch: Record<string, unknown> = {};
 
-      if (hasArg(args, "measurementDate") && existing.measurementDate !== args.measurementDate) {
-        patch.measurementDate = args.measurementDate;
+      if (hasArg(args, "inmeetdatum") && existing.inmeetdatum !== args.inmeetdatum) {
+        patch.inmeetdatum = args.inmeetdatum;
       }
 
-      if (args.measuredBy && !existing.measuredBy) {
-        patch.measuredBy = args.measuredBy;
+      if (args.gemetenDoor && !existing.gemetenDoor) {
+        patch.gemetenDoor = args.gemetenDoor;
       }
 
-      if (hasArg(args, "notes") && args.notes && !existing.notes) {
-        patch.notes = args.notes;
+      if (hasArg(args, "notities") && args.notities && !existing.notities) {
+        patch.notities = args.notities;
       }
 
       if (Object.keys(patch).length > 0) {
         await ctx.db.patch(existing._id, {
           ...patch,
-          updatedAt: now
+          gewijzigdOp: now
         });
       }
 
@@ -321,14 +321,14 @@ export const createForProject = mutation({
     return await ctx.db.insert("measurements", {
       tenantId: args.tenantId,
       projectId: args.projectId,
-      customerId: args.customerId,
+      klantId: args.klantId,
       status: "draft",
-      measurementDate: args.measurementDate,
-      measuredBy: args.measuredBy,
-      notes: args.notes,
+      inmeetdatum: args.inmeetdatum,
+      gemetenDoor: args.gemetenDoor,
+      notities: args.notities,
       createdByExternalUserId: externalUserId,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -337,11 +337,11 @@ export const updateMeasurement = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    measurementId: v.id("measurements"),
+    inmetingId: v.id("measurements"),
     status: v.optional(measurementStatus),
-    measurementDate: v.optional(v.number()),
-    measuredBy: v.optional(v.string()),
-    notes: v.optional(v.string())
+    inmeetdatum: v.optional(v.number()),
+    gemetenDoor: v.optional(v.string()),
+    notities: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
@@ -349,31 +349,31 @@ export const updateMeasurement = mutation({
       "editor",
       "admin"
     ]);
-    await requireMeasurement(ctx, args.tenantId, args.measurementId);
+    await requireMeasurement(ctx, args.tenantId, args.inmetingId);
 
     const patch: Record<string, unknown> = {
-      updatedAt: Date.now()
+      gewijzigdOp: Date.now()
     };
 
     if (args.status !== undefined) {
       patch.status = args.status;
     }
 
-    if (hasArg(args, "measurementDate")) {
-      patch.measurementDate = args.measurementDate;
+    if (hasArg(args, "inmeetdatum")) {
+      patch.inmeetdatum = args.inmeetdatum;
     }
 
-    if (hasArg(args, "measuredBy")) {
-      patch.measuredBy = args.measuredBy;
+    if (hasArg(args, "gemetenDoor")) {
+      patch.gemetenDoor = args.gemetenDoor;
     }
 
-    if (hasArg(args, "notes")) {
-      patch.notes = args.notes;
+    if (hasArg(args, "notities")) {
+      patch.notities = args.notities;
     }
 
-    await ctx.db.patch(args.measurementId, patch);
+    await ctx.db.patch(args.inmetingId, patch);
 
-    return args.measurementId;
+    return args.inmetingId;
   }
 });
 
@@ -381,16 +381,16 @@ export const addMeasurementRoom = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    measurementId: v.id("measurements"),
-    projectRoomId: v.optional(v.id("projectRooms")),
-    name: v.string(),
-    floor: v.optional(v.string()),
-    widthM: v.optional(v.number()),
-    lengthM: v.optional(v.number()),
-    heightM: v.optional(v.number()),
-    areaM2: v.optional(v.number()),
-    perimeterM: v.optional(v.number()),
-    notes: v.optional(v.string()),
+    inmetingId: v.id("measurements"),
+    projectRuimteId: v.optional(v.id("projectRooms")),
+    naam: v.string(),
+    verdieping: v.optional(v.string()),
+    breedteM: v.optional(v.number()),
+    lengteM: v.optional(v.number()),
+    hoogteM: v.optional(v.number()),
+    oppervlakteM2: v.optional(v.number()),
+    omtrekM: v.optional(v.number()),
+    notities: v.optional(v.string()),
     sortOrder: v.optional(v.number())
   },
   handler: async (ctx, args) => {
@@ -399,10 +399,10 @@ export const addMeasurementRoom = mutation({
       "editor",
       "admin"
     ]);
-    const measurement = await requireMeasurement(ctx, args.tenantId, args.measurementId);
+    const measurement = await requireMeasurement(ctx, args.tenantId, args.inmetingId);
 
-    if (args.projectRoomId) {
-      const projectRoom = await ctx.db.get(args.projectRoomId);
+    if (args.projectRuimteId) {
+      const projectRoom = await ctx.db.get(args.projectRuimteId);
 
       if (
         !projectRoom ||
@@ -416,28 +416,28 @@ export const addMeasurementRoom = mutation({
     const rooms = await ctx.db
       .query("measurementRooms")
       .withIndex("by_measurement", (q) =>
-        q.eq("tenantId", args.tenantId).eq("measurementId", args.measurementId)
+        q.eq("tenantId", args.tenantId).eq("inmetingId", args.inmetingId)
       )
       .collect();
     const now = Date.now();
 
     const roomId = await ctx.db.insert("measurementRooms", {
       tenantId: args.tenantId,
-      measurementId: args.measurementId,
-      projectRoomId: args.projectRoomId,
-      name: args.name,
-      floor: args.floor,
-      widthM: args.widthM,
-      lengthM: args.lengthM,
-      heightM: args.heightM,
-      areaM2: args.areaM2,
-      perimeterM: args.perimeterM,
-      notes: args.notes,
+      inmetingId: args.inmetingId,
+      projectRuimteId: args.projectRuimteId,
+      naam: args.naam,
+      verdieping: args.verdieping,
+      breedteM: args.breedteM,
+      lengteM: args.lengteM,
+      hoogteM: args.hoogteM,
+      oppervlakteM2: args.oppervlakteM2,
+      omtrekM: args.omtrekM,
+      notities: args.notities,
       sortOrder: args.sortOrder ?? rooms.length + 1,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
-    await touchMeasurement(ctx, args.measurementId, now);
+    await touchMeasurement(ctx, args.inmetingId, now);
 
     return roomId;
   }
@@ -447,15 +447,15 @@ export const updateMeasurementRoom = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    roomId: v.id("measurementRooms"),
-    name: v.string(),
-    floor: v.optional(v.string()),
-    widthM: v.optional(v.number()),
-    lengthM: v.optional(v.number()),
-    heightM: v.optional(v.number()),
-    areaM2: v.optional(v.number()),
-    perimeterM: v.optional(v.number()),
-    notes: v.optional(v.string())
+    ruimteId: v.id("measurementRooms"),
+    naam: v.string(),
+    verdieping: v.optional(v.string()),
+    breedteM: v.optional(v.number()),
+    lengteM: v.optional(v.number()),
+    hoogteM: v.optional(v.number()),
+    oppervlakteM2: v.optional(v.number()),
+    omtrekM: v.optional(v.number()),
+    notities: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
@@ -463,31 +463,31 @@ export const updateMeasurementRoom = mutation({
       "editor",
       "admin"
     ]);
-    const room = await ctx.db.get(args.roomId);
+    const room = await ctx.db.get(args.ruimteId);
 
     if (!room || room.tenantId !== args.tenantId) {
       throw new ConvexError("Measurement room not found");
     }
 
-    const measurement = await requireMeasurement(ctx, args.tenantId, room.measurementId);
+    const measurement = await requireMeasurement(ctx, args.tenantId, room.inmetingId);
 
     const patch: Record<string, unknown> = {
-      name: args.name,
-      updatedAt: Date.now()
+      naam: args.naam,
+      gewijzigdOp: Date.now()
     };
 
-    if (hasArg(args, "floor")) patch.floor = args.floor;
-    if (hasArg(args, "widthM")) patch.widthM = args.widthM;
-    if (hasArg(args, "lengthM")) patch.lengthM = args.lengthM;
-    if (hasArg(args, "heightM")) patch.heightM = args.heightM;
-    if (hasArg(args, "areaM2")) patch.areaM2 = args.areaM2;
-    if (hasArg(args, "perimeterM")) patch.perimeterM = args.perimeterM;
-    if (hasArg(args, "notes")) patch.notes = args.notes;
+    if (hasArg(args, "verdieping")) patch.verdieping = args.verdieping;
+    if (hasArg(args, "breedteM")) patch.breedteM = args.breedteM;
+    if (hasArg(args, "lengteM")) patch.lengteM = args.lengteM;
+    if (hasArg(args, "hoogteM")) patch.hoogteM = args.hoogteM;
+    if (hasArg(args, "oppervlakteM2")) patch.oppervlakteM2 = args.oppervlakteM2;
+    if (hasArg(args, "omtrekM")) patch.omtrekM = args.omtrekM;
+    if (hasArg(args, "notities")) patch.notities = args.notities;
 
-    await ctx.db.patch(args.roomId, patch);
+    await ctx.db.patch(args.ruimteId, patch);
     await touchMeasurement(ctx, measurement._id);
 
-    return args.roomId;
+    return args.ruimteId;
   }
 });
 
@@ -495,7 +495,7 @@ export const deleteMeasurementRoom = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    roomId: v.id("measurementRooms")
+    ruimteId: v.id("measurementRooms")
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
@@ -503,7 +503,7 @@ export const deleteMeasurementRoom = mutation({
       "editor",
       "admin"
     ]);
-    const room = await ctx.db.get(args.roomId);
+    const room = await ctx.db.get(args.ruimteId);
 
     if (!room || room.tenantId !== args.tenantId) {
       throw new ConvexError("Measurement room not found");
@@ -511,7 +511,7 @@ export const deleteMeasurementRoom = mutation({
 
     const line = await ctx.db
       .query("measurementLines")
-      .withIndex("by_room", (q: any) => q.eq("tenantId", args.tenantId).eq("roomId", room._id))
+      .withIndex("by_room", (q: any) => q.eq("tenantId", args.tenantId).eq("ruimteId", room._id))
       .first();
 
     if (line) {
@@ -519,7 +519,7 @@ export const deleteMeasurementRoom = mutation({
     }
 
     await ctx.db.delete(room._id);
-    await touchMeasurement(ctx, room.measurementId);
+    await touchMeasurement(ctx, room.inmetingId);
 
     return room._id;
   }
@@ -529,17 +529,17 @@ export const addMeasurementLine = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    measurementId: v.id("measurements"),
-    roomId: v.optional(v.id("measurementRooms")),
-    productGroup,
-    calculationType,
-    input: v.any(),
-    result: v.any(),
-    wastePercent: v.optional(v.number()),
-    quantity: v.number(),
-    unit: v.string(),
-    notes: v.optional(v.string()),
-    quoteLineType,
+    inmetingId: v.id("measurements"),
+    ruimteId: v.optional(v.id("measurementRooms")),
+    productGroep: productGroup,
+    berekeningType: calculationType,
+    invoer: v.any(),
+    resultaat: v.any(),
+    snijverliesPct: v.optional(v.number()),
+    aantal: v.number(),
+    eenheid: v.string(),
+    notities: v.optional(v.string()),
+    offerteRegelType: quoteLineType,
     ...indicativeSnapshotArgs
   },
   handler: async (ctx, args) => {
@@ -548,15 +548,15 @@ export const addMeasurementLine = mutation({
       "editor",
       "admin"
     ]);
-    await requireMeasurement(ctx, args.tenantId, args.measurementId);
+    await requireMeasurement(ctx, args.tenantId, args.inmetingId);
 
-    if (args.roomId) {
-      const room = await ctx.db.get(args.roomId);
+    if (args.ruimteId) {
+      const room = await ctx.db.get(args.ruimteId);
 
       if (
         !room ||
         room.tenantId !== args.tenantId ||
-        room.measurementId !== args.measurementId
+        room.inmetingId !== args.inmetingId
       ) {
         throw new ConvexError("Measurement room not found");
       }
@@ -570,33 +570,33 @@ export const addMeasurementLine = mutation({
 
     // Richtprijs-snapshot bewaren bij een gekozen product óf bij een productloze richtprijs
     // (raambekleding-matrix: geen catalogusproduct, maar wél een indicatieve prijs).
-    const keepSnapshot = Boolean(args.productId) || args.indicativeUnitPriceExVat !== undefined;
+    const keepSnapshot = Boolean(args.productId) || args.indicatieveEenheidsprijsExBtw !== undefined;
 
     const lineId = await ctx.db.insert("measurementLines", {
       tenantId: args.tenantId,
-      measurementId: args.measurementId,
-      roomId: args.roomId,
-      productGroup: args.productGroup,
-      calculationType: args.calculationType,
-      input: args.input,
-      result: args.result,
-      wastePercent: args.wastePercent,
-      quantity: args.quantity,
-      unit: args.unit,
-      notes: args.notes,
-      quoteLineType: args.quoteLineType,
+      inmetingId: args.inmetingId,
+      ruimteId: args.ruimteId,
+      productGroep: args.productGroep,
+      berekeningType: args.berekeningType,
+      invoer: args.invoer,
+      resultaat: args.resultaat,
+      snijverliesPct: args.snijverliesPct,
+      aantal: args.aantal,
+      eenheid: args.eenheid,
+      notities: args.notities,
+      offerteRegelType: args.offerteRegelType,
       quotePreparationStatus: "draft",
       productId: args.productId,
-      productName: keepSnapshot ? args.productName : undefined,
-      indicativeUnitPriceExVat: keepSnapshot ? args.indicativeUnitPriceExVat : undefined,
-      indicativeVatRate: keepSnapshot ? args.indicativeVatRate : undefined,
-      indicativePriceUnit: keepSnapshot ? args.indicativePriceUnit : undefined,
-      indicativePriceType: keepSnapshot ? args.indicativePriceType : undefined,
-      indicativeCapturedAt: keepSnapshot ? args.indicativeCapturedAt ?? now : undefined,
-      createdAt: now,
-      updatedAt: now
+      productNaam: keepSnapshot ? args.productNaam : undefined,
+      indicatieveEenheidsprijsExBtw: keepSnapshot ? args.indicatieveEenheidsprijsExBtw : undefined,
+      indicatiefBtwTarief: keepSnapshot ? args.indicatiefBtwTarief : undefined,
+      indicatievePrijsEenheid: keepSnapshot ? args.indicatievePrijsEenheid : undefined,
+      indicatievePrijsSoort: keepSnapshot ? args.indicatievePrijsSoort : undefined,
+      indicatiefVastgelegdOp: keepSnapshot ? args.indicatiefVastgelegdOp ?? now : undefined,
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
-    await touchMeasurement(ctx, args.measurementId, now);
+    await touchMeasurement(ctx, args.inmetingId, now);
 
     return lineId;
   }
@@ -629,9 +629,9 @@ export const updateMeasurementLineStatus = mutation({
 
     await ctx.db.patch(args.lineId, {
       quotePreparationStatus: args.quotePreparationStatus,
-      updatedAt: now
+      gewijzigdOp: now
     });
-    await touchMeasurement(ctx, line.measurementId, now);
+    await touchMeasurement(ctx, line.inmetingId, now);
 
     return args.lineId;
   }
@@ -642,16 +642,16 @@ export const updateMeasurementLine = mutation({
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
     lineId: v.id("measurementLines"),
-    roomId: v.optional(v.id("measurementRooms")),
-    productGroup,
-    calculationType,
-    input: v.any(),
-    result: v.any(),
-    wastePercent: v.optional(v.number()),
-    quantity: v.number(),
-    unit: v.string(),
-    notes: v.optional(v.string()),
-    quoteLineType,
+    ruimteId: v.optional(v.id("measurementRooms")),
+    productGroep: productGroup,
+    berekeningType: calculationType,
+    invoer: v.any(),
+    resultaat: v.any(),
+    snijverliesPct: v.optional(v.number()),
+    aantal: v.number(),
+    eenheid: v.string(),
+    notities: v.optional(v.string()),
+    offerteRegelType: quoteLineType,
     quotePreparationStatus: v.optional(quotePreparationStatus),
     ...indicativeSnapshotArgs,
     /** Expliciet de productkeuze + snapshot wissen (undefined overleeft JSON niet). */
@@ -673,10 +673,10 @@ export const updateMeasurementLine = mutation({
       throw new ConvexError("Verwerkte meetregels kunnen niet direct worden aangepast.");
     }
 
-    if (args.roomId) {
-      const room = await ctx.db.get(args.roomId);
+    if (args.ruimteId) {
+      const room = await ctx.db.get(args.ruimteId);
 
-      if (!room || room.tenantId !== args.tenantId || room.measurementId !== line.measurementId) {
+      if (!room || room.tenantId !== args.tenantId || room.inmetingId !== line.inmetingId) {
         throw new ConvexError("Measurement room not found");
       }
     }
@@ -693,12 +693,12 @@ export const updateMeasurementLine = mutation({
     // Een productloze matrix-richtprijs (raambekleding) wordt herkend aan indicativePriceType "matrix".
     // De aanroeper mag zo'n snapshot opnieuw meesturen (her-prijzen bij gewijzigde maten) zónder product.
     const sendsMatrixSnapshot =
-      args.indicativePriceType === "matrix" && args.indicativeUnitPriceExVat !== undefined;
+      args.indicatievePrijsSoort === "matrix" && args.indicatieveEenheidsprijsExBtw !== undefined;
     const usesArgsSnapshot = touchesProduct || sendsMatrixSnapshot;
     const snapshotSource = usesArgsSnapshot ? args : line;
     const isMatrixSnapshot =
-      snapshotSource.indicativePriceType === "matrix" &&
-      snapshotSource.indicativeUnitPriceExVat !== undefined;
+      snapshotSource.indicatievePrijsSoort === "matrix" &&
+      snapshotSource.indicatieveEenheidsprijsExBtw !== undefined;
 
     // Behoud een prijssnapshot wanneer er een product is én de prijseenheid bij de (mogelijk
     // gewijzigde) meeteenheid past, OF wanneer het een productloze matrix-richtprijs is. Anders
@@ -706,38 +706,38 @@ export const updateMeasurementLine = mutation({
     const keepPriceSnapshot = Boolean(
       args.clearProduct !== true &&
         ((nextProductId &&
-          snapshotSource.indicativeUnitPriceExVat !== undefined &&
-          (touchesProduct || isUnitCompatible(args.unit, snapshotSource.indicativePriceUnit))) ||
+          snapshotSource.indicatieveEenheidsprijsExBtw !== undefined &&
+          (touchesProduct || isUnitCompatible(args.eenheid, snapshotSource.indicatievePrijsEenheid))) ||
           (!nextProductId && isMatrixSnapshot))
     );
     const keepProductName = args.clearProduct !== true && (Boolean(nextProductId) || isMatrixSnapshot);
 
     await ctx.db.patch(line._id, {
-      roomId: args.roomId,
-      productGroup: args.productGroup,
-      calculationType: args.calculationType,
-      input: args.input,
-      result: args.result,
-      wastePercent: args.wastePercent,
-      quantity: args.quantity,
-      unit: args.unit,
-      notes: args.notes,
-      quoteLineType: args.quoteLineType,
+      ruimteId: args.ruimteId,
+      productGroep: args.productGroep,
+      berekeningType: args.berekeningType,
+      invoer: args.invoer,
+      resultaat: args.resultaat,
+      snijverliesPct: args.snijverliesPct,
+      aantal: args.aantal,
+      eenheid: args.eenheid,
+      notities: args.notities,
+      offerteRegelType: args.offerteRegelType,
       quotePreparationStatus: args.quotePreparationStatus ?? line.quotePreparationStatus,
       productId: nextProductId,
-      productName: keepProductName ? snapshotSource.productName : undefined,
-      indicativeUnitPriceExVat: keepPriceSnapshot ? snapshotSource.indicativeUnitPriceExVat : undefined,
-      indicativeVatRate: keepPriceSnapshot ? snapshotSource.indicativeVatRate : undefined,
-      indicativePriceUnit: keepPriceSnapshot ? snapshotSource.indicativePriceUnit : undefined,
-      indicativePriceType: keepPriceSnapshot ? snapshotSource.indicativePriceType : undefined,
-      indicativeCapturedAt: keepPriceSnapshot
+      productNaam: keepProductName ? snapshotSource.productNaam : undefined,
+      indicatieveEenheidsprijsExBtw: keepPriceSnapshot ? snapshotSource.indicatieveEenheidsprijsExBtw : undefined,
+      indicatiefBtwTarief: keepPriceSnapshot ? snapshotSource.indicatiefBtwTarief : undefined,
+      indicatievePrijsEenheid: keepPriceSnapshot ? snapshotSource.indicatievePrijsEenheid : undefined,
+      indicatievePrijsSoort: keepPriceSnapshot ? snapshotSource.indicatievePrijsSoort : undefined,
+      indicatiefVastgelegdOp: keepPriceSnapshot
         ? usesArgsSnapshot
-          ? args.indicativeCapturedAt ?? Date.now()
-          : line.indicativeCapturedAt
+          ? args.indicatiefVastgelegdOp ?? Date.now()
+          : line.indicatiefVastgelegdOp
         : undefined,
-      updatedAt: Date.now()
+      gewijzigdOp: Date.now()
     });
-    await touchMeasurement(ctx, line.measurementId);
+    await touchMeasurement(ctx, line.inmetingId);
 
     return line._id;
   }
@@ -763,14 +763,14 @@ export const deleteMeasurementLine = mutation({
 
     if (
       line.quotePreparationStatus === "converted" ||
-      line.convertedQuoteId ||
-      line.convertedQuoteLineId
+      line.geconverteerdeOfferteId ||
+      line.geconverteerdeOfferteregelId
     ) {
       throw new ConvexError("Verwerkte meetregels kunnen niet direct worden verwijderd.");
     }
 
     await ctx.db.delete(line._id);
-    await touchMeasurement(ctx, line.measurementId);
+    await touchMeasurement(ctx, line.inmetingId);
 
     return line._id;
   }
@@ -800,7 +800,7 @@ export const markMeasurementLineConverted = mutation({
       throw new ConvexError("Measurement line is not ready for quote");
     }
 
-    const measurement = await ctx.db.get(line.measurementId);
+    const measurement = await ctx.db.get(line.inmetingId);
 
     if (!measurement || measurement.tenantId !== args.tenantId) {
       throw new ConvexError("Measurement not found");
@@ -826,11 +826,11 @@ export const markMeasurementLineConverted = mutation({
 
     await ctx.db.patch(args.lineId, {
       quotePreparationStatus: "converted",
-      convertedQuoteId: args.quoteId,
-      convertedQuoteLineId: args.quoteLineId,
-      updatedAt: now
+      geconverteerdeOfferteId: args.quoteId,
+      geconverteerdeOfferteregelId: args.quoteLineId,
+      gewijzigdOp: now
     });
-    await touchMeasurement(ctx, line.measurementId, now);
+    await touchMeasurement(ctx, line.inmetingId, now);
 
     return args.lineId;
   }
@@ -840,7 +840,7 @@ export const listWasteProfiles = query({
   args: {
     tenantId: v.id("tenants"),
     actor: readActorValidator,
-    productGroup: v.optional(productGroup)
+    productGroep: v.optional(productGroup)
   },
   handler: async (ctx, args) => {
     await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, [
@@ -850,7 +850,7 @@ export const listWasteProfiles = query({
       "admin"
     ]);
 
-    return await getActiveWasteProfiles(ctx, args.tenantId, args.productGroup);
+    return await getActiveWasteProfiles(ctx, args.tenantId, args.productGroep);
   }
 });
 
@@ -922,37 +922,37 @@ export const seedDefaultWasteProfiles = mutation({
       const existing = await ctx.db
         .query("wasteProfiles")
         .withIndex("by_product_group", (q) =>
-          q.eq("tenantId", args.tenantId).eq("productGroup", profile.productGroup)
+          q.eq("tenantId", args.tenantId).eq("productGroep", profile.productGroup)
         )
-        .filter((q) => q.eq(q.field("name"), profile.name))
+        .filter((q) => q.eq(q.field("naam"), profile.name))
         .first();
 
       if (!existing) {
         await ctx.db.insert("wasteProfiles", {
           tenantId: args.tenantId,
-          productGroup: profile.productGroup,
-          name: profile.name,
-          defaultWastePercent: profile.defaultWastePercent,
-          description: profile.description,
+          productGroep: profile.productGroup,
+          naam: profile.name,
+          standaardSnijverliesPct: profile.defaultWastePercent,
+          omschrijving: profile.description,
           status: "active",
-          createdAt: now,
-          updatedAt: now
+          aangemaaktOp: now,
+          gewijzigdOp: now
         });
         results.inserted += 1;
         continue;
       }
 
       const needsUpdate =
-        existing.defaultWastePercent !== profile.defaultWastePercent ||
-        existing.description !== profile.description ||
+        existing.standaardSnijverliesPct !== profile.defaultWastePercent ||
+        existing.omschrijving !== profile.description ||
         existing.status !== "active";
 
       if (needsUpdate) {
         await ctx.db.patch(existing._id, {
-          defaultWastePercent: profile.defaultWastePercent,
-          description: profile.description,
+          standaardSnijverliesPct: profile.defaultWastePercent,
+          omschrijving: profile.description,
           status: "active",
-          updatedAt: now
+          gewijzigdOp: now
         });
         results.updated += 1;
       } else {

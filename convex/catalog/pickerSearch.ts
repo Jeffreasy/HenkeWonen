@@ -72,13 +72,13 @@ function matchesHaystack(
   search: string
 ) {
   const haystack = [
-    product.name,
+    product.naam,
     displayProductName(product, categoryName, supplierName),
-    product.articleNumber,
-    product.supplierCode,
-    product.commercialCode,
+    product.artikelnummer,
+    product.leverancierCode,
+    product.commercieleCode,
     product.ean,
-    product.colorName,
+    product.kleurnaam,
     supplierName,
     displaySupplierName(supplierName),
     categoryName
@@ -94,7 +94,7 @@ export const searchPickerProducts = query({
   args: {
     tenantSlug: v.string(),
     actor: readActorValidator,
-    productGroup: v.optional(measurementProductGroup),
+    productGroep: v.optional(measurementProductGroup),
     search: v.optional(v.string()),
     limit: v.optional(v.number())
   },
@@ -122,12 +122,12 @@ export const searchPickerProducts = query({
     const supplierById = new Map(suppliers.map((supplier) => [String(supplier._id), supplier]));
 
     const allowedCategoryNames =
-      args.productGroup && PRODUCT_GROUP_CATEGORIES[args.productGroup]?.length
-        ? PRODUCT_GROUP_CATEGORIES[args.productGroup]
+      args.productGroep && PRODUCT_GROUP_CATEGORIES[args.productGroep]?.length
+        ? PRODUCT_GROUP_CATEGORIES[args.productGroep]
         : null;
     const allowedCategoryIds = allowedCategoryNames
       ? categories
-          .filter((category) => allowedCategoryNames.includes(category.name))
+          .filter((category) => allowedCategoryNames.includes(category.naam))
           .map((category) => category._id)
       : null;
 
@@ -142,12 +142,12 @@ export const searchPickerProducts = query({
         return;
       }
 
-      const category = categoryById.get(String(product.categoryId));
-      const categoryName = category?.name ?? "Overig";
+      const category = categoryById.get(String(product.categorieId));
+      const categoryName = category?.naam ?? "Overig";
 
       if (
         allowedCategoryIds &&
-        !allowedCategoryIds.some((id) => String(id) === String(product.categoryId))
+        !allowedCategoryIds.some((id) => String(id) === String(product.categorieId))
       ) {
         return;
       }
@@ -156,8 +156,8 @@ export const searchPickerProducts = query({
         return;
       }
 
-      const supplierName = product.supplierId
-        ? supplierById.get(String(product.supplierId))?.name ?? ""
+      const supplierName = product.leverancierId
+        ? supplierById.get(String(product.leverancierId))?.naam ?? ""
         : "";
 
       if (search && !matchesHaystack(product, categoryName, supplierName, search)) {
@@ -172,7 +172,7 @@ export const searchPickerProducts = query({
       const byName = await ctx.db
         .query("products")
         .withSearchIndex("search_products", (q) =>
-          q.search("name", search).eq("tenantId", tenant._id)
+          q.search("naam", search).eq("tenantId", tenant._id)
         )
         .take(SEARCH_INDEX_TAKE);
 
@@ -191,7 +191,7 @@ export const searchPickerProducts = query({
           const page = await ctx.db
             .query("products")
             .withIndex("by_category_status", (q) =>
-              q.eq("tenantId", tenant._id).eq("categoryId", categoryId).eq("status", "active")
+              q.eq("tenantId", tenant._id).eq("categorieId", categoryId).eq("status", "active")
             )
             .take(CATEGORY_SCAN_TAKE);
 
@@ -210,7 +210,7 @@ export const searchPickerProducts = query({
         const page = await ctx.db
           .query("products")
           .withIndex("by_category_status", (q) =>
-            q.eq("tenantId", tenant._id).eq("categoryId", categoryId).eq("status", "active")
+            q.eq("tenantId", tenant._id).eq("categorieId", categoryId).eq("status", "active")
           )
           .take(limit);
 
@@ -233,9 +233,9 @@ export const searchPickerProducts = query({
     const now = Date.now();
     const selected = [...candidates.values()]
       .sort((left, right) => {
-        const leftCategory = categoryById.get(String(left.categoryId))?.name ?? "";
-        const rightCategory = categoryById.get(String(right.categoryId))?.name ?? "";
-        return `${leftCategory} ${left.name}`.localeCompare(`${rightCategory} ${right.name}`, "nl");
+        const leftCategory = categoryById.get(String(left.categorieId))?.naam ?? "";
+        const rightCategory = categoryById.get(String(right.categorieId))?.naam ?? "";
+        return `${leftCategory} ${left.naam}`.localeCompare(`${rightCategory} ${right.naam}`, "nl");
       })
       .slice(0, limit);
 
@@ -250,20 +250,20 @@ export const searchPickerProducts = query({
         const preferredPrice = selectCustomerFacingPrice(
           prices.map((price) => ({
             id: String(price._id),
-            priceType: price.priceType,
-            priceUnit: price.priceUnit,
-            amount: price.amount,
-            vatRate: price.vatRate,
-            vatMode: price.vatMode,
-            validFrom: price.validFrom,
-            updatedAt: price.updatedAt,
+            priceType: price.prijsSoort,
+            priceUnit: price.prijsEenheid,
+            amount: price.bedrag,
+            vatRate: price.btwTarief,
+            vatMode: price.btwModus,
+            validFrom: price.geldigVanaf,
+            updatedAt: price.gewijzigdOp,
             creationTime: price._creationTime
           })),
           now
         );
-        const categoryName = categoryById.get(String(product.categoryId))?.name ?? "Overig";
-        const supplierName = product.supplierId
-          ? supplierById.get(String(product.supplierId))?.name ?? "Onbekend"
+        const categoryName = categoryById.get(String(product.categorieId))?.naam ?? "Overig";
+        const supplierName = product.leverancierId
+          ? supplierById.get(String(product.leverancierId))?.naam ?? "Onbekend"
           : "Onbekend";
 
         return {
@@ -272,25 +272,25 @@ export const searchPickerProducts = query({
           category: categoryName,
           supplier: supplierName,
           displaySupplierName: displaySupplierName(supplierName),
-          articleNumber: product.articleNumber,
-          supplierCode: product.supplierCode,
-          commercialCode: product.commercialCode,
-          supplierProductGroup: product.supplierProductGroup,
-          name: product.name,
-          displayName: cleanProductDisplayName(product, categoryName, supplierName),
-          colorName: product.colorName,
-          productKind: product.productKind,
+          artikelnummer: product.artikelnummer,
+          leverancierCode: product.leverancierCode,
+          commercieleCode: product.commercieleCode,
+          leverancierProductGroep: product.leverancierProductGroep,
+          naam: product.naam,
+          weergaveNaam: cleanProductDisplayName(product, categoryName, supplierName),
+          kleurnaam: product.kleurnaam,
+          productSoort: product.productSoort,
           commercialNames: visibleCommercialNames(product, categoryName),
-          unit: product.unit,
-          packageContentM2: product.packageContentM2,
-          piecesPerPackage: product.piecesPerPackage,
-          packagesPerPallet: product.packagesPerPallet,
-          palletQuantity: product.palletQuantity,
-          trailerQuantity: product.trailerQuantity,
-          bundleSize: product.bundleSize,
-          priceExVat: preferredPrice?.unitPriceExVat ?? 0,
-          priceUnit: preferredPrice?.priceUnit,
-          vatRate: preferredPrice?.vatRate ?? 21,
+          eenheid: product.eenheid,
+          pakinhoudM2: product.pakinhoudM2,
+          stuksPerPak: product.stuksPerPak,
+          pakkenPerPallet: product.pakkenPerPallet,
+          palletAantal: product.palletAantal,
+          vrachtwagenAantal: product.vrachtwagenAantal,
+          bundelGrootte: product.bundelGrootte,
+          prijsExBtw: preferredPrice?.unitPriceExVat ?? 0,
+          prijsEenheid: preferredPrice?.priceUnit,
+          btwTarief: preferredPrice?.vatRate ?? 21,
           status: normalizedStatus(product.status)
         };
       })

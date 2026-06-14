@@ -128,16 +128,16 @@ export const listProducts = query({
     tenantId: v.id("tenants"),
     actor: readActorValidator,
     status: v.optional(productStatus),
-    categoryId: v.optional(v.id("categories"))
+    categorieId: v.optional(v.id("categories"))
   },
   handler: async (ctx, args) => {
     await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
 
-    if (args.categoryId) {
+    if (args.categorieId) {
       return await ctx.db
         .query("products")
         .withIndex("by_category", (q) =>
-          q.eq("tenantId", args.tenantId).eq("categoryId", args.categoryId!)
+          q.eq("tenantId", args.tenantId).eq("categorieId", args.categorieId!)
         )
         .collect();
     }
@@ -276,17 +276,17 @@ function productMatchesPortalFilters({
   const customerName = displayProductName(product, categoryName, supplierName);
   const customerSupplierName = displaySupplierName(supplierName);
   const labels = visibleCommercialNames(product, categoryName)
-    ?.map((name) => name.displayName)
+    ?.map((name) => name.weergaveNaam)
     .join(" ");
   const haystack = [
-    product.name,
+    product.naam,
     customerName,
-    product.articleNumber,
-    product.supplierCode,
-    product.commercialCode,
-    product.supplierProductGroup,
+    product.artikelnummer,
+    product.leverancierCode,
+    product.commercieleCode,
+    product.leverancierProductGroep,
     product.ean,
-    product.colorName,
+    product.kleurnaam,
     supplierName,
     customerSupplierName,
     categoryName,
@@ -332,7 +332,7 @@ export const listCategoryStats = query({
       const products = await ctx.db
         .query("products")
         .withIndex("by_category_status", (q) =>
-          q.eq("tenantId", tenant._id).eq("categoryId", category._id).eq("status", requestedStatus)
+          q.eq("tenantId", tenant._id).eq("categorieId", category._id).eq("status", requestedStatus)
         )
         .take(CATEGORY_STAT_COUNT_LIMIT + 1);
       const categoryTruncated = products.length > CATEGORY_STAT_COUNT_LIMIT;
@@ -344,7 +344,7 @@ export const listCategoryStats = query({
       }
 
       if (count > 0) {
-        counts.set(category.name, { count, truncated: categoryTruncated });
+        counts.set(category.naam, { count, truncated: categoryTruncated });
       }
     }
 
@@ -395,7 +395,7 @@ export const listProductsForPortal = query({
     // Bepaal categoriefilter vóór het laden van producten
     const categoryFilter = args.category && args.category !== "Alle" ? args.category : "";
     const targetCategory = categoryFilter
-      ? categories.find((c) => c.name === categoryFilter) ?? null
+      ? categories.find((c) => c.naam === categoryFilter) ?? null
       : null;
     const pageSize = Math.min(Math.max(args.limit ?? 300, 25), 500);
     const limit = pageSize;
@@ -432,7 +432,7 @@ export const listProductsForPortal = query({
       ? await ctx.db
           .query("products")
           .withIndex("by_category_status", (q) =>
-            q.eq("tenantId", tenant._id).eq("categoryId", targetCategory._id).eq("status", requestedStatus)
+            q.eq("tenantId", tenant._id).eq("categorieId", targetCategory._id).eq("status", requestedStatus)
           )
           .paginate({ numItems: pageSize, cursor })
       : await ctx.db
@@ -446,9 +446,9 @@ export const listProductsForPortal = query({
     const continueCursor = paginated.continueCursor;
 
     for (const product of paginated.page) {
-      const categoryName = categoryById.get(String(product.categoryId))?.name ?? "Overig";
-      const supplierName = product.supplierId
-        ? supplierById.get(String(product.supplierId))?.name ?? ""
+      const categoryName = categoryById.get(String(product.categorieId))?.naam ?? "Overig";
+      const supplierName = product.leverancierId
+        ? supplierById.get(String(product.leverancierId))?.naam ?? ""
         : "";
 
       if (
@@ -471,9 +471,9 @@ export const listProductsForPortal = query({
       }
     }
     selected.sort((left, right) => {
-      const leftCategory = categoryById.get(String(left.categoryId))?.name ?? "";
-      const rightCategory = categoryById.get(String(right.categoryId))?.name ?? "";
-      return `${leftCategory} ${left.name}`.localeCompare(`${rightCategory} ${right.name}`, "nl");
+      const leftCategory = categoryById.get(String(left.categorieId))?.naam ?? "";
+      const rightCategory = categoryById.get(String(right.categorieId))?.naam ?? "";
+      return `${leftCategory} ${left.naam}`.localeCompare(`${rightCategory} ${right.naam}`, "nl");
     });
 
     const now = Date.now();
@@ -488,20 +488,20 @@ export const listProductsForPortal = query({
         const preferredPrice = selectCustomerFacingPrice(
           prices.map((price) => ({
             id: String(price._id),
-            priceType: price.priceType,
-            priceUnit: price.priceUnit,
-            amount: price.amount,
-            vatRate: price.vatRate,
-            vatMode: price.vatMode,
-            validFrom: price.validFrom,
-            updatedAt: price.updatedAt,
+            priceType: price.prijsSoort,
+            priceUnit: price.prijsEenheid,
+            amount: price.bedrag,
+            vatRate: price.btwTarief,
+            vatMode: price.btwModus,
+            validFrom: price.geldigVanaf,
+            updatedAt: price.gewijzigdOp,
             creationTime: price._creationTime
           })),
           now
         );
-        const categoryName = categoryById.get(String(product.categoryId))?.name ?? "Overig";
-        const supplierName = product.supplierId
-          ? supplierById.get(String(product.supplierId))?.name ?? "Onbekend"
+        const categoryName = categoryById.get(String(product.categorieId))?.naam ?? "Overig";
+        const supplierName = product.leverancierId
+          ? supplierById.get(String(product.leverancierId))?.naam ?? "Onbekend"
           : "Onbekend";
         const hiddenReason = pilotHiddenReason(product, categoryName);
 
@@ -511,24 +511,24 @@ export const listProductsForPortal = query({
           category: categoryName,
           supplier: supplierName,
           displaySupplierName: displaySupplierName(supplierName),
-          articleNumber: product.articleNumber,
-          supplierCode: product.supplierCode,
-          commercialCode: product.commercialCode,
-          supplierProductGroup: product.supplierProductGroup,
-          name: product.name,
-          displayName: cleanProductDisplayName(product, categoryName, supplierName),
-          colorName: product.colorName,
-          productKind: product.productKind,
+          artikelnummer: product.artikelnummer,
+          leverancierCode: product.leverancierCode,
+          commercieleCode: product.commercieleCode,
+          leverancierProductGroep: product.leverancierProductGroep,
+          naam: product.naam,
+          weergaveNaam: cleanProductDisplayName(product, categoryName, supplierName),
+          kleurnaam: product.kleurnaam,
+          productSoort: product.productSoort,
           commercialNames: visibleCommercialNames(product, categoryName),
-          unit: product.unit,
-          packageContentM2: product.packageContentM2,
-          piecesPerPackage: product.piecesPerPackage,
-          packagesPerPallet: product.packagesPerPallet,
-          palletQuantity: product.palletQuantity,
-          trailerQuantity: product.trailerQuantity,
-          bundleSize: product.bundleSize,
-          priceExVat: preferredPrice?.unitPriceExVat ?? 0,
-          vatRate: preferredPrice?.vatRate ?? 21,
+          eenheid: product.eenheid,
+          pakinhoudM2: product.pakinhoudM2,
+          stuksPerPak: product.stuksPerPak,
+          pakkenPerPallet: product.pakkenPerPallet,
+          palletAantal: product.palletAantal,
+          vrachtwagenAantal: product.vrachtwagenAantal,
+          bundelGrootte: product.bundelGrootte,
+          prijsExBtw: preferredPrice?.unitPriceExVat ?? 0,
+          btwTarief: preferredPrice?.vatRate ?? 21,
           pilotHiddenReason: args.includePilotHidden ? hiddenReason : undefined,
           status: normalizedProductStatus(product.status)
         };
@@ -553,14 +553,14 @@ export const updateProductForPortal = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     productId: v.string(),
-    name: v.string(),
-    articleNumber: v.optional(v.string()),
-    supplierCode: v.optional(v.string()),
-    commercialCode: v.optional(v.string()),
-    colorName: v.optional(v.string()),
-    supplierProductGroup: v.optional(v.string()),
-    packageContentM2: v.optional(v.number()),
-    piecesPerPackage: v.optional(v.number()),
+    naam: v.string(),
+    artikelnummer: v.optional(v.string()),
+    leverancierCode: v.optional(v.string()),
+    commercieleCode: v.optional(v.string()),
+    kleurnaam: v.optional(v.string()),
+    leverancierProductGroep: v.optional(v.string()),
+    pakinhoudM2: v.optional(v.number()),
+    stuksPerPak: v.optional(v.number()),
     status: productStatus
   },
   handler: async (ctx, args) => {
@@ -572,20 +572,20 @@ export const updateProductForPortal = mutation({
     }
 
     const patch: Partial<Doc<"products">> = {
-      name: args.name,
+      naam: args.naam,
       status: args.status,
-      updatedAt: Date.now()
+      gewijzigdOp: Date.now()
     };
 
-    if (hasArg(args, "articleNumber")) patch.articleNumber = args.articleNumber;
-    if (hasArg(args, "supplierCode")) patch.supplierCode = args.supplierCode;
-    if (hasArg(args, "commercialCode")) patch.commercialCode = args.commercialCode;
-    if (hasArg(args, "colorName")) patch.colorName = args.colorName;
-    if (hasArg(args, "supplierProductGroup")) {
-      patch.supplierProductGroup = args.supplierProductGroup;
+    if (hasArg(args, "artikelnummer")) patch.artikelnummer = args.artikelnummer;
+    if (hasArg(args, "leverancierCode")) patch.leverancierCode = args.leverancierCode;
+    if (hasArg(args, "commercieleCode")) patch.commercieleCode = args.commercieleCode;
+    if (hasArg(args, "kleurnaam")) patch.kleurnaam = args.kleurnaam;
+    if (hasArg(args, "leverancierProductGroep")) {
+      patch.leverancierProductGroep = args.leverancierProductGroep;
     }
-    if (hasArg(args, "packageContentM2")) patch.packageContentM2 = args.packageContentM2;
-    if (hasArg(args, "piecesPerPackage")) patch.piecesPerPackage = args.piecesPerPackage;
+    if (hasArg(args, "pakinhoudM2")) patch.pakinhoudM2 = args.pakinhoudM2;
+    if (hasArg(args, "stuksPerPak")) patch.stuksPerPak = args.stuksPerPak;
 
     await ctx.db.patch(product._id, patch);
 
@@ -597,16 +597,16 @@ export const listCollections = query({
   args: {
     tenantId: v.id("tenants"),
     actor: readActorValidator,
-    supplierId: v.optional(v.id("suppliers"))
+    leverancierId: v.optional(v.id("suppliers"))
   },
   handler: async (ctx, args) => {
     await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
 
-    if (args.supplierId) {
+    if (args.leverancierId) {
       return await ctx.db
         .query("productCollections")
         .withIndex("by_supplier", (q) =>
-          q.eq("tenantId", args.tenantId).eq("supplierId", args.supplierId!)
+          q.eq("tenantId", args.tenantId).eq("leverancierId", args.leverancierId!)
         )
         .collect();
     }
@@ -622,70 +622,70 @@ export const createProduct = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    categoryId: v.id("categories"),
-    supplierId: v.optional(v.id("suppliers")),
-    brandId: v.optional(v.id("brands")),
-    collectionId: v.optional(v.id("productCollections")),
-    importKey: v.optional(v.string()),
-    articleNumber: v.optional(v.string()),
+    categorieId: v.id("categories"),
+    leverancierId: v.optional(v.id("suppliers")),
+    merkId: v.optional(v.id("brands")),
+    collectieId: v.optional(v.id("productCollections")),
+    importSleutel: v.optional(v.string()),
+    artikelnummer: v.optional(v.string()),
     ean: v.optional(v.string()),
     sku: v.optional(v.string()),
-    supplierCode: v.optional(v.string()),
-    commercialCode: v.optional(v.string()),
-    supplierProductGroup: v.optional(v.string()),
-    name: v.string(),
-    colorName: v.optional(v.string()),
-    description: v.optional(v.string()),
-    productKind,
+    leverancierCode: v.optional(v.string()),
+    commercieleCode: v.optional(v.string()),
+    leverancierProductGroep: v.optional(v.string()),
+    naam: v.string(),
+    kleurnaam: v.optional(v.string()),
+    omschrijving: v.optional(v.string()),
+    productSoort: productKind,
     commercialNames: v.optional(
       v.array(
         v.object({
-          brandName: v.string(),
-          collectionName: v.optional(v.string()),
-          colorName: v.optional(v.string()),
-          displayName: v.string()
+          merknaam: v.string(),
+          collectieNaam: v.optional(v.string()),
+          kleurnaam: v.optional(v.string()),
+          weergaveNaam: v.string()
         })
       )
     ),
-    unit,
-    widthMm: v.optional(v.number()),
-    lengthMm: v.optional(v.number()),
-    thicknessMm: v.optional(v.number()),
-    wearLayerMm: v.optional(v.number()),
-    packageContentM2: v.optional(v.number()),
-    piecesPerPackage: v.optional(v.number()),
-    packagesPerPallet: v.optional(v.number()),
-    salesUnit: v.optional(v.string()),
-    purchaseUnit: v.optional(v.string()),
-    orderUnit: v.optional(v.string()),
-    minimumOrderQuantity: v.optional(v.number()),
-    orderMultiple: v.optional(v.number()),
-    palletQuantity: v.optional(v.number()),
-    trailerQuantity: v.optional(v.number()),
-    bundleSize: v.optional(v.number()),
-    attributes: v.optional(v.any())
+    eenheid: unit,
+    breedteMm: v.optional(v.number()),
+    lengteMm: v.optional(v.number()),
+    dikteMm: v.optional(v.number()),
+    slijtlaagMm: v.optional(v.number()),
+    pakinhoudM2: v.optional(v.number()),
+    stuksPerPak: v.optional(v.number()),
+    pakkenPerPallet: v.optional(v.number()),
+    verkoopEenheid: v.optional(v.string()),
+    inkoopEenheid: v.optional(v.string()),
+    bestelEenheid: v.optional(v.string()),
+    minimumBestelAantal: v.optional(v.number()),
+    bestelVeelvoud: v.optional(v.number()),
+    palletAantal: v.optional(v.number()),
+    vrachtwagenAantal: v.optional(v.number()),
+    bundelGrootte: v.optional(v.number()),
+    attributen: v.optional(v.any())
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
-    const category = await ctx.db.get(args.categoryId);
+    const category = await ctx.db.get(args.categorieId);
 
     if (!category || category.tenantId !== args.tenantId) {
       throw new ConvexError("Category not found");
     }
 
-    if (args.supplierId) {
-      const supplier = await ctx.db.get(args.supplierId);
+    if (args.leverancierId) {
+      const supplier = await ctx.db.get(args.leverancierId);
 
       if (!supplier || supplier.tenantId !== args.tenantId) {
         throw new ConvexError("Supplier not found");
       }
     }
 
-    if (args.importKey) {
+    if (args.importSleutel) {
       const existing = await ctx.db
         .query("products")
         .withIndex("by_import_key", (q) =>
-          q.eq("tenantId", args.tenantId).eq("importKey", args.importKey)
+          q.eq("tenantId", args.tenantId).eq("importSleutel", args.importSleutel)
         )
         .first();
 
@@ -694,14 +694,14 @@ export const createProduct = mutation({
       }
     }
 
-    if (args.articleNumber && args.supplierId) {
+    if (args.artikelnummer && args.leverancierId) {
       const existing = await ctx.db
         .query("products")
         .withIndex("by_article_number", (q) =>
           q
             .eq("tenantId", args.tenantId)
-            .eq("supplierId", args.supplierId)
-            .eq("articleNumber", args.articleNumber)
+            .eq("leverancierId", args.leverancierId)
+            .eq("artikelnummer", args.artikelnummer)
         )
         .first();
 
@@ -714,51 +714,51 @@ export const createProduct = mutation({
 
     return await ctx.db.insert("products", {
       tenantId: args.tenantId,
-      categoryId: args.categoryId,
-      supplierId: args.supplierId,
-      brandId: args.brandId,
-      collectionId: args.collectionId,
-      importKey: args.importKey,
-      articleNumber: args.articleNumber,
+      categorieId: args.categorieId,
+      leverancierId: args.leverancierId,
+      merkId: args.merkId,
+      collectieId: args.collectieId,
+      importSleutel: args.importSleutel,
+      artikelnummer: args.artikelnummer,
       ean: args.ean,
       sku: args.sku,
-      supplierCode: args.supplierCode,
-      commercialCode: args.commercialCode,
-      supplierProductGroup: args.supplierProductGroup,
-      name: args.name,
-      colorName: args.colorName,
-      description: args.description,
-      productType:
-        args.productKind === "curtain" ||
-        args.productKind === "fabric" ||
-        args.productKind === "curtain_fabric" ||
-        args.productKind === "vitrage" ||
-        args.productKind === "roman_blind_fabric" ||
-        args.productKind === "panel_curtain_fabric"
+      leverancierCode: args.leverancierCode,
+      commercieleCode: args.commercieleCode,
+      leverancierProductGroep: args.leverancierProductGroep,
+      naam: args.naam,
+      kleurnaam: args.kleurnaam,
+      omschrijving: args.omschrijving,
+      productAard:
+        args.productSoort === "curtain" ||
+        args.productSoort === "fabric" ||
+        args.productSoort === "curtain_fabric" ||
+        args.productSoort === "vitrage" ||
+        args.productSoort === "roman_blind_fabric" ||
+        args.productSoort === "panel_curtain_fabric"
           ? "made_to_measure"
           : "standard",
-      productKind: args.productKind,
+      productSoort: args.productSoort,
       commercialNames: args.commercialNames,
-      unit: args.unit,
-      widthMm: args.widthMm,
-      lengthMm: args.lengthMm,
-      thicknessMm: args.thicknessMm,
-      wearLayerMm: args.wearLayerMm,
-      packageContentM2: args.packageContentM2,
-      piecesPerPackage: args.piecesPerPackage,
-      packagesPerPallet: args.packagesPerPallet,
-      salesUnit: args.salesUnit,
-      purchaseUnit: args.purchaseUnit,
-      orderUnit: args.orderUnit,
-      minimumOrderQuantity: args.minimumOrderQuantity,
-      orderMultiple: args.orderMultiple,
-      palletQuantity: args.palletQuantity,
-      trailerQuantity: args.trailerQuantity,
-      bundleSize: args.bundleSize,
-      attributes: args.attributes,
+      eenheid: args.eenheid,
+      breedteMm: args.breedteMm,
+      lengteMm: args.lengteMm,
+      dikteMm: args.dikteMm,
+      slijtlaagMm: args.slijtlaagMm,
+      pakinhoudM2: args.pakinhoudM2,
+      stuksPerPak: args.stuksPerPak,
+      pakkenPerPallet: args.pakkenPerPallet,
+      verkoopEenheid: args.verkoopEenheid,
+      inkoopEenheid: args.inkoopEenheid,
+      bestelEenheid: args.bestelEenheid,
+      minimumBestelAantal: args.minimumBestelAantal,
+      bestelVeelvoud: args.bestelVeelvoud,
+      palletAantal: args.palletAantal,
+      vrachtwagenAantal: args.vrachtwagenAantal,
+      bundelGrootte: args.bundelGrootte,
+      attributen: args.attributen,
       status: "active",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -768,22 +768,22 @@ export const addPrice = mutation({
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
     productId: v.id("products"),
-    priceListId: v.optional(v.id("priceLists")),
-    sourceKey: v.optional(v.string()),
-    priceType,
-    priceUnit,
-    amount: v.number(),
-    vatRate: v.number(),
-    vatMode,
+    prijslijstId: v.optional(v.id("priceLists")),
+    bronSleutel: v.optional(v.string()),
+    prijsSoort: priceType,
+    prijsEenheid: priceUnit,
+    bedrag: v.number(),
+    btwTarief: v.number(),
+    btwModus: vatMode,
     currency: v.optional(v.string()),
-    validFrom: v.optional(v.number()),
-    validUntil: v.optional(v.number()),
-    sourceFileName: v.optional(v.string()),
-    sourceSheetName: v.optional(v.string()),
-    sourceColumnName: v.optional(v.string()),
-    sourceColumnIndex: v.optional(v.number()),
-    sourceRowNumber: v.optional(v.number()),
-    sourceValue: v.optional(v.string())
+    geldigVanaf: v.optional(v.number()),
+    geldigTot: v.optional(v.number()),
+    bronBestandsnaam: v.optional(v.string()),
+    bronBladNaam: v.optional(v.string()),
+    bronKolomNaam: v.optional(v.string()),
+    bronKolomIndex: v.optional(v.number()),
+    bronRijNummer: v.optional(v.number()),
+    bronWaarde: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
@@ -795,14 +795,14 @@ export const addPrice = mutation({
 
     const now = Date.now();
 
-    if (args.sourceKey) {
+    if (args.bronSleutel) {
       // Dedup alleen binnen hetzelfde product: sourceKey is niet product-uniek, dus een
       // blinde .first()+patch zou een bestaande prijs naar een ander product verhangen
       // (zelfde fix als de import-pijplijn in catalog/import.ts).
       const sourceKeyMatches = await ctx.db
         .query("productPrices")
         .withIndex("by_source_key", (q) =>
-          q.eq("tenantId", args.tenantId).eq("sourceKey", args.sourceKey)
+          q.eq("tenantId", args.tenantId).eq("bronSleutel", args.bronSleutel)
         )
         .collect();
       const existing = sourceKeyMatches.find((row) => row.productId === args.productId);
@@ -810,22 +810,22 @@ export const addPrice = mutation({
       if (existing) {
         await ctx.db.patch(existing._id, {
           productId: args.productId,
-          priceListId: args.priceListId,
-          priceType: args.priceType,
-          priceUnit: args.priceUnit,
-          amount: args.amount,
-          vatRate: args.vatRate,
-          vatMode: args.vatMode,
+          prijslijstId: args.prijslijstId,
+          prijsSoort: args.prijsSoort,
+          prijsEenheid: args.prijsEenheid,
+          bedrag: args.bedrag,
+          btwTarief: args.btwTarief,
+          btwModus: args.btwModus,
           currency: args.currency ?? "EUR",
-          validFrom: args.validFrom,
-          validUntil: args.validUntil,
-          sourceFileName: args.sourceFileName,
-          sourceSheetName: args.sourceSheetName,
-          sourceColumnName: args.sourceColumnName,
-          sourceColumnIndex: args.sourceColumnIndex,
-          sourceRowNumber: args.sourceRowNumber,
-          sourceValue: args.sourceValue,
-          updatedAt: now
+          geldigVanaf: args.geldigVanaf,
+          geldigTot: args.geldigTot,
+          bronBestandsnaam: args.bronBestandsnaam,
+          bronBladNaam: args.bronBladNaam,
+          bronKolomNaam: args.bronKolomNaam,
+          bronKolomIndex: args.bronKolomIndex,
+          bronRijNummer: args.bronRijNummer,
+          bronWaarde: args.bronWaarde,
+          gewijzigdOp: now
         });
 
         return existing._id;
@@ -835,24 +835,24 @@ export const addPrice = mutation({
     return await ctx.db.insert("productPrices", {
       tenantId: args.tenantId,
       productId: args.productId,
-      priceListId: args.priceListId,
-      sourceKey: args.sourceKey,
-      priceType: args.priceType,
-      priceUnit: args.priceUnit,
-      amount: args.amount,
-      vatRate: args.vatRate,
-      vatMode: args.vatMode,
+      prijslijstId: args.prijslijstId,
+      bronSleutel: args.bronSleutel,
+      prijsSoort: args.prijsSoort,
+      prijsEenheid: args.prijsEenheid,
+      bedrag: args.bedrag,
+      btwTarief: args.btwTarief,
+      btwModus: args.btwModus,
       currency: args.currency ?? "EUR",
-      validFrom: args.validFrom,
-      validUntil: args.validUntil,
-      sourceFileName: args.sourceFileName,
-      sourceSheetName: args.sourceSheetName,
-      sourceColumnName: args.sourceColumnName,
-      sourceColumnIndex: args.sourceColumnIndex,
-      sourceRowNumber: args.sourceRowNumber,
-      sourceValue: args.sourceValue,
-      createdAt: now,
-      updatedAt: now
+      geldigVanaf: args.geldigVanaf,
+      geldigTot: args.geldigTot,
+      bronBestandsnaam: args.bronBestandsnaam,
+      bronBladNaam: args.bronBladNaam,
+      bronKolomNaam: args.bronKolomNaam,
+      bronKolomIndex: args.bronKolomIndex,
+      bronRijNummer: args.bronRijNummer,
+      bronWaarde: args.bronWaarde,
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });

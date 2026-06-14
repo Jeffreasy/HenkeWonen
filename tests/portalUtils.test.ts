@@ -56,13 +56,13 @@ describe("Convex Portal Utilities", () => {
 
   it("should format imported measurement line title and description", () => {
     const line = {
-      productGroup: "flooring",
-      calculationType: "area",
-      wastePercent: 10,
-      notes: "Controleer hoek."
+      productGroep: "flooring",
+      berekeningType: "area",
+      snijverliesPct: 10,
+      notities: "Controleer hoek."
     } as any;
-    
-    const room = { name: "Woonkamer" } as any;
+
+    const room = { naam: "Woonkamer" } as any;
 
     expect(importedMeasurementLineTitle(line, room)).toBe("Vloeren - Oppervlakte - Woonkamer");
     

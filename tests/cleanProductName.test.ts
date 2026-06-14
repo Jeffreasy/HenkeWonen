@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { cleanProductDisplayName } from "../convex/catalog/pilot";
 
 function product(name: string, colorName?: string) {
-  return { name, colorName };
+  return { naam: name, kleurnaam: colorName };
 }
 
 describe("cleanProductDisplayName — schone klant-/offertenaam", () => {

@@ -23,7 +23,7 @@ function UrgencyIcon({ level }: { level: FieldUrgency["level"] }) {
 
 type FieldVisitHeaderProps = {
   project: {
-    title: string;
+    titel: string;
     status: string;
   };
   visit: {
@@ -43,7 +43,7 @@ export function FieldVisitHeader({ project, visit, customer, urgency }: FieldVis
     <section className={`field-visit-header field-visit-header-${urgency.level}`}>
       <div className="field-visit-title">
         <p className="eyebrow">Klantbezoek</p>
-        <h1>{project.title}</h1>
+        <h1>{project.titel}</h1>
         <div className="field-visit-badges">
           <StatusBadge
             status={project.status}

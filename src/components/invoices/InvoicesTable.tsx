@@ -47,7 +47,7 @@ export function InvoicesTable({
       render: (invoice) => (
         <div className="stack-sm">
           <a href={`/portal/facturen/${invoice.id}`}>
-            <strong>{invoice.invoiceNumber}</strong>
+            <strong>{invoice.factuurnummer}</strong>
           </a>
           <small className="muted">{invoice.projectTitle}</small>
         </div>
@@ -66,10 +66,10 @@ export function InvoicesTable({
         const isOverdue =
           invoice.status !== "paid" &&
           invoice.status !== "cancelled" &&
-          invoice.dueDate < Date.now();
+          invoice.vervaldatum < Date.now();
         return (
           <span style={isOverdue ? { color: "var(--color-danger, #b91c1c)", fontWeight: 700 } : undefined}>
-            {formatDate(invoice.dueDate)}
+            {formatDate(invoice.vervaldatum)}
           </span>
         );
       }
@@ -79,7 +79,7 @@ export function InvoicesTable({
       header: "Bedrag incl. btw",
       align: "right",
       hideOnMobile: true,
-      render: (invoice) => <strong>{formatEuro(invoice.totalIncVat)}</strong>
+      render: (invoice) => <strong>{formatEuro(invoice.totaalInclBtw)}</strong>
     },
     {
       key: "status",
@@ -135,7 +135,7 @@ export function InvoicesTable({
             <div className="mobile-card-header">
               <div className="mobile-card-title">
                 <a href={`/portal/facturen/${invoice.id}`}>
-                  <strong>{invoice.invoiceNumber}</strong>
+                  <strong>{invoice.factuurnummer}</strong>
                 </a>
                 <small className="muted">{invoice.customerName}</small>
               </div>
@@ -143,7 +143,7 @@ export function InvoicesTable({
             </div>
             <div className="mobile-card-meta">
               <span>{invoice.projectTitle}</span>
-              <span>{formatEuro(invoice.totalIncVat)}</span>
+              <span>{formatEuro(invoice.totaalInclBtw)}</span>
             </div>
             <div className="mobile-card-actions">
               <a

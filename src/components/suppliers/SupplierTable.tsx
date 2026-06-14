@@ -83,12 +83,12 @@ export function SupplierTable({
         priority: "primary",
         render: (supplier) => (
           <div className="stack-sm">
-            <strong>{supplier.name}</strong>
+            <strong>{supplier.naam}</strong>
             <StatusBadge
               status={supplier.status ?? "active"}
               label={formatStatusLabel(supplier.status ?? "active")}
             />
-            {supplier.notes ? <small className="muted">{supplier.notes}</small> : null}
+            {supplier.notities ? <small className="muted">{supplier.notities}</small> : null}
           </div>
         )
       },
@@ -97,9 +97,9 @@ export function SupplierTable({
         header: "Status prijslijst",
         render: (supplier) => (
           <StatusBadge
-            status={supplier.productListStatus}
-            label={formatProductListStatus(supplier.productListStatus)}
-            variant={productListTone(supplier.productListStatus)}
+            status={supplier.prijslijstStatus}
+            label={formatProductListStatus(supplier.prijslijstStatus)}
+            variant={productListTone(supplier.prijslijstStatus)}
           />
         )
       },
@@ -108,8 +108,8 @@ export function SupplierTable({
         header: "Contact",
         render: (supplier) => (
           <div className="stack-sm">
-            <span>{supplier.contactName ?? "-"}</span>
-            <small className="muted">{supplier.email ?? supplier.phone ?? "Geen contactgegevens"}</small>
+            <span>{supplier.contactpersoon ?? "-"}</span>
+            <small className="muted">{supplier.email ?? supplier.telefoon ?? "Geen contactgegevens"}</small>
           </div>
         )
       },
@@ -119,8 +119,8 @@ export function SupplierTable({
         hideOnMobile: true,
         render: (supplier) => (
           <div className="stack-sm">
-            <span>Laatst: {dateText(supplier.lastContactAt)}</span>
-            <small className="muted">Verwacht: {dateText(supplier.expectedAt)}</small>
+            <span>Laatst: {dateText(supplier.laatsteContactOp)}</span>
+            <small className="muted">Verwacht: {dateText(supplier.verwachtOp)}</small>
           </div>
         )
       },
@@ -181,9 +181,9 @@ export function SupplierTable({
         header: "Prijslijst",
         render: (supplier) => (
           <Select
-            aria-label={`Prijslijststatus bijwerken voor ${supplier.name}`}
+            aria-label={`Prijslijststatus bijwerken voor ${supplier.naam}`}
             disabled={savingSupplierId === supplier.id}
-            value={supplier.productListStatus}
+            value={supplier.prijslijstStatus}
             onChange={(event) =>
               void onChangeProductListStatus(supplier, event.target.value as ProductListStatus)
             }
@@ -319,22 +319,22 @@ export function SupplierTable({
             <div className="mobile-card-section">
               <div className="mobile-card-header">
                 <div className="mobile-card-title">
-                  <strong>{supplier.name}</strong>
+                  <strong>{supplier.naam}</strong>
                   <span className="muted">
-                    {supplier.contactName ?? supplier.email ?? "Geen contactgegevens"}
+                    {supplier.contactpersoon ?? supplier.email ?? "Geen contactgegevens"}
                   </span>
                 </div>
                 <StatusBadge
-                  status={supplier.productListStatus}
-                  label={formatProductListStatus(supplier.productListStatus)}
-                  variant={productListTone(supplier.productListStatus)}
+                  status={supplier.prijslijstStatus}
+                  label={formatProductListStatus(supplier.prijslijstStatus)}
+                  variant={productListTone(supplier.prijslijstStatus)}
                 />
               </div>
               <div className="mobile-card-meta">
                 <span>{supplier.activeProductCount ?? 0} producten</span>
                 <span>{supplier.importProfileCount ?? 0} btw-controles</span>
                 <span>{supplier.sourceFileCount ?? 0} prijslijstbestanden</span>
-                <span>Verwacht: {dateText(supplier.expectedAt)}</span>
+                <span>Verwacht: {dateText(supplier.verwachtOp)}</span>
               </div>
               {(supplier.sourceFileNames ?? []).length > 0 ? (
                 <div className="mobile-card-section">
@@ -353,12 +353,12 @@ export function SupplierTable({
                   </div>
                 </div>
               ) : null}
-              {supplier.notes ? <p className="muted">{supplier.notes}</p> : null}
+              {supplier.notities ? <p className="muted">{supplier.notities}</p> : null}
               <div className="mobile-card-actions">
                 <Select
-                  aria-label={`Prijslijststatus bijwerken voor ${supplier.name}`}
+                  aria-label={`Prijslijststatus bijwerken voor ${supplier.naam}`}
                   disabled={savingSupplierId === supplier.id}
-                  value={supplier.productListStatus}
+                  value={supplier.prijslijstStatus}
                   onChange={(event) =>
                     void onChangeProductListStatus(supplier, event.target.value as ProductListStatus)
                   }

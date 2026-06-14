@@ -53,28 +53,28 @@ function batchMatchesSearch(batch: ProductImportBatch, searchQuery: string) {
     return true;
   }
   return [
-    batch.fileName,
-    batch.supplierName,
+    batch.bestandsnaam,
+    batch.leverancierNaam,
     batch.profileName,
     batch.status,
     formatImportStatus(batch.status),
-    batch.errorMessage
+    batch.foutmelding
   ].some((value) => normalizedText(value).includes(searchQuery));
 }
 
 function batchBlockers(batch: ProductImportBatch, allowUnknownVatMode: boolean) {
   const blockers: string[] = [];
-  if (batch.totalRows <= 0) {
+  if (batch.totaalRijen <= 0) {
     blockers.push("geen regels gevonden");
   }
-  if (batch.errorRows > 0) {
-    blockers.push(`${numberText(batch.errorRows)} foutregels`);
+  if (batch.foutRijen > 0) {
+    blockers.push(`${numberText(batch.foutRijen)} foutregels`);
   }
-  if (batch.duplicateSourceKeys > 0) {
-    blockers.push(`${numberText(batch.duplicateSourceKeys)} dubbele prijslijstregels`);
+  if (batch.dubbeleBronSleutels > 0) {
+    blockers.push(`${numberText(batch.dubbeleBronSleutels)} dubbele prijslijstregels`);
   }
-  if (batch.unknownVatModeRows > 0 && !allowUnknownVatMode) {
-    blockers.push(`${numberText(batch.unknownVatModeRows)} ontbrekende btw-keuzes`);
+  if (batch.onbekendeBtwModusRijen > 0 && !allowUnknownVatMode) {
+    blockers.push(`${numberText(batch.onbekendeBtwModusRijen)} ontbrekende btw-keuzes`);
   }
   return blockers;
 }
@@ -101,7 +101,7 @@ function sortBatches(left: ProductImportBatch, right: ProductImportBatch) {
   if (statusDifference !== 0) {
     return statusDifference;
   }
-  return (right.updatedAt ?? right.createdAt) - (left.updatedAt ?? left.createdAt);
+  return (right.gewijzigdOp ?? right.aangemaaktOp) - (left.gewijzigdOp ?? left.aangemaaktOp);
 }
 
 export default function ImportPreview({ session, batchId }: ImportPreviewProps) {
@@ -175,7 +175,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       })) as BatchDetail | null;
 
       setDetail(result);
-      setAllowUnknownVatMode(result?.batch.allowUnknownVatMode ?? false);
+      setAllowUnknownVatMode(result?.batch.staBtwModusOnbekendToe ?? false);
     } catch (loadError) {
       console.error(loadError);
       setError("De controle van deze prijslijst kon niet worden geladen.");
@@ -214,11 +214,11 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       const newBatchId = await client.mutation(api.catalog.import.createPreviewBatch, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        fileName,
-        fileType: fileTypeFor(fileName),
-        sourceFileName: fileName,
-        supplierName,
-        allowUnknownVatMode: false,
+        bestandsnaam: fileName,
+        bestandsType: fileTypeFor(fileName),
+        bronBestandsnaam: fileName,
+        leverancierNaam: supplierName,
+        staBtwModusOnbekendToe: false,
         createdByExternalUserId: session.userId
       });
 
@@ -248,7 +248,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         batchId: batch.id,
-        allowUnknownVatMode,
+        staBtwModusOnbekendToe: allowUnknownVatMode,
         mapping: {
           mode: "portal-preview",
           requiresExplicitVatMapping: true,
@@ -281,7 +281,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
           tenantSlug: session.tenantId,
           actor: mutationActorFromSession(session),
           batchId: batch.id,
-          allowUnknownVatMode,
+          staBtwModusOnbekendToe: allowUnknownVatMode,
           importedByExternalUserId: session.userId,
           limit: 75
         });
@@ -343,7 +343,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
   const filteredRows = useMemo(
     () =>
       rows.filter((row) => {
-        const matchesKind = rowKindFilter === "all" || row.rowKind === rowKindFilter;
+        const matchesKind = rowKindFilter === "all" || row.rijSoort === rowKindFilter;
         const matchesStatus = rowStatusFilter === "all" || row.status === rowStatusFilter;
         return matchesKind && matchesStatus;
       }),
@@ -388,11 +388,11 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       archived: batches.filter((batch) => batch.status === "archived").length,
       ready: batches.filter((batch) => batch.status === "ready_to_import").length,
       needsMapping: batches.filter((batch) => batch.status === "needs_mapping").length,
-      products: batches.reduce((total, batch) => total + batch.productRows, 0),
-      priceRules: batches.reduce((total, batch) => total + batch.importedPrices, 0),
-      warningRows: batches.reduce((total, batch) => total + batch.warningRows, 0),
-      unknownVatModeRows: batches.reduce((total, batch) => total + batch.unknownVatModeRows, 0),
-      errorRows: batches.reduce((total, batch) => total + batch.errorRows, 0)
+      products: batches.reduce((total, batch) => total + batch.productRijen, 0),
+      priceRules: batches.reduce((total, batch) => total + batch.geimporteerdePrijzen, 0),
+      warningRows: batches.reduce((total, batch) => total + batch.waarschuwingRijen, 0),
+      unknownVatModeRows: batches.reduce((total, batch) => total + batch.onbekendeBtwModusRijen, 0),
+      errorRows: batches.reduce((total, batch) => total + batch.foutRijen, 0)
     }),
     [batches]
   );
@@ -408,10 +408,10 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
   const canCommit = useMemo(
     () =>
       selectedBatch
-        ? selectedBatch.totalRows > 0 &&
-          selectedBatch.errorRows === 0 &&
-          selectedBatch.duplicateSourceKeys === 0 &&
-          (selectedBatch.unknownVatModeRows === 0 || allowUnknownVatMode)
+        ? selectedBatch.totaalRijen > 0 &&
+          selectedBatch.foutRijen === 0 &&
+          selectedBatch.dubbeleBronSleutels === 0 &&
+          (selectedBatch.onbekendeBtwModusRijen === 0 || allowUnknownVatMode)
         : false,
     [selectedBatch, allowUnknownVatMode]
   );
@@ -422,7 +422,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
   );
 
   const rowKindOptions = useMemo(
-    () => [...new Set(rows.map((row) => row.rowKind))].sort(),
+    () => [...new Set(rows.map((row) => row.rijSoort))].sort(),
     [rows]
   );
 
@@ -438,7 +438,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
         title="Prijslijst definitief verwerken?"
         description={
           pendingCommitBatch
-            ? `Je verwerkt "${pendingCommitBatch.fileName}" naar producten en verkoopprijzen. Controleer de meldingen voordat je doorgaat; fouten, dubbele prijslijstregels en ontbrekende btw-keuzes blokkeren dit.`
+            ? `Je verwerkt "${pendingCommitBatch.bestandsnaam}" naar producten en verkoopprijzen. Controleer de meldingen voordat je doorgaat; fouten, dubbele prijslijstregels en ontbrekende btw-keuzes blokkeren dit.`
             : ""
         }
         confirmLabel="Definitief verwerken"
@@ -464,8 +464,8 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
         description={
           pendingBatchStatus
             ? pendingBatchStatus.nextStatus === "archived"
-              ? `Je archiveert "${pendingBatchStatus.batch.fileName}". De controle blijft bewaard, maar verdwijnt uit het dagelijkse overzicht.`
-              : `Je herstelt "${pendingBatchStatus.batch.fileName}" naar ${formatImportStatus(
+              ? `Je archiveert "${pendingBatchStatus.batch.bestandsnaam}". De controle blijft bewaard, maar verdwijnt uit het dagelijkse overzicht.`
+              : `Je herstelt "${pendingBatchStatus.batch.bestandsnaam}" naar ${formatImportStatus(
                   pendingBatchStatus.nextStatus
                 ).toLowerCase()}.`
             : ""

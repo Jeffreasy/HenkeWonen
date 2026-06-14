@@ -65,7 +65,7 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
   }, [session.tenantId]);
 
   const lineCount = useMemo(
-    () => templates.reduce((sum, template) => sum + template.defaultLines.length, 0),
+    () => templates.reduce((sum, template) => sum + template.standaardRegels.length, 0),
     [templates]
   );
 
@@ -90,8 +90,8 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         templateId,
-        defaultTerms,
-        paymentTerms
+        standaardVoorwaarden: defaultTerms,
+        betalingsvoorwaarden: paymentTerms
       });
       setMessage("Voorwaarden en betalingsafspraken opgeslagen. Nieuwe offertes gebruiken deze teksten.");
       
@@ -154,12 +154,12 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
         <StatCard label="Standaardregels" value={lineCount} description="Te gebruiken bij offerte maken" />
         <StatCard
           label="Voorwaarden"
-          value={templates.reduce((sum, template) => sum + template.defaultTerms.length, 0)}
+          value={templates.reduce((sum, template) => sum + template.standaardVoorwaarden.length, 0)}
           description="Uitvoering en voorbereiding"
         />
         <StatCard
           label="Betalingsafspraken"
-          value={templates.reduce((sum, template) => sum + (template.paymentTerms ?? []).length, 0)}
+          value={templates.reduce((sum, template) => sum + (template.betalingsvoorwaarden ?? []).length, 0)}
           description="Facturering en betaalwijze"
         />
       </section>

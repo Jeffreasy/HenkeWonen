@@ -48,10 +48,10 @@ async function ensureTenant(ctx: any): Promise<Id<"tenants">> {
 
   return await ctx.db.insert("tenants", {
     slug: tenantSlug,
-    name: "Henke Wonen",
+    naam: "Henke Wonen",
     status: "active",
-    createdAt: timestamp,
-    updatedAt: timestamp
+    aangemaaktOp: timestamp,
+    gewijzigdOp: timestamp
   });
 }
 
@@ -59,7 +59,7 @@ async function findCustomer(ctx: any, tenantId: Id<"tenants">, displayName: stri
   return await ctx.db
     .query("customers")
     .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
-    .filter((q: any) => q.eq(q.field("displayName"), displayName))
+    .filter((q: any) => q.eq(q.field("weergaveNaam"), displayName))
     .first();
 }
 
@@ -83,11 +83,11 @@ async function ensureCustomer(
     await ctx.db.patch(existing._id, {
       type: customer.type,
       email: customer.email,
-      phone: customer.phone,
-      city: customer.city,
+      telefoon: customer.phone,
+      plaats: customer.city,
       status: customer.status,
-      notes: customer.notes,
-      updatedAt: timestamp
+      notities: customer.notes,
+      gewijzigdOp: timestamp
     });
 
     return existing._id;
@@ -96,15 +96,15 @@ async function ensureCustomer(
   return await ctx.db.insert("customers", {
     tenantId,
     type: customer.type,
-    displayName: customer.displayName,
+    weergaveNaam: customer.displayName,
     email: customer.email,
-    phone: customer.phone,
-    city: customer.city,
-    country: "Nederland",
-    notes: customer.notes,
+    telefoon: customer.phone,
+    plaats: customer.city,
+    land: "Nederland",
+    notities: customer.notes,
     status: customer.status,
-    createdAt: timestamp,
-    updatedAt: timestamp
+    aangemaaktOp: timestamp,
+    gewijzigdOp: timestamp
   });
 }
 
@@ -112,7 +112,7 @@ async function findProject(ctx: any, tenantId: Id<"tenants">, title: string) {
   return await ctx.db
     .query("projects")
     .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
-    .filter((q: any) => q.eq(q.field("title"), title))
+    .filter((q: any) => q.eq(q.field("titel"), title))
     .first();
 }
 
@@ -148,14 +148,14 @@ async function ensureProject(
 
   if (existing) {
     await ctx.db.patch(existing._id, {
-      customerId: project.customerId,
-      title: project.title,
-      description: project.description,
+      klantId: project.customerId,
+      titel: project.title,
+      omschrijving: project.description,
       status: project.status,
-      internalNotes: project.internalNotes,
-      customerNotes: project.customerNotes,
+      interneNotities: project.internalNotes,
+      klantNotities: project.customerNotes,
       ...statusDates,
-      updatedAt: timestamp
+      gewijzigdOp: timestamp
     });
 
     return existing._id;
@@ -163,16 +163,16 @@ async function ensureProject(
 
   return await ctx.db.insert("projects", {
     tenantId,
-    customerId: project.customerId,
-    title: project.title,
-    description: project.description,
+    klantId: project.customerId,
+    titel: project.title,
+    omschrijving: project.description,
     status: project.status,
-    internalNotes: project.internalNotes,
-    customerNotes: project.customerNotes,
+    interneNotities: project.internalNotes,
+    klantNotities: project.customerNotes,
     createdByExternalUserId: nowUser,
     ...statusDates,
-    createdAt: timestamp,
-    updatedAt: timestamp
+    aangemaaktOp: timestamp,
+    gewijzigdOp: timestamp
   });
 }
 
@@ -185,16 +185,16 @@ async function ensureRoom(
   const existing = await ctx.db
     .query("projectRooms")
     .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
-    .filter((q: any) => q.eq(q.field("name"), room.name))
+    .filter((q: any) => q.eq(q.field("naam"), room.name))
     .first();
   const timestamp = now();
 
   if (existing) {
     await ctx.db.patch(existing._id, {
-      areaM2: room.areaM2,
-      perimeterMeter: room.perimeterMeter,
+      oppervlakteM2: room.areaM2,
+      omtrekMeter: room.perimeterMeter,
       sortOrder: room.sortOrder,
-      updatedAt: timestamp
+      gewijzigdOp: timestamp
     });
 
     return existing._id;
@@ -203,12 +203,12 @@ async function ensureRoom(
   return await ctx.db.insert("projectRooms", {
     tenantId,
     projectId,
-    name: room.name,
-    areaM2: room.areaM2,
-    perimeterMeter: room.perimeterMeter,
+    naam: room.name,
+    oppervlakteM2: room.areaM2,
+    omtrekMeter: room.perimeterMeter,
     sortOrder: room.sortOrder,
-    createdAt: timestamp,
-    updatedAt: timestamp
+    aangemaaktOp: timestamp,
+    gewijzigdOp: timestamp
   });
 }
 
@@ -228,19 +228,19 @@ async function ensureContact(
 ) {
   const existing = await ctx.db
     .query("customerContacts")
-    .withIndex("by_customer", (q: any) => q.eq("tenantId", tenantId).eq("customerId", customerId))
-    .filter((q: any) => q.eq(q.field("title"), contact.title))
+    .withIndex("by_customer", (q: any) => q.eq("tenantId", tenantId).eq("klantId", customerId))
+    .filter((q: any) => q.eq(q.field("titel"), contact.title))
     .first();
   const timestamp = now();
 
   if (existing) {
     await ctx.db.patch(existing._id, {
-      description: contact.description,
-      loanedItemName: contact.loanedItemName,
-      expectedReturnDate: contact.expectedReturnDate,
-      returnedAt: contact.returnedAt,
-      visibleToCustomer: contact.visibleToCustomer,
-      updatedAt: timestamp
+      omschrijving: contact.description,
+      uitgeleendItemNaam: contact.loanedItemName,
+      verwachteRetourdatum: contact.expectedReturnDate,
+      geretourneerdOp: contact.returnedAt,
+      zichtbaarVoorKlant: contact.visibleToCustomer,
+      gewijzigdOp: timestamp
     });
 
     return existing._id;
@@ -248,17 +248,17 @@ async function ensureContact(
 
   return await ctx.db.insert("customerContacts", {
     tenantId,
-    customerId,
+    klantId: customerId,
     type: contact.type,
-    title: contact.title,
-    description: contact.description,
-    loanedItemName: contact.loanedItemName,
-    expectedReturnDate: contact.expectedReturnDate,
-    returnedAt: contact.returnedAt,
-    visibleToCustomer: contact.visibleToCustomer,
+    titel: contact.title,
+    omschrijving: contact.description,
+    uitgeleendItemNaam: contact.loanedItemName,
+    verwachteRetourdatum: contact.expectedReturnDate,
+    geretourneerdOp: contact.returnedAt,
+    zichtbaarVoorKlant: contact.visibleToCustomer,
     createdByExternalUserId: nowUser,
-    createdAt: timestamp,
-    updatedAt: timestamp
+    aangemaaktOp: timestamp,
+    gewijzigdOp: timestamp
   });
 }
 
@@ -285,7 +285,7 @@ async function ensureWorkflowEvent(
   const existing = await ctx.db
     .query("projectWorkflowEvents")
     .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
-    .filter((q: any) => q.eq(q.field("title"), event.title))
+    .filter((q: any) => q.eq(q.field("titel"), event.title))
     .first();
   const timestamp = now();
 
@@ -297,11 +297,11 @@ async function ensureWorkflowEvent(
     tenantId,
     projectId,
     type: event.type,
-    title: event.title,
-    description: event.description,
-    visibleToCustomer: event.visibleToCustomer,
+    titel: event.title,
+    omschrijving: event.description,
+    zichtbaarVoorKlant: event.visibleToCustomer,
     createdByExternalUserId: nowUser,
-    createdAt: timestamp
+    aangemaaktOp: timestamp
   });
 }
 
@@ -314,7 +314,7 @@ async function findQuote(
   return await ctx.db
     .query("quotes")
     .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
-    .filter((q: any) => q.eq(q.field("title"), title))
+    .filter((q: any) => q.eq(q.field("titel"), title))
     .first();
 }
 
@@ -341,9 +341,9 @@ async function ensureQuote(
   if (existing) {
     await ctx.db.patch(existing._id, {
       status: quote.status,
-      terms,
-      acceptedAt: quote.status === "accepted" ? timestamp : existing.acceptedAt,
-      updatedAt: timestamp
+      voorwaarden: terms,
+      geaccepteerdOp: quote.status === "accepted" ? timestamp : existing.acceptedAt,
+      gewijzigdOp: timestamp
     });
 
     return existing._id;
@@ -352,20 +352,20 @@ async function ensureQuote(
   return await ctx.db.insert("quotes", {
     tenantId,
     projectId,
-    customerId,
-    quoteNumber: quote.quoteNumber,
-    title: quote.title,
+    klantId: customerId,
+    offertenummer: quote.quoteNumber,
+    titel: quote.title,
     status: quote.status,
-    introText: "Hartelijk dank voor uw bezoek aan Henke Wonen. Hieronder vindt u onze offerte.",
-    closingText: "Wij horen graag of alles naar wens is.",
-    terms,
-    subtotalExVat: 0,
-    vatTotal: 0,
-    totalIncVat: 0,
-    acceptedAt: quote.status === "accepted" ? timestamp : undefined,
+    inleidingTekst: "Hartelijk dank voor uw bezoek aan Henke Wonen. Hieronder vindt u onze offerte.",
+    afsluitTekst: "Wij horen graag of alles naar wens is.",
+    voorwaarden: terms,
+    subtotaalExBtw: 0,
+    btwTotaal: 0,
+    totaalInclBtw: 0,
+    geaccepteerdOp: quote.status === "accepted" ? timestamp : undefined,
     createdByExternalUserId: nowUser,
-    createdAt: timestamp,
-    updatedAt: timestamp
+    aangemaaktOp: timestamp,
+    gewijzigdOp: timestamp
   });
 }
 
@@ -387,7 +387,7 @@ async function ensureQuoteLine(
   const existing = await ctx.db
     .query("quoteLines")
     .withIndex("by_quote", (q: any) => q.eq("tenantId", tenantId).eq("quoteId", quoteId))
-    .filter((q: any) => q.eq(q.field("title"), line.title))
+    .filter((q: any) => q.eq(q.field("titel"), line.title))
     .first();
   const totals = calculateLineTotals(
     line.lineType,
@@ -402,7 +402,7 @@ async function ensureQuoteLine(
     await ctx.db.patch(existing._id, {
       ...line,
       ...totals,
-      updatedAt: timestamp
+      gewijzigdOp: timestamp
     });
 
     return existing._id;
@@ -413,8 +413,8 @@ async function ensureQuoteLine(
     quoteId,
     ...line,
     ...totals,
-    createdAt: timestamp,
-    updatedAt: timestamp
+    aangemaaktOp: timestamp,
+    gewijzigdOp: timestamp
   });
 }
 
@@ -424,17 +424,17 @@ async function recalculateQuote(ctx: any, tenantId: Id<"tenants">, quoteId: Id<"
     .withIndex("by_quote", (q: any) => q.eq("tenantId", tenantId).eq("quoteId", quoteId))
     .collect();
   const subtotalExVat = roundMoney(
-    lines.reduce((sum: number, line: Doc<"quoteLines">) => sum + line.lineTotalExVat, 0)
+    lines.reduce((sum: number, line: Doc<"quoteLines">) => sum + line.regelTotaalExBtw, 0)
   );
   const vatTotal = roundMoney(
-    lines.reduce((sum: number, line: Doc<"quoteLines">) => sum + line.lineVatTotal, 0)
+    lines.reduce((sum: number, line: Doc<"quoteLines">) => sum + line.regelBtwTotaal, 0)
   );
 
   await ctx.db.patch(quoteId, {
-    subtotalExVat,
-    vatTotal,
-    totalIncVat: roundMoney(subtotalExVat + vatTotal),
-    updatedAt: now()
+    subtotaalExBtw: subtotalExVat,
+    btwTotaal: vatTotal,
+    totaalInclBtw: roundMoney(subtotalExVat + vatTotal),
+    gewijzigdOp: now()
   });
 }
 

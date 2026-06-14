@@ -35,9 +35,9 @@ export function ContactListTable({ contacts, onNew }: ContactListTableProps) {
         priority: "primary",
         render: (contact) => (
           <div className="stack-sm">
-            <strong>{contact.title}</strong>
-            {contact.description ? <small className="muted">{contact.description}</small> : null}
-            <small className="muted">{dateText(contact.createdAt)}</small>
+            <strong>{contact.titel}</strong>
+            {contact.omschrijving ? <small className="muted">{contact.omschrijving}</small> : null}
+            <small className="muted">{dateText(contact.aangemaaktOp)}</small>
           </div>
         )
       },
@@ -56,13 +56,13 @@ export function ContactListTable({ contacts, onNew }: ContactListTableProps) {
         header: "Zichtbaarheid",
         width: "150px",
         hideOnMobile: true,
-        render: (contact) => <NoteVisibilityBadge visibleToCustomer={contact.visibleToCustomer} />
+        render: (contact) => <NoteVisibilityBadge visibleToCustomer={contact.zichtbaarVoorKlant} />
       },
       {
         key: "date",
         header: "Datum",
         width: "110px",
-        render: (contact) => dateText(contact.createdAt)
+        render: (contact) => dateText(contact.aangemaaktOp)
       }
     ],
     []
@@ -100,16 +100,16 @@ export function ContactListTable({ contacts, onNew }: ContactListTableProps) {
           <div className="mobile-card-section">
             <div className="mobile-card-header">
               <div className="mobile-card-title">
-                <strong>{contact.title}</strong>
-                {contact.description ? <small className="muted">{contact.description}</small> : null}
+                <strong>{contact.titel}</strong>
+                {contact.omschrijving ? <small className="muted">{contact.omschrijving}</small> : null}
               </div>
               <Badge variant={contact.type === "loaned_item" ? "warning" : "neutral"}>
                 {contactTypeLabel(contact.type)}
               </Badge>
             </div>
             <div className="mobile-card-meta">
-              <NoteVisibilityBadge visibleToCustomer={contact.visibleToCustomer} />
-              <span>{dateText(contact.createdAt)}</span>
+              <NoteVisibilityBadge visibleToCustomer={contact.zichtbaarVoorKlant} />
+              <span>{dateText(contact.aangemaaktOp)}</span>
             </div>
           </div>
         )}

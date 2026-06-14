@@ -105,12 +105,12 @@ export const create = mutation({
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
     projectId: v.id("projects"),
-    customerId: v.id("customers"),
-    title: v.string(),
-    introText: v.optional(v.string()),
-    closingText: v.optional(v.string()),
-    terms: v.optional(v.array(v.string())),
-    paymentTerms: v.optional(v.array(v.string())),
+    klantId: v.id("customers"),
+    titel: v.string(),
+    inleidingTekst: v.optional(v.string()),
+    afsluitTekst: v.optional(v.string()),
+    voorwaarden: v.optional(v.array(v.string())),
+    betalingsvoorwaarden: v.optional(v.array(v.string())),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -121,7 +121,7 @@ export const create = mutation({
       ["user", "editor", "admin"]
     );
     const project = await ctx.db.get(args.projectId);
-    const customer = await ctx.db.get(args.customerId);
+    const customer = await ctx.db.get(args.klantId);
 
     if (!project || project.tenantId !== args.tenantId) {
       throw new ConvexError("Project not found");
@@ -137,25 +137,25 @@ export const create = mutation({
     const quoteId = await ctx.db.insert("quotes", {
       tenantId: args.tenantId,
       projectId: args.projectId,
-      customerId: args.customerId,
-      quoteNumber,
-      title: args.title,
+      klantId: args.klantId,
+      offertenummer: quoteNumber,
+      titel: args.titel,
       status: "draft",
-      introText: args.introText,
-      closingText: args.closingText,
-      terms: args.terms,
-      paymentTerms: args.paymentTerms,
-      subtotalExVat: 0,
-      vatTotal: 0,
-      totalIncVat: 0,
+      inleidingTekst: args.inleidingTekst,
+      afsluitTekst: args.afsluitTekst,
+      voorwaarden: args.voorwaarden,
+      betalingsvoorwaarden: args.betalingsvoorwaarden,
+      subtotaalExBtw: 0,
+      btwTotaal: 0,
+      totaalInclBtw: 0,
       createdByExternalUserId: externalUserId,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
 
     await ctx.db.patch(args.projectId, {
       status: "quote_draft",
-      updatedAt: now
+      gewijzigdOp: now
     });
 
     return quoteId;
@@ -167,17 +167,17 @@ export const addLine = mutation({
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
     quoteId: v.id("quotes"),
-    projectRoomId: v.optional(v.id("projectRooms")),
+    projectRuimteId: v.optional(v.id("projectRooms")),
     productId: v.optional(v.id("products")),
-    serviceCostRuleId: v.optional(v.id("serviceCostRules")),
-    lineType,
-    title: v.string(),
-    description: v.optional(v.string()),
-    quantity: v.number(),
-    unit: v.string(),
-    unitPriceExVat: v.number(),
-    vatRate: v.number(),
-    discountExVat: v.optional(v.number()),
+    werktariefRegelId: v.optional(v.id("serviceCostRules")),
+    regelType: lineType,
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
+    aantal: v.number(),
+    eenheid: v.string(),
+    eenheidsprijsExBtw: v.number(),
+    btwTarief: v.number(),
+    kortingExBtw: v.optional(v.number()),
     sortOrder: v.number(),
     metadata: v.optional(v.any())
   },
@@ -198,35 +198,35 @@ export const addLine = mutation({
     }
 
     const totals = calculateLineTotals(
-      args.lineType,
-      args.quantity,
-      args.unitPriceExVat,
-      args.vatRate,
-      args.discountExVat
+      args.regelType,
+      args.aantal,
+      args.eenheidsprijsExBtw,
+      args.btwTarief,
+      args.kortingExBtw
     );
     const now = Date.now();
 
     const lineId = await ctx.db.insert("quoteLines", {
       tenantId: args.tenantId,
       quoteId: args.quoteId,
-      projectRoomId: args.projectRoomId,
+      projectRuimteId: args.projectRuimteId,
       productId: args.productId,
-      serviceCostRuleId: args.serviceCostRuleId,
-      lineType: args.lineType,
-      title: args.title,
-      description: args.description,
-      quantity: args.quantity,
-      unit: args.unit,
-      unitPriceExVat: args.unitPriceExVat,
-      vatRate: args.vatRate,
-      discountExVat: args.discountExVat,
-      lineTotalExVat: totals.lineTotalExVat,
-      lineVatTotal: totals.lineVatTotal,
-      lineTotalIncVat: totals.lineTotalIncVat,
+      werktariefRegelId: args.werktariefRegelId,
+      regelType: args.regelType,
+      titel: args.titel,
+      omschrijving: args.omschrijving,
+      aantal: args.aantal,
+      eenheid: args.eenheid,
+      eenheidsprijsExBtw: args.eenheidsprijsExBtw,
+      btwTarief: args.btwTarief,
+      kortingExBtw: args.kortingExBtw,
+      regelTotaalExBtw: totals.lineTotalExVat,
+      regelBtwTotaal: totals.lineVatTotal,
+      regelTotaalInclBtw: totals.lineTotalIncVat,
       sortOrder: args.sortOrder,
       metadata: args.metadata,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
 
     await recalculateQuote(ctx, args.tenantId, args.quoteId);
@@ -273,10 +273,10 @@ async function recalculateQuote(ctx: any, tenantId: any, quoteId: any) {
   const totalIncVat = roundMoney(subtotalExVat + vatTotal);
 
   await ctx.db.patch(quoteId, {
-    subtotalExVat,
-    vatTotal,
-    totalIncVat,
-    updatedAt: Date.now()
+    subtotaalExBtw: subtotalExVat,
+    btwTotaal: vatTotal,
+    totaalInclBtw: totalIncVat,
+    gewijzigdOp: Date.now()
   });
 }
 
@@ -329,11 +329,11 @@ async function addProjectEvent(
     tenantId,
     projectId,
     type,
-    title,
-    description,
-    visibleToCustomer: false,
+    titel: title,
+    omschrijving: description,
+    zichtbaarVoorKlant: false,
     createdByExternalUserId: externalUserId,
-    createdAt: Date.now()
+    aangemaaktOp: Date.now()
   });
 }
 
@@ -362,9 +362,9 @@ async function upsertProjectTask(
 
   if (existing) {
     await ctx.db.patch(existing._id, {
-      title,
-      dueAt,
-      updatedAt: now
+      titel: title,
+      vervaltOp: dueAt,
+      gewijzigdOp: now
     });
     return existing._id;
   }
@@ -374,12 +374,12 @@ async function upsertProjectTask(
     projectId,
     quoteId,
     type,
-    title,
-    dueAt,
+    titel: title,
+    vervaltOp: dueAt,
     status: "open",
     createdByExternalUserId: externalUserId,
-    createdAt: now,
-    updatedAt: now
+    aangemaaktOp: now,
+    gewijzigdOp: now
   });
 }
 
@@ -408,9 +408,9 @@ async function closeOpenProjectTasks(
       .map((task: Doc<"projectTasks">) =>
         ctx.db.patch(task._id, {
           status,
-          completedAt: status === "done" ? now : task.completedAt,
-          dismissedAt: status === "dismissed" ? now : task.dismissedAt,
-          updatedAt: now
+          voltooidOp: status === "done" ? now : task.voltooidOp,
+          afgewezenOp: status === "dismissed" ? now : task.afgewezenOp,
+          gewijzigdOp: now
         })
       )
   );
@@ -456,7 +456,7 @@ export const deleteQuoteLine = mutation({
       const mLines = await ctx.db
         .query("measurementLines")
         .withIndex("by_measurement", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("measurementId", measurement._id)
+          q.eq("tenantId", tenant._id).eq("inmetingId", measurement._id)
         )
         .collect();
 
@@ -467,12 +467,12 @@ export const deleteQuoteLine = mutation({
       if (linkedLine) {
         await ctx.db.patch(linkedLine._id, {
           quotePreparationStatus: "ready_for_quote",
-          convertedQuoteId: undefined,
-          convertedQuoteLineId: undefined,
-          updatedAt: Date.now()
+          geconverteerdeOfferteId: undefined,
+          geconverteerdeOfferteregelId: undefined,
+          gewijzigdOp: Date.now()
         });
         await ctx.db.patch(measurement._id, {
-          updatedAt: Date.now()
+          gewijzigdOp: Date.now()
         });
       }
     }
@@ -489,16 +489,16 @@ export const updateQuoteLine = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     lineId: v.string(),
-    projectRoomId: v.optional(v.string()),
+    projectRuimteId: v.optional(v.string()),
     productId: v.optional(v.string()),
-    lineType,
-    title: v.string(),
-    description: v.optional(v.string()),
-    quantity: v.number(),
-    unit: v.string(),
-    unitPriceExVat: v.number(),
-    vatRate: v.number(),
-    discountExVat: v.optional(v.number()),
+    regelType: lineType,
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
+    aantal: v.number(),
+    eenheid: v.string(),
+    eenheidsprijsExBtw: v.number(),
+    btwTarief: v.number(),
+    kortingExBtw: v.optional(v.number()),
     sortOrder: v.optional(v.number()),
     metadata: v.optional(v.any())
   },
@@ -524,8 +524,8 @@ export const updateQuoteLine = mutation({
       throw new ConvexError("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
     }
 
-    const projectRoomId = args.projectRoomId
-      ? (args.projectRoomId as Id<"projectRooms">)
+    const projectRoomId = args.projectRuimteId
+      ? (args.projectRuimteId as Id<"projectRooms">)
       : undefined;
 
     if (projectRoomId) {
@@ -540,35 +540,35 @@ export const updateQuoteLine = mutation({
       }
     }
 
-    const productId = args.lineType === "product"
+    const productId = args.regelType === "product"
       ? await validateQuoteLineProduct(ctx, tenant._id, args.productId)
       : undefined;
 
     const totals = calculateLineTotals(
-      args.lineType,
-      args.quantity,
-      args.unitPriceExVat,
-      args.vatRate,
-      args.discountExVat
+      args.regelType,
+      args.aantal,
+      args.eenheidsprijsExBtw,
+      args.btwTarief,
+      args.kortingExBtw
     );
 
     await ctx.db.patch(line._id, {
-      projectRoomId,
+      projectRuimteId: projectRoomId,
       productId,
-      lineType: args.lineType,
-      title: args.title,
-      description: args.description,
-      quantity: args.quantity,
-      unit: args.unit,
-      unitPriceExVat: args.unitPriceExVat,
-      vatRate: args.vatRate,
-      discountExVat: args.discountExVat,
-      lineTotalExVat: totals.lineTotalExVat,
-      lineVatTotal: totals.lineVatTotal,
-      lineTotalIncVat: totals.lineTotalIncVat,
+      regelType: args.regelType,
+      titel: args.titel,
+      omschrijving: args.omschrijving,
+      aantal: args.aantal,
+      eenheid: args.eenheid,
+      eenheidsprijsExBtw: args.eenheidsprijsExBtw,
+      btwTarief: args.btwTarief,
+      kortingExBtw: args.kortingExBtw,
+      regelTotaalExBtw: totals.lineTotalExVat,
+      regelBtwTotaal: totals.lineVatTotal,
+      regelTotaalInclBtw: totals.lineTotalIncVat,
       sortOrder: args.sortOrder ?? line.sortOrder,
       metadata: args.metadata,
-      updatedAt: Date.now()
+      gewijzigdOp: Date.now()
     });
     await recalculateQuote(ctx, tenant._id, line.quoteId);
 
@@ -581,8 +581,8 @@ export const updateQuoteTerms = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     quoteId: v.string(),
-    terms: v.array(v.string()),
-    paymentTerms: v.optional(v.array(v.string()))
+    voorwaarden: v.array(v.string()),
+    betalingsvoorwaarden: v.optional(v.array(v.string()))
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
@@ -601,9 +601,9 @@ export const updateQuoteTerms = mutation({
     }
 
     await ctx.db.patch(quote._id, {
-      terms: args.terms,
-      paymentTerms: args.paymentTerms ?? [],
-      updatedAt: Date.now()
+      voorwaarden: args.voorwaarden,
+      betalingsvoorwaarden: args.betalingsvoorwaarden ?? [],
+      gewijzigdOp: Date.now()
     });
 
     return quote._id;
@@ -639,12 +639,12 @@ export const updateQuoteStatus = mutation({
     const now = Date.now();
     const quotePatch: Partial<Doc<"quotes">> = {
       status: args.status,
-      sentAt: args.status === "sent" ? quote.sentAt ?? now : quote.sentAt,
-      validUntil:
-        args.status === "sent" ? quote.validUntil ?? addCalendarDays(now, 30) : quote.validUntil,
-      acceptedAt: args.status === "accepted" ? now : quote.acceptedAt,
-      rejectedAt: args.status === "rejected" ? now : quote.rejectedAt,
-      updatedAt: now
+      verzondenOp: args.status === "sent" ? quote.verzondenOp ?? now : quote.verzondenOp,
+      geldigTot:
+        args.status === "sent" ? quote.geldigTot ?? addCalendarDays(now, 30) : quote.geldigTot,
+      geaccepteerdOp: args.status === "accepted" ? now : quote.geaccepteerdOp,
+      afgewezenOp: args.status === "rejected" ? now : quote.afgewezenOp,
+      gewijzigdOp: now
     };
 
     await ctx.db.patch(quote._id, quotePatch);
@@ -665,7 +665,7 @@ export const updateQuoteStatus = mutation({
         ) {
           await ctx.db.patch(other._id, {
             status: "cancelled",
-            updatedAt: now
+            gewijzigdOp: now
           });
         }
       }
@@ -683,8 +683,8 @@ export const updateQuoteStatus = mutation({
     if (nextProjectStatus) {
       await ctx.db.patch(project._id, {
         status: nextProjectStatus,
-        acceptedAt: args.status === "accepted" ? now : project.acceptedAt,
-        updatedAt: now
+        geaccepteerdOp: args.status === "accepted" ? now : project.geaccepteerdOp,
+        gewijzigdOp: now
       });
     }
 
@@ -793,7 +793,7 @@ export const createQuote = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     projectId: v.string(),
-    title: v.string(),
+    titel: v.string(),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -818,34 +818,34 @@ export const createQuote = mutation({
     const quoteId = await ctx.db.insert("quotes", {
       tenantId: tenant._id,
       projectId: project._id,
-      customerId: project.customerId,
-      quoteNumber: `OFF-${new Date(now).getFullYear()}-${now}`,
-      title: args.title,
+      klantId: project.klantId,
+      offertenummer: `OFF-${new Date(now).getFullYear()}-${now}`,
+      titel: args.titel,
       status: "draft",
-      introText: template?.introText,
-      closingText: template?.closingText,
-      terms: template?.defaultTerms ?? [],
-      paymentTerms: template?.paymentTerms ?? [],
-      subtotalExVat: 0,
-      vatTotal: 0,
-      totalIncVat: 0,
+      inleidingTekst: template?.inleidingTekst,
+      afsluitTekst: template?.afsluitTekst,
+      voorwaarden: template?.standaardVoorwaarden ?? [],
+      betalingsvoorwaarden: template?.betalingsvoorwaarden ?? [],
+      subtotaalExBtw: 0,
+      btwTotaal: 0,
+      totaalInclBtw: 0,
       createdByExternalUserId: externalUserId,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
 
     await ctx.db.patch(project._id, {
       status: "quote_draft",
-      updatedAt: now
+      gewijzigdOp: now
     });
     await ctx.db.insert("projectWorkflowEvents", {
       tenantId: tenant._id,
       projectId: project._id,
       type: "quote_created",
-      title: "Offerte aangemaakt",
-      visibleToCustomer: false,
+      titel: "Offerte aangemaakt",
+      zichtbaarVoorKlant: false,
       createdByExternalUserId: externalUserId,
-      createdAt: now
+      aangemaaktOp: now
     });
 
     return quoteId;
@@ -857,10 +857,10 @@ export const updateQuote = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     quoteId: v.string(),
-    title: v.optional(v.string()),
-    validUntil: v.optional(v.number()),
-    introText: v.optional(v.string()),
-    closingText: v.optional(v.string())
+    titel: v.optional(v.string()),
+    geldigTot: v.optional(v.number()),
+    inleidingTekst: v.optional(v.string()),
+    afsluitTekst: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
@@ -878,13 +878,13 @@ export const updateQuote = mutation({
       throw new ConvexError("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
     }
 
-    const patch: Partial<Doc<"quotes">> = { updatedAt: Date.now() };
+    const patch: Partial<Doc<"quotes">> = { gewijzigdOp: Date.now() };
 
-    if (args.title !== undefined) patch.title = args.title;
+    if (args.titel !== undefined) patch.titel = args.titel;
     const hasArg = (obj: any, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
-    if (hasArg(args, "validUntil")) patch.validUntil = args.validUntil;
-    if (hasArg(args, "introText")) patch.introText = args.introText;
-    if (hasArg(args, "closingText")) patch.closingText = args.closingText;
+    if (hasArg(args, "validUntil")) patch.geldigTot = args.geldigTot;
+    if (hasArg(args, "introText")) patch.inleidingTekst = args.inleidingTekst;
+    if (hasArg(args, "closingText")) patch.afsluitTekst = args.afsluitTekst;
 
     await ctx.db.patch(quote._id, patch);
 
@@ -897,16 +897,16 @@ export const addQuoteLine = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     quoteId: v.string(),
-    projectRoomId: v.optional(v.string()),
+    projectRuimteId: v.optional(v.string()),
     productId: v.optional(v.string()),
-    lineType: quoteLineType,
-    title: v.string(),
-    description: v.optional(v.string()),
-    quantity: v.number(),
-    unit: v.string(),
-    unitPriceExVat: v.number(),
-    vatRate: v.number(),
-    discountExVat: v.optional(v.number()),
+    regelType: quoteLineType,
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
+    aantal: v.number(),
+    eenheid: v.string(),
+    eenheidsprijsExBtw: v.number(),
+    btwTarief: v.number(),
+    kortingExBtw: v.optional(v.number()),
     sortOrder: v.number(),
     metadata: v.optional(v.any())
   },
@@ -926,8 +926,8 @@ export const addQuoteLine = mutation({
       throw new ConvexError("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
     }
 
-    const projectRoomId = args.projectRoomId
-      ? (args.projectRoomId as Id<"projectRooms">)
+    const projectRoomId = args.projectRuimteId
+      ? (args.projectRuimteId as Id<"projectRooms">)
       : undefined;
 
     if (projectRoomId) {
@@ -942,38 +942,38 @@ export const addQuoteLine = mutation({
       }
     }
 
-    const productId = args.lineType === "product"
+    const productId = args.regelType === "product"
       ? await validateQuoteLineProduct(ctx, tenant._id, args.productId)
       : undefined;
 
     const totals = calculateLineTotals(
-      args.lineType,
-      args.quantity,
-      args.unitPriceExVat,
-      args.vatRate,
-      args.discountExVat
+      args.regelType,
+      args.aantal,
+      args.eenheidsprijsExBtw,
+      args.btwTarief,
+      args.kortingExBtw
     );
     const now = Date.now();
     const lineId = await ctx.db.insert("quoteLines", {
       tenantId: tenant._id,
       quoteId: quote._id,
-      projectRoomId,
+      projectRuimteId: projectRoomId,
       productId,
-      lineType: args.lineType,
-      title: args.title,
-      description: args.description,
-      quantity: args.quantity,
-      unit: args.unit,
-      unitPriceExVat: args.unitPriceExVat,
-      vatRate: args.vatRate,
-      discountExVat: args.discountExVat,
-      lineTotalExVat: totals.lineTotalExVat,
-      lineVatTotal: totals.lineVatTotal,
-      lineTotalIncVat: totals.lineTotalIncVat,
+      regelType: args.regelType,
+      titel: args.titel,
+      omschrijving: args.omschrijving,
+      aantal: args.aantal,
+      eenheid: args.eenheid,
+      eenheidsprijsExBtw: args.eenheidsprijsExBtw,
+      btwTarief: args.btwTarief,
+      kortingExBtw: args.kortingExBtw,
+      regelTotaalExBtw: totals.lineTotalExVat,
+      regelBtwTotaal: totals.lineVatTotal,
+      regelTotaalInclBtw: totals.lineTotalIncVat,
       sortOrder: args.sortOrder,
       metadata: args.metadata,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
 
     await recalculateQuote(ctx, tenant._id, quote._id);
@@ -1042,7 +1042,7 @@ export const importMeasurementLinesToQuote = mutation({
         throw new ConvexError("Measurement line is not ready for quote");
       }
 
-      const measurement = await ctx.db.get(line.measurementId);
+      const measurement = await ctx.db.get(line.inmetingId);
 
       if (
         !measurement ||
@@ -1052,17 +1052,17 @@ export const importMeasurementLinesToQuote = mutation({
         throw new ConvexError("Measurement not found for quote project");
       }
 
-      const room = line.roomId ? await ctx.db.get(line.roomId) : null;
+      const room = line.ruimteId ? await ctx.db.get(line.ruimteId) : null;
 
       if (
         room &&
-        (room.tenantId !== tenant._id || room.measurementId !== measurement._id)
+        (room.tenantId !== tenant._id || room.inmetingId !== measurement._id)
       ) {
         throw new ConvexError("Measurement room not found");
       }
 
-      if (room?.projectRoomId) {
-        const projectRoom = await ctx.db.get(room.projectRoomId);
+      if (room?.projectRuimteId) {
+        const projectRoom = await ctx.db.get(room.projectRuimteId);
 
         if (
           !projectRoom ||
@@ -1091,57 +1091,57 @@ export const importMeasurementLinesToQuote = mutation({
       // Een raambekleding-matrix-regel heeft géén catalogusproduct maar wél een richtprijs;
       // die mag wél overgenomen worden. Een verwijderd/inactief catalogusproduct (productId stond
       // er ooit, maar valideert niet meer) blijft bewust leeg-geprijsd binnenkomen.
-      const isMatrixLine = line.indicativePriceType === "matrix";
+      const isMatrixLine = line.indicatievePrijsSoort === "matrix";
       const hasIndicativePrice =
         (prefilledProductId !== undefined || isMatrixLine) &&
-        line.indicativeUnitPriceExVat !== undefined &&
-        line.indicativeVatRate !== undefined;
-      const unitPriceExVat = hasIndicativePrice ? line.indicativeUnitPriceExVat! : 0;
-      const vatRate = hasIndicativePrice ? line.indicativeVatRate! : 0;
-      const totals = calculateLineTotals(line.quoteLineType, line.quantity, unitPriceExVat, vatRate);
+        line.indicatieveEenheidsprijsExBtw !== undefined &&
+        line.indicatiefBtwTarief !== undefined;
+      const unitPriceExVat = hasIndicativePrice ? line.indicatieveEenheidsprijsExBtw! : 0;
+      const vatRate = hasIndicativePrice ? line.indicatiefBtwTarief! : 0;
+      const totals = calculateLineTotals(line.offerteRegelType, line.aantal, unitPriceExVat, vatRate);
       const quoteLineId = await ctx.db.insert("quoteLines", {
         tenantId: tenant._id,
         quoteId: quote._id,
-        projectRoomId: room?.projectRoomId,
-        lineType: line.quoteLineType,
-        title: importedMeasurementLineTitle(line, room),
-        description: importedMeasurementLineDescription(line, hasIndicativePrice),
-        quantity: line.quantity,
-        unit: line.unit,
-        unitPriceExVat,
-        vatRate,
+        projectRuimteId: room?.projectRuimteId,
+        regelType: line.offerteRegelType,
+        titel: importedMeasurementLineTitle(line, room),
+        omschrijving: importedMeasurementLineDescription(line, hasIndicativePrice),
+        aantal: line.aantal,
+        eenheid: line.eenheid,
+        eenheidsprijsExBtw: unitPriceExVat,
+        btwTarief: vatRate,
         productId: prefilledProductId,
-        lineTotalExVat: totals.lineTotalExVat,
-        lineVatTotal: totals.lineVatTotal,
-        lineTotalIncVat: totals.lineTotalIncVat,
+        regelTotaalExBtw: totals.lineTotalExVat,
+        regelBtwTotaal: totals.lineVatTotal,
+        regelTotaalInclBtw: totals.lineTotalIncVat,
         sortOrder: startSortOrder + index,
         metadata: {
           source: "measurement",
           measurementId: measurement._id,
           measurementLineId: line._id,
           measurementRoomId: room?._id,
-          productGroup: line.productGroup,
-          calculationType: line.calculationType,
-          wastePercent: line.wastePercent,
+          productGroup: line.productGroep,
+          calculationType: line.berekeningType,
+          wastePercent: line.snijverliesPct,
           isIndicative: true,
           productId: prefilledProductId ? line.productId : undefined,
-          productName: prefilledProductId || isMatrixLine ? line.productName : undefined,
-          indicativePriceType: hasIndicativePrice ? line.indicativePriceType : undefined,
-          indicativePriceUnit: hasIndicativePrice ? line.indicativePriceUnit : undefined,
+          productName: prefilledProductId || isMatrixLine ? line.productNaam : undefined,
+          indicativePriceType: hasIndicativePrice ? line.indicatievePrijsSoort : undefined,
+          indicativePriceUnit: hasIndicativePrice ? line.indicatievePrijsEenheid : undefined,
           // Matrix-regels (raambekleding) hebben bewust geen catalogusproduct nodig.
           requiresManualProductReview: !prefilledProductId && !isMatrixLine,
           requiresManualPriceReview: true,
           requiresManualVatReview: !hasIndicativePrice
         },
-        createdAt: now,
-        updatedAt: now
+        aangemaaktOp: now,
+        gewijzigdOp: now
       });
 
       await ctx.db.patch(line._id, {
         quotePreparationStatus: "converted",
-        convertedQuoteId: quote._id,
-        convertedQuoteLineId: quoteLineId,
-        updatedAt: now
+        geconverteerdeOfferteId: quote._id,
+        geconverteerdeOfferteregelId: quoteLineId,
+        gewijzigdOp: now
       });
 
       insertedLineIds.push(quoteLineId);
@@ -1149,7 +1149,7 @@ export const importMeasurementLinesToQuote = mutation({
     }
 
     for (const measurementId of touchedMeasurementIds) {
-      await ctx.db.patch(measurementId, { updatedAt: now });
+      await ctx.db.patch(measurementId, { gewijzigdOp: now });
     }
 
     await recalculateQuote(ctx, tenant._id, quote._id);

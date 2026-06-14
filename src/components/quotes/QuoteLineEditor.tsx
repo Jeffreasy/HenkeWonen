@@ -74,16 +74,16 @@ export default function QuoteLineEditor({
       return;
     }
 
-    setTitle(product.displayName ?? product.name);
-    setUnit(product.unit);
-    setUnitPriceExVat(String(product.priceExVat));
-    setVatRate(String(product.vatRate));
+    setTitle(product.weergaveNaam ?? product.naam);
+    setUnit(product.eenheid);
+    setUnitPriceExVat(String(product.prijsExBtw));
+    setVatRate(String(product.btwTarief));
     setDescription((current) =>
       current ||
       [
         product.displaySupplierName ?? product.supplier,
         product.category,
-        product.colorName
+        product.kleurnaam
       ]
         .filter(Boolean)
         .join(" - ")
@@ -93,7 +93,7 @@ export default function QuoteLineEditor({
   function applyTemplateLine(templateKey: string) {
     setSelectedTemplateKey(templateKey);
     const templateLine = templateLines.find(
-      (line) => `${line.sortOrder}-${line.title}` === templateKey
+      (line) => `${line.sortOrder}-${line.titel}` === templateKey
     );
 
     if (!templateLine) {
@@ -102,14 +102,14 @@ export default function QuoteLineEditor({
     }
 
     setSelectedTemplateLine(templateLine);
-    setLineType(templateLine.lineType);
-    if (templateLine.lineType !== "product") {
+    setLineType(templateLine.regelType);
+    if (templateLine.regelType !== "product") {
       setSelectedProduct(null);
     }
-    setTitle(polishQuoteTemplateText(templateLine.title));
-    setDescription(templateLine.description ? polishQuoteTemplateText(templateLine.description) : "");
-    setQuantity(String(templateLine.defaultQuantity ?? 1));
-    setUnit(templateLine.unit);
+    setTitle(polishQuoteTemplateText(templateLine.titel));
+    setDescription(templateLine.omschrijving ? polishQuoteTemplateText(templateLine.omschrijving) : "");
+    setQuantity(String(templateLine.standaardAantal ?? 1));
+    setUnit(templateLine.eenheid);
     setUnitPriceExVat("");
     setDiscountExVat("");
   }
@@ -130,9 +130,9 @@ export default function QuoteLineEditor({
       ? Object.fromEntries(
           Object.entries({
             source: "quoteTemplate",
-            sectionKey: selectedTemplateLine.sectionKey,
-            categoryHint: selectedTemplateLine.categoryHint,
-            productKindHint: selectedTemplateLine.productKindHint
+            sectionKey: selectedTemplateLine.sectieSleutel,
+            categoryHint: selectedTemplateLine.categorieHint,
+            productKindHint: selectedTemplateLine.productSoortHint
           }).filter(([, value]) => value !== undefined)
         )
       : undefined;
@@ -140,12 +140,12 @@ export default function QuoteLineEditor({
       ? {
           source: "catalog",
           productId: selectedProduct.id,
-          displayName: selectedProduct.displayName ?? selectedProduct.name,
+          displayName: selectedProduct.weergaveNaam ?? selectedProduct.naam,
           supplier: selectedProduct.displaySupplierName ?? selectedProduct.supplier,
           category: selectedProduct.category,
-          articleNumber: selectedProduct.articleNumber,
-          supplierCode: selectedProduct.supplierCode,
-          commercialCode: selectedProduct.commercialCode
+          articleNumber: selectedProduct.artikelnummer,
+          supplierCode: selectedProduct.leverancierCode,
+          commercialCode: selectedProduct.commercieleCode
         }
       : undefined;
     const metadata =
@@ -214,8 +214,8 @@ export default function QuoteLineEditor({
               .slice()
               .sort((left, right) => left.sortOrder - right.sortOrder)
               .map((line) => (
-                <option value={`${line.sortOrder}-${line.title}`} key={`${line.sortOrder}-${line.title}`}>
-                  {line.sortOrder}. {polishQuoteTemplateText(line.title)}
+                <option value={`${line.sortOrder}-${line.titel}`} key={`${line.sortOrder}-${line.titel}`}>
+                  {line.sortOrder}. {polishQuoteTemplateText(line.titel)}
                 </option>
               ))}
           </Select>
@@ -259,7 +259,7 @@ export default function QuoteLineEditor({
             <option value="">Geen specifieke ruimte</option>
             {projectRooms.map((room) => (
               <option value={room.id} key={room.id}>
-                {room.name}
+                {room.naam}
               </option>
             ))}
           </Select>

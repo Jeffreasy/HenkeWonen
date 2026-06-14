@@ -28,17 +28,17 @@ function splitLines(value: string): string[] {
 }
 
 function sectionLines(template: QuoteTemplate, sectionKey: string) {
-  return template.defaultLines
-    .filter((line) => line.sectionKey === sectionKey)
+  return template.standaardRegels
+    .filter((line) => line.sectieSleutel === sectionKey)
     .slice()
     .sort((left, right) => left.sortOrder - right.sortOrder);
 }
 
 function fallbackLines(template: QuoteTemplate) {
-  const sectionKeys = new Set((template.sections ?? []).map((section) => section.key));
+  const sectionKeys = new Set((template.secties ?? []).map((section) => section.sleutel));
 
-  return template.defaultLines
-    .filter((line) => !line.sectionKey || !sectionKeys.has(line.sectionKey))
+  return template.standaardRegels
+    .filter((line) => !line.sectieSleutel || !sectionKeys.has(line.sectieSleutel))
     .slice()
     .sort((left, right) => left.sortOrder - right.sortOrder);
 }
@@ -48,8 +48,8 @@ export function QuoteTemplateCard({ template, isSaving, onSave }: QuoteTemplateC
   const [paymentTerms, setPaymentTerms] = useState("");
 
   useEffect(() => {
-    setTerms(polishQuoteTemplateLines(template.defaultTerms).join("\n"));
-    setPaymentTerms(polishQuoteTemplateLines(template.paymentTerms ?? []).join("\n"));
+    setTerms(polishQuoteTemplateLines(template.standaardVoorwaarden).join("\n"));
+    setPaymentTerms(polishQuoteTemplateLines(template.betalingsvoorwaarden ?? []).join("\n"));
   }, [template]);
 
   async function handleSave() {
@@ -60,7 +60,7 @@ export function QuoteTemplateCard({ template, isSaving, onSave }: QuoteTemplateC
     <section className="panel">
       <SectionHeader
         compact
-        title={template.name}
+        title={template.naam}
         description="Standaard offerteblokken, voorwaarden en betalingsafspraken voor nieuwe offertes."
         actions={
           <div className="quote-template-header-badges">
@@ -76,9 +76,9 @@ export function QuoteTemplateCard({ template, isSaving, onSave }: QuoteTemplateC
         <Card variant="muted">
           <h3>Secties</h3>
           <div className="quote-template-chip-list">
-            {(template.sections ?? []).map((section) => (
-              <Badge key={section.key} variant="neutral">
-                {section.sortOrder}. {polishQuoteTemplateText(section.title)}
+            {(template.secties ?? []).map((section) => (
+              <Badge key={section.sleutel} variant="neutral">
+                {section.sortOrder}. {polishQuoteTemplateText(section.titel)}
               </Badge>
             ))}
           </div>
@@ -86,10 +86,10 @@ export function QuoteTemplateCard({ template, isSaving, onSave }: QuoteTemplateC
         <Card variant="muted">
           <h3>Soorten posten</h3>
           <div className="quote-template-chip-list">
-            {Array.from(new Set(template.defaultLines.map((line) => line.lineType))).map(
-              (lineType) => (
-                <Badge key={lineType} variant="info">
-                  {formatLineType(lineType)}
+            {Array.from(new Set(template.standaardRegels.map((line) => line.regelType))).map(
+              (regelType) => (
+                <Badge key={regelType} variant="info">
+                  {formatLineType(regelType)}
                 </Badge>
               )
             )}
@@ -98,37 +98,41 @@ export function QuoteTemplateCard({ template, isSaving, onSave }: QuoteTemplateC
       </div>
 
       <div className="quote-template-sections">
-        {(template.sections ?? []).map((section) => {
-          const lines = sectionLines(template, section.key);
+        {(template.secties ?? []).map((section) => {
+          const lines = sectionLines(template, section.sleutel);
 
-          if (lines.length === 0 || section.key === "voorwaarden" || section.key === "facturering") {
+          if (
+            lines.length === 0 ||
+            section.sleutel === "voorwaarden" ||
+            section.sleutel === "facturering"
+          ) {
             return null;
           }
 
           return (
-            <Card padding="sm" key={section.key}>
+            <Card padding="sm" key={section.sleutel}>
               <div className="quote-template-section-title">
                 <div>
-                  <h3>{polishQuoteTemplateText(section.title)}</h3>
-                  {section.description ? (
-                    <p className="muted">{polishQuoteTemplateText(section.description)}</p>
+                  <h3>{polishQuoteTemplateText(section.titel)}</h3>
+                  {section.omschrijving ? (
+                    <p className="muted">{polishQuoteTemplateText(section.omschrijving)}</p>
                   ) : null}
                 </div>
                 <Badge variant="neutral">{lines.length} regels</Badge>
               </div>
               <div className="quote-template-section-lines">
                 {lines.map((line) => (
-                  <div className="quote-template-line" key={`${line.sortOrder}-${line.title}`}>
-                    <Badge variant="neutral">{formatLineType(line.lineType)}</Badge>
+                  <div className="quote-template-line" key={`${line.sortOrder}-${line.titel}`}>
+                    <Badge variant="neutral">{formatLineType(line.regelType)}</Badge>
                     <div>
-                      <strong>{polishQuoteTemplateText(line.title)}</strong>
-                      {line.description ? (
-                        <p className="muted">{polishQuoteTemplateText(line.description)}</p>
+                      <strong>{polishQuoteTemplateText(line.titel)}</strong>
+                      {line.omschrijving ? (
+                        <p className="muted">{polishQuoteTemplateText(line.omschrijving)}</p>
                       ) : null}
                       <small className="quote-template-line-meta">
-                        {line.defaultEnabled ? "Standaard ingeschakeld" : "Optioneel"} ·{" "}
-                        {formatUnit(line.unit)}
-                        {line.categoryHint ? ` · Categorie: ${polishQuoteTemplateText(line.categoryHint)}` : ""}
+                        {line.standaardIngeschakeld ? "Standaard ingeschakeld" : "Optioneel"} ·{" "}
+                        {formatUnit(line.eenheid)}
+                        {line.categorieHint ? ` · Categorie: ${polishQuoteTemplateText(line.categorieHint)}` : ""}
                       </small>
                     </div>
                   </div>
@@ -142,12 +146,12 @@ export function QuoteTemplateCard({ template, isSaving, onSave }: QuoteTemplateC
             <h3>Overige posten</h3>
             <div className="quote-template-section-lines">
               {fallbackLines(template).map((line) => (
-                <div className="quote-template-line" key={`${line.sortOrder}-${line.title}`}>
-                  <Badge variant="neutral">{formatLineType(line.lineType)}</Badge>
+                <div className="quote-template-line" key={`${line.sortOrder}-${line.titel}`}>
+                  <Badge variant="neutral">{formatLineType(line.regelType)}</Badge>
                   <div>
-                    <strong>{polishQuoteTemplateText(line.title)}</strong>
-                    {line.description ? (
-                      <p className="muted">{polishQuoteTemplateText(line.description)}</p>
+                    <strong>{polishQuoteTemplateText(line.titel)}</strong>
+                    {line.omschrijving ? (
+                      <p className="muted">{polishQuoteTemplateText(line.omschrijving)}</p>
                     ) : null}
                   </div>
                 </div>

@@ -22,7 +22,7 @@ export const getBySlug = query({
 export const ensureTenant = mutation({
   args: {
     slug: v.string(),
-    name: v.string(),
+    naam: v.string(),
     syncToken: v.string()
   },
   handler: async (ctx, args) => {
@@ -36,9 +36,9 @@ export const ensureTenant = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        name: args.name,
+        naam: args.naam,
         status: "active",
-        updatedAt: now
+        gewijzigdOp: now
       });
 
       return existing._id;
@@ -46,10 +46,10 @@ export const ensureTenant = mutation({
 
     return await ctx.db.insert("tenants", {
       slug: args.slug,
-      name: args.name,
+      naam: args.naam,
       status: "active",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });

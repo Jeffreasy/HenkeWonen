@@ -197,14 +197,14 @@ export default function ProductList({ session }: ProductListProps) {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         productId: editingProduct.id,
-        name: draft.name.trim(),
-        articleNumber: draft.articleNumber.trim() || undefined,
-        supplierCode: draft.supplierCode.trim() || undefined,
-        commercialCode: draft.commercialCode.trim() || undefined,
-        colorName: draft.colorName.trim() || undefined,
-        supplierProductGroup: draft.supplierProductGroup.trim() || undefined,
-        packageContentM2: optionalNumber(draft.packageContentM2),
-        piecesPerPackage: optionalNumber(draft.piecesPerPackage),
+        naam: draft.name.trim(),
+        artikelnummer: draft.articleNumber.trim() || undefined,
+        leverancierCode: draft.supplierCode.trim() || undefined,
+        commercieleCode: draft.commercialCode.trim() || undefined,
+        kleurnaam: draft.colorName.trim() || undefined,
+        leverancierProductGroep: draft.supplierProductGroup.trim() || undefined,
+        pakinhoudM2: optionalNumber(draft.packageContentM2),
+        stuksPerPak: optionalNumber(draft.piecesPerPackage),
         status: draft.status
       });
       setEditingProduct(null);
@@ -238,14 +238,14 @@ export default function ProductList({ session }: ProductListProps) {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         productId: product.id,
-        name: product.name,
-        articleNumber: product.articleNumber,
-        supplierCode: product.supplierCode,
-        commercialCode: product.commercialCode,
-        colorName: product.colorName,
-        supplierProductGroup: product.supplierProductGroup,
-        packageContentM2: product.packageContentM2,
-        piecesPerPackage: product.piecesPerPackage,
+        naam: product.naam,
+        artikelnummer: product.artikelnummer,
+        leverancierCode: product.leverancierCode,
+        commercieleCode: product.commercieleCode,
+        kleurnaam: product.kleurnaam,
+        leverancierProductGroep: product.leverancierProductGroep,
+        pakinhoudM2: product.pakinhoudM2,
+        stuksPerPak: product.stuksPerPak,
         status: nextStatus
       });
       setPendingProductStatus(null);
@@ -260,14 +260,14 @@ export default function ProductList({ session }: ProductListProps) {
 
   const initialDraft: ProductDraft | null = editingProduct
     ? {
-        name: editingProduct.name,
-        articleNumber: editingProduct.articleNumber ?? "",
-        supplierCode: editingProduct.supplierCode ?? "",
-        commercialCode: editingProduct.commercialCode ?? "",
-        colorName: editingProduct.colorName ?? "",
-        supplierProductGroup: editingProduct.supplierProductGroup ?? "",
-        packageContentM2: decimalText(editingProduct.packageContentM2),
-        piecesPerPackage: decimalText(editingProduct.piecesPerPackage),
+        name: editingProduct.naam,
+        articleNumber: editingProduct.artikelnummer ?? "",
+        supplierCode: editingProduct.leverancierCode ?? "",
+        commercialCode: editingProduct.commercieleCode ?? "",
+        colorName: editingProduct.kleurnaam ?? "",
+        supplierProductGroup: editingProduct.leverancierProductGroep ?? "",
+        packageContentM2: decimalText(editingProduct.pakinhoudM2),
+        piecesPerPackage: decimalText(editingProduct.stuksPerPak),
         status: editingProduct.status
       }
     : null;
@@ -284,8 +284,8 @@ export default function ProductList({ session }: ProductListProps) {
         description={
           pendingProductStatus
             ? pendingProductStatus.nextStatus === "archived"
-              ? `Je archiveert "${pendingProductStatus.product.displayName ?? pendingProductStatus.product.name}". Het product verdwijnt uit de actieve catalogus, maar historische data blijft bewaard.`
-              : `Je herstelt "${pendingProductStatus.product.displayName ?? pendingProductStatus.product.name}" naar de actieve catalogus.`
+              ? `Je archiveert "${pendingProductStatus.product.weergaveNaam ?? pendingProductStatus.product.naam}". Het product verdwijnt uit de actieve catalogus, maar historische data blijft bewaard.`
+              : `Je herstelt "${pendingProductStatus.product.weergaveNaam ?? pendingProductStatus.product.naam}" naar de actieve catalogus.`
             : ""
         }
         confirmLabel={pendingProductStatus?.nextStatus === "archived" ? "Archiveren" : "Herstellen"}
@@ -335,7 +335,7 @@ export default function ProductList({ session }: ProductListProps) {
 
       {editingProduct && initialDraft ? (
         <ProductEditPanel
-          displayName={editingProduct.displayName ?? editingProduct.name}
+          displayName={editingProduct.weergaveNaam ?? editingProduct.naam}
           initialDraft={initialDraft}
           onSave={handleSaveProduct}
           onCancel={() => setEditingProduct(null)}

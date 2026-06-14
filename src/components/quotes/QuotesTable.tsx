@@ -59,15 +59,15 @@ export function QuotesTable({
           type="button"
           onClick={() => onSelectQuote(quote.id)}
         >
-          <strong>{quote.quoteNumber}</strong>
-          <span>{quote.title}</span>
+          <strong>{quote.offertenummer}</strong>
+          <span>{quote.titel}</span>
         </button>
       )
     },
     {
       key: "customer",
       header: "Klant",
-      render: (quote) => customerById.get(quote.customerId)?.displayName ?? "-"
+      render: (quote) => customerById.get(quote.klantId)?.weergaveNaam ?? "-"
     },
     {
       key: "status",
@@ -88,7 +88,7 @@ export function QuotesTable({
       header: "Totaal",
       align: "right",
       width: "130px",
-      render: (quote) => formatEuro(quote.totalIncVat)
+      render: (quote) => formatEuro(quote.totaalInclBtw)
     }
   ];
 
@@ -151,15 +151,15 @@ export function QuotesTable({
           <div className="mobile-card-section">
             <div className="mobile-card-header">
               <div className="mobile-card-title">
-                <strong>{quote.quoteNumber}</strong>
-                <small className="muted">{quote.title}</small>
+                <strong>{quote.offertenummer}</strong>
+                <small className="muted">{quote.titel}</small>
               </div>
               <StatusBadge status={quote.status} label={formatQuoteStatus(quote.status)} />
             </div>
             <div className="mobile-card-meta">
-              <span>{customerById.get(quote.customerId)?.displayName ?? "Geen klant"}</span>
+              <span>{customerById.get(quote.klantId)?.weergaveNaam ?? "Geen klant"}</span>
               <span>{quote.lines.length} posten</span>
-              <strong>{formatEuro(quote.totalIncVat)}</strong>
+              <strong>{formatEuro(quote.totaalInclBtw)}</strong>
             </div>
             <div className="mobile-card-actions">
               <Button

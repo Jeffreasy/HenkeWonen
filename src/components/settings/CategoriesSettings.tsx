@@ -96,8 +96,11 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
       await client.mutation(api.portal.upsertCategory, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        categoryId: editingCategory?.id,
-        ...data
+        categorieId: editingCategory?.id,
+        naam: data.name,
+        slug: data.slug,
+        sortOrder: data.sortOrder,
+        status: data.status
       });
       showToast({ title: editingCategory ? "Productgroep bijgewerkt" : "Productgroep toegevoegd", description: data.name, tone: "success" });
       setEditingCategory(null);
@@ -131,8 +134,8 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
       await client.mutation(api.portal.upsertCategory, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        categoryId: category.id,
-        name: category.name,
+        categorieId: category.id,
+        naam: category.name,
         slug: category.slug,
         sortOrder: category.sortOrder,
         status: nextStatus

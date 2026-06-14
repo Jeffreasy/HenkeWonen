@@ -49,14 +49,14 @@ export const dashboard = query({
     const allOpenInvoices: Doc<"invoices">[] = invoicesByStatus.flat();
     const now = Date.now();
     const openAmount = allOpenInvoices.reduce(
-      (sum, inv) => sum + (inv.totalIncVat - inv.paidAmount),
+      (sum, inv) => sum + (inv.totaalInclBtw - inv.betaaldBedrag),
       0
     );
     const overdueCount = allOpenInvoices.filter(
-      (inv) => inv.status === "overdue" || inv.dueDate < now
+      (inv) => inv.status === "overdue" || inv.vervaldatum < now
     ).length;
     const customerById = new Map(
-      customers.map((customer: Doc<"customers">) => [String(customer._id), customer.displayName])
+      customers.map((customer: Doc<"customers">) => [String(customer._id), customer.weergaveNaam])
     );
     const projectById = new Map(
       projects.map((project: Doc<"projects">) => [String(project._id), project])
@@ -66,7 +66,7 @@ export const dashboard = query({
     );
     const openQuotes = quotes
       .filter((quote: Doc<"quotes">) => quote.status === "draft" || quote.status === "sent")
-      .sort((left: Doc<"quotes">, right: Doc<"quotes">) => right.updatedAt - left.updatedAt);
+      .sort((left: Doc<"quotes">, right: Doc<"quotes">) => right.gewijzigdOp - left.gewijzigdOp);
     const plannedWorkProjects = projects.filter((project: Doc<"projects">) =>
       ["measurement_planned", "execution_planned", "ordering", "in_progress"].includes(
         project.status
@@ -74,16 +74,16 @@ export const dashboard = query({
     );
     const taskWorkItems = projectTasks.map((task: Doc<"projectTasks">) => {
       const project = projectById.get(String(task.projectId));
-      const priority = taskPriority(task.dueAt);
+      const priority = taskPriority(task.vervaltOp);
 
       return {
         id: `project-task-${task._id}`,
-        title: task.title,
-        description: `${project?.title ?? "Dossier"} - deadline ${new Intl.DateTimeFormat("nl-NL").format(new Date(task.dueAt))}`,
+        title: task.titel,
+        description: `${project?.titel ?? "Dossier"} - deadline ${new Intl.DateTimeFormat("nl-NL").format(new Date(task.vervaltOp))}`,
         href: `/portal/projecten/${task.projectId}`,
         label: priority.label,
         tone: priority.tone,
-        updatedAt: task.dueAt,
+        updatedAt: task.vervaltOp,
         priorityRank: priority.rank
       };
     });
@@ -94,11 +94,11 @@ export const dashboard = query({
         .map((project: Doc<"projects">) => ({
           id: `project-lead-${project._id}`,
           title: "Nieuwe aanvraag opvolgen",
-          description: `${project.title} - ${customerById.get(String(project.customerId)) ?? "Onbekende klant"}`,
+          description: `${project.titel} - ${customerById.get(String(project.klantId)) ?? "Onbekende klant"}`,
           href: `/portal/projecten/${project._id}`,
           label: "Aanvraag",
           tone: "warning",
-          updatedAt: project.updatedAt,
+          updatedAt: project.gewijzigdOp,
           priorityRank: 1
         })),
       ...quotes
@@ -109,11 +109,11 @@ export const dashboard = query({
           return {
             id: `quote-draft-${quote._id}`,
             title: "Offerte afmaken",
-            description: `${quote.title} - ${customerById.get(String(quote.customerId)) ?? project?.title ?? "Geen klant"}`,
+            description: `${quote.titel} - ${customerById.get(String(quote.klantId)) ?? project?.titel ?? "Geen klant"}`,
             href: `/portal/offertes/${quote._id}`,
             label: "Concept",
             tone: "warning",
-            updatedAt: quote.updatedAt,
+            updatedAt: quote.gewijzigdOp,
             priorityRank: 1
           };
         }),
@@ -125,11 +125,11 @@ export const dashboard = query({
           return {
             id: `quote-sent-${quote._id}`,
             title: "Offerte opvolgen",
-            description: `${quote.title} - ${customerById.get(String(quote.customerId)) ?? project?.title ?? "Geen klant"}`,
+            description: `${quote.titel} - ${customerById.get(String(quote.klantId)) ?? project?.titel ?? "Geen klant"}`,
             href: `/portal/offertes/${quote._id}`,
             label: "Verzonden",
             tone: "info",
-            updatedAt: quote.updatedAt,
+            updatedAt: quote.gewijzigdOp,
             priorityRank: 2
           };
         }),
@@ -138,11 +138,11 @@ export const dashboard = query({
         .map((project: Doc<"projects">) => ({
           id: `measurement-${project._id}`,
           title: "Inmeting voorbereiden",
-          description: `${project.title} - ${customerById.get(String(project.customerId)) ?? "Onbekende klant"}`,
+          description: `${project.titel} - ${customerById.get(String(project.klantId)) ?? "Onbekende klant"}`,
           href: `/portal/projecten/${project._id}`,
           label: "Inmeting",
           tone: "info",
-          updatedAt: project.updatedAt,
+          updatedAt: project.gewijzigdOp,
           priorityRank: 2
         })),
       ...projects
@@ -153,11 +153,11 @@ export const dashboard = query({
         .map((project: Doc<"projects">) => ({
           id: `accepted-${project._id}`,
           title: "Akkoord opvolgen",
-          description: `${project.title} - ${customerById.get(String(project.customerId)) ?? "Onbekende klant"}`,
+          description: `${project.titel} - ${customerById.get(String(project.klantId)) ?? "Onbekende klant"}`,
           href: `/portal/projecten/${project._id}`,
           label: "Opvolging",
           tone: "info",
-          updatedAt: project.updatedAt,
+          updatedAt: project.gewijzigdOp,
           priorityRank: 2
         })),
       ...projects
@@ -167,11 +167,11 @@ export const dashboard = query({
         .map((project: Doc<"projects">) => ({
           id: `execution-${project._id}`,
           title: "Uitvoering opvolgen",
-          description: `${project.title} - ${customerById.get(String(project.customerId)) ?? "Onbekende klant"}`,
+          description: `${project.titel} - ${customerById.get(String(project.klantId)) ?? "Onbekende klant"}`,
           href: `/portal/projecten/${project._id}`,
           label: "Uitvoering",
           tone: "success",
-          updatedAt: project.updatedAt,
+          updatedAt: project.gewijzigdOp,
           priorityRank: 2
         }))
     ].sort((left, right) => left.priorityRank - right.priorityRank || left.updatedAt - right.updatedAt);
@@ -182,7 +182,7 @@ export const dashboard = query({
           (project: Doc<"projects">) =>
             !["closed", "cancelled", "paid"].includes(project.status)
         )
-        .sort((left: Doc<"projects">, right: Doc<"projects">) => right.updatedAt - left.updatedAt)
+        .sort((left: Doc<"projects">, right: Doc<"projects">) => right.gewijzigdOp - left.gewijzigdOp)
         .slice(0, 6)
         .map((project: Doc<"projects">) => toProject(ctx, tenant.slug, project))
     );
@@ -197,8 +197,8 @@ export const dashboard = query({
 
         return {
           ...toQuoteSummary(tenant.slug, quote),
-          customerName: customerById.get(String(quote.customerId)) ?? "Onbekende klant",
-          projectTitle: project?.title
+          customerName: customerById.get(String(quote.klantId)) ?? "Onbekende klant",
+          projectTitle: project?.titel
         };
       }),
       projects: visibleProjects,

@@ -25,3 +25,25 @@ export type QuoteLineFormValues = {
   sortOrder: number;
   metadata?: Record<string, unknown>;
 };
+
+/**
+ * Brug van de (Engelse) formulierwaarden naar de Nederlandse offerteregel-mutatie-args
+ * (addQuoteLine/updateQuoteLine). De formulierlaag blijft intern Engels; de API is Nederlands.
+ * TODO Fase 2 (frontend-formulieren): QuoteLineFormValues zelf nog naar NL omzetten.
+ */
+export function quoteLineFormToApi(line: QuoteLineFormValues) {
+  return {
+    projectRuimteId: line.projectRoomId,
+    productId: line.productId,
+    regelType: line.lineType,
+    titel: line.title,
+    omschrijving: line.description,
+    aantal: line.quantity,
+    eenheid: line.unit,
+    eenheidsprijsExBtw: line.unitPriceExVat,
+    btwTarief: line.vatRate,
+    kortingExBtw: line.discountExVat,
+    sortOrder: line.sortOrder,
+    metadata: line.metadata
+  };
+}

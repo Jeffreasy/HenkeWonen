@@ -10,9 +10,9 @@ type QuoteTotalsProps = {
 export default function QuoteTotals({ lines }: QuoteTotalsProps) {
   const totals = lines.reduce(
     (current, line) => ({
-      subtotalExVat: current.subtotalExVat + line.lineTotalExVat,
-      vatTotal: current.vatTotal + line.lineVatTotal,
-      totalIncVat: current.totalIncVat + line.lineTotalIncVat
+      subtotalExVat: current.subtotalExVat + line.regelTotaalExBtw,
+      vatTotal: current.vatTotal + line.regelBtwTotaal,
+      totalIncVat: current.totalIncVat + line.regelTotaalInclBtw
     }),
     {
       subtotalExVat: 0,
