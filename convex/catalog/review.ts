@@ -1,5 +1,6 @@
 import { mutation, query } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
+import type { Doc, Id } from "../_generated/dataModel";
 import { mutationActorValidator, readActorValidator, requireMutationRole, requireQueryRole } from "../authz";
 import { toAsciiFieldKey } from "./priceColumnKey";
 
@@ -339,7 +340,9 @@ export const updateProfileVatMode = mutation({
     const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
       "admin"
     ]);
-    const profile: any = await ctx.db.get(args.profileId as any);
+    const profile: Doc<"importProfiles"> | null = await ctx.db.get(
+      args.profileId as Id<"importProfiles">
+    );
 
     if (!profile || profile.tenantId !== tenant._id) {
       throw new ConvexError("Import profile not found");
@@ -426,7 +429,9 @@ export const bulkUpdateProfileVatModes = mutation({
     const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
       "admin"
     ]);
-    const profile: any = await ctx.db.get(args.profileId as any);
+    const profile: Doc<"importProfiles"> | null = await ctx.db.get(
+      args.profileId as Id<"importProfiles">
+    );
 
     if (!profile || profile.tenantId !== tenant._id) {
       throw new ConvexError("Import profile not found");
@@ -502,7 +507,9 @@ export const markProfileVatColumnsReviewed = mutation({
     const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
       "admin"
     ]);
-    const profile: any = await ctx.db.get(args.profileId as any);
+    const profile: Doc<"importProfiles"> | null = await ctx.db.get(
+      args.profileId as Id<"importProfiles">
+    );
 
     if (!profile || profile.tenantId !== tenant._id) {
       throw new ConvexError("Import profile not found");
@@ -556,7 +563,9 @@ export const setProfileAllowUnknownVatMode = mutation({
     const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
       "admin"
     ]);
-    const profile: any = await ctx.db.get(args.profileId as any);
+    const profile: Doc<"importProfiles"> | null = await ctx.db.get(
+      args.profileId as Id<"importProfiles">
+    );
 
     if (!profile || profile.tenantId !== tenant._id) {
       throw new ConvexError("Import profile not found");
@@ -692,7 +701,9 @@ export const updateDuplicateEanIssueReview = mutation({
     const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
       "admin"
     ]);
-    const issue: any = await ctx.db.get(args.issueId as any);
+    const issue: Doc<"catalogDataIssues"> | null = await ctx.db.get(
+      args.issueId as Id<"catalogDataIssues">
+    );
 
     if (!issue || issue.tenantId !== tenant._id || issue.kwestieSoort !== "duplicate_ean") {
       throw new ConvexError("Duplicate EAN issue not found");

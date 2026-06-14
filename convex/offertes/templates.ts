@@ -144,15 +144,15 @@ export const listQuoteTemplates = query({
     return templates.map((template: Doc<"quoteTemplates">) => ({
       id: String(template._id),
       tenantId: tenant.slug,
-      name: template.naam,
+      naam: template.naam,
       type: template.type,
       status: template.status,
-      introText: template.inleidingTekst,
-      closingText: template.afsluitTekst,
-      sections: template.secties ?? [],
-      defaultTerms: template.standaardVoorwaarden,
-      paymentTerms: template.betalingsvoorwaarden ?? [],
-      defaultLines: template.standaardRegels
+      inleidingTekst: template.inleidingTekst,
+      afsluitTekst: template.afsluitTekst,
+      secties: template.secties ?? [],
+      standaardVoorwaarden: template.standaardVoorwaarden,
+      betalingsvoorwaarden: template.betalingsvoorwaarden ?? [],
+      standaardRegels: template.standaardRegels
     }));
   }
 });

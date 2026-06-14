@@ -139,11 +139,11 @@ async function ensureProject(
   const existing = await findProject(ctx, tenantId, project.title);
   const timestamp = now();
   const statusDates = {
-    acceptedAt: project.status === "quote_accepted" ? timestamp : undefined,
-    measurementPlannedAt: project.status === "measurement_planned" ? timestamp : undefined,
-    executionPlannedAt: project.status === "execution_planned" ? timestamp : undefined,
-    orderedAt: project.status === "ordering" ? timestamp : undefined,
-    invoicedAt: project.status === "invoiced" ? timestamp : undefined
+    geaccepteerdOp: project.status === "quote_accepted" ? timestamp : undefined,
+    inmeetGeplandOp: project.status === "measurement_planned" ? timestamp : undefined,
+    uitvoerGeplandOp: project.status === "execution_planned" ? timestamp : undefined,
+    besteldOp: project.status === "ordering" ? timestamp : undefined,
+    gefactureerdOp: project.status === "invoiced" ? timestamp : undefined
   };
 
   if (existing) {
@@ -342,7 +342,7 @@ async function ensureQuote(
     await ctx.db.patch(existing._id, {
       status: quote.status,
       voorwaarden: terms,
-      geaccepteerdOp: quote.status === "accepted" ? timestamp : existing.acceptedAt,
+      geaccepteerdOp: quote.status === "accepted" ? timestamp : existing.geaccepteerdOp,
       gewijzigdOp: timestamp
     });
 

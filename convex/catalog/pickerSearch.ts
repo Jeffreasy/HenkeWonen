@@ -15,6 +15,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
+import type { PortalProduct } from "../../src/lib/portalTypes";
 import { readActorValidator, requireQueryRole } from "../authz";
 import {
   cleanProductDisplayName,
@@ -61,7 +62,9 @@ const PRODUCT_GROUP_CATEGORIES: Record<string, string[]> = {
 const SEARCH_INDEX_TAKE = 150;
 const CATEGORY_SCAN_TAKE = 400;
 
-function normalizedStatus(status?: string) {
+type ProductStatus = "draft" | "active" | "inactive" | "archived";
+
+function normalizedStatus(status?: ProductStatus): ProductStatus {
   return status ?? "active";
 }
 
@@ -240,7 +243,7 @@ export const searchPickerProducts = query({
       .slice(0, limit);
 
     const items = await Promise.all(
-      selected.map(async (product) => {
+      selected.map(async (product): Promise<PortalProduct> => {
         const prices = await ctx.db
           .query("productPrices")
           .withIndex("by_product", (q) =>

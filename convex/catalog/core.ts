@@ -9,6 +9,7 @@ import {
   requireQueryRoleForTenantId
 } from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
+import type { PortalProduct } from "../../src/lib/portalTypes";
 import {
   cleanProductDisplayName,
   displayProductName,
@@ -478,7 +479,7 @@ export const listProductsForPortal = query({
 
     const now = Date.now();
     const items = await Promise.all(
-      selected.map(async (product) => {
+      selected.map(async (product): Promise<PortalProduct> => {
         const prices = await ctx.db
           .query("productPrices")
           .withIndex("by_product", (q) =>

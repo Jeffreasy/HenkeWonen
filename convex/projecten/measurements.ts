@@ -82,7 +82,7 @@ async function requireSelectableProduct(ctx: any, tenantId: any, productId: any)
     throw new ConvexError("Product niet gevonden.");
   }
 
-  const category = product.categoryId ? await ctx.db.get(product.categoryId) : null;
+  const category = product.categorieId ? await ctx.db.get(product.categorieId) : null;
 
   if (pilotHiddenReason(product, category?.naam)) {
     throw new ConvexError("Dit product is in de pilot niet beschikbaar.");

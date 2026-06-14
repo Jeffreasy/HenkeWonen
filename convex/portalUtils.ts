@@ -842,8 +842,8 @@ export async function validateQuoteLineProduct(
     throw new ConvexError("Product not found");
   }
 
-  const category = product.categoryId ? await ctx.db.get(product.categoryId) : null;
-  const hiddenReason = pilotHiddenReason(product, category?.name);
+  const category = product.categorieId ? await ctx.db.get(product.categorieId) : null;
+  const hiddenReason = pilotHiddenReason(product, category?.naam);
 
   if (hiddenReason) {
     throw new ConvexError(hiddenReason);

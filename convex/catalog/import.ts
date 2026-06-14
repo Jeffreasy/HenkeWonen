@@ -1,5 +1,6 @@
 import { mutation, query } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
+import type { Doc, Id } from "../_generated/dataModel";
 import { mutationActorValidator, readActorValidator, requireMutationRole, requireQueryRole } from "../authz";
 
 function slugify(value: string): string {
@@ -764,7 +765,9 @@ export const appendPreviewRows = mutation({
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const tenantId = tenant._id;
-    const batch: any = await ctx.db.get(args.batchId as any);
+    const batch: Doc<"productImportBatches"> | null = await ctx.db.get(
+      args.batchId as Id<"productImportBatches">
+    );
 
     if (!batch || batch.tenantId !== tenantId) {
       throw new ConvexError("Import batch not found");
@@ -782,7 +785,7 @@ export const appendPreviewRows = mutation({
       await ctx.db.insert("productImportRows", {
         tenantId,
         batchId: batch._id,
-        bronBestandsnaam: optionalString(row.sourceFileName) ?? optionalString(normalized?.sourceFileName) ?? batch.sourceFileName ?? batch.fileName,
+        bronBestandsnaam: optionalString(row.sourceFileName) ?? optionalString(normalized?.sourceFileName) ?? batch.bronBestandsnaam ?? batch.bestandsnaam,
         bronBladNaam: optionalString(row.sourceSheetName) ?? optionalString(normalized?.sourceSheetName),
         rijNummer: numberValue(row.rowNumber) ?? numberValue(normalized?.sourceRowNumber) ?? 0,
         rijHash: optionalString(row.rowHash) ?? optionalString(normalized?.importKey),
@@ -802,9 +805,9 @@ export const appendPreviewRows = mutation({
       });
     }
 
-    const totalRows = (batch.totalRows ?? 0) + summary.totalRows;
-    const warningRows = (batch.warningRows ?? 0) + summary.warningRows;
-    const errorRows = (batch.errorRows ?? 0) + summary.errorRows;
+    const totalRows = (batch.totaalRijen ?? 0) + summary.totalRows;
+    const warningRows = (batch.waarschuwingRijen ?? 0) + summary.warningRows;
+    const errorRows = (batch.foutRijen ?? 0) + summary.errorRows;
     const status =
       errorRows > 0 || warningRows > 0 || summary.unknownVatModeRows > 0
         ? "needs_mapping"
@@ -814,27 +817,27 @@ export const appendPreviewRows = mutation({
       status,
       totaalRijen: totalRows,
       voorbeeldRijen: totalRows,
-      productRijen: (batch.productRows ?? 0) + summary.productRows,
-      geldigeRijen: (batch.validRows ?? 0) + summary.validRows,
+      productRijen: (batch.productRijen ?? 0) + summary.productRows,
+      geldigeRijen: (batch.geldigeRijen ?? 0) + summary.validRows,
       waarschuwingRijen: warningRows,
       foutRijen: errorRows,
-      genegeerdeRijen: (batch.ignoredRows ?? 0) + summary.ignoredRows,
-      nulPrijsRijen: (batch.zeroPriceRows ?? 0) + summary.zeroPriceRows,
-      onbekendeBtwModusRijen: (batch.unknownVatModeRows ?? 0) + summary.unknownVatModeRows,
+      genegeerdeRijen: (batch.genegeerdeRijen ?? 0) + summary.ignoredRows,
+      nulPrijsRijen: (batch.nulPrijsRijen ?? 0) + summary.zeroPriceRows,
+      onbekendeBtwModusRijen: (batch.onbekendeBtwModusRijen ?? 0) + summary.unknownVatModeRows,
       productenZonderLeverancierCode:
-        (batch.productsWithoutSupplierCode ?? 0) + summary.productsWithoutSupplierCode,
-      dubbeleBronSleutels: (batch.duplicateSourceKeys ?? 0) + summary.duplicateSourceKeys,
+        (batch.productenZonderLeverancierCode ?? 0) + summary.productsWithoutSupplierCode,
+      dubbeleBronSleutels: (batch.dubbeleBronSleutels ?? 0) + summary.duplicateSourceKeys,
       reconciliatie: {
-        ...(batch.reconciliation ?? {}),
+        ...(batch.reconciliatie ?? {}),
         previewUpdatedAt: now,
         totalRows,
         previewRows: totalRows,
-        productRows: (batch.productRows ?? 0) + summary.productRows,
+        productRows: (batch.productRijen ?? 0) + summary.productRows,
         warningRows,
         errorRows,
-        zeroPriceRows: (batch.zeroPriceRows ?? 0) + summary.zeroPriceRows,
-        unknownVatModeRows: (batch.unknownVatModeRows ?? 0) + summary.unknownVatModeRows,
-        duplicateSourceKeys: (batch.duplicateSourceKeys ?? 0) + summary.duplicateSourceKeys
+        zeroPriceRows: (batch.nulPrijsRijen ?? 0) + summary.zeroPriceRows,
+        unknownVatModeRows: (batch.onbekendeBtwModusRijen ?? 0) + summary.unknownVatModeRows,
+        duplicateSourceKeys: (batch.dubbeleBronSleutels ?? 0) + summary.duplicateSourceKeys
       },
       gewijzigdOp: now
     });
@@ -857,13 +860,15 @@ export const savePreviewMapping = mutation({
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const tenantId = tenant._id;
-    const batch: any = await ctx.db.get(args.batchId as any);
+    const batch: Doc<"productImportBatches"> | null = await ctx.db.get(
+      args.batchId as Id<"productImportBatches">
+    );
 
     if (!batch || batch.tenantId !== tenantId) {
       throw new ConvexError("Import batch not found");
     }
 
-    const hasUnknownVatMode = (batch.unknownVatModeRows ?? 0) > 0;
+    const hasUnknownVatMode = (batch.onbekendeBtwModusRijen ?? 0) > 0;
     const allowUnknownVatMode = args.staBtwModusOnbekendToe ?? false;
 
     await ctx.db.patch(batch._id, {
@@ -887,7 +892,9 @@ export const failPreviewBatch = mutation({
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const tenantId = tenant._id;
-    const batch: any = await ctx.db.get(args.batchId as any);
+    const batch: Doc<"productImportBatches"> | null = await ctx.db.get(
+      args.batchId as Id<"productImportBatches">
+    );
 
     if (!batch || batch.tenantId !== tenantId) {
       throw new ConvexError("Import batch not found");
@@ -899,7 +906,7 @@ export const failPreviewBatch = mutation({
       misluktOp: now,
       foutmelding: args.foutmelding,
       reconciliatie: {
-        ...(batch.reconciliation ?? {}),
+        ...(batch.reconciliatie ?? {}),
         failedAt: now,
         errorMessage: args.foutmelding
       },
@@ -927,24 +934,26 @@ export const commitPreviewBatchChunk = mutation({
       ["admin"]
     );
     const tenantId = tenant._id;
-    const batch: any = await ctx.db.get(args.batchId as any);
+    const batch: Doc<"productImportBatches"> | null = await ctx.db.get(
+      args.batchId as Id<"productImportBatches">
+    );
 
     if (!batch || batch.tenantId !== tenantId) {
       throw new ConvexError("Import batch not found");
     }
 
-    const allowUnknownVatMode = args.staBtwModusOnbekendToe ?? batch.allowUnknownVatMode ?? false;
-    if ((batch.unknownVatModeRows ?? 0) > 0 && !allowUnknownVatMode) {
+    const allowUnknownVatMode = args.staBtwModusOnbekendToe ?? batch.staBtwModusOnbekendToe ?? false;
+    if ((batch.onbekendeBtwModusRijen ?? 0) > 0 && !allowUnknownVatMode) {
       throw new ConvexError(
         "Btw-mapping ontbreekt: unknown vatMode is alleen toegestaan met bewuste override."
       );
     }
 
-    if ((batch.errorRows ?? 0) > 0) {
+    if ((batch.foutRijen ?? 0) > 0) {
       throw new ConvexError("Import bevat foutregels. Los errors op voordat je definitief importeert.");
     }
 
-    if ((batch.duplicateSourceKeys ?? 0) > 0) {
+    if ((batch.dubbeleBronSleutels ?? 0) > 0) {
       throw new ConvexError("Duplicate sourceKeys detected; fix mapping before final import.");
     }
 
@@ -973,25 +982,25 @@ export const commitPreviewBatchChunk = mutation({
         vastgelegdOp: now,
         importedByExternalUserId: externalUserId,
         reconciliatie: {
-          ...(batch.reconciliation ?? {}),
+          ...(batch.reconciliatie ?? {}),
           importedAt: now,
           committedAt: now,
-          totalRows: batch.totalRows,
-          previewRows: batch.previewRows ?? batch.totalRows,
-          productRows: batch.productRows ?? 0,
-          importedProducts: batch.importedProducts ?? 0,
-          updatedProducts: batch.updatedProducts ?? 0,
-          skippedProducts: batch.skippedProducts ?? 0,
-          importedPrices: batch.importedPrices ?? 0,
-          skippedPrices: batch.skippedPrices ?? 0,
-          warningRows: batch.warningRows,
-          errorRows: batch.errorRows,
-          duplicateProductMatches: batch.duplicateProductMatches ?? 0,
-          zeroPriceRows: batch.zeroPriceRows ?? 0,
-          unknownVatModeRows: batch.unknownVatModeRows ?? 0,
-          productsWithoutSupplierCode: batch.productsWithoutSupplierCode ?? 0,
-          orphanPriceRules: batch.orphanPriceRules ?? 0,
-          duplicateSourceKeys: batch.duplicateSourceKeys ?? 0
+          totalRows: batch.totaalRijen,
+          previewRows: batch.voorbeeldRijen ?? batch.totaalRijen,
+          productRows: batch.productRijen ?? 0,
+          importedProducts: batch.geimporteerdeProducten ?? 0,
+          updatedProducts: batch.bijgewerkteProducten ?? 0,
+          skippedProducts: batch.overgeslagenProducten ?? 0,
+          importedPrices: batch.geimporteerdePrijzen ?? 0,
+          skippedPrices: batch.overgeslagenPrijzen ?? 0,
+          warningRows: batch.waarschuwingRijen,
+          errorRows: batch.foutRijen,
+          duplicateProductMatches: batch.dubbeleProductMatches ?? 0,
+          zeroPriceRows: batch.nulPrijsRijen ?? 0,
+          unknownVatModeRows: batch.onbekendeBtwModusRijen ?? 0,
+          productsWithoutSupplierCode: batch.productenZonderLeverancierCode ?? 0,
+          orphanPriceRules: batch.weesPrijsRegels ?? 0,
+          duplicateSourceKeys: batch.dubbeleBronSleutels ?? 0
         },
         gewijzigdOp: now
       });
@@ -1067,7 +1076,7 @@ export const commitPreviewBatchChunk = mutation({
         misluktOp: now,
         foutmelding: message,
         reconciliatie: {
-          ...(batch.reconciliation ?? {}),
+          ...(batch.reconciliatie ?? {}),
           failedAt: now,
           errorMessage: message
         },
@@ -1083,17 +1092,17 @@ export const commitPreviewBatchChunk = mutation({
     }
 
     await ctx.db.patch(batch._id, {
-      geimporteerdeProducten: (batch.importedProducts ?? 0) + totals.importedProducts,
-      bijgewerkteProducten: (batch.updatedProducts ?? 0) + totals.updatedProducts,
-      overgeslagenProducten: (batch.skippedProducts ?? 0) + totals.skippedProducts,
-      geimporteerdePrijzen: (batch.importedPrices ?? 0) + totals.importedPrices,
-      overgeslagenPrijzen: (batch.skippedPrices ?? 0) + totals.skippedPrices,
+      geimporteerdeProducten: (batch.geimporteerdeProducten ?? 0) + totals.importedProducts,
+      bijgewerkteProducten: (batch.bijgewerkteProducten ?? 0) + totals.updatedProducts,
+      overgeslagenProducten: (batch.overgeslagenProducten ?? 0) + totals.skippedProducts,
+      geimporteerdePrijzen: (batch.geimporteerdePrijzen ?? 0) + totals.importedPrices,
+      overgeslagenPrijzen: (batch.overgeslagenPrijzen ?? 0) + totals.skippedPrices,
       dubbeleProductMatches:
-        (batch.duplicateProductMatches ?? 0) + totals.duplicateProductMatches,
-      nulPrijsRijen: batch.zeroPriceRows ?? 0,
-      onbekendeBtwModusRijen: batch.unknownVatModeRows ?? 0,
+        (batch.dubbeleProductMatches ?? 0) + totals.duplicateProductMatches,
+      nulPrijsRijen: batch.nulPrijsRijen ?? 0,
+      onbekendeBtwModusRijen: batch.onbekendeBtwModusRijen ?? 0,
       reconciliatie: {
-        ...(batch.reconciliation ?? {}),
+        ...(batch.reconciliatie ?? {}),
         lastImportChunkAt: now
       },
       gewijzigdOp: now
@@ -1180,8 +1189,8 @@ export const getCatalogImportStats = query({
       collectByTenant(ctx, "suppliers", tenant._id)
     ]);
 
-    const categoryById = new Map(categories.map((category: any) => [String(category._id), category.name]));
-    const supplierById = new Map(suppliers.map((supplier: any) => [String(supplier._id), supplier.name]));
+    const categoryById = new Map(categories.map((category: any) => [String(category._id), category.naam]));
+    const supplierById = new Map(suppliers.map((supplier: any) => [String(supplier._id), supplier.naam]));
     const categoryCounts: Record<string, number> = {};
     const supplierCounts: Record<string, number> = {};
 
@@ -1190,9 +1199,9 @@ export const getCatalogImportStats = query({
         continue;
       }
 
-      const categoryName = String(categoryById.get(String(product.categoryId)) ?? "Onbekend");
-      const supplierName = product.supplierId
-        ? String(supplierById.get(String(product.supplierId)) ?? "Onbekend")
+      const categoryName = String(categoryById.get(String(product.categorieId)) ?? "Onbekend");
+      const supplierName = product.leverancierId
+        ? String(supplierById.get(String(product.leverancierId)) ?? "Onbekend")
         : "Onbekend";
 
       categoryCounts[categoryName] = (categoryCounts[categoryName] ?? 0) + 1;

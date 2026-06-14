@@ -7,7 +7,7 @@ import {
   requireQueryRole,
   requireQueryRoleForTenantId
 } from "../authz";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 
 const batchStatus = v.union(
   v.literal("uploaded"),
@@ -51,29 +51,29 @@ async function tenantBySlug(ctx: any, tenantSlug: string) {
   return tenant;
 }
 
-function batchWarnings(batch: any) {
+function batchWarnings(batch: Doc<"productImportBatches">) {
   const warnings = [];
 
-  if ((batch.unknownVatModeRows ?? 0) > 0) {
+  if ((batch.onbekendeBtwModusRijen ?? 0) > 0) {
     warnings.push({
       rowNumber: 0,
-      message: `${batch.unknownVatModeRows} prijsregels hebben vatMode=unknown.`,
+      message: `${batch.onbekendeBtwModusRijen} prijsregels hebben vatMode=unknown.`,
       severity: "warning" as const
     });
   }
 
-  if ((batch.zeroPriceRows ?? 0) > 0) {
+  if ((batch.nulPrijsRijen ?? 0) > 0) {
     warnings.push({
       rowNumber: 0,
-      message: `${batch.zeroPriceRows} nulprijsregels zijn of worden overgeslagen.`,
+      message: `${batch.nulPrijsRijen} nulprijsregels zijn of worden overgeslagen.`,
       severity: "warning" as const
     });
   }
 
-  if ((batch.duplicateSourceKeys ?? 0) > 0) {
+  if ((batch.dubbeleBronSleutels ?? 0) > 0) {
     warnings.push({
       rowNumber: 0,
-      message: `${batch.duplicateSourceKeys} duplicate sourceKeys gevonden.`,
+      message: `${batch.dubbeleBronSleutels} duplicate sourceKeys gevonden.`,
       severity: "error" as const
     });
   }
@@ -81,46 +81,51 @@ function batchWarnings(batch: any) {
   return warnings;
 }
 
-function toPortalBatch(tenantSlug: string, batch: any, supplier?: any, profile?: any) {
+function toPortalBatch(
+  tenantSlug: string,
+  batch: Doc<"productImportBatches">,
+  supplier?: Doc<"suppliers"> | null,
+  profile?: Doc<"importProfiles"> | null
+) {
   return {
     id: String(batch._id),
     tenantId: tenantSlug,
-    fileName: batch.fileName,
-    supplierName: supplier?.name ?? "Onbekend",
+    fileName: batch.bestandsnaam,
+    supplierName: supplier?.naam ?? "Onbekend",
     status: batch.status,
-    archivedFromStatus: batch.archivedFromStatus,
-    archivedAt: batch.archivedAt,
+    archivedFromStatus: batch.gearchiveerdVanafStatus,
+    archivedAt: batch.gearchiveerdOp,
     archivedByExternalUserId: batch.archivedByExternalUserId,
-    sourcePath: batch.sourcePath,
-    fileHash: batch.fileHash,
-    profileName: profile?.name,
-    totalRows: batch.totalRows,
-    previewRows: batch.previewRows ?? batch.totalRows,
-    productRows: batch.productRows ?? 0,
-    validRows: batch.validRows,
-    warningRows: batch.warningRows,
-    errorRows: batch.errorRows,
-    ignoredRows: batch.ignoredRows ?? 0,
-    importedProducts: batch.importedProducts ?? 0,
-    updatedProducts: batch.updatedProducts ?? 0,
-    skippedProducts: batch.skippedProducts ?? 0,
-    importedPrices: batch.importedPrices ?? 0,
-    skippedPrices: batch.skippedPrices ?? 0,
-    duplicateProductMatches: batch.duplicateProductMatches ?? 0,
-    zeroPriceRows: batch.zeroPriceRows ?? 0,
-    unknownVatModeRows: batch.unknownVatModeRows ?? 0,
-    productsWithoutSupplierCode: batch.productsWithoutSupplierCode ?? 0,
-    orphanPriceRules: batch.orphanPriceRules ?? 0,
-    duplicateSourceKeys: batch.duplicateSourceKeys ?? 0,
-    allowUnknownVatMode: batch.allowUnknownVatMode ?? false,
-    importedAt: batch.importedAt,
-    committedAt: batch.committedAt,
-    failedAt: batch.failedAt,
-    errorMessage: batch.errorMessage,
-    reconciliation: batch.reconciliation,
+    sourcePath: batch.bronPad,
+    fileHash: batch.bestandHash,
+    profileName: profile?.naam,
+    totalRows: batch.totaalRijen,
+    previewRows: batch.voorbeeldRijen ?? batch.totaalRijen,
+    productRows: batch.productRijen ?? 0,
+    validRows: batch.geldigeRijen,
+    warningRows: batch.waarschuwingRijen,
+    errorRows: batch.foutRijen,
+    ignoredRows: batch.genegeerdeRijen ?? 0,
+    importedProducts: batch.geimporteerdeProducten ?? 0,
+    updatedProducts: batch.bijgewerkteProducten ?? 0,
+    skippedProducts: batch.overgeslagenProducten ?? 0,
+    importedPrices: batch.geimporteerdePrijzen ?? 0,
+    skippedPrices: batch.overgeslagenPrijzen ?? 0,
+    duplicateProductMatches: batch.dubbeleProductMatches ?? 0,
+    zeroPriceRows: batch.nulPrijsRijen ?? 0,
+    unknownVatModeRows: batch.onbekendeBtwModusRijen ?? 0,
+    productsWithoutSupplierCode: batch.productenZonderLeverancierCode ?? 0,
+    orphanPriceRules: batch.weesPrijsRegels ?? 0,
+    duplicateSourceKeys: batch.dubbeleBronSleutels ?? 0,
+    allowUnknownVatMode: batch.staBtwModusOnbekendToe ?? false,
+    importedAt: batch.geimporteerdOp,
+    committedAt: batch.vastgelegdOp,
+    failedAt: batch.misluktOp,
+    errorMessage: batch.foutmelding,
+    reconciliation: batch.reconciliatie,
     warnings: batchWarnings(batch),
-    createdAt: batch.createdAt,
-    updatedAt: batch.updatedAt
+    createdAt: batch.aangemaaktOp,
+    updatedAt: batch.gewijzigdOp
   };
 }
 
@@ -448,8 +453,8 @@ export const listBatchesForPortal = query({
       toPortalBatch(
         tenant.slug,
         batch,
-        batch.supplierId ? supplierById.get(String(batch.supplierId)) : undefined,
-        batch.importProfileId ? profileById.get(String(batch.importProfileId)) : undefined
+        batch.leverancierId ? supplierById.get(String(batch.leverancierId)) : undefined,
+        batch.importProfielId ? profileById.get(String(batch.importProfielId)) : undefined
       )
     );
   }
@@ -471,8 +476,8 @@ export const getBatchForPortal = query({
     }
 
     const [supplier, profile, rows] = await Promise.all([
-      batch.supplierId ? ctx.db.get(batch.supplierId) : null,
-      batch.importProfileId ? ctx.db.get(batch.importProfileId) : null,
+      batch.leverancierId ? ctx.db.get(batch.leverancierId as Id<"suppliers">) : null,
+      batch.importProfielId ? ctx.db.get(batch.importProfielId as Id<"importProfiles">) : null,
       ctx.db
         .query("productImportRows")
         .withIndex("by_batch", (q: any) =>
@@ -484,22 +489,22 @@ export const getBatchForPortal = query({
     return {
       batch: toPortalBatch(tenant.slug, batch, supplier, profile),
       rows: rows
-        .sort((left: any, right: any) => left.rowNumber - right.rowNumber)
+        .sort((left: any, right: any) => left.rijNummer - right.rijNummer)
         .map((row: any) => ({
           id: String(row._id),
-          sourceFileName: row.sourceFileName,
-          sourceSheetName: row.sourceSheetName,
-          rowNumber: row.rowNumber,
-          rowKind: row.rowKind,
+          sourceFileName: row.bronBestandsnaam,
+          sourceSheetName: row.bronBladNaam,
+          rowNumber: row.rijNummer,
+          rowKind: row.rijSoort,
           status: row.status,
-          importKey: row.importKey,
-          sourceKey: row.sourceKey,
-          sectionLabel: row.sectionLabel,
-          normalized: row.normalized,
-          warnings: row.warnings,
-          errors: row.errors,
-          importedProductId: row.importedProductId ? String(row.importedProductId) : undefined,
-          importedPriceIds: row.importedPriceIds?.map((id: any) => String(id)) ?? []
+          importKey: row.importSleutel,
+          sourceKey: row.bronSleutel,
+          sectionLabel: row.sectieLabel,
+          normalized: row.genormaliseerd,
+          warnings: row.waarschuwingen,
+          errors: row.fouten,
+          importedProductId: row.geimporteerdProductId ? String(row.geimporteerdProductId) : undefined,
+          importedPriceIds: row.geimporteerdePrijsIds?.map((id: any) => String(id)) ?? []
         }))
     };
   }
@@ -532,17 +537,18 @@ export const updateBatchStatusForPortal = mutation({
       args.status === "archived"
         ? {
             status: args.status,
-            archivedFromStatus: batch.status === "archived" ? batch.gearchiveerdVanafStatus : batch.status,
-            archivedAt: batch.gearchiveerdOp ?? now,
+            gearchiveerdVanafStatus:
+              batch.status === "archived" ? batch.gearchiveerdVanafStatus : batch.status,
+            gearchiveerdOp: batch.gearchiveerdOp ?? now,
             archivedByExternalUserId: batch.archivedByExternalUserId ?? externalUserId,
-            updatedAt: now
+            gewijzigdOp: now
           }
         : {
             status: args.status,
-            archivedFromStatus: undefined,
-            archivedAt: undefined,
+            gearchiveerdVanafStatus: undefined,
+            gearchiveerdOp: undefined,
             archivedByExternalUserId: undefined,
-            updatedAt: now
+            gewijzigdOp: now
           };
 
     await ctx.db.patch(batch._id, patch);
@@ -564,29 +570,31 @@ export const listProfilesForPortal = query({
       .collect();
 
     return profiles
-      .sort((left: any, right: any) => left.name.localeCompare(right.name, "nl"))
-      .map((profile: any) => ({
+      .sort((left: Doc<"importProfiles">, right: Doc<"importProfiles">) =>
+        left.naam.localeCompare(right.naam, "nl")
+      )
+      .map((profile: Doc<"importProfiles">) => ({
         id: String(profile._id),
-        supplierName: profile.supplierName,
-        name: profile.name,
-        expectedFileExtension: profile.expectedFileExtension,
-        filePattern: profile.filePattern,
-        sheetPattern: profile.sheetPattern,
-          supportsXlsx: profile.supportsXlsx,
-          supportsXls: profile.supportsXls,
-          priceColumnMappings: profile.priceColumnMappings,
-          vatModeByPriceColumn: profile.vatModeByPriceColumn,
-          unitByPriceColumn: profile.unitByPriceColumn,
-          priceTypeByPriceColumn: profile.priceTypeByPriceColumn,
-          allowUnknownVatMode: profile.allowUnknownVatMode ?? false,
-          vatModeReview: profile.vatModeReview,
+        supplierName: profile.leverancierNaam,
+        name: profile.naam,
+        expectedFileExtension: profile.verwachteBestandsextensie,
+        filePattern: profile.bestandPatroon,
+        sheetPattern: profile.bladPatroon,
+          supportsXlsx: profile.ondersteuntXlsx,
+          supportsXls: profile.ondersteuntXls,
+          priceColumnMappings: profile.prijskolomMappings,
+          vatModeByPriceColumn: profile.btwModusPerPrijskolom,
+          unitByPriceColumn: profile.eenheidPerPrijskolom,
+          priceTypeByPriceColumn: profile.prijsSoortPerPrijskolom,
+          allowUnknownVatMode: profile.staBtwModusOnbekendToe ?? false,
+          vatModeReview: profile.btwModusReview,
           vatModeUpdatedByExternalUserId: profile.vatModeUpdatedByExternalUserId,
-          vatModeUpdatedAt: profile.vatModeUpdatedAt,
-          duplicateStrategy: profile.duplicateStrategy,
-          zeroPriceStrategy: profile.zeroPriceStrategy,
+          vatModeUpdatedAt: profile.btwModusGewijzigdOp,
+          duplicateStrategy: profile.dubbelenStrategie,
+          zeroPriceStrategy: profile.nulPrijsStrategie,
         mapping: profile.mapping,
         status: profile.status,
-        updatedAt: profile.updatedAt
+        updatedAt: profile.gewijzigdOp
       }));
   }
 });

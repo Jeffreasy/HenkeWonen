@@ -268,10 +268,10 @@ export const repairTexdecorCategoriesChunk = mutation({
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
       .collect();
     const categoryIdByName = new Map<string, any>(
-      categories.map((category: any) => [category.name, category._id])
+      categories.map((category: any) => [category.naam, category._id])
     );
     const categoryNameById = new Map<string, string>(
-      categories.map((category: any) => [String(category._id), category.name])
+      categories.map((category: any) => [String(category._id), category.naam])
     );
 
     const paginated = await ctx.db
@@ -316,7 +316,7 @@ export const repairTexdecorCategoriesChunk = mutation({
         )
         .collect();
       const stalePriceRows = advicePrices.filter(
-        (price: any) => price.priceType === "advice_retail" && price.priceUnit === "custom"
+        (price: any) => price.prijsSoort === "advice_retail" && price.prijsEenheid === "custom"
       );
 
       if (!needsProductPatch && stalePriceRows.length === 0) {
