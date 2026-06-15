@@ -1,7 +1,10 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import schema from "../../convex/schema";
-import { findOrCreateProjectRoom } from "../../convex/projecten/measurements";
+import {
+  findOrCreateProjectRoom,
+  syncProjectRoomFromMeasurement
+} from "../../convex/projecten/measurements";
 
 // convex-test laadt de functie-modules; tests staan buiten convex/, dus expliciet de glob.
 const modules = import.meta.glob("../../convex/**/!(*.*.*)*.*s");
@@ -95,4 +98,40 @@ test("auto-promotie hergebruikt een bestaande ruimte op genormaliseerde naam (ge
     ).length
   );
   expect(count).toBe(2); // Woonkamer + Slaapkamer
+});
+
+test("sync schrijft inmeet-identiteit + gemeten maten terug naar de dossier-ruimte (m→cm)", async () => {
+  const t = convexTest(schema, modules);
+  const { tenantId, projectId } = await seedProject(t);
+
+  const now = Date.now();
+  const projectRuimteId = await t.run((ctx) =>
+    ctx.db.insert("projectRooms", {
+      tenantId,
+      projectId,
+      naam: "Kamer",
+      verdieping: "Begane grond",
+      breedteCm: 300,
+      oppervlakteM2: 9,
+      sortOrder: 1,
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    })
+  );
+
+  // Inmeting meet andere maten + corrigeert de naam; verdieping/lengte niet meegemeten.
+  await t.run((ctx) =>
+    syncProjectRoomFromMeasurement(ctx, tenantId, projectRuimteId, {
+      naam: "Woonkamer",
+      breedteM: 4.2,
+      oppervlakteM2: 16
+    })
+  );
+
+  const room = await t.run((ctx) => ctx.db.get(projectRuimteId));
+  expect(room?.naam).toBe("Woonkamer"); // identiteit gesynct
+  expect(room?.breedteCm).toBe(420); // gemeten maat overschrijft (4,2 m → 420 cm)
+  expect(room?.oppervlakteM2).toBe(16);
+  expect(room?.verdieping).toBe("Begane grond"); // niet meegemeten → niet gewist
+  expect(room?.lengteCm).toBeUndefined();
 });

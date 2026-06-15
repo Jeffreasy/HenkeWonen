@@ -3,6 +3,7 @@ import { ConvexError, v } from "convex/values";
 import {
   mutationActorValidator,
   readActorValidator,
+  requireMutationRole,
   requireMutationRoleForTenantId,
   requireQueryRoleForTenantId
 } from "../authz";
@@ -73,6 +74,46 @@ export async function findOrCreateProjectRoom(
   await ctx.db.patch(projectId, { gewijzigdOp: now });
 
   return roomId as Id<"projectRooms">;
+}
+
+/**
+ * Houdt de dossier-ruimte (projectRoom) in sync met de inmeet-ruimte: één ruimte-identiteit.
+ * Identiteit (naam) wordt altijd doorgeschreven; verdieping en de gemeten maten alleen als ze
+ * gedefinieerd zijn (nooit per ongeluk wissen). Maten gaan m → cm. Eénrichting: inmeting → dossier
+ * (de inmeter meet ter plekke; het dossier weerspiegelt de laatste meting). De andere richting
+ * (dossier-identiteit → inmeting) loopt via updateProjectRoom.
+ */
+export async function syncProjectRoomFromMeasurement(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  projectRuimteId: Id<"projectRooms"> | undefined,
+  fields: {
+    naam: string;
+    verdieping?: string;
+    breedteM?: number;
+    lengteM?: number;
+    hoogteM?: number;
+    oppervlakteM2?: number;
+    omtrekM?: number;
+  }
+): Promise<void> {
+  if (!projectRuimteId) return;
+
+  const projectRoom = await ctx.db.get(projectRuimteId);
+  if (!projectRoom || projectRoom.tenantId !== tenantId) return;
+
+  const toCm = (meters?: number) =>
+    typeof meters === "number" ? Math.round(meters * 100) : undefined;
+
+  const patch: Record<string, unknown> = { naam: fields.naam, gewijzigdOp: Date.now() };
+  if (fields.verdieping !== undefined) patch.verdieping = fields.verdieping;
+  if (typeof fields.breedteM === "number") patch.breedteCm = toCm(fields.breedteM);
+  if (typeof fields.lengteM === "number") patch.lengteCm = toCm(fields.lengteM);
+  if (typeof fields.hoogteM === "number") patch.hoogteCm = toCm(fields.hoogteM);
+  if (typeof fields.oppervlakteM2 === "number") patch.oppervlakteM2 = fields.oppervlakteM2;
+  if (typeof fields.omtrekM === "number") patch.omtrekMeter = fields.omtrekM;
+
+  await ctx.db.patch(projectRuimteId, patch);
 }
 
 const measurementStatus = v.union(
@@ -519,8 +560,99 @@ export const addMeasurementRoom = mutation({
       gewijzigdOp: now
     });
     await touchMeasurement(ctx, args.inmetingId, now);
+    // Houd de dossier-ruimte in sync (identiteit + gemeten maten).
+    await syncProjectRoomFromMeasurement(ctx, args.tenantId, projectRuimteId, {
+      naam: args.naam,
+      verdieping: args.verdieping,
+      breedteM: args.breedteM,
+      lengteM: args.lengteM,
+      hoogteM: args.hoogteM,
+      oppervlakteM2: args.oppervlakteM2,
+      omtrekM: args.omtrekM
+    });
 
     return roomId;
+  }
+});
+
+/**
+ * Eenmalige migratie (ruimte-model A): koppel bestaande inmeet-ruimtes zonder dossier-koppeling
+ * aan een dossier-ruimte (find-or-create op naam), zodat measurementRooms.projectRuimteId daarna
+ * verplicht kan worden. Gated (admin + letterlijke confirm), dryRun-default, idempotent, chunked.
+ *
+ * Aansturing: node tools/backfill_room_links.mjs
+ */
+export const backfillMeasurementRoomLinksChunk = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    confirm: v.literal("BACKFILL_ROOM_LINKS"),
+    dryRun: v.optional(v.boolean()),
+    batchSize: v.optional(v.number()),
+    cursor: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const batchSize = Math.min(Math.max(args.batchSize ?? 200, 50), 500);
+    const dryRun = args.dryRun ?? true;
+
+    const paginated = await ctx.db
+      .query("measurementRooms")
+      .paginate({ numItems: batchSize, cursor: args.cursor ?? null });
+
+    let scanned = 0;
+    let alreadyLinked = 0;
+    let matched = 0;
+    let linked = 0;
+    let skippedNoMeasurement = 0;
+
+    for (const room of paginated.page) {
+      if (room.tenantId !== tenant._id) continue;
+      scanned += 1;
+
+      if (room.projectRuimteId) {
+        alreadyLinked += 1;
+        continue;
+      }
+
+      const measurement = await ctx.db.get(room.inmetingId);
+      if (!measurement) {
+        skippedNoMeasurement += 1;
+        continue;
+      }
+
+      matched += 1;
+
+      if (!dryRun) {
+        const projectRuimteId = await findOrCreateProjectRoom(
+          ctx,
+          tenant._id,
+          measurement.projectId,
+          {
+            naam: room.naam,
+            verdieping: room.verdieping,
+            breedteM: room.breedteM,
+            lengteM: room.lengteM,
+            hoogteM: room.hoogteM,
+            oppervlakteM2: room.oppervlakteM2,
+            omtrekM: room.omtrekM
+          }
+        );
+        await ctx.db.patch(room._id, { projectRuimteId, gewijzigdOp: Date.now() });
+        linked += 1;
+      }
+    }
+
+    return {
+      dryRun,
+      scanned,
+      alreadyLinked,
+      matched,
+      linked: dryRun ? 0 : linked,
+      skippedNoMeasurement,
+      isDone: paginated.isDone,
+      continueCursor: paginated.continueCursor
+    };
   }
 });
 
@@ -567,6 +699,20 @@ export const updateMeasurementRoom = mutation({
 
     await ctx.db.patch(args.ruimteId, patch);
     await touchMeasurement(ctx, measurement._id);
+
+    // Houd de gekoppelde dossier-ruimte in sync met de nieuwe meetwaarden.
+    const updated = await ctx.db.get(args.ruimteId);
+    if (updated) {
+      await syncProjectRoomFromMeasurement(ctx, args.tenantId, updated.projectRuimteId, {
+        naam: updated.naam,
+        verdieping: updated.verdieping,
+        breedteM: updated.breedteM,
+        lengteM: updated.lengteM,
+        hoogteM: updated.hoogteM,
+        oppervlakteM2: updated.oppervlakteM2,
+        omtrekM: updated.omtrekM
+      });
+    }
 
     return args.ruimteId;
   }

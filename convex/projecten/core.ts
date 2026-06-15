@@ -487,6 +487,22 @@ export const updateProjectRoom = mutation({
     });
     await ctx.db.patch(room.projectId, { gewijzigdOp: now });
 
+    // Propageer de identiteit (naam/verdieping) naar gekoppelde inmeet-ruimtes — één ruimte-identiteit.
+    // Maten propageren we bewust NIET: de gemeten maten op de inmeting zijn leidend.
+    const linkedRooms = await ctx.db
+      .query("measurementRooms")
+      .withIndex("by_project_room", (q) =>
+        q.eq("tenantId", tenant._id).eq("projectRuimteId", room._id)
+      )
+      .collect();
+    for (const measurementRoom of linkedRooms) {
+      await ctx.db.patch(measurementRoom._id, {
+        naam: args.naam,
+        verdieping: args.verdieping,
+        gewijzigdOp: now
+      });
+    }
+
     return room._id;
   }
 });
