@@ -71,7 +71,7 @@ for (const supplierName of suppliers) {
       tenantSlug: toolEnv.tenantSlug,
       actor,
       confirm: "REPAIR_TEXDECOR_CATEGORIES",
-      supplierName,
+      leverancierNaam: supplierName,
       dryRun,
       cursor
     });
