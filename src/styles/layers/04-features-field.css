@@ -957,6 +957,9 @@
   grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
   gap: var(--space-3);
   align-content: start;
+  /* Velden op hun natuurlijke hoogte i.p.v. uitgerekt naar het hoogste veld in
+     de rij (velden met meerregelige helptekst). Houdt invoervakken compact. */
+  align-items: start;
   border-right: 1px solid var(--color-border, var(--line));
 }
 

@@ -248,6 +248,10 @@
   gap: var(--space-2);
   max-width: 100%;
   min-width: 0;
+  /* Pak label/helptekst/control bovenaan. Zonder dit rekt een veld dat in een
+     stretch-grid naast een hoger veld (met meerregelige helptekst) staat zijn
+     control uit ver voorbij min-height:40px — een te grote/rare invoerbox. */
+  align-content: start;
 }
 
 .ui-field-label {
