@@ -169,6 +169,14 @@ export const getMatrixIndicativePrice = query({
       return { indicative: null, outOfRange: false, reason: "matrix_not_found" as const };
     }
 
+    // Veiligheidsguard (H10): een negatieve/0-maat (of NaN) mag NOOIT stilletjes de prijs van
+    // de kleinste maatklasse opleveren. Behandel als "geen geldige maat" — geen richtprijs,
+    // gelijk aan de front-end-guard. `lookupMatrixPrice` vangt dit ook af, maar met een eigen
+    // reason maakt de query het onderscheid expliciet voor de aanroeper.
+    if (!(args.breedteCm > 0) || !(args.hoogteCm > 0)) {
+      return { indicative: null, outOfRange: false, reason: "invalid_dimensions" as const };
+    }
+
     const hit = lookupMatrixPrice(
       matrix.breedteAs,
       matrix.hoogteAs,

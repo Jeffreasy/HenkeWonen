@@ -31,16 +31,16 @@ export function calculateScreed(input: ScreedCalculationInput): ScreedCalculatio
   const packKg = input.packKg ?? DEFAULT_PACK_KG;
 
   if (!isValidNumber(input.areaM2) || input.areaM2 <= 0) {
-    return invalidScreedResult("areaM2 must be greater than 0.", consumption, packKg);
+    return invalidScreedResult("Oppervlakte moet groter dan 0 m² zijn.", consumption, packKg);
   }
   if (!isValidNumber(input.layerThicknessMm) || input.layerThicknessMm <= 0) {
-    return invalidScreedResult("layerThicknessMm must be greater than 0.", consumption, packKg);
+    return invalidScreedResult("Laagdikte moet groter dan 0 mm zijn.", consumption, packKg);
   }
   if (!isValidNumber(consumption) || consumption <= 0) {
-    return invalidScreedResult("consumptionKgPerM2PerMm must be greater than 0.", consumption, packKg);
+    return invalidScreedResult("Verbruik (kg/m²/mm) moet groter dan 0 zijn.", consumption, packKg);
   }
   if (!isValidNumber(packKg) || packKg <= 0) {
-    return invalidScreedResult("packKg must be greater than 0.", consumption, packKg);
+    return invalidScreedResult("Zakinhoud moet groter dan 0 kg zijn.", consumption, packKg);
   }
 
   // De pack-ceil draait op de RUWE kg (zoals DATA); afronden vóór de ceil zou een fractie net

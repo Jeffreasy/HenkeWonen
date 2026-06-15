@@ -301,6 +301,12 @@ function buildSelection(
  * lokaal gehouden zodat de Convex-bundel niet van `src/` afhangt. Rondt breedte én hoogte OMHOOG
  * naar de eerstvolgende maatklasse (standaard bij raambekleding: je betaalt de volgende maat).
  * `null` = buiten matrixbereik. `prijzen[hoogte-index][breedte-index]`; assen oplopend, in cm.
+ *
+ * Veiligheidsguard (H10): breedte én hoogte moeten > 0 zijn. Zonder deze guard zou een
+ * negatieve/0-maat door `findIndex(w >= breedteCm)` op index 0 terechtkomen en stilletjes de
+ * prijs van de KLEINSTE maatklasse opleveren. We behandelen zo'n maat als "geen geldige maat"
+ * (zelfde pad als buiten-bereik → `null`), gelijk aan de front-end-guard in
+ * calculateWindowCoveringMatrix.
  */
 export function lookupMatrixPrice(
   breedteAs: readonly number[],
@@ -309,6 +315,7 @@ export function lookupMatrixPrice(
   breedteCm: number,
   hoogteCm: number
 ): { amount: number; matchedWidthCm: number; matchedHeightCm: number } | null {
+  if (!(breedteCm > 0) || !(hoogteCm > 0)) return null;
   const wi = breedteAs.findIndex((w) => w >= breedteCm);
   const hi = hoogteAs.findIndex((h) => h >= hoogteCm);
   if (wi === -1 || hi === -1) return null;

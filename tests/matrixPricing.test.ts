@@ -29,6 +29,16 @@ describe("lookupMatrixPrice (convex-port)", () => {
     expect(lookupMatrixPrice(breedteAs, hoogteAs, prijzen, 200, 100)).toBeNull();
     expect(lookupMatrixPrice(breedteAs, hoogteAs, prijzen, 100, 200)).toBeNull();
   });
+
+  it("H10: negatieve/0/NaN-maat geeft null i.p.v. kleinste maatklasse", () => {
+    // Zonder guard zou findIndex(w >= 0) op index 0 (de kleinste maat) belanden.
+    expect(lookupMatrixPrice(breedteAs, hoogteAs, prijzen, 0, 120)).toBeNull();
+    expect(lookupMatrixPrice(breedteAs, hoogteAs, prijzen, 90, 0)).toBeNull();
+    expect(lookupMatrixPrice(breedteAs, hoogteAs, prijzen, -50, 120)).toBeNull();
+    expect(lookupMatrixPrice(breedteAs, hoogteAs, prijzen, 90, -10)).toBeNull();
+    expect(lookupMatrixPrice(breedteAs, hoogteAs, prijzen, NaN, 120)).toBeNull();
+    expect(lookupMatrixPrice(breedteAs, hoogteAs, prijzen, 90, NaN)).toBeNull();
+  });
 });
 
 describe("buildMatrixSelection (richtprijs-conforme btw)", () => {

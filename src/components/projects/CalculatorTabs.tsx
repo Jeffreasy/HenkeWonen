@@ -1,5 +1,6 @@
 import {
   ArrowUpDown,
+  Info,
   Layers,
   LayoutGrid,
   Minus,
@@ -8,7 +9,13 @@ import {
   Save,
   SquareStack
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode
+} from "react";
 import type { SubmitEventLike } from "../../lib/events";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
@@ -60,7 +67,10 @@ export const CALC_TAB_ICONS: Record<CalcTabId, ReactNode> = {
 };
 
 const INDICATIVE_TEXT =
-  "Indicatief — controleer altijd legrichting, patroon, productafmetingen en snijverlies vóór je de inmeetregel opslaat. Een richtprijs is een indicatie; de definitieve prijs bepaal je in de offerte.";
+  "Richtprijs is indicatief — de definitieve prijs bepaal je in de offerte.";
+
+const INDICATIVE_DETAIL =
+  "Indicatief — controleer altijd productafmetingen en snijverlies (en waar van toepassing legrichting en patroon) vóór je de inmeetregel opslaat. Een richtprijs is een indicatie; de definitieve prijs bepaal je in de offerte.";
 
 // ─── Result highlight hook ─────────────────────────────────────────────────────
 
@@ -104,7 +114,10 @@ function TabPanel({ tab }: { tab: CalcTab }) {
             <Alert
               variant="warning"
               title="Controleer invoer"
-              description="Controleer de ingevulde maten voordat je opslaat."
+              description={
+                tab.validationError ??
+                "Controleer de ingevulde maten voordat je opslaat."
+              }
             />
           </div>
         ) : null}
@@ -132,7 +145,20 @@ function TabPanel({ tab }: { tab: CalcTab }) {
           {tab.result}
         </div>
         <div className="calc-result-hint">
-          <Alert variant="info" description={INDICATIVE_TEXT} />
+          <Alert variant="info">
+            <p className="ui-alert-description calc-result-hint-text">
+              {INDICATIVE_TEXT}
+              <span
+                className="calc-result-hint-info"
+                tabIndex={0}
+                role="img"
+                title={INDICATIVE_DETAIL}
+                aria-label={INDICATIVE_DETAIL}
+              >
+                <Info size={14} aria-hidden="true" />
+              </span>
+            </p>
+          </Alert>
         </div>
       </div>
     </form>
@@ -143,6 +169,39 @@ function TabPanel({ tab }: { tab: CalcTab }) {
 
 export function CalculatorTabs({ tabs, activeTab, onTabChange }: CalculatorTabsProps) {
   const activeTabData = tabs.find((t) => t.id === activeTab) ?? tabs[0];
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (tabs.length === 0) return;
+
+    const currentIndex = tabs.findIndex((t) => t.id === activeTab);
+    const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+    let nextIndex: number | null = null;
+
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        nextIndex = (safeIndex + 1) % tabs.length;
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        nextIndex = (safeIndex - 1 + tabs.length) % tabs.length;
+        break;
+      case "Home":
+        nextIndex = 0;
+        break;
+      case "End":
+        nextIndex = tabs.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    const nextTab = tabs[nextIndex];
+    if (nextTab && nextTab.id !== activeTab) {
+      onTabChange(nextTab.id);
+    }
+  };
 
   return (
     <div className="calc-tabs-wrapper" role="group" aria-label="Rekenhulpen">
@@ -157,9 +216,11 @@ export function CalculatorTabs({ tabs, activeTab, onTabChange }: CalculatorTabsP
               role="tab"
               aria-selected={isActive}
               aria-controls={`calc-panel-${tab.id}`}
+              tabIndex={isActive ? 0 : -1}
               className={`calc-tab-btn${isActive ? " calc-tab-btn-active" : ""}`}
               type="button"
               onClick={() => onTabChange(tab.id)}
+              onKeyDown={handleTabKeyDown}
             >
               <span className="calc-tab-icon" aria-hidden="true">
                 {tab.icon}

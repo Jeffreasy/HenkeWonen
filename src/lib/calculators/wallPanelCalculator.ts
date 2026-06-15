@@ -31,23 +31,23 @@ export function calculateWallPanels(
   input: WallPanelCalculationInput
 ): WallPanelCalculationResult {
   if (!isValidNumber(input.wallWidthM) || input.wallWidthM <= 0) {
-    return invalidWallPanelResult("wallWidthM must be greater than 0.");
+    return invalidWallPanelResult("Wandbreedte moet groter dan 0 zijn.");
   }
 
   if (!isValidNumber(input.wallHeightM) || input.wallHeightM <= 0) {
-    return invalidWallPanelResult("wallHeightM must be greater than 0.");
+    return invalidWallPanelResult("Wandhoogte moet groter dan 0 zijn.");
   }
 
   if (!isValidNumber(input.panelWidthM) || input.panelWidthM <= 0) {
-    return invalidWallPanelResult("panelWidthM must be greater than 0.");
+    return invalidWallPanelResult("Paneelbreedte moet groter dan 0 zijn.");
   }
 
   if (!isValidNumber(input.panelHeightM) || input.panelHeightM <= 0) {
-    return invalidWallPanelResult("panelHeightM must be greater than 0.");
+    return invalidWallPanelResult("Paneelhoogte moet groter dan 0 zijn.");
   }
 
   if (!isValidNumber(input.wastePercent) || input.wastePercent < 0) {
-    return invalidWallPanelResult("wastePercent must be 0 or greater.");
+    return invalidWallPanelResult("Snijverlies mag niet negatief zijn.");
   }
 
   const wallAreaM2 = roundToTwoDecimals(input.wallWidthM * input.wallHeightM);

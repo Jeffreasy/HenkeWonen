@@ -59,16 +59,16 @@ export function calculateWindowCoveringMatrix(
   const quantity = input.quantity ?? 1;
 
   if (!isValidNumber(input.breedteCm) || input.breedteCm <= 0) {
-    return invalidMatrixResult("breedteCm must be greater than 0.", quantity);
+    return invalidMatrixResult("Breedte moet groter dan 0 cm zijn.", quantity);
   }
   if (!isValidNumber(input.hoogteCm) || input.hoogteCm <= 0) {
-    return invalidMatrixResult("hoogteCm must be greater than 0.", quantity);
+    return invalidMatrixResult("Hoogte moet groter dan 0 cm zijn.", quantity);
   }
   if (!isValidNumber(quantity) || quantity <= 0) {
-    return invalidMatrixResult("quantity must be greater than 0.", quantity);
+    return invalidMatrixResult("Aantal moet groter dan 0 zijn.", quantity);
   }
   if (input.breedteAs.length === 0 || input.hoogteAs.length === 0 || input.prijzen.length === 0) {
-    return invalidMatrixResult("matrix must not be empty.", quantity);
+    return invalidMatrixResult("Geen prijsmatrix beschikbaar.", quantity);
   }
 
   const unitPrice = lookupMatrix(

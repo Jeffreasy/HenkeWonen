@@ -189,7 +189,7 @@ export default function MeasurementPanel({
   const [manualRoomId, setManualRoomId] = useState("");
   const [manualProductGroup, setManualProductGroup] = useState<MeasurementProductGroup>("other");
   const [manualQuantity, setManualQuantity] = useState("");
-  const [manualUnit, setManualUnit] = useState("custom");
+  const [manualUnit, setManualUnit] = useState("piece");
   const [manualQuoteLineType, setManualQuoteLineType] = useState<QuoteLineType>("manual");
   const [manualWastePercent, setManualWastePercent] = useState("");
   const [manualNotes, setManualNotes] = useState("");
@@ -760,6 +760,33 @@ export default function MeasurementPanel({
     return items;
   }
 
+  /**
+   * Lege-staat-regel voor het live resultaatpaneel: zolang er nog geen kerninvoer is
+   * (of de invoer ongeldig is) tonen we een uitnodiging i.p.v. een rij nullen.
+   */
+  const CALC_EMPTY_STATE_ITEM = { label: "Nog geen advies", value: "Vul de maten in" };
+
+  const FLOOR_PATTERN_LABELS: Record<string, string> = {
+    straight: "Rechte plank",
+    herringbone: "Visgraat",
+    tile: "Tegelpatroon",
+    custom: "Maatwerk"
+  };
+
+  function formatFloorPatternLabel(pattern: string): string {
+    return FLOOR_PATTERN_LABELS[pattern] ?? pattern;
+  }
+
+  function calcEmptyStateItems(
+    hasInput: boolean,
+    validationError: string | undefined
+  ): Array<{ label: string; value: string }> | null {
+    if (!hasInput || validationError) {
+      return [CALC_EMPTY_STATE_ITEM];
+    }
+    return null;
+  }
+
   /** Richtprijs-totaal van een opgeslagen meetregel op basis van het snapshot. */
   function lineIndicativeTotal(line: MeasurementLineDoc) {
     if (line.indicatieveEenheidsprijsExBtw === undefined || line.indicatiefBtwTarief === undefined) {
@@ -817,8 +844,13 @@ export default function MeasurementPanel({
     if (!wcType || !wcPriceGroup) {
       return "Kies type en prijsgroep.";
     }
-    if (!parseDecimal(wcWidthCm) || !parseDecimal(wcHeightCm)) {
+    const breedteCm = parseDecimal(wcWidthCm);
+    const hoogteCm = parseDecimal(wcHeightCm);
+    if (breedteCm === undefined || hoogteCm === undefined) {
       return "Vul breedte en hoogte in.";
+    }
+    if (breedteCm <= 0 || hoogteCm <= 0) {
+      return "Breedte en hoogte moeten groter dan 0 zijn (raammaat in cm).";
     }
     const quantity = parseDecimal(wcQuantity);
     if (!quantity || quantity <= 0) {
@@ -2193,24 +2225,34 @@ export default function MeasurementPanel({
             successMessage: "Vloerinmeting opgeslagen."
           }),
         result: (
-          <SummaryList items={[
-            { label: "Netto oppervlakte", value: formatNumber(floorResult.areaM2, " m²") },
-            { label: "Snijverlies", value: formatNumber(floorResult.wasteM2, " m²") },
-            { label: "Offertehoeveelheid", value: formatNumber(floorResult.quoteQuantityM2, " m²") },
-            ...indicativeSummaryItems("flooring", floorResult.quoteQuantityM2)
-          ]} />
+          <SummaryList items={
+            calcEmptyStateItems(
+              Boolean(floorLengthM || floorWidthM),
+              floorLengthM || floorWidthM ? floorResult.validationError : undefined
+            ) ?? [
+              { label: "Netto oppervlakte", value: formatNumber(floorResult.areaM2, " m²") },
+              { label: "Snijverlies", value: formatNumber(floorResult.wasteM2, " m²") },
+              { label: "Offertehoeveelheid", value: formatNumber(floorResult.quoteQuantityM2, " m²") },
+              { label: "Legpatroon", value: formatFloorPatternLabel(floorPatternType) },
+              ...indicativeSummaryItems("flooring", floorResult.quoteQuantityM2)
+            ]
+          } />
         ),
         fields: (
           <>
             {renderRoomSelect("floor-room", "Ruimte", floorRoomId, applyMeasurementRoomToFloor)}
             {renderWasteProfileSelect("floor-waste-profile", "Standaard snijverlies", getProfilesForGroup("flooring"), (profileId) => setWasteFromProfile(profileId, setFloorWastePercent, "flooring"))}
             <Field htmlFor="floor-length" label="Lengte in meter">
-              <Input id="floor-length" inputMode="decimal" value={floorLengthM} onChange={(e) => setFloorLengthM(e.target.value)} />
+              <Input id="floor-length" inputMode="decimal" min={0} value={floorLengthM} onChange={(e) => setFloorLengthM(e.target.value)} />
             </Field>
             <Field htmlFor="floor-width" label="Breedte in meter">
-              <Input id="floor-width" inputMode="decimal" value={floorWidthM} onChange={(e) => setFloorWidthM(e.target.value)} />
+              <Input id="floor-width" inputMode="decimal" min={0} value={floorWidthM} onChange={(e) => setFloorWidthM(e.target.value)} />
             </Field>
-            <Field htmlFor="floor-pattern" label="Legpatroon">
+            <Field
+              htmlFor="floor-pattern"
+              label="Legpatroon (alleen registratie)"
+              helpText="Beïnvloedt de berekening niet — vul het snijverlies hieronder zelf aan."
+            >
               <Select id="floor-pattern" value={floorPatternType} onChange={(e) => setFloorPatternType(e.target.value)}>
                 <option value="straight">Rechte plank</option>
                 <option value="herringbone">Visgraat</option>
@@ -2222,6 +2264,7 @@ export default function MeasurementPanel({
               <Input
                 id="floor-waste"
                 inputMode="decimal"
+                min={0}
                 value={floorWastePercent}
                 onChange={(e) => {
                   setFloorWastePercent(e.target.value);
@@ -2267,25 +2310,38 @@ export default function MeasurementPanel({
             successMessage: "Plintinmeting opgeslagen."
           }),
         result: (
-          <SummaryList items={[
-            { label: "Netto meters", value: formatNumber(plinthResult.netMeter, " m") },
-            { label: "Snijverlies", value: formatNumber(plinthResult.wasteMeter, " m") },
-            { label: "Offertehoeveelheid", value: formatNumber(plinthResult.quoteQuantityMeter, " m") },
-            ...indicativeSummaryItems("plinths", plinthResult.quoteQuantityMeter)
-          ]} />
+          <SummaryList items={
+            calcEmptyStateItems(
+              Boolean(plinthPerimeterM),
+              plinthPerimeterM ? plinthResult.validationError : undefined
+            ) ?? [
+              { label: "Netto lengte (m¹)", value: formatNumber(plinthResult.netMeter, " m¹") },
+              { label: "Snijverlies", value: formatNumber(plinthResult.wasteMeter, " m¹") },
+              { label: "Offertehoeveelheid", value: formatNumber(plinthResult.quoteQuantityMeter, " m¹") },
+              ...indicativeSummaryItems("plinths", plinthResult.quoteQuantityMeter)
+            ]
+          } />
         ),
         fields: (
           <>
             {renderRoomSelect("plinth-room", "Ruimte", plinthRoomId, applyMeasurementRoomToPlinth)}
             {renderWasteProfileSelect("plinth-waste-profile", "Standaard snijverlies", getProfilesForGroup("plinths"), (profileId) => setWasteFromProfile(profileId, setPlinthWastePercent, "plinths"))}
-            <Field htmlFor="plinth-perimeter" label="Omtrek in meter">
-              <Input id="plinth-perimeter" inputMode="decimal" value={plinthPerimeterM} onChange={(e) => setPlinthPerimeterM(e.target.value)} />
+            <Field
+              htmlFor="plinth-perimeter"
+              label="Omtrek in meter"
+              helpText="Totale wandomtrek, inclusief deuropeningen"
+            >
+              <Input id="plinth-perimeter" inputMode="decimal" min={0} value={plinthPerimeterM} onChange={(e) => setPlinthPerimeterM(e.target.value)} />
             </Field>
-            <Field htmlFor="plinth-door" label="Deuropeningen in meter">
-              <Input id="plinth-door" inputMode="decimal" value={plinthDoorOpeningM} onChange={(e) => setPlinthDoorOpeningM(e.target.value)} />
+            <Field
+              htmlFor="plinth-door"
+              label="Deuropeningen in meter"
+              helpText="Totale breedte van deuropeningen die je aftrekt"
+            >
+              <Input id="plinth-door" inputMode="decimal" min={0} value={plinthDoorOpeningM} onChange={(e) => setPlinthDoorOpeningM(e.target.value)} />
             </Field>
             <Field htmlFor="plinth-waste" label="Snijverlies %">
-              <Input id="plinth-waste" inputMode="decimal" value={plinthWastePercent} onChange={(e) => setPlinthWastePercent(e.target.value)} />
+              <Input id="plinth-waste" inputMode="decimal" min={0} value={plinthWastePercent} onChange={(e) => setPlinthWastePercent(e.target.value)} />
             </Field>
             <Field htmlFor="plinth-notes" label="Notitie">
               <Input id="plinth-notes" value={plinthNotes} onChange={(e) => setPlinthNotes(e.target.value)} />
@@ -2320,34 +2376,43 @@ export default function MeasurementPanel({
             successMessage: "Behanginmeting opgeslagen."
           }),
         result: (
-          <SummaryList items={[
-            { label: "Banen nodig", value: wallpaperResult.banenNeeded },
-            { label: "Banen per rol", value: wallpaperResult.banenPerRol },
-            { label: "Offertehoeveelheid", value: `${wallpaperResult.rollsNeeded} rollen` },
-            ...indicativeSummaryItems("wallpaper", wallpaperResult.rollsNeeded)
-          ]} />
+          <SummaryList items={
+            calcEmptyStateItems(
+              Boolean(wallpaperWidthM || wallpaperHeightM),
+              wallpaperWidthM || wallpaperHeightM ? wallpaperResult.validationError : undefined
+            ) ?? [
+              { label: "Banen nodig", value: wallpaperResult.banenNeeded },
+              { label: "Banen per rol", value: wallpaperResult.banenPerRol },
+              { label: "Offertehoeveelheid", value: `${wallpaperResult.rollsNeeded} rollen` },
+              ...indicativeSummaryItems("wallpaper", wallpaperResult.rollsNeeded)
+            ]
+          } />
         ),
         fields: (
           <>
             {renderRoomSelect("wallpaper-room", "Ruimte", wallpaperRoomId, applyMeasurementRoomToWallpaper)}
             {renderWasteProfileSelect("wallpaper-waste-profile", "Standaard snijverlies", getProfilesForGroup("wallpaper"), (profileId) => setWasteFromProfile(profileId, setWallpaperWastePercent, "wallpaper"))}
             <Field htmlFor="wallpaper-width" label="Wandbreedte in meter">
-              <Input id="wallpaper-width" inputMode="decimal" value={wallpaperWidthM} onChange={(e) => setWallpaperWidthM(e.target.value)} />
+              <Input id="wallpaper-width" inputMode="decimal" min={0} value={wallpaperWidthM} onChange={(e) => setWallpaperWidthM(e.target.value)} />
             </Field>
             <Field htmlFor="wallpaper-height" label="Wandhoogte in meter">
-              <Input id="wallpaper-height" inputMode="decimal" value={wallpaperHeightM} onChange={(e) => setWallpaperHeightM(e.target.value)} />
+              <Input id="wallpaper-height" inputMode="decimal" min={0} value={wallpaperHeightM} onChange={(e) => setWallpaperHeightM(e.target.value)} />
             </Field>
             <Field htmlFor="roll-width" label="Rolbreedte cm">
-              <Input id="roll-width" inputMode="decimal" value={rollWidthCm} onChange={(e) => setRollWidthCm(e.target.value)} />
+              <Input id="roll-width" inputMode="decimal" min={0} value={rollWidthCm} onChange={(e) => setRollWidthCm(e.target.value)} />
             </Field>
             <Field htmlFor="roll-length" label="Rollengte m">
-              <Input id="roll-length" inputMode="decimal" value={rollLengthM} onChange={(e) => setRollLengthM(e.target.value)} />
+              <Input id="roll-length" inputMode="decimal" min={0} value={rollLengthM} onChange={(e) => setRollLengthM(e.target.value)} />
             </Field>
-            <Field htmlFor="pattern-repeat" label="Patroonrapport cm">
-              <Input id="pattern-repeat" inputMode="decimal" value={patternRepeatCm} onChange={(e) => setPatternRepeatCm(e.target.value)} />
+            <Field
+              htmlFor="pattern-repeat"
+              label="Patroonrapport cm"
+              helpText="Verticaal rapport van het dessin in cm. 0 = effen behang."
+            >
+              <Input id="pattern-repeat" inputMode="decimal" min={0} value={patternRepeatCm} onChange={(e) => setPatternRepeatCm(e.target.value)} />
             </Field>
             <Field htmlFor="wallpaper-waste" label="Snijverlies %">
-              <Input id="wallpaper-waste" inputMode="decimal" value={wallpaperWastePercent} onChange={(e) => setWallpaperWastePercent(e.target.value)} />
+              <Input id="wallpaper-waste" inputMode="decimal" min={0} value={wallpaperWastePercent} onChange={(e) => setWallpaperWastePercent(e.target.value)} />
             </Field>
             <Field htmlFor="wallpaper-notes" label="Notitie">
               <Input id="wallpaper-notes" value={wallpaperNotes} onChange={(e) => setWallpaperNotes(e.target.value)} />
@@ -2382,31 +2447,37 @@ export default function MeasurementPanel({
             successMessage: "Wandpaneleninmeting opgeslagen."
           }),
         result: (
-          <SummaryList items={[
-            { label: "Wandoppervlakte", value: formatNumber(wallPanelResult.wallAreaM2, " m²") },
-            { label: "Panelen nodig", value: wallPanelResult.panelsNeeded },
-            { label: "Offertehoeveelheid", value: `${wallPanelResult.quoteQuantityPieces} stuks` },
-            ...indicativeSummaryItems("wall_panels", wallPanelResult.quoteQuantityPieces)
-          ]} />
+          <SummaryList items={
+            calcEmptyStateItems(
+              Boolean(wallWidthM || wallHeightM || panelWidthM || panelHeightM),
+              wallWidthM || wallHeightM || panelWidthM || panelHeightM ? wallPanelResult.validationError : undefined
+            ) ?? [
+              { label: "Wandoppervlakte", value: formatNumber(wallPanelResult.wallAreaM2, " m²") },
+              { label: "Indeling", value: `${wallPanelResult.columns} stroken × ${wallPanelResult.rows} rijen` },
+              { label: "Panelen nodig", value: wallPanelResult.panelsNeeded },
+              { label: "Offertehoeveelheid", value: `${wallPanelResult.quoteQuantityPieces} stuks` },
+              ...indicativeSummaryItems("wall_panels", wallPanelResult.quoteQuantityPieces)
+            ]
+          } />
         ),
         fields: (
           <>
             {renderRoomSelect("wall-panel-room", "Ruimte", wallPanelRoomId, applyMeasurementRoomToWallPanel)}
             {renderWasteProfileSelect("wall-panel-waste-profile", "Standaard snijverlies", getProfilesForGroup("wall_panels"), (profileId) => setWasteFromProfile(profileId, setWallPanelWastePercent, "wall_panels"))}
             <Field htmlFor="wall-panel-wall-width" label="Wandbreedte in meter">
-              <Input id="wall-panel-wall-width" inputMode="decimal" value={wallWidthM} onChange={(e) => setWallWidthM(e.target.value)} />
+              <Input id="wall-panel-wall-width" inputMode="decimal" min={0} value={wallWidthM} onChange={(e) => setWallWidthM(e.target.value)} />
             </Field>
             <Field htmlFor="wall-panel-wall-height" label="Wandhoogte in meter">
-              <Input id="wall-panel-wall-height" inputMode="decimal" value={wallHeightM} onChange={(e) => setWallHeightM(e.target.value)} />
+              <Input id="wall-panel-wall-height" inputMode="decimal" min={0} value={wallHeightM} onChange={(e) => setWallHeightM(e.target.value)} />
             </Field>
             <Field htmlFor="panel-width" label="Paneelbreedte in meter">
-              <Input id="panel-width" inputMode="decimal" value={panelWidthM} onChange={(e) => setPanelWidthM(e.target.value)} />
+              <Input id="panel-width" inputMode="decimal" min={0} value={panelWidthM} onChange={(e) => setPanelWidthM(e.target.value)} />
             </Field>
             <Field htmlFor="panel-height" label="Paneelhoogte in meter">
-              <Input id="panel-height" inputMode="decimal" value={panelHeightM} onChange={(e) => setPanelHeightM(e.target.value)} />
+              <Input id="panel-height" inputMode="decimal" min={0} value={panelHeightM} onChange={(e) => setPanelHeightM(e.target.value)} />
             </Field>
             <Field htmlFor="wall-panel-waste" label="Snijverlies %">
-              <Input id="wall-panel-waste" inputMode="decimal" value={wallPanelWastePercent} onChange={(e) => setWallPanelWastePercent(e.target.value)} />
+              <Input id="wall-panel-waste" inputMode="decimal" min={0} value={wallPanelWastePercent} onChange={(e) => setWallPanelWastePercent(e.target.value)} />
             </Field>
             <Field htmlFor="wall-panel-notes" label="Notitie">
               <Input id="wall-panel-notes" value={wallPanelNotes} onChange={(e) => setWallPanelNotes(e.target.value)} />
@@ -2440,12 +2511,18 @@ export default function MeasurementPanel({
             successMessage: "Trapinmeting opgeslagen."
           }),
         result: (
-          <SummaryList items={[
-            { label: "Treden", value: stairResult.treadCount },
-            { label: "Stootborden", value: stairResult.riserCount },
-            { label: "Offertehoeveelheid", value: `${stairResult.quoteQuantity} trap` },
-            ...indicativeSummaryItems("stairs", stairResult.quoteQuantity)
-          ]} />
+          <SummaryList items={
+            calcEmptyStateItems(
+              Boolean(treadCount),
+              treadCount ? stairResult.validationError : undefined
+            ) ?? [
+              { label: "Treden", value: stairResult.treadCount },
+              { label: "Stootborden", value: stairResult.riserCount },
+              { label: "Striplengte", value: stripLengthM ? formatNumber(parseDecimal(stripLengthM), " m¹") : "-" },
+              { label: "Offertehoeveelheid", value: `${stairResult.quoteQuantity} trap` },
+              ...indicativeSummaryItems("stairs", stairResult.quoteQuantity)
+            ]
+          } />
         ),
         fields: (
           <>
@@ -2459,14 +2536,22 @@ export default function MeasurementPanel({
                 <option value="closed">Dichte trap</option>
               </Select>
             </Field>
-            <Field htmlFor="tread-count" label="Aantal treden">
-              <Input id="tread-count" inputMode="numeric" value={treadCount} onChange={(e) => setTreadCount(e.target.value)} />
+            <Field
+              htmlFor="tread-count"
+              label="Aantal treden"
+              helpText="Kenmerken (informatief) — de trap rekent per stuk af."
+            >
+              <Input id="tread-count" inputMode="numeric" min={0} value={treadCount} onChange={(e) => setTreadCount(e.target.value)} />
             </Field>
             <Field htmlFor="riser-count" label="Aantal stootborden">
-              <Input id="riser-count" inputMode="numeric" value={riserCount} onChange={(e) => setRiserCount(e.target.value)} />
+              <Input id="riser-count" inputMode="numeric" min={0} value={riserCount} onChange={(e) => setRiserCount(e.target.value)} />
             </Field>
-            <Field htmlFor="strip-length" label="Striplengte in meter">
-              <Input id="strip-length" inputMode="decimal" value={stripLengthM} onChange={(e) => setStripLengthM(e.target.value)} />
+            <Field
+              htmlFor="strip-length"
+              label="Striplengte in meter"
+              helpText="Informatief — telt niet mee in de prijs per trap."
+            >
+              <Input id="strip-length" inputMode="decimal" min={0} value={stripLengthM} onChange={(e) => setStripLengthM(e.target.value)} />
             </Field>
             <Field htmlFor="stair-notes" label="Notitie">
               <Input id="stair-notes" value={stairNotes} onChange={(e) => setStairNotes(e.target.value)} />
@@ -2534,16 +2619,21 @@ export default function MeasurementPanel({
         },
         result: (
           <SummaryList
-            items={[
-              { label: "Type", value: wcType || "-" },
-              { label: "Prijsgroep", value: wcPriceGroup || "-" },
-              {
-                label: "Maat (B×H)",
-                value: wcWidthCm && wcHeightCm ? `${wcWidthCm} × ${wcHeightCm} cm` : "-"
-              },
-              { label: "Aantal", value: wcQuantity || "1" },
-              ...windowCoveringSummaryItems()
-            ]}
+            items={
+              // Lege staat zolang er nog geen kernmaten zijn; zodra breedte én hoogte
+              // ingevuld zijn tonen we de samenvatting (incl. informatieve meldingen als
+              // "Buiten matrixbereik" of "Nog niet beschikbaar").
+              calcEmptyStateItems(Boolean(wcWidthCm && wcHeightCm), undefined) ?? [
+                { label: "Type", value: wcType || "-" },
+                { label: "Prijsgroep", value: wcPriceGroup || "-" },
+                {
+                  label: "Maat (B×H)",
+                  value: wcWidthCm && wcHeightCm ? `${wcWidthCm} × ${wcHeightCm} cm` : "-"
+                },
+                { label: "Aantal", value: wcQuantity || "1" },
+                ...windowCoveringSummaryItems()
+              ]
+            }
           />
         ),
         fields: (
@@ -2585,18 +2675,30 @@ export default function MeasurementPanel({
                   ))}
               </Select>
             </Field>
-            <Field htmlFor="wc-width" label="Breedte in cm">
+            <Field
+              htmlFor="wc-width"
+              label="Breedte in cm"
+              helpText="Raammaat in cm (bijv. 120), niet in mm"
+            >
               <Input
                 id="wc-width"
                 inputMode="decimal"
+                min={0}
+                placeholder="bijv. 120"
                 value={wcWidthCm}
                 onChange={(e) => setWcWidthCm(e.target.value)}
               />
             </Field>
-            <Field htmlFor="wc-height" label="Hoogte in cm">
+            <Field
+              htmlFor="wc-height"
+              label="Hoogte in cm"
+              helpText="Raammaat in cm (bijv. 120), niet in mm"
+            >
               <Input
                 id="wc-height"
                 inputMode="decimal"
+                min={0}
+                placeholder="bijv. 120"
                 value={wcHeightCm}
                 onChange={(e) => setWcHeightCm(e.target.value)}
               />
@@ -2604,7 +2706,9 @@ export default function MeasurementPanel({
             <Field htmlFor="wc-qty" label="Aantal">
               <Input
                 id="wc-qty"
-                inputMode="decimal"
+                inputMode="numeric"
+                min={1}
+                step={1}
                 value={wcQuantity}
                 onChange={(e) => setWcQuantity(e.target.value)}
               />
@@ -2641,12 +2745,17 @@ export default function MeasurementPanel({
             successMessage: "Vrije inmeetregel opgeslagen."
           }),
         result: (
-          <SummaryList items={[
-            { label: "Productgroep", value: formatMeasurementProductGroup(manualProductGroup) },
-            { label: "Soort post", value: formatLineType(manualQuoteLineType) },
-            { label: "Hoeveelheid", value: `${manualQuantity || "-"} ${formatUnit(manualUnit)}` },
-            ...indicativeSummaryItems("manual", parseDecimal(manualQuantity) ?? 0)
-          ]} />
+          <SummaryList items={
+            calcEmptyStateItems(
+              Boolean(manualQuantity),
+              manualQuantity && !parseDecimal(manualQuantity) ? "Hoeveelheid verplicht." : undefined
+            ) ?? [
+              { label: "Productgroep", value: formatMeasurementProductGroup(manualProductGroup) },
+              { label: "Soort post", value: formatLineType(manualQuoteLineType) },
+              { label: "Hoeveelheid", value: `${manualQuantity || "-"} ${formatUnit(manualUnit)}` },
+              ...indicativeSummaryItems("manual", parseDecimal(manualQuantity) ?? 0)
+            ]
+          } />
         ),
         fields: (
           <>
@@ -2657,18 +2766,30 @@ export default function MeasurementPanel({
               </Select>
             </Field>
             <Field htmlFor="manual-quantity" label="Hoeveelheid">
-              <Input id="manual-quantity" inputMode="decimal" value={manualQuantity} onChange={(e) => setManualQuantity(e.target.value)} />
+              <Input id="manual-quantity" inputMode="decimal" min={0} value={manualQuantity} onChange={(e) => setManualQuantity(e.target.value)} />
             </Field>
             <Field htmlFor="manual-unit" label="Eenheid">
-              <Input id="manual-unit" value={manualUnit} onChange={(e) => setManualUnit(e.target.value)} />
+              <Select id="manual-unit" value={manualUnit} onChange={(e) => setManualUnit(e.target.value)}>
+                <option value="m2">m²</option>
+                <option value="m1">m¹</option>
+                <option value="meter">meter</option>
+                <option value="piece">stuk</option>
+                <option value="roll">rol</option>
+                <option value="stairs">trap</option>
+                <option value="custom">maatwerk</option>
+              </Select>
             </Field>
             <Field htmlFor="manual-line-type" label="Soort offertepost">
               <Select id="manual-line-type" value={manualQuoteLineType} onChange={(e) => setManualQuoteLineType(e.target.value as QuoteLineType)}>
                 {QUOTE_LINE_TYPE_OPTIONS.map((lineType) => <option key={lineType} value={lineType}>{formatLineType(lineType)}</option>)}
               </Select>
             </Field>
-            <Field htmlFor="manual-waste" label="Snijverlies %">
-              <Input id="manual-waste" inputMode="decimal" value={manualWastePercent} onChange={(e) => setManualWastePercent(e.target.value)} />
+            <Field
+              htmlFor="manual-waste"
+              label="Snijverlies % (telt niet mee)"
+              helpText="Een vrije hoeveelheid voer je zelf in."
+            >
+              <Input id="manual-waste" inputMode="decimal" min={0} value={manualWastePercent} onChange={(e) => setManualWastePercent(e.target.value)} />
             </Field>
             <Field htmlFor="manual-notes" label="Notitie">
               <Input id="manual-notes" value={manualNotes} onChange={(e) => setManualNotes(e.target.value)} />

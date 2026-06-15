@@ -49,22 +49,22 @@ export function calculateCurtainFabric(
   const rapportM = input.rapportM ?? 0;
 
   if (!isValidNumber(input.railWidthM) || input.railWidthM <= 0) {
-    return invalidCurtainResult(input.makeUp, "railWidthM must be greater than 0.");
+    return invalidCurtainResult(input.makeUp, "Railbreedte moet groter dan 0 zijn.");
   }
   if (!isValidNumber(input.curtainHeightM) || input.curtainHeightM <= 0) {
-    return invalidCurtainResult(input.makeUp, "curtainHeightM must be greater than 0.");
+    return invalidCurtainResult(input.makeUp, "Gordijnhoogte moet groter dan 0 zijn.");
   }
   if (!isValidNumber(input.fabricWidthM) || input.fabricWidthM <= 0) {
-    return invalidCurtainResult(input.makeUp, "fabricWidthM must be greater than 0.");
+    return invalidCurtainResult(input.makeUp, "Stofbreedte moet groter dan 0 zijn.");
   }
   if (!isValidNumber(input.fullness) || input.fullness <= 0) {
-    return invalidCurtainResult(input.makeUp, "fullness must be greater than 0.");
+    return invalidCurtainResult(input.makeUp, "Plooifactor moet groter dan 0 zijn.");
   }
   if (!isValidNumber(hemM) || hemM < 0 || !isValidNumber(sideHemM) || sideHemM < 0) {
-    return invalidCurtainResult(input.makeUp, "hemM and sideHemM must be 0 or greater.");
+    return invalidCurtainResult(input.makeUp, "Zoom en zijzoom mogen niet negatief zijn.");
   }
   if (!isValidNumber(rapportM) || rapportM < 0) {
-    return invalidCurtainResult(input.makeUp, "rapportM must be 0 or greater.");
+    return invalidCurtainResult(input.makeUp, "Patroonrapport mag niet negatief zijn.");
   }
 
   const requiredWidthM = roundToTwoDecimals(input.railWidthM * input.fullness);

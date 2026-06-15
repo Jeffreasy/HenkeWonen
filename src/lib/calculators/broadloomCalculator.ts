@@ -25,16 +25,16 @@ export type BroadloomCalculationResult = IndicativeCalculationResult & {
  */
 export function calculateBroadloom(input: BroadloomCalculationInput): BroadloomCalculationResult {
   if (!isValidNumber(input.roomWidthM) || input.roomWidthM <= 0) {
-    return invalidBroadloomResult("roomWidthM must be greater than 0.");
+    return invalidBroadloomResult("Kamerbreedte moet groter dan 0 zijn.");
   }
   if (!isValidNumber(input.roomLengthM) || input.roomLengthM <= 0) {
-    return invalidBroadloomResult("roomLengthM must be greater than 0.");
+    return invalidBroadloomResult("Kamerlengte moet groter dan 0 zijn.");
   }
   if (!isValidNumber(input.rollWidthM) || input.rollWidthM <= 0) {
-    return invalidBroadloomResult("rollWidthM must be greater than 0.");
+    return invalidBroadloomResult("Rolbreedte moet groter dan 0 zijn.");
   }
   if (!isValidNumber(input.wastePercent) || input.wastePercent < 0) {
-    return invalidBroadloomResult("wastePercent must be 0 or greater.");
+    return invalidBroadloomResult("Snijverlies mag niet negatief zijn.");
   }
 
   const stripsA = Math.ceil(input.roomWidthM / input.rollWidthM);
