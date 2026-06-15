@@ -756,6 +756,21 @@ export type PortalInvoiceRow = PortalInvoice & {
   projectTitle: string;
 };
 
+export type PortalInvoiceLine = {
+  id: string;
+  regelType: string;
+  titel: string;
+  aantal: number;
+  eenheid: string;
+  eenheidsprijsExBtw: number;
+  btwTarief: number;
+  kortingExBtw?: number;
+  regelTotaalExBtw: number;
+  regelBtwTotaal: number;
+  regelTotaalInclBtw: number;
+  sortOrder: number;
+};
+
 export type PortalInvoiceDetail = {
   invoice: PortalInvoice;
   customer: {
@@ -764,6 +779,11 @@ export type PortalInvoiceDetail = {
     email?: string;
     telefoon?: string;
     type: CustomerType;
+    straat?: string;
+    huisnummer?: string;
+    postcode?: string;
+    plaats?: string;
+    land?: string;
   } | null;
   project: {
     id: string;
@@ -776,5 +796,6 @@ export type PortalInvoiceDetail = {
     titel: string;
     status: QuoteStatus;
   } | null;
+  quoteLines: PortalInvoiceLine[];
 };
 

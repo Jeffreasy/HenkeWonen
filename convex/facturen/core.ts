@@ -140,6 +140,15 @@ export const invoiceDetail = query({
       invoice.quoteId ? ctx.db.get(invoice.quoteId) : Promise.resolve(null)
     ]);
 
+    // Factuurspecificatie: facturen zijn header-only; de regels komen van de gekoppelde offerte.
+    const quoteLineDocs =
+      quote && quote.tenantId === tenant._id
+        ? await ctx.db
+            .query("quoteLines")
+            .withIndex("by_quote", (q) => q.eq("tenantId", tenant._id).eq("quoteId", quote._id))
+            .collect()
+        : [];
+
     return {
       invoice: toInvoice(tenant.slug, invoice),
       customer: customer && customer.tenantId === tenant._id
@@ -148,7 +157,12 @@ export const invoiceDetail = query({
             weergaveNaam: customer.weergaveNaam,
             email: customer.email,
             telefoon: customer.telefoon,
-            type: customer.type
+            type: customer.type,
+            straat: customer.straat,
+            huisnummer: customer.huisnummer,
+            postcode: customer.postcode,
+            plaats: customer.plaats,
+            land: customer.land
           }
         : null,
       project: project && project.tenantId === tenant._id
@@ -165,7 +179,23 @@ export const invoiceDetail = query({
             titel: quote.titel,
             status: quote.status
           }
-        : null
+        : null,
+      quoteLines: quoteLineDocs
+        .sort((left, right) => left.sortOrder - right.sortOrder)
+        .map((line) => ({
+          id: String(line._id),
+          regelType: line.regelType,
+          titel: line.titel,
+          aantal: line.aantal,
+          eenheid: line.eenheid,
+          eenheidsprijsExBtw: line.eenheidsprijsExBtw,
+          btwTarief: line.btwTarief,
+          kortingExBtw: line.kortingExBtw,
+          regelTotaalExBtw: line.regelTotaalExBtw,
+          regelBtwTotaal: line.regelBtwTotaal,
+          regelTotaalInclBtw: line.regelTotaalInclBtw,
+          sortOrder: line.sortOrder
+        }))
     };
   }
 });

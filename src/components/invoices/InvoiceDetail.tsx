@@ -25,6 +25,7 @@ type InvoiceDetailProps = {
 type PendingAction =
   | { type: "mark_paid" }
   | { type: "mark_overdue" }
+  | { type: "send" }
   | { type: "cancel" };
 
 export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps) {
@@ -109,6 +110,13 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
           invoiceId,
           status: "overdue" as InvoiceStatus
         });
+      } else if (pendingAction?.type === "send") {
+        await client.mutation(api.portal.updateInvoiceStatus, {
+          tenantSlug: session.tenantId,
+          actor: mutationActorFromSession(session),
+          invoiceId,
+          status: "sent" as InvoiceStatus
+        });
       } else if (pendingAction?.type === "cancel") {
         await client.mutation(api.portal.updateInvoiceStatus, {
           tenantSlug: session.tenantId,
@@ -145,8 +153,26 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
     );
   }
 
-  const { invoice, customer, project, quote } = detail;
+  const { invoice, customer, project, quote, quoteLines } = detail;
   const isEditable = canEdit && invoice.status !== "paid" && invoice.status !== "cancelled";
+  const isOpen = invoice.status !== "paid" && invoice.status !== "cancelled";
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const daysOverdue =
+    isOpen && invoice.vervaldatum < Date.now()
+      ? Math.floor((Date.now() - invoice.vervaldatum) / msPerDay)
+      : 0;
+  const outstanding = Math.max(0, invoice.totaalInclBtw - invoice.betaaldBedrag);
+  const paidPct =
+    invoice.totaalInclBtw > 0
+      ? Math.min(100, Math.max(0, Math.round((invoice.betaaldBedrag / invoice.totaalInclBtw) * 100)))
+      : 0;
+  const addressLines = customer
+    ? [
+        [customer.straat, customer.huisnummer].filter(Boolean).join(" "),
+        [customer.postcode, customer.plaats].filter(Boolean).join("  "),
+        customer.land
+      ].filter((line) => line && line.trim().length > 0)
+    : [];
 
   const confirmCopy: Record<
     PendingAction["type"],
@@ -162,6 +188,11 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
       description: "Je markeert deze factuur als te laat. De klant heeft de vervaldatum overschreden.",
       confirmLabel: "Te laat markeren",
       tone: "warning"
+    },
+    send: {
+      title: "Factuur versturen?",
+      description: "Je zet deze conceptfactuur op 'Verstuurd'. Daarna is de factuur definitief en kun je betalingen registreren.",
+      confirmLabel: "Versturen"
     },
     cancel: {
       title: "Factuur annuleren?",
@@ -232,10 +263,16 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
           actions={
             isEditable ? (
               <div className="project-action-row">
-                <Button onClick={openMarkPaid} size="sm" variant="primary">
-                  Betaling registreren
-                </Button>
-                {invoice.status === "sent" ? (
+                {invoice.status === "draft" ? (
+                  <Button onClick={() => setPendingAction({ type: "send" })} size="sm" variant="primary">
+                    Versturen
+                  </Button>
+                ) : (
+                  <Button onClick={openMarkPaid} size="sm" variant="primary">
+                    Betaling registreren
+                  </Button>
+                )}
+                {invoice.status === "sent" || invoice.status === "partially_paid" ? (
                   <Button
                     onClick={() => setPendingAction({ type: "mark_overdue" })}
                     size="sm"
@@ -270,17 +307,25 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
                 value: (
                   <span
                     style={
-                      invoice.status !== "paid" &&
-                      invoice.status !== "cancelled" &&
-                      invoice.vervaldatum < Date.now()
+                      daysOverdue > 0
                         ? { color: "var(--color-danger, #b91c1c)", fontWeight: 700 }
                         : undefined
                     }
                   >
                     {formatDate(invoice.vervaldatum)}
                   </span>
-                )
+                ),
+                description:
+                  daysOverdue > 0 ? `${daysOverdue} dag${daysOverdue === 1 ? "" : "en"} te laat` : undefined
               },
+              ...(invoice.herinneringVerzondenOp
+                ? [
+                    {
+                      label: "Herinnering verstuurd",
+                      value: formatDate(invoice.herinneringVerzondenOp)
+                    }
+                  ]
+                : []),
               {
                 label: "Excl. btw",
                 value: formatEuro(invoice.subtotaalExBtw)
@@ -297,14 +342,48 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
               },
               {
                 label: "Nog te ontvangen",
-                value: (
-                  <strong>
-                    {formatEuro(Math.max(0, invoice.totaalInclBtw - invoice.betaaldBedrag))}
-                  </strong>
-                )
+                value: <strong>{formatEuro(outstanding)}</strong>
               }
             ]}
           />
+          {invoice.betaaldBedrag > 0 && invoice.status !== "cancelled" ? (
+            <div style={{ marginTop: "var(--space-3)" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: "var(--text-sm)",
+                  marginBottom: "var(--space-1)"
+                }}
+              >
+                <span className="muted">Betaalvoortgang</span>
+                <span>{paidPct}%</span>
+              </div>
+              <div
+                style={{
+                  height: 8,
+                  borderRadius: 999,
+                  background: "var(--color-surface-muted, #e5e7eb)",
+                  overflow: "hidden"
+                }}
+                role="progressbar"
+                aria-valuenow={paidPct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <div
+                  style={{
+                    width: `${paidPct}%`,
+                    height: "100%",
+                    background:
+                      invoice.status === "paid"
+                        ? "var(--color-success, #16a34a)"
+                        : "var(--color-primary, #2563eb)"
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
         </section>
 
         {/* Gekoppeld dossier en klant */}
@@ -336,6 +415,20 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
                   <span className="muted">Geen offerte gekoppeld</span>
                 )
               },
+              ...(addressLines.length > 0
+                ? [
+                    {
+                      label: "Factuuradres",
+                      value: (
+                        <span style={{ display: "flex", flexDirection: "column" }}>
+                          {addressLines.map((line) => (
+                            <span key={line}>{line}</span>
+                          ))}
+                        </span>
+                      )
+                    }
+                  ]
+                : []),
               ...(customer?.email
                 ? [{ label: "E-mail", value: customer.email }]
                 : []),
@@ -346,6 +439,87 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
           />
         </section>
       </div>
+
+      {/* Specificatie (factuurregels uit de gekoppelde offerte) */}
+      <section className="panel">
+        <SectionHeader
+          compact
+          title="Specificatie"
+          description={
+            quote
+              ? `Regels overgenomen uit offerte ${quote.offertenummer}`
+              : "Geen gekoppelde offerte"
+          }
+        />
+        {quoteLines.length > 0 ? (
+          <>
+            <div className="quote-document-table-wrap">
+              <table className="quote-document-table">
+                <thead>
+                  <tr>
+                    <th>Aantal</th>
+                    <th>Eenheid</th>
+                    <th>Omschrijving</th>
+                    <th>Prijs excl. btw</th>
+                    <th>Btw</th>
+                    <th>Totaal incl. btw</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {quoteLines.map((line) =>
+                    line.regelType === "text" ? (
+                      <tr key={line.id}>
+                        <td />
+                        <td />
+                        <td colSpan={4}>
+                          <span className="muted">{line.titel}</span>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={line.id}>
+                        <td>{line.aantal}</td>
+                        <td>{line.eenheid}</td>
+                        <td>
+                          {line.titel}
+                          {line.kortingExBtw
+                            ? ` (korting ${formatEuro(line.kortingExBtw)})`
+                            : ""}
+                        </td>
+                        <td>{formatEuro(line.eenheidsprijsExBtw)}</td>
+                        <td>{line.btwTarief}%</td>
+                        <td>{formatEuro(line.regelTotaalInclBtw)}</td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="quote-document-totals" style={{ marginTop: "var(--space-3)" }}>
+              <div>
+                <span>Subtotaal excl. btw</span>
+                <strong>{formatEuro(invoice.subtotaalExBtw)}</strong>
+              </div>
+              <div>
+                <span>Btw</span>
+                <strong>{formatEuro(invoice.btwTotaal)}</strong>
+              </div>
+              <div className="quote-document-total-row">
+                <span>Totaal incl. btw</span>
+                <strong>{formatEuro(invoice.totaalInclBtw)}</strong>
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="muted">
+            Deze factuur heeft geen gekoppelde offerte, dus er is geen regelspecificatie beschikbaar.
+          </p>
+        )}
+      </section>
+
+      <p className="muted" style={{ fontSize: "var(--text-sm)", margin: 0 }}>
+        Aangemaakt op {formatDate(invoice.aangemaaktOp)} · Laatst gewijzigd op{" "}
+        {formatDate(invoice.gewijzigdOp)}
+      </p>
     </div>
   );
 }
