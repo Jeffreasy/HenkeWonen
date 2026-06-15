@@ -143,22 +143,14 @@ async function ensureProject(
 ) {
   const existing = await findProject(ctx, tenantId, project.title);
   const timestamp = now();
-  // Statussen die "verder" in de flow zitten impliceren dat eerdere mijlpalen al zijn gehaald.
-  const downstream = ["execution_planned", "ordering", "in_progress", "invoiced", "paid", "closed"];
-  const isAtOrPast = (target: string) => downstream.includes(project.status);
+  // Statussen die "verder" in de flow zitten impliceren dat eerdere mijlpalen al gehaald zijn.
+  const past = (stages: string[]) => stages.includes(project.status);
   const statusDates = {
-    geaccepteerdOp:
-      project.status === "quote_accepted" || isAtOrPast("quote_accepted") ? timestamp : undefined,
+    geaccepteerdOp: past(["quote_accepted", "execution_planned", "ordering", "in_progress", "invoiced", "paid", "closed"]) ? timestamp : undefined,
     inmeetGeplandOp: project.status === "measurement_planned" ? timestamp : undefined,
-    uitvoerGeplandOp:
-      project.status === "execution_planned" || isAtOrPast("execution_planned")
-        ? timestamp
-        : undefined,
-    besteldOp:
-      project.status === "ordering" || ["in_progress", "invoiced", "paid", "closed"].includes(project.status)
-        ? timestamp
-        : undefined,
-    gefactureerdOp: ["invoiced", "paid", "closed"].includes(project.status) ? timestamp : undefined
+    uitvoerGeplandOp: past(["execution_planned", "ordering", "in_progress", "invoiced", "paid", "closed"]) ? timestamp : undefined,
+    besteldOp: past(["ordering", "in_progress", "invoiced", "paid", "closed"]) ? timestamp : undefined,
+    gefactureerdOp: past(["invoiced", "paid", "closed"]) ? timestamp : undefined
   };
 
   if (existing) {
@@ -576,7 +568,7 @@ async function ensureMeasurement(
   projectId: Id<"projects">,
   customerId: Id<"customers">,
   fields: {
-    status: "draft" | "measured" | "reviewed";
+    status: "draft" | "measured" | "reviewed" | "converted_to_quote";
     inmeetdatum?: number;
     gemetenDoor?: string;
     notities?: string;
