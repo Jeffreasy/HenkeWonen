@@ -125,3 +125,36 @@ npm run catalog:status
 |---|---|
 | Backup, alle `--prod` deploys, migrate-apply, catalogus-reset/import, schema-toggle, main-merge | **Eigenaar** |
 | Spec valideren, dev dry-run, runbook/commando's aanleveren, meekijken, post-checks-analyse | **Claude** |
+
+---
+
+## UITGEVOERD 2026-06-15 (avond) — bevindingen & afwijkingen
+
+De migratie is uitgevoerd (met toestemming, in een staf-only onderhoudsvenster). Resultaat: **geslaagd**.
+
+**Stand vooraf (gemeten):** prod = volledig oud Engels schema, 31 echte klanten + 1 project + 1 quote,
+catalogus ≈20.000 oude/rommelige producten. Login is staf-only (5 gebruikers @henkewonen.nl/@laventecare.nl),
+geen klant-logins → impact = intern portal ~20 min onbeschikbaar, geen klant-impact.
+
+**Wat afweek van het plan:**
+1. **Migratiescope:** alle 30 spec-tabellen behalve de 5 die `catalog:reset` tóch wist
+   (products, productPrices, priceLists, productCollections, brands). Gemigreerd: **38.946 docs** over 25 tabellen
+   (grotendeels oude `productImportRows`-historie). Verify groen (0 EN-velden).
+2. **`catalog:prod:bootstrap`** maakt de config-basis aan; categories/suppliers/importProfiles werden in stap 2
+   gemigreerd (reset raakt ze niet) zodat de eind-validatie slaagt.
+3. **BUG gevonden + gefixt:** `tools/upload_catalog_batch_import.mjs` stuurde nog Engelse mutatie-args
+   (`fileType`/`fileName`/…) terwijl de NL-rename de Convex-functies had vernederlandst (`bestandsType`/…).
+   Eerste NL-import faalde op `createPreviewBatch` → tool gefixt (commit `cfb80dc`), daarna import OK
+   (54 batches, 0 fouten). **Latent gebleven** omdat dev's catalogus vóór de rename was geïmporteerd.
+4. **Volgorde reset↔import:** reset slaagde, import faalde (bug) → korte interim met lege catalogus; na de
+   toolfix opnieuw geïmporteerd (reset niet nodig, catalogus was al leeg).
+5. **Frontend-build vooraf lokaal geverifieerd** (`npm install --engine-strict=false && npm run build` →
+   0 errors) omdat de laptop node 25 draait i.p.v. de vereiste 24.x.
+
+**Catalogus-aantallen (let op):** prod heeft na de import ≈20k producten (de huidige 32-bestanden canonieke
+preview), dev ≈11k. Dit zijn **verschillende builds**, geen "prod = dev + extra" — per categorie wijken de
+aantallen beide kanten op af (bv. Behang dev 2878 / prod 143; PVC Dryback dev 48 / prod 176). De
+`cleanup_catalog`-scripts verwijderen **hele** categorieën/leveranciers en zijn dus NIET geschikt om prod
+"gelijk aan dev" te trekken. Parity vereist een bewuste keuze welke preview/bronset de waarheid is — niet blind opschonen.
+
+**Open follow-ups:** stale `productImportRows`-historie (~38k, cosmetisch) en de catalogus-bron-keuze.
