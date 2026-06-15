@@ -370,13 +370,13 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
     batchId = await client.mutation(api.catalog.import.createPreviewBatch, {
       tenantSlug,
       actor,
-      fileName: sourceFileName,
-      fileType: fileTypeFor(sourceFileName),
-      sourceFileName,
-      sourcePath: firstNormalizedRow.sourcePath,
-      fileHash: firstNormalizedRow.fileHash,
-      supplierName: firstNormalizedRow.supplierName,
-      allowUnknownVatMode: batchAllowUnknownVatMode,
+      bestandsnaam: sourceFileName,
+      bestandsType: fileTypeFor(sourceFileName),
+      bronBestandsnaam: sourceFileName,
+      bronPad: firstNormalizedRow.sourcePath,
+      bestandHash: firstNormalizedRow.fileHash,
+      leverancierNaam: firstNormalizedRow.supplierName,
+      staBtwModusOnbekendToe: batchAllowUnknownVatMode,
       createdByExternalUserId: "dev-catalog-import",
     });
 
@@ -395,7 +395,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
       tenantSlug,
       actor,
       batchId,
-      allowUnknownVatMode: batchAllowUnknownVatMode,
+      staBtwModusOnbekendToe: batchAllowUnknownVatMode,
       mapping: {
         mode: "generated-preview",
         requiresVatOverride: batchAllowUnknownVatMode,
@@ -419,7 +419,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
           tenantSlug,
           actor,
           batchId,
-          allowUnknownVatMode: batchAllowUnknownVatMode,
+          staBtwModusOnbekendToe: batchAllowUnknownVatMode,
           importedByExternalUserId: "dev-catalog-import",
           limit: commitLimit,
         });
@@ -445,7 +445,7 @@ for (const [sourceFileName, sourceRows] of groups.entries()) {
         tenantSlug,
         actor,
         batchId,
-        errorMessage: error instanceof Error ? error.message : "Unknown batch import failure",
+        foutmelding: error instanceof Error ? error.message : "Unknown batch import failure",
       });
     }
 
