@@ -107,6 +107,9 @@ export default function MeasurementPanel({
   const canEditMeasurement = canEditDossiers(session.role);
   const isFieldMode = mode === "field";
   const [activeFieldTool, setActiveFieldTool] = useState<FieldMeasureTool>("flooring");
+  // Samenvattingskaart: dicht in kantoormodus (het dossier-cockpit toont status/datums
+  // al), open in de buitendienst waar er geen cockpit boven staat.
+  const [summaryOpen, setSummaryOpen] = useState(mode === "field");
 
   const [measurementStatus, setMeasurementStatus] = useState<MeasurementStatus>("draft");
   const [measurementDate, setMeasurementDate] = useState("");
@@ -1817,80 +1820,85 @@ export default function MeasurementPanel({
           </section>
 
           <Card>
-            <form onSubmit={saveMeasurementMeta}>
-              <SectionHeader
-                compact
-                title="Inmeting samenvatting"
-                description="Deze gegevens horen bij het projectdossier en wijzigen geen offerte."
-                actions={
-                  <StatusBadge
-                    status={measurement.status}
-                    label={formatMeasurementStatus(measurement.status)}
-                  />
-                }
-              />
-              <SummaryList
-                items={[
-                  { id: "date", label: "Inmeetdatum", value: dateText(measurement.inmeetdatum) },
-                  { id: "person", label: "Ingemeten door", value: measurement.gemetenDoor ?? "-" },
-                  { id: "updated", label: "Bijgewerkt", value: dateText(measurement.gewijzigdOp) }
-                ]}
-              />
-              <div className="responsive-form-row" style={{ marginTop: 16 }}>
-                <Field htmlFor="measurement-status" label="Status">
-                  <Select
-                    id="measurement-status"
-                    value={measurementStatus}
-                    onChange={(event) =>
-                      setMeasurementStatus(event.target.value as MeasurementStatus)
-                    }
-                  >
-                    {(["draft", "measured", "reviewed", "converted_to_quote"] as const).map(
-                      (status) => (
-                        <option key={status} value={status}>
-                          {formatMeasurementStatus(status)}
-                        </option>
-                      )
-                    )}
-                  </Select>
-                </Field>
-                <Field htmlFor="measurement-date" label="Inmeetdatum">
-                  <Input
-                    id="measurement-date"
-                    type="date"
-                    value={measurementDate}
-                    onChange={(event) => setMeasurementDate(event.target.value)}
-                  />
-                </Field>
-                <Field htmlFor="measured-by" label="Ingemeten door">
-                  <Input
-                    id="measured-by"
-                    value={measuredBy}
-                    onChange={(event) => setMeasuredBy(event.target.value)}
-                  />
-                </Field>
-              </div>
-              <Field htmlFor="measurement-notes" label="Notities">
-                <Textarea
-                  id="measurement-notes"
-                  rows={3}
-                  value={measurementNotes}
-                  onChange={(event) => setMeasurementNotes(event.target.value)}
+            <details
+              className="measurement-summary"
+              open={summaryOpen}
+              onToggle={(event) => setSummaryOpen(event.currentTarget.open)}
+            >
+              <summary className="measurement-summary-head">
+                <span className="measurement-summary-title">Inmeting samenvatting</span>
+                <StatusBadge
+                  status={measurement.status}
+                  label={formatMeasurementStatus(measurement.status)}
                 />
-              </Field>
-              <div className="toolbar" style={{ marginTop: 12 }}>
-                {canEditMeasurement ? (
-                  <Button
-                    isLoading={isSaving}
-                    leftIcon={<CalendarClock size={16} aria-hidden="true" />}
-                    type="submit"
-                    variant="secondary"
-                  >
-                    Inmeting opslaan
-                  </Button>
-                ) : null}
-              </div>
-            </form>
+              </summary>
+              <form onSubmit={saveMeasurementMeta}>
+                <p className="muted measurement-summary-desc">
+                  Deze gegevens horen bij het projectdossier en wijzigen geen offerte.
+                </p>
+                <SummaryList
+                  items={[
+                    { id: "date", label: "Inmeetdatum", value: dateText(measurement.inmeetdatum) },
+                    { id: "person", label: "Ingemeten door", value: measurement.gemetenDoor ?? "-" },
+                    { id: "updated", label: "Bijgewerkt", value: dateText(measurement.gewijzigdOp) }
+                  ]}
+                />
+                <div className="responsive-form-row" style={{ marginTop: 16 }}>
+                  <Field htmlFor="measurement-status" label="Status">
+                    <Select
+                      id="measurement-status"
+                      value={measurementStatus}
+                      onChange={(event) =>
+                        setMeasurementStatus(event.target.value as MeasurementStatus)
+                      }
+                    >
+                      {(["draft", "measured", "reviewed", "converted_to_quote"] as const).map(
+                        (status) => (
+                          <option key={status} value={status}>
+                            {formatMeasurementStatus(status)}
+                          </option>
+                        )
+                      )}
+                    </Select>
+                  </Field>
+                  <Field htmlFor="measurement-date" label="Inmeetdatum">
+                    <Input
+                      id="measurement-date"
+                      type="date"
+                      value={measurementDate}
+                      onChange={(event) => setMeasurementDate(event.target.value)}
+                    />
+                  </Field>
+                  <Field htmlFor="measured-by" label="Ingemeten door">
+                    <Input
+                      id="measured-by"
+                      value={measuredBy}
+                      onChange={(event) => setMeasuredBy(event.target.value)}
+                    />
+                  </Field>
+                </div>
+                <Field htmlFor="measurement-notes" label="Notities">
+                  <Textarea
+                    id="measurement-notes"
+                    rows={3}
+                    value={measurementNotes}
+                    onChange={(event) => setMeasurementNotes(event.target.value)}
+                  />
+                </Field>
+                <div className="toolbar" style={{ marginTop: 12 }}>
+                  {canEditMeasurement ? (
+                    <Button
+                      isLoading={isSaving}
+                      leftIcon={<CalendarClock size={16} aria-hidden="true" />}
+                      type="submit"
+                      variant="secondary"
+                    >
+                      Inmeting opslaan
+                    </Button>
+                  ) : null}
+                </div>
+              </form>
+            </details>
           </Card>
 
           <Card>

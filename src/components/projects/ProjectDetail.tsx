@@ -404,6 +404,10 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   const pendingProjectActionDetails = pendingProjectAction
     ? projectActionCopy[pendingProjectAction]
     : null;
+  // Fase-afhankelijke ruimtes: vóór de inmeting (status "lead") beheer je dossier-
+  // ruimtes in dit losse paneel; zodra de inmeting loopt nemen de inmeetruimtes het
+  // over (die syncen automatisch terug naar het dossier), dus tonen we het dan niet meer.
+  const measurementStarted = project.status !== "lead";
 
   return (
     <div className="grid">
@@ -483,13 +487,15 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
             icon: <Ruler size={15} aria-hidden="true" />,
             content: (
               <>
-                <ProjectRoomsPanel
-                  rooms={project.rooms}
-                  canEdit={canEditProject}
-                  onAddRoom={handleAddRoom}
-                  onSaveRoom={handleSaveRoom}
-                  onDeleteRoom={setPendingRoomDelete}
-                />
+                {!measurementStarted ? (
+                  <ProjectRoomsPanel
+                    rooms={project.rooms}
+                    canEdit={canEditProject}
+                    onAddRoom={handleAddRoom}
+                    onSaveRoom={handleSaveRoom}
+                    onDeleteRoom={setPendingRoomDelete}
+                  />
+                ) : null}
 
                 <div id="project-measurement">
                   <MeasurementPanel
