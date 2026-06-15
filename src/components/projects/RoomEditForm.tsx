@@ -110,6 +110,13 @@ export function RoomEditForm({ room, onSave, onCancel }: RoomEditFormProps) {
           />
         </Field>
       </div>
+      <Field htmlFor="edit-room-floor" label="Verdieping">
+        <Input
+          id="edit-room-floor"
+          value={floor}
+          onChange={(event) => setFloor(event.target.value)}
+        />
+      </Field>
       <Field htmlFor="edit-room-notes" label="Notities">
         <Textarea
           id="edit-room-notes"

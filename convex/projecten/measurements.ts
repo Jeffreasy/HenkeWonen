@@ -8,6 +8,72 @@ import {
 } from "../authz";
 import { pilotHiddenReason } from "../catalog/pilot";
 import { isUnitCompatible } from "../catalog/pricingRules";
+import type { Id } from "../_generated/dataModel";
+
+/** Genormaliseerde ruimtenaam voor dedup (trim + lowercase). */
+function normalizeRoomName(naam: string): string {
+  return naam.trim().toLowerCase();
+}
+
+/**
+ * Auto-promotie van een inmeet-ruimte naar een dossier-ruimte.
+ *
+ * Bij het toevoegen van een measurementRoom zonder expliciete dossier-koppeling zoeken we de
+ * dossier-ruimte (projectRoom) met dezelfde genormaliseerde naam binnen het project; bestaat die
+ * niet, dan maken we 'm aan (maten van m → cm). Zo hoeft de gebruiker een ruimte niet twee keer
+ * in te voeren, blijft de dossierlijst in sync met de inmeting, en behoudt de offerte de ruimte
+ * (quoteLines verwijzen immers hard naar projectRooms). Retourneert de projectRoom-id.
+ */
+export async function findOrCreateProjectRoom(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  projectId: Id<"projects">,
+  fields: {
+    naam: string;
+    verdieping?: string;
+    breedteM?: number;
+    lengteM?: number;
+    hoogteM?: number;
+    oppervlakteM2?: number;
+    omtrekM?: number;
+    notities?: string;
+  }
+): Promise<Id<"projectRooms">> {
+  const projectRooms = await ctx.db
+    .query("projectRooms")
+    .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
+    .collect();
+
+  const target = normalizeRoomName(fields.naam);
+  const existing = projectRooms.find((room: any) => normalizeRoomName(room.naam) === target);
+
+  if (existing) {
+    return existing._id as Id<"projectRooms">;
+  }
+
+  const now = Date.now();
+  const toCm = (meters?: number) =>
+    typeof meters === "number" ? Math.round(meters * 100) : undefined;
+
+  const roomId = await ctx.db.insert("projectRooms", {
+    tenantId,
+    projectId,
+    naam: fields.naam,
+    verdieping: fields.verdieping,
+    breedteCm: toCm(fields.breedteM),
+    lengteCm: toCm(fields.lengteM),
+    hoogteCm: toCm(fields.hoogteM),
+    oppervlakteM2: fields.oppervlakteM2,
+    omtrekMeter: fields.omtrekM,
+    notities: fields.notities,
+    sortOrder: projectRooms.length + 1,
+    aangemaaktOp: now,
+    gewijzigdOp: now
+  });
+  await ctx.db.patch(projectId, { gewijzigdOp: now });
+
+  return roomId as Id<"projectRooms">;
+}
 
 const measurementStatus = v.union(
   v.literal("draft"),
@@ -401,8 +467,10 @@ export const addMeasurementRoom = mutation({
     ]);
     const measurement = await requireMeasurement(ctx, args.tenantId, args.inmetingId);
 
-    if (args.projectRuimteId) {
-      const projectRoom = await ctx.db.get(args.projectRuimteId);
+    let projectRuimteId = args.projectRuimteId;
+
+    if (projectRuimteId) {
+      const projectRoom = await ctx.db.get(projectRuimteId);
 
       if (
         !projectRoom ||
@@ -411,6 +479,19 @@ export const addMeasurementRoom = mutation({
       ) {
         throw new ConvexError("Project room not found");
       }
+    } else {
+      // Auto-promotie: koppel/maak de dossier-ruimte zodat dezelfde ruimte niet twee keer
+      // ingevoerd hoeft te worden en de offerte de ruimte behoudt.
+      projectRuimteId = await findOrCreateProjectRoom(ctx, args.tenantId, measurement.projectId, {
+        naam: args.naam,
+        verdieping: args.verdieping,
+        breedteM: args.breedteM,
+        lengteM: args.lengteM,
+        hoogteM: args.hoogteM,
+        oppervlakteM2: args.oppervlakteM2,
+        omtrekM: args.omtrekM,
+        notities: args.notities
+      });
     }
 
     const rooms = await ctx.db
@@ -424,7 +505,7 @@ export const addMeasurementRoom = mutation({
     const roomId = await ctx.db.insert("measurementRooms", {
       tenantId: args.tenantId,
       inmetingId: args.inmetingId,
-      projectRuimteId: args.projectRuimteId,
+      projectRuimteId,
       naam: args.naam,
       verdieping: args.verdieping,
       breedteM: args.breedteM,

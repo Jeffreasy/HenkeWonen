@@ -138,58 +138,6 @@ export const create = mutation({
   }
 });
 
-export const addRoom = mutation({
-  args: {
-    tenantId: v.id("tenants"),
-    actor: mutationActorValidator,
-    projectId: v.id("projects"),
-    naam: v.string(),
-    verdieping: v.optional(v.string()),
-    breedteCm: v.optional(v.number()),
-    lengteCm: v.optional(v.number()),
-    hoogteCm: v.optional(v.number()),
-    oppervlakteM2: v.optional(v.number()),
-    omtrekMeter: v.optional(v.number()),
-    notities: v.optional(v.string())
-  },
-  handler: async (ctx, args) => {
-    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
-      "user",
-      "editor",
-      "admin"
-    ]);
-    const project = await ctx.db.get(args.projectId);
-
-    if (!project || project.tenantId !== args.tenantId) {
-      throw new ConvexError("Project not found");
-    }
-
-    const rooms = await ctx.db
-      .query("projectRooms")
-      .withIndex("by_project", (q) =>
-        q.eq("tenantId", args.tenantId).eq("projectId", args.projectId)
-      )
-      .collect();
-    const now = Date.now();
-
-    return await ctx.db.insert("projectRooms", {
-      tenantId: args.tenantId,
-      projectId: args.projectId,
-      naam: args.naam,
-      verdieping: args.verdieping,
-      breedteCm: args.breedteCm,
-      lengteCm: args.lengteCm,
-      hoogteCm: args.hoogteCm,
-      oppervlakteM2: args.oppervlakteM2,
-      omtrekMeter: args.omtrekMeter,
-      notities: args.notities,
-      sortOrder: rooms.length + 1,
-      aangemaaktOp: now,
-      gewijzigdOp: now
-    });
-  }
-});
-
 export const updateStatus = mutation({
   args: {
     tenantId: v.id("tenants"),
