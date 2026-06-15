@@ -54,7 +54,7 @@ export function ProjectOverviewPanel({
             <ProjectStatusBadge status={project.status} />
             <span>{customer?.weergaveNaam ?? "Geen klant gekoppeld"}</span>
           </div>
-          <h2>{project.titel}</h2>
+          <h1>{project.titel}</h1>
           <p className="muted">{project.omschrijving?.trim() || "Geen projectomschrijving"}</p>
         </div>
         {canEdit ? (

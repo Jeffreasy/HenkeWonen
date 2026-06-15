@@ -1,7 +1,7 @@
 ---
 import PortalLayout from "../../../components/layout/PortalLayout.astro";
 import ProjectDetail from "../../../components/projects/ProjectDetail";
-import { PageHeader } from "../../../components/ui/PageHeader";
+import { Breadcrumbs } from "../../../components/layout/Breadcrumbs";
 
 const session = Astro.locals.session;
 const projectId = Astro.params.id ?? "";
@@ -17,12 +17,6 @@ if (!session) {
 ---
 
 <PortalLayout title="Project" session={session}>
-  <PageHeader
-    compact
-    eyebrow="Projectdossier"
-    title="Project"
-    description="Klant, ruimtes, inmeting en opvolging."
-    breadcrumbs={breadcrumbs}
-  />
+  <Breadcrumbs items={breadcrumbs} />
   <ProjectDetail client:load session={session} projectId={projectId} />
 </PortalLayout>
