@@ -28,47 +28,47 @@ export type MeasurementPanelProps = {
 export type MeasurementDoc = {
   _id: string;
   status: MeasurementStatus;
-  measurementDate?: number;
-  measuredBy?: string;
-  notes?: string;
-  createdAt: number;
-  updatedAt: number;
+  inmeetdatum?: number;
+  gemetenDoor?: string;
+  notities?: string;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
 };
 
 export type MeasurementRoomDoc = {
   _id: string;
-  projectRoomId?: string;
-  name: string;
-  floor?: string;
-  widthM?: number;
-  lengthM?: number;
-  heightM?: number;
-  areaM2?: number;
-  perimeterM?: number;
-  notes?: string;
+  projectRuimteId?: string;
+  naam: string;
+  verdieping?: string;
+  breedteM?: number;
+  lengteM?: number;
+  hoogteM?: number;
+  oppervlakteM2?: number;
+  omtrekM?: number;
+  notities?: string;
   sortOrder: number;
 };
 
 export type MeasurementLineDoc = {
   _id: string;
-  roomId?: string;
-  productGroup: MeasurementProductGroup;
-  calculationType: MeasurementCalculationType;
-  input: Record<string, unknown>;
-  result: Record<string, unknown>;
-  wastePercent?: number;
-  quantity: number;
-  unit: string;
-  notes?: string;
-  quoteLineType: QuoteLineType;
+  ruimteId?: string;
+  productGroep: MeasurementProductGroup;
+  berekeningType: MeasurementCalculationType;
+  invoer: Record<string, unknown>;
+  resultaat: Record<string, unknown>;
+  snijverliesPct?: number;
+  aantal: number;
+  eenheid: string;
+  notities?: string;
+  offerteRegelType: QuoteLineType;
   quotePreparationStatus: QuotePreparationStatus;
   productId?: string;
-  productName?: string;
-  indicativeUnitPriceExVat?: number;
-  indicativeVatRate?: number;
-  indicativePriceUnit?: string;
-  indicativePriceType?: string;
-  indicativeCapturedAt?: number;
+  productNaam?: string;
+  indicatieveEenheidsprijsExBtw?: number;
+  indicatiefBtwTarief?: number;
+  indicatievePrijsEenheid?: string;
+  indicatievePrijsSoort?: string;
+  indicatiefVastgelegdOp?: number;
 };
 
 /** Richtprijs-respons van api.catalog.pricing.getIndicativePrice. */
@@ -89,10 +89,10 @@ export type IndicativePriceResult = {
 
 export type WasteProfileDoc = {
   _id: string;
-  productGroup: MeasurementProductGroup;
-  name: string;
-  defaultWastePercent: number;
-  description?: string;
+  productGroep: MeasurementProductGroup;
+  naam: string;
+  standaardSnijverliesPct: number;
+  omschrijving?: string;
 };
 
 export type MeasurementData = {

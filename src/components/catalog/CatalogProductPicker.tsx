@@ -79,7 +79,7 @@ export default function CatalogProductPicker({
           tenantSlug: session.tenantId,
           search: debouncedSearch || undefined,
           limit: 30,
-          ...(productGroupHint ? { productGroup: productGroupHint } : {})
+          ...(productGroupHint ? { productGroep: productGroupHint } : {})
         })) as { items: PortalProduct[] };
 
         if (isActive) {

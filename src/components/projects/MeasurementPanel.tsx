@@ -253,7 +253,8 @@ export default function MeasurementPanel({
 
       const result = await client.query(api.projecten.measurements.getForProject, {
         tenantId: resolvedTenantId as Id<"tenants">,
-        projectId: projectId as Id<"projects">
+        projectId: projectId as Id<"projects">,
+        actor: mutationActorFromSession(session)
       });
 
       setData(result as MeasurementData);
@@ -325,9 +326,9 @@ export default function MeasurementPanel({
     }
 
     setMeasurementStatus(measurement.status);
-    setMeasurementDate(toDateInputValue(measurement.measurementDate));
-    setMeasuredBy(measurement.measuredBy ?? "");
-    setMeasurementNotes(measurement.notes ?? "");
+    setMeasurementDate(toDateInputValue(measurement.inmeetdatum));
+    setMeasuredBy(measurement.gemetenDoor ?? "");
+    setMeasurementNotes(measurement.notities ?? "");
   }, [measurement]);
 
   // Koppel legpatroon aan snijverlies via wasteProfiles (best-effort op naam)
@@ -348,11 +349,11 @@ export default function MeasurementPanel({
     }
 
     const match = wasteProfiles.find(
-      (p) => p.productGroup === "flooring" && p.name === targetName
+      (p) => p.productGroep === "flooring" && p.naam === targetName
     );
 
     if (match) {
-      setFloorWastePercent(String(match.defaultWastePercent));
+      setFloorWastePercent(String(match.standaardSnijverliesPct));
       setFloorPatternAutoFilled(true);
     } else {
       setFloorPatternAutoFilled(false);
@@ -361,13 +362,13 @@ export default function MeasurementPanel({
 
   const roomNameById = useMemo(() => {
     const names = new Map<string, string>();
-    rooms.forEach((room) => names.set(room._id, room.name));
+    rooms.forEach((room) => names.set(room._id, room.naam));
     return names;
   }, [rooms]);
 
   const getProfilesForGroup = useCallback(
     (group: MeasurementProductGroup) => {
-      return wasteProfiles.filter((profile) => profile.productGroup === group);
+      return wasteProfiles.filter((profile) => profile.productGroep === group);
     },
     [wasteProfiles]
   );
@@ -381,11 +382,11 @@ export default function MeasurementPanel({
       const profile = wasteProfiles.find(
         (item) =>
           item._id === profileId &&
-          (!productGroupFilter || item.productGroup === productGroupFilter)
+          (!productGroupFilter || item.productGroep === productGroupFilter)
       );
 
       if (profile) {
-        setter(String(profile.defaultWastePercent));
+        setter(String(profile.standaardSnijverliesPct));
       }
     },
     [wasteProfiles]
@@ -761,15 +762,15 @@ export default function MeasurementPanel({
 
   /** Richtprijs-totaal van een opgeslagen meetregel op basis van het snapshot. */
   function lineIndicativeTotal(line: MeasurementLineDoc) {
-    if (line.indicativeUnitPriceExVat === undefined || line.indicativeVatRate === undefined) {
+    if (line.indicatieveEenheidsprijsExBtw === undefined || line.indicatiefBtwTarief === undefined) {
       return null;
     }
 
     const unitAmount = showPricesIncVat
-      ? calculateIncVat(line.indicativeUnitPriceExVat, line.indicativeVatRate)
-      : line.indicativeUnitPriceExVat;
+      ? calculateIncVat(line.indicatieveEenheidsprijsExBtw, line.indicatiefBtwTarief)
+      : line.indicatieveEenheidsprijsExBtw;
 
-    return formatEuro(roundMoney(line.quantity * unitAmount));
+    return formatEuro(roundMoney(line.aantal * unitAmount));
   }
 
   /** SummaryList-regels voor de live matrix-richtprijs (raambekleding). */
@@ -1125,14 +1126,14 @@ export default function MeasurementPanel({
   function startEditRoom(room: MeasurementRoomDoc) {
     setEditingRoomId(room._id);
     setRoomCorrectionDraft({
-      name: room.name,
-      floor: room.floor ?? "",
-      widthM: decimalText(room.widthM),
-      lengthM: decimalText(room.lengthM),
-      heightM: decimalText(room.heightM),
-      areaM2: decimalText(room.areaM2),
-      perimeterM: decimalText(room.perimeterM),
-      notes: room.notes ?? ""
+      name: room.naam,
+      floor: room.verdieping ?? "",
+      widthM: decimalText(room.breedteM),
+      lengthM: decimalText(room.lengteM),
+      heightM: decimalText(room.hoogteM),
+      areaM2: decimalText(room.oppervlakteM2),
+      perimeterM: decimalText(room.omtrekM),
+      notes: room.notities ?? ""
     });
   }
 
@@ -1215,18 +1216,18 @@ export default function MeasurementPanel({
   function startEditLine(line: MeasurementLineDoc) {
     setEditingLineId(line._id);
     setLineCorrectionDraft({
-      roomId: line.roomId ?? "",
-      quantity: decimalText(line.quantity),
-      unit: line.unit,
-      wastePercent: decimalText(line.wastePercent),
-      notes: line.notes ?? "",
+      roomId: line.ruimteId ?? "",
+      quantity: decimalText(line.aantal),
+      unit: line.eenheid,
+      wastePercent: decimalText(line.snijverliesPct),
+      notes: line.notities ?? "",
       quotePreparationStatus: line.quotePreparationStatus,
       productId: line.productId ?? "",
-      productName: line.productName ?? "",
-      indicativeUnitPriceExVat: line.indicativeUnitPriceExVat,
-      indicativeVatRate: line.indicativeVatRate,
-      indicativePriceUnit: line.indicativePriceUnit,
-      indicativePriceType: line.indicativePriceType,
+      productName: line.productNaam ?? "",
+      indicativeUnitPriceExVat: line.indicatieveEenheidsprijsExBtw,
+      indicativeVatRate: line.indicatiefBtwTarief,
+      indicativePriceUnit: line.indicatievePrijsEenheid,
+      indicativePriceType: line.indicatievePrijsSoort,
       productTouched: false
     });
   }
@@ -1308,7 +1309,7 @@ export default function MeasurementPanel({
     setIsSaving(true);
     setError(null);
 
-    const finalUnit = lineCorrectionDraft.unit.trim() || line.unit;
+    const finalUnit = lineCorrectionDraft.unit.trim() || line.eenheid;
 
     // Bij een gekozen product altijd een verse richtprijs ophalen met de
     // definitieve eenheid: dit voorkomt verouderde snapshots (eenheid gewijzigd
@@ -1356,11 +1357,11 @@ export default function MeasurementPanel({
         actor: mutationActorFromSession(session),
         lineId: line._id as Id<"measurementLines">,
         ruimteId: lineCorrectionDraft.roomId ? (lineCorrectionDraft.roomId as Id<"measurementRooms">) : undefined,
-        productGroep: line.productGroup,
-        berekeningType: line.calculationType,
-        invoer: line.input,
+        productGroep: line.productGroep,
+        berekeningType: line.berekeningType,
+        invoer: line.invoer,
         resultaat: {
-          ...line.result,
+          ...line.resultaat,
           correctedQuantity: quantity,
           correctedAt: Date.now()
         },
@@ -1368,7 +1369,7 @@ export default function MeasurementPanel({
         aantal: quantity,
         eenheid: finalUnit,
         notities: lineCorrectionDraft.notes.trim() || undefined,
-        offerteRegelType: line.quoteLineType,
+        offerteRegelType: line.offerteRegelType,
         quotePreparationStatus: lineCorrectionDraft.quotePreparationStatus,
         ...productArgs
       });
@@ -1438,8 +1439,8 @@ export default function MeasurementPanel({
     const room = rooms.find((item) => item._id === roomId);
 
     if (room) {
-      setFloorLengthM(decimalText(room.lengthM));
-      setFloorWidthM(decimalText(room.widthM));
+      setFloorLengthM(decimalText(room.lengteM));
+      setFloorWidthM(decimalText(room.breedteM));
     }
   }
 
@@ -1448,7 +1449,7 @@ export default function MeasurementPanel({
     const room = rooms.find((item) => item._id === roomId);
 
     if (room) {
-      setPlinthPerimeterM(decimalText(room.perimeterM));
+      setPlinthPerimeterM(decimalText(room.omtrekM));
     }
   }
 
@@ -1457,8 +1458,8 @@ export default function MeasurementPanel({
     const room = rooms.find((item) => item._id === roomId);
 
     if (room) {
-      setWallpaperWidthM(decimalText(room.widthM));
-      setWallpaperHeightM(decimalText(room.heightM));
+      setWallpaperWidthM(decimalText(room.breedteM));
+      setWallpaperHeightM(decimalText(room.hoogteM));
     }
   }
 
@@ -1467,8 +1468,8 @@ export default function MeasurementPanel({
     const room = rooms.find((item) => item._id === roomId);
 
     if (room) {
-      setWallWidthM(decimalText(room.widthM));
-      setWallHeightM(decimalText(room.heightM));
+      setWallWidthM(decimalText(room.breedteM));
+      setWallHeightM(decimalText(room.hoogteM));
     }
   }
 
@@ -1499,13 +1500,13 @@ export default function MeasurementPanel({
           key: "name",
           header: "Ruimte",
           priority: "primary",
-          render: (room) => <strong>{room.name}</strong>
+          render: (room) => <strong>{room.naam}</strong>
         },
         {
           key: "floor",
           header: "Verdieping",
           hideOnMobile: true,
-          render: (room) => room.floor ?? "-"
+          render: (room) => room.verdieping ?? "-"
         }
       ];
 
@@ -1516,7 +1517,7 @@ export default function MeasurementPanel({
             key: "notes",
             header: "Notitie",
             hideOnMobile: true,
-            render: (room) => room.notes ?? "-"
+            render: (room) => room.notities ?? "-"
           },
           actionColumn
         ];
@@ -1528,38 +1529,38 @@ export default function MeasurementPanel({
           key: "width",
           header: "Breedte",
           align: "right",
-          render: (room) => formatNumber(room.widthM, " m")
+          render: (room) => formatNumber(room.breedteM, " m")
         },
         {
           key: "length",
           header: "Lengte",
           align: "right",
-          render: (room) => formatNumber(room.lengthM, " m")
+          render: (room) => formatNumber(room.lengteM, " m")
         },
         {
           key: "height",
           header: "Hoogte",
           align: "right",
           hideOnMobile: true,
-          render: (room) => formatNumber(room.heightM, " m")
+          render: (room) => formatNumber(room.hoogteM, " m")
         },
         {
           key: "area",
           header: "Oppervlakte",
           align: "right",
-          render: (room) => formatNumber(room.areaM2, " m²")
+          render: (room) => formatNumber(room.oppervlakteM2, " m²")
         },
         {
           key: "perimeter",
           header: "Omtrek",
           align: "right",
-          render: (room) => formatNumber(room.perimeterM, " m")
+          render: (room) => formatNumber(room.omtrekM, " m")
         },
         {
           key: "notes",
           header: "Notitie",
           hideOnMobile: true,
-          render: (room) => room.notes ?? "-"
+          render: (room) => room.notities ?? "-"
         },
         actionColumn
       ];
@@ -1573,13 +1574,13 @@ export default function MeasurementPanel({
         key: "group",
         header: "Productgroep",
         priority: "primary",
-        render: (line) => <strong>{formatMeasurementProductGroup(line.productGroup)}</strong>
+        render: (line) => <strong>{formatMeasurementProductGroup(line.productGroep)}</strong>
       },
       {
         key: "room",
         header: "Ruimte",
         render: (line) =>
-          line.roomId ? roomNameById.get(line.roomId) ?? "-" : isFieldMode ? "Algemeen" : "-"
+          line.ruimteId ? roomNameById.get(line.ruimteId) ?? "-" : isFieldMode ? "Algemeen" : "-"
       },
       {
         key: "quantity",
@@ -1587,7 +1588,7 @@ export default function MeasurementPanel({
         align: "right",
         render: (line) => (
           <span style={{ whiteSpace: "nowrap" }}>
-            {formatNumber(line.quantity)} {formatUnit(line.unit)}
+            {formatNumber(line.aantal)} {formatUnit(line.eenheid)}
           </span>
         )
       },
@@ -1596,14 +1597,14 @@ export default function MeasurementPanel({
         header: "Snijverlies",
         align: "right",
         hideOnMobile: true,
-        render: (line) => (line.wastePercent !== undefined ? `${line.wastePercent}%` : "-")
+        render: (line) => (line.snijverliesPct !== undefined ? `${line.snijverliesPct}%` : "-")
       },
       {
         key: "indicative",
         header: "Richtprijs",
         align: "right",
         render: (line) => {
-          if (!line.productName) {
+          if (!line.productNaam) {
             return "-";
           }
 
@@ -1613,7 +1614,7 @@ export default function MeasurementPanel({
                 {lineIndicativeTotal(line) ?? "Nog geen prijs"}
               </strong>
               <div className="muted" style={{ fontSize: "var(--text-xs)" }}>
-                {line.productName}
+                {line.productNaam}
               </div>
             </div>
           );
@@ -1633,7 +1634,7 @@ export default function MeasurementPanel({
         key: "notes",
         header: "Notitie",
         hideOnMobile: true,
-        render: (line) => line.notes ?? "-"
+        render: (line) => line.notities ?? "-"
       },
       {
         key: "action",
@@ -1782,9 +1783,9 @@ export default function MeasurementPanel({
               />
               <SummaryList
                 items={[
-                  { id: "date", label: "Inmeetdatum", value: dateText(measurement.measurementDate) },
-                  { id: "person", label: "Ingemeten door", value: measurement.measuredBy ?? "-" },
-                  { id: "updated", label: "Bijgewerkt", value: dateText(measurement.updatedAt) }
+                  { id: "date", label: "Inmeetdatum", value: dateText(measurement.inmeetdatum) },
+                  { id: "person", label: "Ingemeten door", value: measurement.gemetenDoor ?? "-" },
+                  { id: "updated", label: "Bijgewerkt", value: dateText(measurement.gewijzigdOp) }
                 ]}
               />
               <div className="responsive-form-row" style={{ marginTop: 16 }}>
@@ -1861,7 +1862,7 @@ export default function MeasurementPanel({
                 </p>
                 <div className="field-room-presets-grid">
                   {FIELD_ROOM_PRESETS.map((preset) => {
-                    const alreadyAdded = rooms.some((r) => r.name === preset.name);
+                    const alreadyAdded = rooms.some((r) => r.naam === preset.name);
                     return (
                       <button
                         key={preset.name}
@@ -2018,16 +2019,16 @@ export default function MeasurementPanel({
                   <div className="mobile-card-section">
                     <div className="mobile-card-header">
                       <div className="mobile-card-title">
-                        <strong>{room.name}</strong>
-                        <small className="muted">{room.floor ?? "Geen verdieping"}</small>
+                        <strong>{room.naam}</strong>
+                        <small className="muted">{room.verdieping ?? "Geen verdieping"}</small>
                       </div>
                       {!isFieldMode ? (
-                        <strong>{formatNumber(room.areaM2, " m²")}</strong>
+                        <strong>{formatNumber(room.oppervlakteM2, " m²")}</strong>
                       ) : null}
                     </div>
                     <div className="mobile-card-meta">
-                      {!isFieldMode ? <span>{formatNumber(room.perimeterM, " m")} omtrek</span> : null}
-                      <span>{room.notes ?? "Geen notitie"}</span>
+                      {!isFieldMode ? <span>{formatNumber(room.omtrekM, " m")} omtrek</span> : null}
+                      <span>{room.notities ?? "Geen notitie"}</span>
                     </div>
                     {canEditMeasurement ? (
                       <div className="mobile-card-actions">
@@ -2716,23 +2717,23 @@ export default function MeasurementPanel({
           renderMobileCard={(line) => (
             <div>
               <div className="toolbar" style={{ justifyContent: "space-between" }}>
-                <strong>{formatMeasurementProductGroup(line.productGroup)}</strong>
+                <strong>{formatMeasurementProductGroup(line.productGroep)}</strong>
                 <StatusBadge
                   status={line.quotePreparationStatus}
                   label={formatQuotePreparationStatus(line.quotePreparationStatus)}
                 />
               </div>
               <p className="muted">
-                {line.roomId
-                  ? roomNameById.get(line.roomId) ?? "-"
+                {line.ruimteId
+                  ? roomNameById.get(line.ruimteId) ?? "-"
                   : isFieldMode
                     ? "Algemeen"
                     : "Geen ruimte"}{" "}
-                · {formatNumber(line.quantity)} {formatUnit(line.unit)}
+                · {formatNumber(line.aantal)} {formatUnit(line.eenheid)}
               </p>
-              {line.productName ? (
+              {line.productNaam ? (
                 <p>
-                  {line.productName}
+                  {line.productNaam}
                   {" · "}
                   <strong>{lineIndicativeTotal(line) ?? "Nog geen richtprijs"}</strong>
                   {lineIndicativeTotal(line) ? (
@@ -2740,7 +2741,7 @@ export default function MeasurementPanel({
                   ) : null}
                 </p>
               ) : null}
-              <p className="muted">{line.notes ?? "Geen notitie"}</p>
+              <p className="muted">{line.notities ?? "Geen notitie"}</p>
               {canEditMeasurement && line.quotePreparationStatus !== "converted" ? (
                 <div className="mobile-card-actions">
                   {line.quotePreparationStatus === "draft" ? (
@@ -2789,7 +2790,7 @@ export default function MeasurementPanel({
                   <option value="">Algemene meting</option>
                   {rooms.map((room) => (
                     <option key={room._id} value={room._id}>
-                      {room.name}
+                      {room.naam}
                     </option>
                   ))}
                 </Select>
@@ -2874,8 +2875,8 @@ export default function MeasurementPanel({
                   session={session}
                   idPrefix="measure-edit"
                   productGroupHint={
-                    editingLine && editingLine.productGroup !== "other"
-                      ? editingLine.productGroup
+                    editingLine && editingLine.productGroep !== "other"
+                      ? editingLine.productGroep
                       : null
                   }
                   selectedProductId={lineCorrectionDraft.productId}
@@ -2920,7 +2921,7 @@ export default function MeasurementPanel({
           <option value="">{isFieldMode ? "Algemene meting" : "Geen specifieke ruimte"}</option>
           {rooms.map((room) => (
             <option key={room._id} value={room._id}>
-              {room.name}
+              {room.naam}
             </option>
           ))}
         </Select>
@@ -2959,7 +2960,7 @@ export default function MeasurementPanel({
           <option value="">Handmatig percentage</option>
           {profiles.map((profile) => (
             <option key={profile._id} value={profile._id}>
-              {profile.name} ({profile.defaultWastePercent}%)
+              {profile.naam} ({profile.standaardSnijverliesPct}%)
             </option>
           ))}
         </Select>

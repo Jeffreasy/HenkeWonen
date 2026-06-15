@@ -28,16 +28,18 @@ type DossierQuoteSummary = {
   id: string;
   tenantId: string;
   projectId: string;
-  customerId: string;
-  quoteNumber: string;
-  title: string;
+  klantId: string;
+  offertenummer: string;
+  titel: string;
   status: QuoteStatus;
-  subtotalExVat: number;
-  vatTotal: number;
-  totalIncVat: number;
+  verzondenOp?: number;
+  geldigTot?: number;
+  subtotaalExBtw: number;
+  btwTotaal: number;
+  totaalInclBtw: number;
   createdByExternalUserId?: string;
-  createdAt: number;
-  updatedAt: number;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
 };
 
 const emptyWorkspace: DossierWorkspaceResult = {
@@ -184,23 +186,23 @@ export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
     });
 
     const quoteRows = workspace.quotes.map((quote) => {
-      const customer = customerById.get(quote.customerId);
+      const customer = customerById.get(quote.klantId);
       const project = projectById.get(quote.projectId);
 
       return {
         id: `quote-${quote.id}`,
         type: "quote" as const,
         typeLabel: "Offerte",
-        title: `${quote.quoteNumber} - ${quote.title}`,
+        title: `${quote.offertenummer} - ${quote.titel}`,
         subtitle: joinParts([customer?.weergaveNaam, project?.titel]) || "Geen gekoppeld dossier",
         status: quote.status,
         statusLabel: formatQuoteStatus(quote.status),
         href: `/portal/offertes/${quote.id}`,
-        updatedAt: quote.updatedAt,
-        amountLabel: formatEuro(quote.totalIncVat),
+        updatedAt: quote.gewijzigdOp,
+        amountLabel: formatEuro(quote.totaalInclBtw),
         searchText: joinParts([
-          quote.quoteNumber,
-          quote.title,
+          quote.offertenummer,
+          quote.titel,
           quote.status,
           customer?.weergaveNaam,
           project?.titel
