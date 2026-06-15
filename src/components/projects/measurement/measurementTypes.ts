@@ -135,7 +135,7 @@ export type MatrixIndicativePriceResult = {
     matchedHeightCm: number;
   } | null;
   outOfRange: boolean;
-  reason: "ok" | "out_of_range" | "matrix_not_found" | "vat_unknown";
+  reason: "ok" | "out_of_range" | "matrix_not_found" | "vat_unknown" | "invalid_dimensions";
 };
 
 // ─── Constanten ───────────────────────────────────────────────────────────────

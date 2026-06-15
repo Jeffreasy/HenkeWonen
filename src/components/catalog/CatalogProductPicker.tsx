@@ -148,6 +148,10 @@ export default function CatalogProductPicker({
         />
         <Select
           id={`${idPrefix}-product`}
+          // Field koppelt de description via aria-describedby aan zijn directe child,
+          // maar dat is hier de wrapper-<div>. Zet de koppeling daarom expliciet op het
+          // echte control zodat schermlezers de beschrijving bij de Select aankondigen.
+          aria-describedby={description ? `${idPrefix}-product-desc` : undefined}
           required={required}
           value={selectedProductId}
           onChange={(event) => {

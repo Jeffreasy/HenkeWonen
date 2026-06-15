@@ -741,7 +741,7 @@ export default function MeasurementPanel({
     const indicative = priceResult?.indicative ?? null;
 
     if (!indicative) {
-      items.push({ label: "Richtprijs", value: "Nog niet beschikbaar" });
+      items.push({ label: "Richtprijs", value: "Nog geen richtprijs voor dit product" });
       return items;
     }
 
@@ -807,7 +807,7 @@ export default function MeasurementPanel({
 
     if (indicative) {
       items.push({
-        label: "Maatklasse",
+        label: "Maatklasse (naar boven afgerond)",
         value: `${indicative.matchedWidthCm} × ${indicative.matchedHeightCm} cm`
       });
     }
@@ -817,13 +817,22 @@ export default function MeasurementPanel({
       return items;
     }
 
-    if (wcPrice?.outOfRange) {
+    if (wcPrice?.outOfRange || wcPrice?.reason === "out_of_range") {
       items.push({ label: "Richtprijs", value: "Buiten matrixbereik — offerte op maat" });
       return items;
     }
 
     if (!indicative) {
-      items.push({ label: "Richtprijs", value: "Nog niet beschikbaar" });
+      const reason = wcPrice?.reason;
+      const message =
+        reason === "matrix_not_found"
+          ? "Geen prijslijst voor deze combinatie"
+          : reason === "vat_unknown"
+            ? "Btw-stand onbekend — bepaal de prijs in de offerte"
+            : reason === "invalid_dimensions"
+              ? "Vul een geldige maat in cm in"
+              : "Nog niet beschikbaar";
+      items.push({ label: "Richtprijs", value: message });
       return items;
     }
 
@@ -863,6 +872,13 @@ export default function MeasurementPanel({
       return "Buiten matrixbereik — gebruik een vrije regel voor offerte op maat.";
     }
     if (!wcPrice?.indicative) {
+      const reason = wcPrice?.reason;
+      if (reason === "matrix_not_found") {
+        return "Geen prijslijst voor deze combinatie van type en prijsgroep.";
+      }
+      if (reason === "vat_unknown") {
+        return "Btw-stand onbekend — geen richtprijs; bepaal de prijs in de offerte.";
+      }
       return "Geen richtprijs beschikbaar voor deze keuze.";
     }
     return undefined;
@@ -2241,7 +2257,6 @@ export default function MeasurementPanel({
         fields: (
           <>
             {renderRoomSelect("floor-room", "Ruimte", floorRoomId, applyMeasurementRoomToFloor)}
-            {renderWasteProfileSelect("floor-waste-profile", "Standaard snijverlies", getProfilesForGroup("flooring"), (profileId) => setWasteFromProfile(profileId, setFloorWastePercent, "flooring"))}
             <Field htmlFor="floor-length" label="Lengte in meter">
               <Input id="floor-length" inputMode="decimal" min={0} value={floorLengthM} onChange={(e) => setFloorLengthM(e.target.value)} />
             </Field>
@@ -2260,6 +2275,7 @@ export default function MeasurementPanel({
                 <option value="custom">Maatwerk</option>
               </Select>
             </Field>
+            {renderWasteProfileSelect("floor-waste-profile", "Snijverlies-profiel", getProfilesForGroup("flooring"), (profileId) => setWasteFromProfile(profileId, setFloorWastePercent, "flooring"), "Kies een profiel om het percentage hieronder te vullen — of vul het zelf in.")}
             <Field htmlFor="floor-waste" label="Snijverlies %">
               <Input
                 id="floor-waste"
@@ -2325,7 +2341,6 @@ export default function MeasurementPanel({
         fields: (
           <>
             {renderRoomSelect("plinth-room", "Ruimte", plinthRoomId, applyMeasurementRoomToPlinth)}
-            {renderWasteProfileSelect("plinth-waste-profile", "Standaard snijverlies", getProfilesForGroup("plinths"), (profileId) => setWasteFromProfile(profileId, setPlinthWastePercent, "plinths"))}
             <Field
               htmlFor="plinth-perimeter"
               label="Omtrek in meter"
@@ -2340,6 +2355,7 @@ export default function MeasurementPanel({
             >
               <Input id="plinth-door" inputMode="decimal" min={0} value={plinthDoorOpeningM} onChange={(e) => setPlinthDoorOpeningM(e.target.value)} />
             </Field>
+            {renderWasteProfileSelect("plinth-waste-profile", "Snijverlies-profiel", getProfilesForGroup("plinths"), (profileId) => setWasteFromProfile(profileId, setPlinthWastePercent, "plinths"), "Kies een profiel om het percentage hieronder te vullen — of vul het zelf in.")}
             <Field htmlFor="plinth-waste" label="Snijverlies %">
               <Input id="plinth-waste" inputMode="decimal" min={0} value={plinthWastePercent} onChange={(e) => setPlinthWastePercent(e.target.value)} />
             </Field>
@@ -2391,7 +2407,6 @@ export default function MeasurementPanel({
         fields: (
           <>
             {renderRoomSelect("wallpaper-room", "Ruimte", wallpaperRoomId, applyMeasurementRoomToWallpaper)}
-            {renderWasteProfileSelect("wallpaper-waste-profile", "Standaard snijverlies", getProfilesForGroup("wallpaper"), (profileId) => setWasteFromProfile(profileId, setWallpaperWastePercent, "wallpaper"))}
             <Field htmlFor="wallpaper-width" label="Wandbreedte in meter">
               <Input id="wallpaper-width" inputMode="decimal" min={0} value={wallpaperWidthM} onChange={(e) => setWallpaperWidthM(e.target.value)} />
             </Field>
@@ -2411,6 +2426,7 @@ export default function MeasurementPanel({
             >
               <Input id="pattern-repeat" inputMode="decimal" min={0} value={patternRepeatCm} onChange={(e) => setPatternRepeatCm(e.target.value)} />
             </Field>
+            {renderWasteProfileSelect("wallpaper-waste-profile", "Snijverlies-profiel", getProfilesForGroup("wallpaper"), (profileId) => setWasteFromProfile(profileId, setWallpaperWastePercent, "wallpaper"), "Kies een profiel om het percentage hieronder te vullen — of vul het zelf in.")}
             <Field htmlFor="wallpaper-waste" label="Snijverlies %">
               <Input id="wallpaper-waste" inputMode="decimal" min={0} value={wallpaperWastePercent} onChange={(e) => setWallpaperWastePercent(e.target.value)} />
             </Field>
@@ -2463,7 +2479,6 @@ export default function MeasurementPanel({
         fields: (
           <>
             {renderRoomSelect("wall-panel-room", "Ruimte", wallPanelRoomId, applyMeasurementRoomToWallPanel)}
-            {renderWasteProfileSelect("wall-panel-waste-profile", "Standaard snijverlies", getProfilesForGroup("wall_panels"), (profileId) => setWasteFromProfile(profileId, setWallPanelWastePercent, "wall_panels"))}
             <Field htmlFor="wall-panel-wall-width" label="Wandbreedte in meter">
               <Input id="wall-panel-wall-width" inputMode="decimal" min={0} value={wallWidthM} onChange={(e) => setWallWidthM(e.target.value)} />
             </Field>
@@ -2476,6 +2491,7 @@ export default function MeasurementPanel({
             <Field htmlFor="panel-height" label="Paneelhoogte in meter">
               <Input id="panel-height" inputMode="decimal" min={0} value={panelHeightM} onChange={(e) => setPanelHeightM(e.target.value)} />
             </Field>
+            {renderWasteProfileSelect("wall-panel-waste-profile", "Snijverlies-profiel", getProfilesForGroup("wall_panels"), (profileId) => setWasteFromProfile(profileId, setWallPanelWastePercent, "wall_panels"), "Kies een profiel om het percentage hieronder te vullen — of vul het zelf in.")}
             <Field htmlFor="wall-panel-waste" label="Snijverlies %">
               <Input id="wall-panel-waste" inputMode="decimal" min={0} value={wallPanelWastePercent} onChange={(e) => setWallPanelWastePercent(e.target.value)} />
             </Field>
@@ -2760,7 +2776,11 @@ export default function MeasurementPanel({
         fields: (
           <>
             {renderRoomSelect("manual-room", "Ruimte", manualRoomId, setManualRoomId)}
-            <Field htmlFor="manual-group" label="Productgroep">
+            <Field
+              htmlFor="manual-group"
+              label="Productgroep"
+              helpText="Bepaalt onder welke groep de regel in de offerte valt."
+            >
               <Select id="manual-group" value={manualProductGroup} onChange={(e) => setManualProductGroup(e.target.value as MeasurementProductGroup)}>
                 {PRODUCT_GROUP_OPTIONS.map((group) => <option key={group} value={group}>{formatMeasurementProductGroup(group)}</option>)}
               </Select>
@@ -2779,7 +2799,11 @@ export default function MeasurementPanel({
                 <option value="custom">maatwerk</option>
               </Select>
             </Field>
-            <Field htmlFor="manual-line-type" label="Soort offertepost">
+            <Field
+              htmlFor="manual-line-type"
+              label="Soort offertepost"
+              helpText="Bepaalt hoe de regel in de offerte wordt behandeld (product, dienst, arbeid…)."
+            >
               <Select id="manual-line-type" value={manualQuoteLineType} onChange={(e) => setManualQuoteLineType(e.target.value as QuoteLineType)}>
                 {QUOTE_LINE_TYPE_OPTIONS.map((lineType) => <option key={lineType} value={lineType}>{formatLineType(lineType)}</option>)}
               </Select>
@@ -3073,10 +3097,11 @@ export default function MeasurementPanel({
     id: string,
     label: string,
     profiles: WasteProfileDoc[],
-    onChange: (value: string) => void
+    onChange: (value: string) => void,
+    helpText?: string
   ) {
     return (
-      <Field htmlFor={id} label={label}>
+      <Field htmlFor={id} label={label} helpText={helpText}>
         <Select id={id} defaultValue="" onChange={(event) => onChange(event.target.value)}>
           <option value="">Handmatig percentage</option>
           {profiles.map((profile) => (
