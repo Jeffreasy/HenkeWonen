@@ -53,7 +53,7 @@ describe("Measurements Calculators", () => {
     expect(wallPanels.quoteQuantityPieces).toBe(8);
   });
 
-  it("should reject wall panels shorter than the wall height", () => {
+  it("should stack wall panels in multiple rows when shorter than the wall height", () => {
     const wallPanels = calculateWallPanels({
       wallWidthM: 4,
       wallHeightM: 2.5,
@@ -62,8 +62,28 @@ describe("Measurements Calculators", () => {
       wastePercent: 10
     });
 
-    expect(wallPanels.validationError).toBe("panelHeightM must be greater than or equal to wallHeightM.");
-    expect(wallPanels.totalPanels).toBe(0);
+    // 7 stroken over de breedte × 2 rijen (2,4 m paneel onder een 2,5 m wand) = 14.
+    expect(wallPanels.validationError).toBeUndefined();
+    expect(wallPanels.columns).toBe(7);
+    expect(wallPanels.rows).toBe(2);
+    expect(wallPanels.panelsNeeded).toBe(14);
+    expect(wallPanels.totalPanels).toBe(16); // ceil(14 × 1.1)
+  });
+
+  it("should not undercount when the panel is taller than the wall (overhoogte)", () => {
+    const wallPanels = calculateWallPanels({
+      wallWidthM: 4,
+      wallHeightM: 2.6,
+      panelWidthM: 0.25,
+      panelHeightM: 3,
+      wastePercent: 0
+    });
+
+    // 16 stroken (4 / 0,25) × 1 rij; de oude oppervlaktedeling gaf onterecht 14.
+    expect(wallPanels.columns).toBe(16);
+    expect(wallPanels.rows).toBe(1);
+    expect(wallPanels.panelsNeeded).toBe(16);
+    expect(wallPanels.totalPanels).toBe(16);
   });
 
   it("should calculate stairs values correctly", () => {

@@ -53,18 +53,18 @@ export function QuoteLineEditForm({
   useAutoFocusPanel(true, formRef);
 
   useEffect(() => {
-    setLineType(line.lineType);
-    setTitle(line.title);
-    setDescription(line.description ?? "");
-    setQuantity(String(line.quantity));
-    setUnit(line.unit);
-    setUnitPriceExVat(String(line.unitPriceExVat));
-    setVatRate(String(line.vatRate));
+    setLineType(line.regelType);
+    setTitle(line.titel);
+    setDescription(line.omschrijving ?? "");
+    setQuantity(String(line.aantal));
+    setUnit(line.eenheid);
+    setUnitPriceExVat(String(line.eenheidsprijsExBtw));
+    setVatRate(String(line.btwTarief));
     setDiscountExVat(
-      line.discountExVat !== undefined && line.discountExVat !== null ? String(line.discountExVat) : ""
+      line.kortingExBtw !== undefined && line.kortingExBtw !== null ? String(line.kortingExBtw) : ""
     );
     setSortOrder(String(line.sortOrder));
-    setProjectRoomId(line.projectRoomId ?? "");
+    setProjectRoomId(line.projectRuimteId ?? "");
   }, [line]);
 
   async function handleSubmit(event: SubmitEventLike) {
@@ -79,7 +79,7 @@ export function QuoteLineEditForm({
       title: title.trim(),
       description: description.trim() || undefined,
       quantity: isTextLine ? 0 : (parseDecimal(quantity) ?? 0),
-      unit: isTextLine ? "tekst" : unit.trim() || line.unit,
+      unit: isTextLine ? "tekst" : unit.trim() || line.eenheid,
       unitPriceExVat: isTextLine ? 0 : (parseDecimal(unitPriceExVat) ?? 0),
       vatRate: isTextLine ? 0 : (parseDecimal(vatRate) ?? 0),
       discountExVat: optionalDecimal(discountExVat),
@@ -92,7 +92,7 @@ export function QuoteLineEditForm({
     <section className="panel edit-work-panel" ref={formRef}>
       <SectionHeader
         compact
-        title={`Offertepost bewerken: ${line.title}`}
+        title={`Offertepost bewerken: ${line.titel}`}
         description="Je bewerkt nu deze ene conceptregel. Definitieve of verzonden offertes blijven beschermd tegen losse regelwijzigingen."
         actions={<LineTypeBadge lineType={lineType} />}
       />
@@ -130,7 +130,7 @@ export function QuoteLineEditForm({
               <option value="">Geen specifieke ruimte</option>
               {projectRooms.map((room) => (
                 <option value={room.id} key={room.id}>
-                  {room.name}
+                  {room.naam}
                 </option>
               ))}
             </Select>

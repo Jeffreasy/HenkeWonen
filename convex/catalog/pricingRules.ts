@@ -291,3 +291,75 @@ function buildSelection(
     conversionApplied: candidate.conversionApplied
   };
 }
+
+// ---------------------------------------------------------------------------
+// Raambekleding-matrix (breedte×hoogte → prijs)
+// ---------------------------------------------------------------------------
+
+/**
+ * Breedte×hoogte-matrix-lookup — port van src/lib/calculators/matrixCalculator.ts::lookupMatrix,
+ * lokaal gehouden zodat de Convex-bundel niet van `src/` afhangt. Rondt breedte én hoogte OMHOOG
+ * naar de eerstvolgende maatklasse (standaard bij raambekleding: je betaalt de volgende maat).
+ * `null` = buiten matrixbereik. `prijzen[hoogte-index][breedte-index]`; assen oplopend, in cm.
+ *
+ * Veiligheidsguard (H10): breedte én hoogte moeten > 0 zijn. Zonder deze guard zou een
+ * negatieve/0-maat door `findIndex(w >= breedteCm)` op index 0 terechtkomen en stilletjes de
+ * prijs van de KLEINSTE maatklasse opleveren. We behandelen zo'n maat als "geen geldige maat"
+ * (zelfde pad als buiten-bereik → `null`), gelijk aan de front-end-guard in
+ * calculateWindowCoveringMatrix.
+ */
+export function lookupMatrixPrice(
+  breedteAs: readonly number[],
+  hoogteAs: readonly number[],
+  prijzen: readonly (readonly number[])[],
+  breedteCm: number,
+  hoogteCm: number
+): { amount: number; matchedWidthCm: number; matchedHeightCm: number } | null {
+  if (!(breedteCm > 0) || !(hoogteCm > 0)) return null;
+  const wi = breedteAs.findIndex((w) => w >= breedteCm);
+  const hi = hoogteAs.findIndex((h) => h >= hoogteCm);
+  if (wi === -1 || hi === -1) return null;
+  const rij = prijzen[hi];
+  if (!rij || rij[wi] == null) return null;
+  return { amount: rij[wi], matchedWidthCm: breedteAs[wi], matchedHeightCm: hoogteAs[hi] };
+}
+
+export type MatrixIndicativeSelection = {
+  unitPriceExVat: number;
+  unitPriceIncVat: number;
+  vatRate: number;
+  vatModeUsed: "exclusive" | "inclusive";
+};
+
+/**
+ * Btw-normalisatie + incl-afleiding voor een reeds-gekozen matrixbedrag. Spiegelt
+ * `normalizeVat` + de incl-afleiding van `buildSelection`: ex-prijs op 4 decimalen, incl-prijs uit
+ * de ex-prijs op 2 decimalen, en `btwModus` "unknown"/ontbrekend → null (nooit een richtprijs op
+ * een onbesliste btw-modus). Zo is een matrix-richtprijs cent-exact gelijk aan de product-richtprijs.
+ */
+export function buildMatrixSelection(
+  matrixAmount: number,
+  btwModus: string | undefined,
+  vatRateInput?: number
+): MatrixIndicativeSelection | null {
+  const vatRate = vatRateInput ?? 21;
+  let unitPriceExVat: number;
+  let vatModeUsed: "exclusive" | "inclusive";
+
+  if (btwModus === "exclusive") {
+    unitPriceExVat = roundUnitPrice(matrixAmount);
+    vatModeUsed = "exclusive";
+  } else if (btwModus === "inclusive") {
+    unitPriceExVat = roundUnitPrice(matrixAmount / (1 + vatRate / 100));
+    vatModeUsed = "inclusive";
+  } else {
+    return null;
+  }
+
+  return {
+    unitPriceExVat,
+    unitPriceIncVat: roundMoney(unitPriceExVat * (1 + vatRate / 100)),
+    vatRate,
+    vatModeUsed
+  };
+}

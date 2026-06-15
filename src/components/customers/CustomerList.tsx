@@ -33,11 +33,11 @@ export default function CustomerList({ customers, isLoading = false }: CustomerL
       const matchesSearch =
         !normalizedSearch ||
         [
-          customer.displayName,
+          customer.weergaveNaam,
           customer.email,
-          customer.phone,
-          customer.city,
-          customer.notes
+          customer.telefoon,
+          customer.plaats,
+          customer.notities
         ]
           .filter(Boolean)
           .join(" ")
@@ -75,7 +75,7 @@ export default function CustomerList({ customers, isLoading = false }: CustomerL
       render: (customer) => (
         <div className="stack-sm">
           <a href={`/portal/klanten/${customer.id}`}>
-            <strong>{customer.displayName}</strong>
+            <strong>{customer.weergaveNaam}</strong>
           </a>
           <Badge variant={customer.type === "business" ? "info" : "neutral"}>
             {formatCustomerType(customer.type)}
@@ -97,7 +97,7 @@ export default function CustomerList({ customers, isLoading = false }: CustomerL
       render: (customer) => (
         <div className="stack-sm">
           <span>{customer.email ?? "-"}</span>
-          <small className="muted">{customer.phone ?? "-"}</small>
+          <small className="muted">{customer.telefoon ?? "-"}</small>
         </div>
       )
     },
@@ -106,14 +106,14 @@ export default function CustomerList({ customers, isLoading = false }: CustomerL
       header: "Plaats",
       width: "140px",
       hideOnMobile: true,
-      render: (customer) => customer.city ?? "-"
+      render: (customer) => customer.plaats ?? "-"
     },
     {
       key: "registered",
       header: "Vastgelegd op",
       width: "120px",
       hideOnMobile: true,
-      render: (customer) => dateText(customer.createdAt)
+      render: (customer) => dateText(customer.aangemaaktOp)
     }
   ];
 
@@ -172,9 +172,9 @@ export default function CustomerList({ customers, isLoading = false }: CustomerL
             <div className="mobile-card-header">
               <div className="mobile-card-title">
                 <a href={`/portal/klanten/${customer.id}`}>
-                  <strong>{customer.displayName}</strong>
+                  <strong>{customer.weergaveNaam}</strong>
                 </a>
-                <span className="muted">{customer.city ?? "Plaats onbekend"}</span>
+                <span className="muted">{customer.plaats ?? "Plaats onbekend"}</span>
               </div>
               <StatusBadge status={customer.status} label={formatCustomerStatus(customer.status)} />
             </div>
@@ -183,7 +183,7 @@ export default function CustomerList({ customers, isLoading = false }: CustomerL
                 {formatCustomerType(customer.type)}
               </Badge>
               <span className="muted">{customer.email ?? "Geen e-mail"}</span>
-              <span className="muted">{customer.phone ?? "Geen telefoon"}</span>
+              <span className="muted">{customer.telefoon ?? "Geen telefoon"}</span>
             </div>
             <div className="mobile-card-actions">
               <a className="button secondary" href={`/portal/klanten/${customer.id}`}>

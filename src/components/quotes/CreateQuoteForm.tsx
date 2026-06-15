@@ -51,7 +51,7 @@ export function CreateQuoteForm({ projects, onCreateQuote }: CreateQuoteFormProp
           >
             {projects.map((project) => (
               <option value={project.id} key={project.id}>
-                {project.title}
+                {project.titel}
               </option>
             ))}
           </Select>

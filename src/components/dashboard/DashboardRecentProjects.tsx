@@ -35,8 +35,8 @@ export function DashboardRecentProjects({ isLoading, projects }: DashboardRecent
               key={project.id}
             >
               <Badge variant="info">{formatProjectStatus(project.status)}</Badge>
-              <strong>{project.title}</strong>
-              <small className="muted">{project.description ?? "Geen omschrijving"}</small>
+              <strong>{project.titel}</strong>
+              <small className="muted">{project.omschrijving ?? "Geen omschrijving"}</small>
             </a>
           ))}
         </div>

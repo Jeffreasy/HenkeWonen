@@ -3,12 +3,20 @@ import { useState } from "react";
 import type { SubmitEventLike } from "../../lib/events";
 import type { CustomerType } from "../../lib/portalTypes";
 import { Button } from "../ui/Button";
-import { Checkbox } from "../ui/Checkbox";
 import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
 import { SectionHeader } from "../ui/SectionHeader";
 import { Select } from "../ui/Select";
 import { Textarea } from "../ui/Textarea";
+
+/**
+ * Wat er bij het vastleggen gebeurt:
+ *  - "customer"  → alleen een klant/lead aanmaken.
+ *  - "dossier"   → klant + meteen een leeg dossier (project). Standaardgedrag.
+ *  - "snelroute" → klant + dossier én direct doorspringen naar de inmeting (walk-in met
+ *                  bekende maten/product). Toont een verkort formulier (naam + telefoon).
+ */
+export type CustomerIntent = "customer" | "dossier" | "snelroute";
 
 export type CustomerFormValues = {
   type: CustomerType;
@@ -20,7 +28,7 @@ export type CustomerFormValues = {
   postalCode?: string;
   city?: string;
   notes?: string;
-  createDossier: boolean;
+  intent: CustomerIntent;
 };
 
 type CustomerFormProps = {
@@ -38,7 +46,12 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
   const [city, setCity] = useState("");
   const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [createDossier, setCreateDossier] = useState(true);
+  const [intent, setIntent] = useState<CustomerIntent>("dossier");
+  const [showMoreFields, setShowMoreFields] = useState(false);
+
+  // Snelroute = balie wil snel door naar inmeten: toon standaard alleen naam + telefoon,
+  // de rest achter "Meer gegevens". In de andere modi tonen we alle velden zoals voorheen.
+  const showExtraFields = intent !== "snelroute" || showMoreFields;
 
   async function submit(event: SubmitEventLike) {
     event.preventDefault();
@@ -53,7 +66,7 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
       postalCode: postalCode.trim() || undefined,
       city: city.trim() || undefined,
       notes: notes.trim() || undefined,
-      createDossier
+      intent
     };
 
     if (!customer.displayName) {
@@ -72,7 +85,8 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
       setPostalCode("");
       setCity("");
       setNotes("");
-      setCreateDossier(true);
+      setIntent("dossier");
+      setShowMoreFields(false);
     } finally {
       setIsSaving(false);
     }
@@ -103,13 +117,24 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
           required
         />
       </Field>
-      <Field htmlFor="customer-email" label="E-mail">
-        <Input
-          id="customer-email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
+      <Field
+        htmlFor="customer-intent"
+        label="Wat wil je aanmaken?"
+        helpText={
+          intent === "snelroute"
+            ? "Maakt klant + dossier en springt direct door naar de inmeting."
+            : undefined
+        }
+      >
+        <Select
+          id="customer-intent"
+          value={intent}
+          onChange={(event) => setIntent(event.target.value as CustomerIntent)}
+        >
+          <option value="customer">Alleen klant</option>
+          <option value="dossier">Klant + dossier aanmaken</option>
+          <option value="snelroute">Snelroute: maten bekend → direct inmeten</option>
+        </Select>
       </Field>
       <Field htmlFor="customer-phone" label="Telefoon">
         <Input
@@ -118,50 +143,64 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
           onChange={(event) => setPhone(event.target.value)}
         />
       </Field>
-      <Field htmlFor="customer-street" label="Straat">
-        <Input
-          id="customer-street"
-          value={street}
-          onChange={(event) => setStreet(event.target.value)}
-        />
-      </Field>
-      <Field htmlFor="customer-house-number" label="Huisnummer">
-        <Input
-          id="customer-house-number"
-          value={houseNumber}
-          onChange={(event) => setHouseNumber(event.target.value)}
-        />
-      </Field>
-      <Field htmlFor="customer-postal-code" label="Postcode">
-        <Input
-          id="customer-postal-code"
-          value={postalCode}
-          onChange={(event) => setPostalCode(event.target.value)}
-        />
-      </Field>
-      <Field htmlFor="customer-city" label="Plaats">
-        <Input id="customer-city" value={city} onChange={(event) => setCity(event.target.value)} />
-      </Field>
-      <Field htmlFor="customer-notes" label="Interne notities">
-        <Textarea
-          id="customer-notes"
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-        />
-      </Field>
-      <Checkbox
-        id="customer-create-dossier"
-        checked={createDossier}
-        label="Gelijk een dossier aanmaken"
-        onChange={(event) => setCreateDossier(event.target.checked)}
-      />
+      {showExtraFields ? (
+        <>
+          <Field htmlFor="customer-email" label="E-mail">
+            <Input
+              id="customer-email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </Field>
+          <Field htmlFor="customer-street" label="Straat">
+            <Input
+              id="customer-street"
+              value={street}
+              onChange={(event) => setStreet(event.target.value)}
+            />
+          </Field>
+          <Field htmlFor="customer-house-number" label="Huisnummer">
+            <Input
+              id="customer-house-number"
+              value={houseNumber}
+              onChange={(event) => setHouseNumber(event.target.value)}
+            />
+          </Field>
+          <Field htmlFor="customer-postal-code" label="Postcode">
+            <Input
+              id="customer-postal-code"
+              value={postalCode}
+              onChange={(event) => setPostalCode(event.target.value)}
+            />
+          </Field>
+          <Field htmlFor="customer-city" label="Plaats">
+            <Input id="customer-city" value={city} onChange={(event) => setCity(event.target.value)} />
+          </Field>
+          <Field htmlFor="customer-notes" label="Interne notities">
+            <Textarea
+              id="customer-notes"
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+            />
+          </Field>
+        </>
+      ) : (
+        <Button type="button" variant="ghost" onClick={() => setShowMoreFields(true)}>
+          Meer gegevens toevoegen
+        </Button>
+      )}
       <Button
         isLoading={isSaving}
         leftIcon={<Save size={17} aria-hidden="true" />}
         type="submit"
         variant="primary"
       >
-        {isSaving ? "Vastleggen..." : "Klant vastleggen"}
+        {isSaving
+          ? "Vastleggen..."
+          : intent === "snelroute"
+            ? "Aanmaken en inmeten"
+            : "Klant vastleggen"}
       </Button>
     </form>
   );

@@ -99,27 +99,27 @@ export const validateCatalog = query({
     const productShapeSamples = new Map<string, any>();
 
     for (const product of activeProducts) {
-      const supplier = product.supplierId ? supplierById.get(idString(product.supplierId)) : undefined;
-      const category = categoryById.get(idString(product.categoryId));
+      const supplier = product.leverancierId ? supplierById.get(idString(product.leverancierId)) : undefined;
+      const category = categoryById.get(idString(product.categorieId));
 
-      incrementById(productsBySupplier, product.supplierId ?? "missing", supplier?.name ?? "Onbekend");
-      incrementById(productsByCategory, product.categoryId, category?.name ?? "Onbekend");
-      increment(productsByKind, product.productKind ?? "missing", "missing");
+      incrementById(productsBySupplier, product.leverancierId ?? "missing", supplier?.naam ?? "Onbekend");
+      incrementById(productsByCategory, product.categorieId, category?.naam ?? "Onbekend");
+      increment(productsByKind, product.productSoort ?? "missing", "missing");
 
       const sample = {
         id: idString(product._id),
-        name: product.name,
-        supplier: supplier?.name ?? "Onbekend",
-        category: category?.name ?? "Onbekend",
-        articleNumber: product.articleNumber,
-        supplierCode: product.supplierCode,
+        name: product.naam,
+        supplier: supplier?.naam ?? "Onbekend",
+        category: category?.naam ?? "Onbekend",
+        articleNumber: product.artikelnummer,
+        supplierCode: product.leverancierCode,
         ean: product.ean
       };
 
       productShapeSamples.set(idString(product._id), sample);
 
-      const hasArticle = hasValue(product.articleNumber);
-      const hasSupplierCode = hasValue(product.supplierCode);
+      const hasArticle = hasValue(product.artikelnummer);
+      const hasSupplierCode = hasValue(product.leverancierCode);
       const hasEan = hasValue(product.ean);
 
       if (!hasArticle || !hasSupplierCode || !hasEan) {
@@ -130,20 +130,20 @@ export const validateCatalog = query({
         pushSample(missingAllKeys, sample);
       }
 
-      if (hasArticle && product.supplierId) {
-        const key = `${idString(product.supplierId)}|${product.articleNumber}`;
+      if (hasArticle && product.leverancierId) {
+        const key = `${idString(product.leverancierId)}|${product.artikelnummer}`;
         articleGroups[key] = articleGroups[key] ?? [];
         articleGroups[key].push(sample);
       }
 
-      if (hasSupplierCode && product.supplierId) {
-        const key = `${idString(product.supplierId)}|${product.supplierCode}`;
+      if (hasSupplierCode && product.leverancierId) {
+        const key = `${idString(product.leverancierId)}|${product.leverancierCode}`;
         supplierCodeGroups[key] = supplierCodeGroups[key] ?? [];
         supplierCodeGroups[key].push(sample);
       }
 
-      if (hasEan && product.supplierId) {
-        const key = `${idString(product.supplierId)}|${product.ean}`;
+      if (hasEan && product.leverancierId) {
+        const key = `${idString(product.leverancierId)}|${product.ean}`;
         eanGroups[key] = eanGroups[key] ?? [];
         eanGroups[key].push(sample);
       }
@@ -165,22 +165,22 @@ export const validateCatalog = query({
 
     for (const price of prices) {
       const productId = idString(price.productId);
-      const priceListId = idString(price.priceListId);
+      const priceListId = idString(price.prijslijstId);
       const priceList = priceListById.get(priceListId);
-      const sourceFileName = label(price.sourceFileName, priceList?.sourceFileName ?? "Onbekend bestand");
+      const sourceFileName = label(price.bronBestandsnaam, priceList?.bronBestandsnaam ?? "Onbekend bestand");
 
       priceCountByProduct[productId] = (priceCountByProduct[productId] ?? 0) + 1;
       increment(pricesBySourceFileName, sourceFileName);
-      increment(pricesByType, price.priceType);
-      increment(pricesByVatMode, price.vatMode);
-      increment(pricesByUnit, price.priceUnit);
+      increment(pricesByType, price.prijsSoort);
+      increment(pricesByVatMode, price.btwModus);
+      increment(pricesByUnit, price.prijsEenheid);
 
       if (!pricesByPriceListId[priceListId]) {
         pricesByPriceListId[priceListId] = {
           id: priceListId,
-          name: label(priceList?.name, "Onbekende prijslijst"),
+          name: label(priceList?.naam, "Onbekende prijslijst"),
           sourceFileName,
-          sourceSheetName: label(priceList?.sourceSheetName, ""),
+          sourceSheetName: label(priceList?.bronBladNaam, ""),
           count: 0
         };
       }
@@ -204,40 +204,40 @@ export const validateCatalog = query({
       const priceSample = {
         id: idString(price._id),
         productId,
-        productName: productById.get(productId)?.name,
+        productName: productById.get(productId)?.naam,
         sourceFileName,
-        sourceSheetName: price.sourceSheetName,
-        sourceColumnName: price.sourceColumnName,
-        sourceColumnIndex: price.sourceColumnIndex,
-        sourceRowNumber: price.sourceRowNumber,
-        priceType: price.priceType,
-        priceUnit: price.priceUnit,
-        vatMode: price.vatMode,
-        amount: price.amount,
-        sourceKey: price.sourceKey
+        sourceSheetName: price.bronBladNaam,
+        sourceColumnName: price.bronKolomNaam,
+        sourceColumnIndex: price.bronKolomIndex,
+        sourceRowNumber: price.bronRijNummer,
+        priceType: price.prijsSoort,
+        priceUnit: price.prijsEenheid,
+        vatMode: price.btwModus,
+        amount: price.bedrag,
+        sourceKey: price.bronSleutel
       };
 
       if (!productById.has(productId)) {
         pushSample(orphanPrices, priceSample);
       }
 
-      if (price.amount <= 0) {
+      if (price.bedrag <= 0) {
         pushSample(nonPositivePrices, priceSample);
       }
 
-      if (price.vatMode === "unknown") {
+      if (price.btwModus === "unknown") {
         pushSample(unknownVatPrices, priceSample, 10);
       }
 
-      if (price.sourceKey) {
-        const key = String(price.sourceKey);
+      if (price.bronSleutel) {
+        const key = String(price.bronSleutel);
         sourceKeys[key] = sourceKeys[key] ?? [];
         sourceKeys[key].push(priceSample);
       }
 
       if (
         sourceFileName === "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx" &&
-        price.priceType === "commission"
+        price.prijsSoort === "commission"
       ) {
         pushSample(coProCommissionRows, priceSample, 20);
       }
@@ -279,24 +279,24 @@ export const validateCatalog = query({
       }))
       .sort((left, right) => right.importedPrices - left.importedPrices);
 
-    const headlamSupplier = suppliers.find((supplier) => supplier.name === "Headlam");
+    const headlamSupplier = suppliers.find((supplier) => supplier.naam === "Headlam");
     const headlamProducts = activeProducts.filter(
-      (product) => idString(product.supplierId) === idString(headlamSupplier?._id)
+      (product) => idString(product.leverancierId) === idString(headlamSupplier?._id)
     );
-    const interfloorSupplier = suppliers.find((supplier) => supplier.name === "Interfloor");
+    const interfloorSupplier = suppliers.find((supplier) => supplier.naam === "Interfloor");
     const interfloorProducts = activeProducts.filter(
-      (product) => idString(product.supplierId) === idString(interfloorSupplier?._id)
+      (product) => idString(product.leverancierId) === idString(interfloorSupplier?._id)
     );
     const pvcSourceA = "Prijslijst PVC 11-2025 click dryback apart.xlsx";
     const pvcSourceB = "PVC 11-2025 click dryback apart floorlife.xlsx";
     const pvcProductIdsA = new Set(
       prices
-        .filter((price) => price.sourceFileName === pvcSourceA)
+        .filter((price) => price.bronBestandsnaam === pvcSourceA)
         .map((price) => idString(price.productId))
     );
     const pvcProductIdsB = new Set(
       prices
-        .filter((price) => price.sourceFileName === pvcSourceB)
+        .filter((price) => price.bronBestandsnaam === pvcSourceB)
         .map((price) => idString(price.productId))
     );
     const pvcOverlap = [...pvcProductIdsA].filter((productId) => pvcProductIdsB.has(productId));
@@ -304,7 +304,7 @@ export const validateCatalog = query({
     const sectionRowMatches = sectionLabels.map((sectionLabel) => {
       const normalized = sectionLabel.toLowerCase();
       const matches = activeProducts
-        .filter((product) => String(product.name).trim().toLowerCase() === normalized)
+        .filter((product) => String(product.naam).trim().toLowerCase() === normalized)
         .slice(0, 10)
         .map((product) => productShapeSamples.get(idString(product._id)));
       return {
@@ -325,17 +325,17 @@ export const validateCatalog = query({
 
       for (const row of rows) {
         increment(rowStatuses, row.status);
-        increment(rowKinds, row.rowKind);
+        increment(rowKinds, row.rijSoort);
       }
 
       batchRows.push({
         id: idString(batch._id),
-        fileName: batch.fileName,
+        fileName: batch.bestandsnaam,
         status: batch.status,
-        totalRows: batch.totalRows,
-        validRows: batch.validRows,
-        warningRows: batch.warningRows,
-        errorRows: batch.errorRows,
+        totalRows: batch.totaalRijen,
+        validRows: batch.geldigeRijen,
+        warningRows: batch.waarschuwingRijen,
+        errorRows: batch.foutRijen,
         rowStatuses,
         rowKinds
       });
@@ -351,13 +351,13 @@ export const validateCatalog = query({
         byProductKind: productsByKind,
         missingAnyArticleSupplierCodeOrEan: {
           count: activeProducts.filter(
-            (product) => !hasValue(product.articleNumber) || !hasValue(product.supplierCode) || !hasValue(product.ean)
+            (product) => !hasValue(product.artikelnummer) || !hasValue(product.leverancierCode) || !hasValue(product.ean)
           ).length,
           samples: missingAnyKey
         },
         missingAllArticleSupplierCodeAndEan: {
           count: activeProducts.filter(
-            (product) => !hasValue(product.articleNumber) && !hasValue(product.supplierCode) && !hasValue(product.ean)
+            (product) => !hasValue(product.artikelnummer) && !hasValue(product.leverancierCode) && !hasValue(product.ean)
           ).length,
           samples: missingAllKeys
         }
@@ -383,16 +383,16 @@ export const validateCatalog = query({
         duplicateActiveProductsBySupplierSupplierCode: duplicateSummary(supplierCodeGroups),
         duplicateActiveProductsBySupplierEan: duplicateSummary(eanGroups),
         priceRulesWithAmountLteZero: {
-          count: prices.filter((price) => price.amount <= 0).length,
+          count: prices.filter((price) => price.bedrag <= 0).length,
           samples: nonPositivePrices
         },
         priceRulesWithVatModeUnknown: {
-          count: prices.filter((price) => price.vatMode === "unknown").length,
+          count: prices.filter((price) => price.btwModus === "unknown").length,
           samples: unknownVatPrices
         },
         activeProductsWithEmptyArticleNumberAndEanAndSupplierCode: {
           count: activeProducts.filter(
-            (product) => !hasValue(product.articleNumber) && !hasValue(product.supplierCode) && !hasValue(product.ean)
+            (product) => !hasValue(product.artikelnummer) && !hasValue(product.leverancierCode) && !hasValue(product.ean)
           ).length,
           samples: missingAllKeys
         },
@@ -406,22 +406,22 @@ export const validateCatalog = query({
       },
       importBatches: {
         count: batches.length,
-        totalRows: batches.reduce((sum, batch) => sum + batch.totalRows, 0),
-        validRows: batches.reduce((sum, batch) => sum + batch.validRows, 0),
-        warningRows: batches.reduce((sum, batch) => sum + batch.warningRows, 0),
-        errorRows: batches.reduce((sum, batch) => sum + batch.errorRows, 0),
+        totalRows: batches.reduce((sum, batch) => sum + batch.totaalRijen, 0),
+        validRows: batches.reduce((sum, batch) => sum + batch.geldigeRijen, 0),
+        warningRows: batches.reduce((sum, batch) => sum + batch.waarschuwingRijen, 0),
+        errorRows: batches.reduce((sum, batch) => sum + batch.foutRijen, 0),
         batches: batchRows
       },
       bySourceFileName: sourceFiles,
       specificChecks: {
         headlam: {
           activeProducts: headlamProducts.length,
-          uniqueSupplierCodes: new Set(headlamProducts.map((product) => product.supplierCode).filter(Boolean)).size,
+          uniqueSupplierCodes: new Set(headlamProducts.map((product) => product.leverancierCode).filter(Boolean)).size,
           sourcePrices: pricesBySourceFileName["Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx"] ?? 0
         },
         interfloor: {
           activeProducts: interfloorProducts.length,
-          uniqueArticleNumbers: new Set(interfloorProducts.map((product) => product.articleNumber).filter(Boolean)).size,
+          uniqueArticleNumbers: new Set(interfloorProducts.map((product) => product.artikelnummer).filter(Boolean)).size,
           sourcePrices: pricesBySourceFileName["henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls"] ?? 0
         },
         overlappingPvcFiles: {
@@ -438,8 +438,8 @@ export const validateCatalog = query({
           prices: pricesBySourceFileName["Co-pro prijslijst lijm kit en egaline 2025-04.xlsx"] ?? 0,
           commissionPrices: prices.filter(
             (price) =>
-              price.sourceFileName === "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx" &&
-              price.priceType === "commission"
+              price.bronBestandsnaam === "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx" &&
+              price.prijsSoort === "commission"
           ).length,
           commissionSamples: coProCommissionRows
         },

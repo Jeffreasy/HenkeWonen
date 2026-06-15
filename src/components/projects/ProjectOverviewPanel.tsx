@@ -38,12 +38,12 @@ export function ProjectOverviewPanel({
   canEdit
 }: ProjectOverviewPanelProps) {
   const metadata = [
-    { id: "customer", label: "Klant", value: customer?.displayName ?? "-" },
+    { id: "customer", label: "Klant", value: customer?.weergaveNaam ?? "-" },
     { id: "rooms", label: "Ruimtes", value: project.rooms.length },
     { id: "events", label: "Momenten", value: workflowEventsCount },
-    { id: "measurement", label: "Inmeetdatum", value: dateText(project.measurementDate) },
-    { id: "execution", label: "Uitvoering", value: dateText(project.executionDate ?? project.executionPlannedAt) },
-    { id: "updated", label: "Bijgewerkt", value: dateText(project.updatedAt) }
+    { id: "measurement", label: "Inmeetdatum", value: dateText(project.inmeetdatum) },
+    { id: "execution", label: "Uitvoering", value: dateText(project.uitvoerdatum ?? project.uitvoerGeplandOp) },
+    { id: "updated", label: "Bijgewerkt", value: dateText(project.gewijzigdOp) }
   ];
 
   return (
@@ -52,10 +52,10 @@ export function ProjectOverviewPanel({
         <div className="project-overview-copy">
           <div className="project-overview-kicker">
             <ProjectStatusBadge status={project.status} />
-            <span>{customer?.displayName ?? "Geen klant gekoppeld"}</span>
+            <span>{customer?.weergaveNaam ?? "Geen klant gekoppeld"}</span>
           </div>
-          <h2>{project.title}</h2>
-          <p className="muted">{project.description?.trim() || "Geen projectomschrijving"}</p>
+          <h1>{project.titel}</h1>
+          <p className="muted">{project.omschrijving?.trim() || "Geen projectomschrijving"}</p>
         </div>
         {canEdit ? (
           <div className="project-overview-actions">
@@ -105,18 +105,18 @@ export function ProjectOverviewPanel({
         </div>
       ) : null}
 
-      {(project.internalNotes || project.customerNotes) ? (
+      {(project.interneNotities || project.klantNotities) ? (
         <div className="project-notes-strip" aria-label="Projectnotities">
-          {project.internalNotes ? (
+          {project.interneNotities ? (
             <div className="project-note-preview">
               <Badge variant="neutral">Intern</Badge>
-              <p>{project.internalNotes}</p>
+              <p>{project.interneNotities}</p>
             </div>
           ) : null}
-          {project.customerNotes ? (
+          {project.klantNotities ? (
             <div className="project-note-preview">
               <Badge variant="info">Klant</Badge>
-              <p>{project.customerNotes}</p>
+              <p>{project.klantNotities}</p>
             </div>
           ) : null}
         </div>

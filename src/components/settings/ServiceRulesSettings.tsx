@@ -95,8 +95,12 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         ruleId: editingRule?.id,
-        ...data,
-        description: data.description || undefined
+        naam: data.name,
+        omschrijving: data.description || undefined,
+        berekeningType: data.calculationType,
+        prijsExBtw: data.priceExVat,
+        btwTarief: data.vatRate,
+        status: data.status
       });
       showToast({ title: editingRule ? "Werkzaamheid bijgewerkt" : "Werkzaamheid toegevoegd", description: data.name, tone: "success" });
       setEditingRule(null);
@@ -131,11 +135,11 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         ruleId: rule.id,
-        name: rule.name,
-        description: rule.description,
-        calculationType: rule.calculationType,
-        priceExVat: rule.priceExVat,
-        vatRate: rule.vatRate,
+        naam: rule.name,
+        omschrijving: rule.description,
+        berekeningType: rule.calculationType,
+        prijsExBtw: rule.priceExVat,
+        btwTarief: rule.vatRate,
         status: nextStatus
       });
       setPendingRuleStatus(null);

@@ -1,5 +1,6 @@
 import { mutation, query } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
+import type { Doc, Id } from "../_generated/dataModel";
 import { mutationActorValidator, readActorValidator, requireMutationRole, requireQueryRole } from "../authz";
 
 function slugify(value: string): string {
@@ -60,12 +61,12 @@ async function ensureCategory(ctx: any, tenantId: any, name: string) {
 
   return await ctx.db.insert("categories", {
     tenantId,
-    name,
+    naam: name,
     slug,
     sortOrder: 999,
     status: "active" as const,
-    createdAt: now,
-    updatedAt: now
+    aangemaaktOp: now,
+    gewijzigdOp: now
   });
 }
 
@@ -74,7 +75,7 @@ async function ensureSupplier(ctx: any, tenantId: any, name: string) {
   const existing = await ctx.db
     .query("suppliers")
     .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
-    .filter((q: any) => q.eq(q.field("name"), name))
+    .filter((q: any) => q.eq(q.field("naam"), name))
     .first();
 
   if (existing) {
@@ -83,10 +84,10 @@ async function ensureSupplier(ctx: any, tenantId: any, name: string) {
 
   return await ctx.db.insert("suppliers", {
     tenantId,
-    name,
-    productListStatus: "received" as const,
-    createdAt: now,
-    updatedAt: now
+    naam: name,
+    prijslijstStatus: "received" as const,
+    aangemaaktOp: now,
+    gewijzigdOp: now
   });
 }
 
@@ -99,9 +100,9 @@ async function ensureBrand(ctx: any, tenantId: any, supplierId: any, categoryId:
   const existing = await ctx.db
     .query("brands")
     .withIndex("by_supplier", (q: any) =>
-      q.eq("tenantId", tenantId).eq("supplierId", supplierId)
+      q.eq("tenantId", tenantId).eq("leverancierId", supplierId)
     )
-    .filter((q: any) => q.eq(q.field("name"), name))
+    .filter((q: any) => q.eq(q.field("naam"), name))
     .first();
 
   if (existing) {
@@ -110,12 +111,12 @@ async function ensureBrand(ctx: any, tenantId: any, supplierId: any, categoryId:
 
   return await ctx.db.insert("brands", {
     tenantId,
-    supplierId,
-    categoryId,
-    name,
+    leverancierId: supplierId,
+    categorieId: categoryId,
+    naam: name,
     status: "active" as const,
-    createdAt: now,
-    updatedAt: now
+    aangemaaktOp: now,
+    gewijzigdOp: now
   });
 }
 
@@ -135,9 +136,9 @@ async function ensureCollection(
   const existing = await ctx.db
     .query("productCollections")
     .withIndex("by_supplier", (q: any) =>
-      q.eq("tenantId", tenantId).eq("supplierId", supplierId)
+      q.eq("tenantId", tenantId).eq("leverancierId", supplierId)
     )
-    .filter((q: any) => q.eq(q.field("name"), name))
+    .filter((q: any) => q.eq(q.field("naam"), name))
     .first();
 
   if (existing) {
@@ -146,13 +147,13 @@ async function ensureCollection(
 
   return await ctx.db.insert("productCollections", {
     tenantId,
-    supplierId,
-    brandId,
-    categoryId,
-    name,
+    leverancierId: supplierId,
+    merkId: brandId,
+    categorieId: categoryId,
+    naam: name,
     status: "active" as const,
-    createdAt: now,
-    updatedAt: now
+    aangemaaktOp: now,
+    gewijzigdOp: now
   });
 }
 
@@ -167,9 +168,9 @@ async function ensurePriceList(ctx: any, tenantId: any, supplierId: any, row: an
     .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
     .filter((q: any) =>
       q.and(
-        q.eq(q.field("sourceFileName"), sourceFileName),
-        q.eq(q.field("sourceSheetName"), sourceSheetName),
-        fileHash ? q.eq(q.field("fileHash"), fileHash) : q.eq(q.field("sourcePath"), sourcePath)
+        q.eq(q.field("bronBestandsnaam"), sourceFileName),
+        q.eq(q.field("bronBladNaam"), sourceSheetName),
+        fileHash ? q.eq(q.field("bestandHash"), fileHash) : q.eq(q.field("bronPad"), sourcePath)
       )
     )
     .first();
@@ -177,11 +178,11 @@ async function ensurePriceList(ctx: any, tenantId: any, supplierId: any, row: an
   if (existing) {
     await ctx.db.patch(existing._id, {
       status: "imported" as const,
-      sourcePath,
-      fileHash,
+      bronPad: sourcePath,
+      bestandHash: fileHash,
       year: numberValue(row.year),
-      validFrom: numberValue(row.validFrom),
-      updatedAt: now
+      geldigVanaf: numberValue(row.validFrom),
+      gewijzigdOp: now
     });
 
     return existing._id;
@@ -189,17 +190,17 @@ async function ensurePriceList(ctx: any, tenantId: any, supplierId: any, row: an
 
   return await ctx.db.insert("priceLists", {
     tenantId,
-    supplierId,
-    name: `${sourceFileName}${sourceSheetName ? ` - ${sourceSheetName}` : ""}`,
-    sourceFileName,
-    sourceSheetName,
+    leverancierId: supplierId,
+    naam: `${sourceFileName}${sourceSheetName ? ` - ${sourceSheetName}` : ""}`,
+    bronBestandsnaam: sourceFileName,
+    bronBladNaam: sourceSheetName,
     year: numberValue(row.year),
-    validFrom: numberValue(row.validFrom),
+    geldigVanaf: numberValue(row.validFrom),
     status: "imported" as const,
-    sourcePath,
-    fileHash,
-    createdAt: now,
-    updatedAt: now
+    bronPad: sourcePath,
+    bestandHash: fileHash,
+    aangemaaktOp: now,
+    gewijzigdOp: now
   });
 }
 
@@ -208,7 +209,7 @@ async function findExistingProduct(ctx: any, tenantId: any, supplierId: any, row
   if (importKey) {
     const existing = await ctx.db
       .query("products")
-      .withIndex("by_import_key", (q: any) => q.eq("tenantId", tenantId).eq("importKey", importKey))
+      .withIndex("by_import_key", (q: any) => q.eq("tenantId", tenantId).eq("importSleutel", importKey))
       .first();
 
     if (existing) {
@@ -221,7 +222,7 @@ async function findExistingProduct(ctx: any, tenantId: any, supplierId: any, row
     const existing = await ctx.db
       .query("products")
       .withIndex("by_article_number", (q: any) =>
-        q.eq("tenantId", tenantId).eq("supplierId", supplierId).eq("articleNumber", articleNumber)
+        q.eq("tenantId", tenantId).eq("leverancierId", supplierId).eq("artikelnummer", articleNumber)
       )
       .first();
 
@@ -235,7 +236,7 @@ async function findExistingProduct(ctx: any, tenantId: any, supplierId: any, row
     const existing = await ctx.db
       .query("products")
       .withIndex("by_supplier_code", (q: any) =>
-        q.eq("tenantId", tenantId).eq("supplierId", supplierId).eq("supplierCode", supplierCode)
+        q.eq("tenantId", tenantId).eq("leverancierId", supplierId).eq("leverancierCode", supplierCode)
       )
       .first();
 
@@ -340,45 +341,55 @@ async function importNormalizedCatalogRow(ctx: any, tenantId: any, row: any, now
   );
   const priceListId = await ensurePriceList(ctx, tenantId, supplierId, rowWithImportKey);
   const existing = await findExistingProduct(ctx, tenantId, supplierId, rowWithImportKey);
-  const productPatch: any = {
-    categoryId,
-    supplierId,
-    brandId,
-    collectionId,
-    importKey,
-    articleNumber: optionalString(rowWithImportKey.articleNumber),
+  // Sleutels = NL schema-velden; waarden lezen nog het Engelse preview/normalized-
+  // contract (rowWithImportKey.*), dat bewust EN blijft. De geneste commercialNames
+  // krijgen hun binnenste sleutels hier (de bridge) van EN naar NL.
+  const commercialNames = Array.isArray(rowWithImportKey.commercialNames)
+    ? rowWithImportKey.commercialNames.map((cn: any) => ({
+        merknaam: cn.brandName ?? cn.merknaam,
+        collectieNaam: cn.collectionName ?? cn.collectieNaam,
+        kleurnaam: cn.colorName ?? cn.kleurnaam,
+        weergaveNaam: cn.displayName ?? cn.weergaveNaam
+      }))
+    : undefined;
+
+  const productPatch = {
+    categorieId: categoryId,
+    leverancierId: supplierId,
+    merkId: brandId,
+    collectieId: collectionId,
+    importSleutel: importKey,
+    artikelnummer: optionalString(rowWithImportKey.articleNumber),
     ean: optionalString(rowWithImportKey.ean),
     sku: optionalString(rowWithImportKey.sku),
-    supplierCode: optionalString(rowWithImportKey.supplierCode),
-    commercialCode: optionalString(rowWithImportKey.commercialCode),
-    supplierProductGroup: optionalString(rowWithImportKey.supplierProductGroup),
-    name: productName,
-    colorName: optionalString(rowWithImportKey.colorName),
-    description: optionalString(rowWithImportKey.description),
-    productType: stringValue(rowWithImportKey.productType, "standard"),
-    productKind: optionalString(rowWithImportKey.productKind),
-    commercialNames: Array.isArray(rowWithImportKey.commercialNames)
-      ? rowWithImportKey.commercialNames
-      : undefined,
-    unit: stringValue(rowWithImportKey.unit, "piece"),
-    widthMm: numberValue(rowWithImportKey.widthMm),
-    lengthMm: numberValue(rowWithImportKey.lengthMm),
-    thicknessMm: numberValue(rowWithImportKey.thicknessMm),
-    wearLayerMm: numberValue(rowWithImportKey.wearLayerMm),
-    packageContentM2: numberValue(rowWithImportKey.packageContentM2),
-    piecesPerPackage: numberValue(rowWithImportKey.piecesPerPackage),
-    packagesPerPallet: numberValue(rowWithImportKey.packagesPerPallet),
-    salesUnit: optionalString(rowWithImportKey.salesUnit),
-    purchaseUnit: optionalString(rowWithImportKey.purchaseUnit),
-    orderUnit: optionalString(rowWithImportKey.orderUnit),
-    minimumOrderQuantity: numberValue(rowWithImportKey.minimumOrderQuantity),
-    orderMultiple: numberValue(rowWithImportKey.orderMultiple),
-    palletQuantity: numberValue(rowWithImportKey.palletQuantity),
-    trailerQuantity: numberValue(rowWithImportKey.trailerQuantity),
-    bundleSize: numberValue(rowWithImportKey.bundleSize),
-    attributes: rowWithImportKey.attributes ?? undefined,
+    leverancierCode: optionalString(rowWithImportKey.supplierCode),
+    commercieleCode: optionalString(rowWithImportKey.commercialCode),
+    leverancierProductGroep: optionalString(rowWithImportKey.supplierProductGroup),
+    naam: productName,
+    kleurnaam: optionalString(rowWithImportKey.colorName),
+    omschrijving: optionalString(rowWithImportKey.description),
+    productAard: stringValue(rowWithImportKey.productType, "standard"),
+    productSoort: optionalString(rowWithImportKey.productKind),
+    commercialNames,
+    eenheid: stringValue(rowWithImportKey.unit, "piece"),
+    breedteMm: numberValue(rowWithImportKey.widthMm),
+    lengteMm: numberValue(rowWithImportKey.lengthMm),
+    dikteMm: numberValue(rowWithImportKey.thicknessMm),
+    slijtlaagMm: numberValue(rowWithImportKey.wearLayerMm),
+    pakinhoudM2: numberValue(rowWithImportKey.packageContentM2),
+    stuksPerPak: numberValue(rowWithImportKey.piecesPerPackage),
+    pakkenPerPallet: numberValue(rowWithImportKey.packagesPerPallet),
+    verkoopEenheid: optionalString(rowWithImportKey.salesUnit),
+    inkoopEenheid: optionalString(rowWithImportKey.purchaseUnit),
+    bestelEenheid: optionalString(rowWithImportKey.orderUnit),
+    minimumBestelAantal: numberValue(rowWithImportKey.minimumOrderQuantity),
+    bestelVeelvoud: numberValue(rowWithImportKey.orderMultiple),
+    palletAantal: numberValue(rowWithImportKey.palletQuantity),
+    vrachtwagenAantal: numberValue(rowWithImportKey.trailerQuantity),
+    bundelGrootte: numberValue(rowWithImportKey.bundleSize),
+    attributen: rowWithImportKey.attributes ?? undefined,
     status: "active" as const,
-    updatedAt: now
+    gewijzigdOp: now
   };
 
   const productId = existing
@@ -386,7 +397,7 @@ async function importNormalizedCatalogRow(ctx: any, tenantId: any, row: any, now
     : await ctx.db.insert("products", {
         tenantId,
         ...productPatch,
-        createdAt: now
+        aangemaaktOp: now
       });
 
   if (existing) {
@@ -426,31 +437,33 @@ async function importNormalizedCatalogRow(ctx: any, tenantId: any, row: any, now
     const sourceKeyMatches = await ctx.db
       .query("productPrices")
       .withIndex("by_source_key", (q: any) =>
-        q.eq("tenantId", tenantId).eq("sourceKey", sourceKey)
+        q.eq("tenantId", tenantId).eq("bronSleutel", sourceKey)
       )
       .collect();
     const existingPrice =
       sourceKeyMatches.find((row: any) => row.productId === productId) ?? null;
 
-    const pricePatch: any = {
+    // Sleutels = NL schema-velden; waarden lezen nog het Engelse preview/normalized-
+    // contract (price.*/rowWithImportKey.*), dat bewust EN blijft.
+    const pricePatch = {
       productId,
-      priceListId,
-      sourceKey,
-      priceType: stringValue(price.priceType, "manual"),
-      priceUnit: stringValue(price.priceUnit, "custom"),
-      amount,
-      vatRate: numberValue(price.vatRate) ?? 21,
-      vatMode: stringValue(price.vatMode, "unknown"),
+      prijslijstId: priceListId,
+      bronSleutel: sourceKey,
+      prijsSoort: stringValue(price.priceType, "manual"),
+      prijsEenheid: stringValue(price.priceUnit, "custom"),
+      bedrag: amount,
+      btwTarief: numberValue(price.vatRate) ?? 21,
+      btwModus: stringValue(price.vatMode, "unknown"),
       currency: stringValue(price.currency, "EUR"),
-      validFrom: numberValue(price.validFrom),
-      validUntil: numberValue(price.validUntil),
-      sourceFileName: optionalString(rowWithImportKey.sourceFileName),
-      sourceSheetName: optionalString(rowWithImportKey.sourceSheetName),
-      sourceColumnName: optionalString(price.sourceColumnName),
-      sourceColumnIndex: numberValue(price.sourceColumnIndex),
-      sourceRowNumber: numberValue(rowWithImportKey.sourceRowNumber),
-      sourceValue: optionalString(price.sourceValue),
-      updatedAt: now
+      geldigVanaf: numberValue(price.validFrom),
+      geldigTot: numberValue(price.validUntil),
+      bronBestandsnaam: optionalString(rowWithImportKey.sourceFileName),
+      bronBladNaam: optionalString(rowWithImportKey.sourceSheetName),
+      bronKolomNaam: optionalString(price.sourceColumnName),
+      bronKolomIndex: numberValue(price.sourceColumnIndex),
+      bronRijNummer: numberValue(rowWithImportKey.sourceRowNumber),
+      bronWaarde: optionalString(price.sourceValue),
+      gewijzigdOp: now
     };
 
     if (existingPrice) {
@@ -461,7 +474,7 @@ async function importNormalizedCatalogRow(ctx: any, tenantId: any, row: any, now
       const priceId = await ctx.db.insert("productPrices", {
         tenantId,
         ...pricePatch,
-        createdAt: now
+        aangemaaktOp: now
       });
       importedPriceIds.push(priceId);
       insertedPrices += 1;
@@ -682,14 +695,14 @@ export const createPreviewBatch = mutation({
   args: {
     tenantSlug: v.string(),
     actor: mutationActorValidator,
-    fileName: v.string(),
-    fileType: v.string(),
-    sourceFileName: v.optional(v.string()),
-    sourcePath: v.optional(v.string()),
-    fileHash: v.optional(v.string()),
-    supplierName: v.optional(v.string()),
-    importProfileId: v.optional(v.string()),
-    allowUnknownVatMode: v.optional(v.boolean()),
+    bestandsnaam: v.string(),
+    bestandsType: v.string(),
+    bronBestandsnaam: v.optional(v.string()),
+    bronPad: v.optional(v.string()),
+    bestandHash: v.optional(v.string()),
+    leverancierNaam: v.optional(v.string()),
+    importProfielId: v.optional(v.string()),
+    staBtwModusOnbekendToe: v.optional(v.boolean()),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -700,44 +713,44 @@ export const createPreviewBatch = mutation({
       ["admin"]
     );
     const tenantId = tenant._id;
-    const supplierId = args.supplierName
-      ? await ensureSupplier(ctx, tenantId, args.supplierName)
+    const supplierId = args.leverancierNaam
+      ? await ensureSupplier(ctx, tenantId, args.leverancierNaam)
       : undefined;
     const now = Date.now();
 
     return await ctx.db.insert("productImportBatches", {
       tenantId,
-      supplierId,
-      importProfileId: args.importProfileId as any,
-      fileName: args.fileName,
-      fileType: args.fileType,
-      sourceFileName: args.sourceFileName ?? args.fileName,
-      sourcePath: args.sourcePath,
-      fileHash: args.fileHash,
+      leverancierId: supplierId,
+      importProfielId: args.importProfielId as any,
+      bestandsnaam: args.bestandsnaam,
+      bestandsType: args.bestandsType,
+      bronBestandsnaam: args.bronBestandsnaam ?? args.bestandsnaam,
+      bronPad: args.bronPad,
+      bestandHash: args.bestandHash,
       status: "uploaded" as const,
-      totalRows: 0,
-      previewRows: 0,
-      productRows: 0,
-      validRows: 0,
-      warningRows: 0,
-      errorRows: 0,
-      ignoredRows: 0,
-      importedProducts: 0,
-      updatedProducts: 0,
-      skippedProducts: 0,
-      importedPrices: 0,
-      skippedPrices: 0,
-      duplicateProductMatches: 0,
-      zeroPriceRows: 0,
-      unknownVatModeRows: 0,
-      productsWithoutSupplierCode: 0,
-      orphanPriceRules: 0,
-      duplicateSourceKeys: 0,
-      allowUnknownVatMode: args.allowUnknownVatMode ?? false,
-      reconciliation: {},
+      totaalRijen: 0,
+      voorbeeldRijen: 0,
+      productRijen: 0,
+      geldigeRijen: 0,
+      waarschuwingRijen: 0,
+      foutRijen: 0,
+      genegeerdeRijen: 0,
+      geimporteerdeProducten: 0,
+      bijgewerkteProducten: 0,
+      overgeslagenProducten: 0,
+      geimporteerdePrijzen: 0,
+      overgeslagenPrijzen: 0,
+      dubbeleProductMatches: 0,
+      nulPrijsRijen: 0,
+      onbekendeBtwModusRijen: 0,
+      productenZonderLeverancierCode: 0,
+      weesPrijsRegels: 0,
+      dubbeleBronSleutels: 0,
+      staBtwModusOnbekendToe: args.staBtwModusOnbekendToe ?? false,
+      reconciliatie: {},
       createdByExternalUserId: externalUserId,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -752,7 +765,9 @@ export const appendPreviewRows = mutation({
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const tenantId = tenant._id;
-    const batch: any = await ctx.db.get(args.batchId as any);
+    const batch: Doc<"productImportBatches"> | null = await ctx.db.get(
+      args.batchId as Id<"productImportBatches">
+    );
 
     if (!batch || batch.tenantId !== tenantId) {
       throw new ConvexError("Import batch not found");
@@ -770,29 +785,29 @@ export const appendPreviewRows = mutation({
       await ctx.db.insert("productImportRows", {
         tenantId,
         batchId: batch._id,
-        sourceFileName: optionalString(row.sourceFileName) ?? optionalString(normalized?.sourceFileName) ?? batch.sourceFileName ?? batch.fileName,
-        sourceSheetName: optionalString(row.sourceSheetName) ?? optionalString(normalized?.sourceSheetName),
-        rowNumber: numberValue(row.rowNumber) ?? numberValue(normalized?.sourceRowNumber) ?? 0,
-        rowHash: optionalString(row.rowHash) ?? optionalString(normalized?.importKey),
-        importKey: optionalString(normalized?.importKey),
-        sourceKey: sourceKeys[0],
-        raw: row.raw ?? row,
-        normalized,
+        bronBestandsnaam: optionalString(row.sourceFileName) ?? optionalString(normalized?.sourceFileName) ?? batch.bronBestandsnaam ?? batch.bestandsnaam,
+        bronBladNaam: optionalString(row.sourceSheetName) ?? optionalString(normalized?.sourceSheetName),
+        rijNummer: numberValue(row.rowNumber) ?? numberValue(normalized?.sourceRowNumber) ?? 0,
+        rijHash: optionalString(row.rowHash) ?? optionalString(normalized?.importKey),
+        importSleutel: optionalString(normalized?.importKey),
+        bronSleutel: sourceKeys[0],
+        ruweData: row.raw ?? row,
+        genormaliseerd: normalized,
         status,
-        rowKind: (["header", "section", "product", "empty", "warning", "error", "ignored"].includes(kind)
+        rijSoort: (["header", "section", "product", "empty", "warning", "error", "ignored"].includes(kind)
           ? kind
           : "product") as any,
-        sectionLabel: optionalString(row.sectionLabel) ?? optionalString(normalized?.sectionLabel),
-        warnings: buildRowWarnings(row),
-        errors: rowErrors(row),
-        createdAt: now,
-        updatedAt: now
+        sectieLabel: optionalString(row.sectionLabel) ?? optionalString(normalized?.sectionLabel),
+        waarschuwingen: buildRowWarnings(row),
+        fouten: rowErrors(row),
+        aangemaaktOp: now,
+        gewijzigdOp: now
       });
     }
 
-    const totalRows = (batch.totalRows ?? 0) + summary.totalRows;
-    const warningRows = (batch.warningRows ?? 0) + summary.warningRows;
-    const errorRows = (batch.errorRows ?? 0) + summary.errorRows;
+    const totalRows = (batch.totaalRijen ?? 0) + summary.totalRows;
+    const warningRows = (batch.waarschuwingRijen ?? 0) + summary.warningRows;
+    const errorRows = (batch.foutRijen ?? 0) + summary.errorRows;
     const status =
       errorRows > 0 || warningRows > 0 || summary.unknownVatModeRows > 0
         ? "needs_mapping"
@@ -800,31 +815,31 @@ export const appendPreviewRows = mutation({
 
     await ctx.db.patch(batch._id, {
       status,
-      totalRows,
-      previewRows: totalRows,
-      productRows: (batch.productRows ?? 0) + summary.productRows,
-      validRows: (batch.validRows ?? 0) + summary.validRows,
-      warningRows,
-      errorRows,
-      ignoredRows: (batch.ignoredRows ?? 0) + summary.ignoredRows,
-      zeroPriceRows: (batch.zeroPriceRows ?? 0) + summary.zeroPriceRows,
-      unknownVatModeRows: (batch.unknownVatModeRows ?? 0) + summary.unknownVatModeRows,
-      productsWithoutSupplierCode:
-        (batch.productsWithoutSupplierCode ?? 0) + summary.productsWithoutSupplierCode,
-      duplicateSourceKeys: (batch.duplicateSourceKeys ?? 0) + summary.duplicateSourceKeys,
-      reconciliation: {
-        ...(batch.reconciliation ?? {}),
+      totaalRijen: totalRows,
+      voorbeeldRijen: totalRows,
+      productRijen: (batch.productRijen ?? 0) + summary.productRows,
+      geldigeRijen: (batch.geldigeRijen ?? 0) + summary.validRows,
+      waarschuwingRijen: warningRows,
+      foutRijen: errorRows,
+      genegeerdeRijen: (batch.genegeerdeRijen ?? 0) + summary.ignoredRows,
+      nulPrijsRijen: (batch.nulPrijsRijen ?? 0) + summary.zeroPriceRows,
+      onbekendeBtwModusRijen: (batch.onbekendeBtwModusRijen ?? 0) + summary.unknownVatModeRows,
+      productenZonderLeverancierCode:
+        (batch.productenZonderLeverancierCode ?? 0) + summary.productsWithoutSupplierCode,
+      dubbeleBronSleutels: (batch.dubbeleBronSleutels ?? 0) + summary.duplicateSourceKeys,
+      reconciliatie: {
+        ...(batch.reconciliatie ?? {}),
         previewUpdatedAt: now,
         totalRows,
         previewRows: totalRows,
-        productRows: (batch.productRows ?? 0) + summary.productRows,
+        productRows: (batch.productRijen ?? 0) + summary.productRows,
         warningRows,
         errorRows,
-        zeroPriceRows: (batch.zeroPriceRows ?? 0) + summary.zeroPriceRows,
-        unknownVatModeRows: (batch.unknownVatModeRows ?? 0) + summary.unknownVatModeRows,
-        duplicateSourceKeys: (batch.duplicateSourceKeys ?? 0) + summary.duplicateSourceKeys
+        zeroPriceRows: (batch.nulPrijsRijen ?? 0) + summary.zeroPriceRows,
+        unknownVatModeRows: (batch.onbekendeBtwModusRijen ?? 0) + summary.unknownVatModeRows,
+        duplicateSourceKeys: (batch.dubbeleBronSleutels ?? 0) + summary.duplicateSourceKeys
       },
-      updatedAt: now
+      gewijzigdOp: now
     });
 
     return {
@@ -840,25 +855,27 @@ export const savePreviewMapping = mutation({
     actor: mutationActorValidator,
     batchId: v.string(),
     mapping: v.any(),
-    allowUnknownVatMode: v.optional(v.boolean())
+    staBtwModusOnbekendToe: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const tenantId = tenant._id;
-    const batch: any = await ctx.db.get(args.batchId as any);
+    const batch: Doc<"productImportBatches"> | null = await ctx.db.get(
+      args.batchId as Id<"productImportBatches">
+    );
 
     if (!batch || batch.tenantId !== tenantId) {
       throw new ConvexError("Import batch not found");
     }
 
-    const hasUnknownVatMode = (batch.unknownVatModeRows ?? 0) > 0;
-    const allowUnknownVatMode = args.allowUnknownVatMode ?? false;
+    const hasUnknownVatMode = (batch.onbekendeBtwModusRijen ?? 0) > 0;
+    const allowUnknownVatMode = args.staBtwModusOnbekendToe ?? false;
 
     await ctx.db.patch(batch._id, {
       mapping: args.mapping,
-      allowUnknownVatMode,
+      staBtwModusOnbekendToe: allowUnknownVatMode,
       status: hasUnknownVatMode && !allowUnknownVatMode ? "needs_mapping" : "ready_to_import",
-      updatedAt: Date.now()
+      gewijzigdOp: Date.now()
     });
 
     return batch._id;
@@ -870,12 +887,14 @@ export const failPreviewBatch = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     batchId: v.string(),
-    errorMessage: v.string()
+    foutmelding: v.string()
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const tenantId = tenant._id;
-    const batch: any = await ctx.db.get(args.batchId as any);
+    const batch: Doc<"productImportBatches"> | null = await ctx.db.get(
+      args.batchId as Id<"productImportBatches">
+    );
 
     if (!batch || batch.tenantId !== tenantId) {
       throw new ConvexError("Import batch not found");
@@ -884,14 +903,14 @@ export const failPreviewBatch = mutation({
     const now = Date.now();
     await ctx.db.patch(batch._id, {
       status: "failed" as const,
-      failedAt: now,
-      errorMessage: args.errorMessage,
-      reconciliation: {
-        ...(batch.reconciliation ?? {}),
+      misluktOp: now,
+      foutmelding: args.foutmelding,
+      reconciliatie: {
+        ...(batch.reconciliatie ?? {}),
         failedAt: now,
-        errorMessage: args.errorMessage
+        errorMessage: args.foutmelding
       },
-      updatedAt: now
+      gewijzigdOp: now
     });
 
     return batch._id;
@@ -903,7 +922,7 @@ export const commitPreviewBatchChunk = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     batchId: v.string(),
-    allowUnknownVatMode: v.optional(v.boolean()),
+    staBtwModusOnbekendToe: v.optional(v.boolean()),
     importedByExternalUserId: v.optional(v.string()),
     limit: v.optional(v.number())
   },
@@ -915,24 +934,26 @@ export const commitPreviewBatchChunk = mutation({
       ["admin"]
     );
     const tenantId = tenant._id;
-    const batch: any = await ctx.db.get(args.batchId as any);
+    const batch: Doc<"productImportBatches"> | null = await ctx.db.get(
+      args.batchId as Id<"productImportBatches">
+    );
 
     if (!batch || batch.tenantId !== tenantId) {
       throw new ConvexError("Import batch not found");
     }
 
-    const allowUnknownVatMode = args.allowUnknownVatMode ?? batch.allowUnknownVatMode ?? false;
-    if ((batch.unknownVatModeRows ?? 0) > 0 && !allowUnknownVatMode) {
+    const allowUnknownVatMode = args.staBtwModusOnbekendToe ?? batch.staBtwModusOnbekendToe ?? false;
+    if ((batch.onbekendeBtwModusRijen ?? 0) > 0 && !allowUnknownVatMode) {
       throw new ConvexError(
         "Btw-mapping ontbreekt: unknown vatMode is alleen toegestaan met bewuste override."
       );
     }
 
-    if ((batch.errorRows ?? 0) > 0) {
+    if ((batch.foutRijen ?? 0) > 0) {
       throw new ConvexError("Import bevat foutregels. Los errors op voordat je definitief importeert.");
     }
 
-    if ((batch.duplicateSourceKeys ?? 0) > 0) {
+    if ((batch.dubbeleBronSleutels ?? 0) > 0) {
       throw new ConvexError("Duplicate sourceKeys detected; fix mapping before final import.");
     }
 
@@ -957,31 +978,31 @@ export const commitPreviewBatchChunk = mutation({
       const now = Date.now();
       await ctx.db.patch(batch._id, {
         status: "imported" as const,
-        importedAt: now,
-        committedAt: now,
+        geimporteerdOp: now,
+        vastgelegdOp: now,
         importedByExternalUserId: externalUserId,
-        reconciliation: {
-          ...(batch.reconciliation ?? {}),
+        reconciliatie: {
+          ...(batch.reconciliatie ?? {}),
           importedAt: now,
           committedAt: now,
-          totalRows: batch.totalRows,
-          previewRows: batch.previewRows ?? batch.totalRows,
-          productRows: batch.productRows ?? 0,
-          importedProducts: batch.importedProducts ?? 0,
-          updatedProducts: batch.updatedProducts ?? 0,
-          skippedProducts: batch.skippedProducts ?? 0,
-          importedPrices: batch.importedPrices ?? 0,
-          skippedPrices: batch.skippedPrices ?? 0,
-          warningRows: batch.warningRows,
-          errorRows: batch.errorRows,
-          duplicateProductMatches: batch.duplicateProductMatches ?? 0,
-          zeroPriceRows: batch.zeroPriceRows ?? 0,
-          unknownVatModeRows: batch.unknownVatModeRows ?? 0,
-          productsWithoutSupplierCode: batch.productsWithoutSupplierCode ?? 0,
-          orphanPriceRules: batch.orphanPriceRules ?? 0,
-          duplicateSourceKeys: batch.duplicateSourceKeys ?? 0
+          totalRows: batch.totaalRijen,
+          previewRows: batch.voorbeeldRijen ?? batch.totaalRijen,
+          productRows: batch.productRijen ?? 0,
+          importedProducts: batch.geimporteerdeProducten ?? 0,
+          updatedProducts: batch.bijgewerkteProducten ?? 0,
+          skippedProducts: batch.overgeslagenProducten ?? 0,
+          importedPrices: batch.geimporteerdePrijzen ?? 0,
+          skippedPrices: batch.overgeslagenPrijzen ?? 0,
+          warningRows: batch.waarschuwingRijen,
+          errorRows: batch.foutRijen,
+          duplicateProductMatches: batch.dubbeleProductMatches ?? 0,
+          zeroPriceRows: batch.nulPrijsRijen ?? 0,
+          unknownVatModeRows: batch.onbekendeBtwModusRijen ?? 0,
+          productsWithoutSupplierCode: batch.productenZonderLeverancierCode ?? 0,
+          orphanPriceRules: batch.weesPrijsRegels ?? 0,
+          duplicateSourceKeys: batch.dubbeleBronSleutels ?? 0
         },
-        updatedAt: now
+        gewijzigdOp: now
       });
 
       return {
@@ -1004,28 +1025,28 @@ export const commitPreviewBatchChunk = mutation({
 
     await ctx.db.patch(batch._id, {
       status: "importing" as const,
-      allowUnknownVatMode,
-      updatedAt: now
+      staBtwModusOnbekendToe: allowUnknownVatMode,
+      gewijzigdOp: now
     });
 
     try {
       for (const row of rows) {
-        if (row.rowKind !== "product" || !row.normalized) {
+        if (row.rijSoort !== "product" || !row.genormaliseerd) {
           await ctx.db.patch(row._id, {
             status: "ignored" as const,
-            updatedAt: now
+            gewijzigdOp: now
           });
           totals.skippedProducts += 1;
           continue;
         }
 
-        const result = await importNormalizedCatalogRow(ctx, tenantId, row.normalized, now);
+        const result = await importNormalizedCatalogRow(ctx, tenantId, row.genormaliseerd, now);
 
         if (result.skippedRow) {
           await ctx.db.patch(row._id, {
             status: "ignored" as const,
-            warnings: [...row.warnings, "Productregel overgeslagen tijdens definitieve import."],
-            updatedAt: now
+            waarschuwingen: [...row.waarschuwingen, "Productregel overgeslagen tijdens definitieve import."],
+            gewijzigdOp: now
           });
           totals.skippedProducts += 1;
           totals.skippedPrices += result.skippedPrices ?? 0;
@@ -1034,10 +1055,10 @@ export const commitPreviewBatchChunk = mutation({
 
         await ctx.db.patch(row._id, {
           status: "imported" as const,
-          importedProductId: result.productId,
-          importedPriceIds: result.importedPriceIds,
-          importedAt: now,
-          updatedAt: now
+          geimporteerdProductId: result.productId,
+          geimporteerdePrijsIds: result.importedPriceIds,
+          geimporteerdOp: now,
+          gewijzigdOp: now
         });
 
         totals.importedProducts += result.insertedProducts ?? 0;
@@ -1052,14 +1073,14 @@ export const commitPreviewBatchChunk = mutation({
       const message = error instanceof Error ? error.message : "Onbekende importfout";
       await ctx.db.patch(batch._id, {
         status: "failed" as const,
-        failedAt: now,
-        errorMessage: message,
-        reconciliation: {
-          ...(batch.reconciliation ?? {}),
+        misluktOp: now,
+        foutmelding: message,
+        reconciliatie: {
+          ...(batch.reconciliatie ?? {}),
           failedAt: now,
           errorMessage: message
         },
-        updatedAt: now
+        gewijzigdOp: now
       });
 
       return {
@@ -1071,20 +1092,20 @@ export const commitPreviewBatchChunk = mutation({
     }
 
     await ctx.db.patch(batch._id, {
-      importedProducts: (batch.importedProducts ?? 0) + totals.importedProducts,
-      updatedProducts: (batch.updatedProducts ?? 0) + totals.updatedProducts,
-      skippedProducts: (batch.skippedProducts ?? 0) + totals.skippedProducts,
-      importedPrices: (batch.importedPrices ?? 0) + totals.importedPrices,
-      skippedPrices: (batch.skippedPrices ?? 0) + totals.skippedPrices,
-      duplicateProductMatches:
-        (batch.duplicateProductMatches ?? 0) + totals.duplicateProductMatches,
-      zeroPriceRows: batch.zeroPriceRows ?? 0,
-      unknownVatModeRows: batch.unknownVatModeRows ?? 0,
-      reconciliation: {
-        ...(batch.reconciliation ?? {}),
+      geimporteerdeProducten: (batch.geimporteerdeProducten ?? 0) + totals.importedProducts,
+      bijgewerkteProducten: (batch.bijgewerkteProducten ?? 0) + totals.updatedProducts,
+      overgeslagenProducten: (batch.overgeslagenProducten ?? 0) + totals.skippedProducts,
+      geimporteerdePrijzen: (batch.geimporteerdePrijzen ?? 0) + totals.importedPrices,
+      overgeslagenPrijzen: (batch.overgeslagenPrijzen ?? 0) + totals.skippedPrices,
+      dubbeleProductMatches:
+        (batch.dubbeleProductMatches ?? 0) + totals.duplicateProductMatches,
+      nulPrijsRijen: batch.nulPrijsRijen ?? 0,
+      onbekendeBtwModusRijen: batch.onbekendeBtwModusRijen ?? 0,
+      reconciliatie: {
+        ...(batch.reconciliatie ?? {}),
         lastImportChunkAt: now
       },
-      updatedAt: now
+      gewijzigdOp: now
     });
 
     return {
@@ -1132,11 +1153,11 @@ export const getCatalogImportStats = query({
         latestImportedBatch: latestImportedBatch
           ? {
               id: String(latestImportedBatch._id),
-              importedAt: latestImportedBatch.importedAt ?? latestImportedBatch.committedAt,
-              productRows: latestImportedBatch.productRows,
-              importedProducts: latestImportedBatch.importedProducts,
-              updatedProducts: latestImportedBatch.updatedProducts,
-              importedPrices: latestImportedBatch.importedPrices
+              importedAt: latestImportedBatch.geimporteerdOp ?? latestImportedBatch.vastgelegdOp,
+              productRows: latestImportedBatch.productRijen,
+              importedProducts: latestImportedBatch.geimporteerdeProducten,
+              updatedProducts: latestImportedBatch.bijgewerkteProducten,
+              importedPrices: latestImportedBatch.geimporteerdePrijzen
             }
           : null
       };
@@ -1168,8 +1189,8 @@ export const getCatalogImportStats = query({
       collectByTenant(ctx, "suppliers", tenant._id)
     ]);
 
-    const categoryById = new Map(categories.map((category: any) => [String(category._id), category.name]));
-    const supplierById = new Map(suppliers.map((supplier: any) => [String(supplier._id), supplier.name]));
+    const categoryById = new Map(categories.map((category: any) => [String(category._id), category.naam]));
+    const supplierById = new Map(suppliers.map((supplier: any) => [String(supplier._id), supplier.naam]));
     const categoryCounts: Record<string, number> = {};
     const supplierCounts: Record<string, number> = {};
 
@@ -1178,9 +1199,9 @@ export const getCatalogImportStats = query({
         continue;
       }
 
-      const categoryName = String(categoryById.get(String(product.categoryId)) ?? "Onbekend");
-      const supplierName = product.supplierId
-        ? String(supplierById.get(String(product.supplierId)) ?? "Onbekend")
+      const categoryName = String(categoryById.get(String(product.categorieId)) ?? "Onbekend");
+      const supplierName = product.leverancierId
+        ? String(supplierById.get(String(product.leverancierId)) ?? "Onbekend")
         : "Onbekend";
 
       categoryCounts[categoryName] = (categoryCounts[categoryName] ?? 0) + 1;
@@ -1234,7 +1255,7 @@ export const deleteProductsByCategoryChunk = mutation({
     // Haal een batch producten op voor deze categorie
     const products = await ctx.db
       .query("products")
-      .withIndex("by_category", (q: any) => q.eq("tenantId", tenantId).eq("categoryId", category._id))
+      .withIndex("by_category", (q: any) => q.eq("tenantId", tenantId).eq("categorieId", category._id))
       .take(batchSize);
 
     if (products.length === 0) {
@@ -1278,7 +1299,7 @@ export const deleteProductsBySupplierChunk = mutation({
   args: {
     tenantSlug: v.string(),
     actor: mutationActorValidator,
-    supplierName: v.string(),
+    leverancierNaam: v.string(),
     confirm: v.literal("DELETE_PRODUCTS_BY_SUPPLIER"),
     batchSize: v.optional(v.number())
   },
@@ -1290,21 +1311,21 @@ export const deleteProductsBySupplierChunk = mutation({
     const supplier = await ctx.db
       .query("suppliers")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
-      .filter((q: any) => q.eq(q.field("name"), args.supplierName))
+      .filter((q: any) => q.eq(q.field("naam"), args.leverancierNaam))
       .first();
 
     if (!supplier) {
-      return { done: true, supplierName: args.supplierName, deletedProducts: 0, deletedPrices: 0, note: "Leverancier niet gevonden." };
+      return { done: true, supplierName: args.leverancierNaam, deletedProducts: 0, deletedPrices: 0, note: "Leverancier niet gevonden." };
     }
 
     const products = await ctx.db
       .query("products")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
-      .filter((q: any) => q.eq(q.field("supplierId"), supplier._id))
+      .filter((q: any) => q.eq(q.field("leverancierId"), supplier._id))
       .take(batchSize);
 
     if (products.length === 0) {
-      return { done: true, supplierName: args.supplierName, deletedProducts: 0, deletedPrices: 0 };
+      return { done: true, supplierName: args.leverancierNaam, deletedProducts: 0, deletedPrices: 0 };
     }
 
     let deletedPrices = 0;
@@ -1327,7 +1348,7 @@ export const deleteProductsBySupplierChunk = mutation({
 
     return {
       done: false,
-      supplierName: args.supplierName,
+      supplierName: args.leverancierNaam,
       deletedProducts,
       deletedPrices,
       remaining: "meer te verwijderen"

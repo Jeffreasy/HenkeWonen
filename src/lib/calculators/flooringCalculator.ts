@@ -16,15 +16,15 @@ export type FlooringCalculationResult = IndicativeCalculationResult & {
 
 export function calculateFlooring(input: FlooringCalculationInput): FlooringCalculationResult {
   if (!isValidNumber(input.lengthM) || input.lengthM <= 0) {
-    return invalidFlooringResult("lengthM must be greater than 0.");
+    return invalidFlooringResult("Lengte moet groter dan 0 zijn.");
   }
 
   if (!isValidNumber(input.widthM) || input.widthM <= 0) {
-    return invalidFlooringResult("widthM must be greater than 0.");
+    return invalidFlooringResult("Breedte moet groter dan 0 zijn.");
   }
 
   if (!isValidNumber(input.wastePercent) || input.wastePercent < 0) {
-    return invalidFlooringResult("wastePercent must be 0 or greater.");
+    return invalidFlooringResult("Snijverlies mag niet negatief zijn.");
   }
 
   const areaM2 = roundToTwoDecimals(input.lengthM * input.widthM);

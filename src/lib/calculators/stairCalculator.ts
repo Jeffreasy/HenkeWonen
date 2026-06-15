@@ -18,18 +18,18 @@ export type StairCalculationResult = IndicativeCalculationResult & {
 
 export function calculateStairs(input: StairCalculationInput): StairCalculationResult {
   if (!isValidNumber(input.treadCount) || input.treadCount <= 0) {
-    return invalidStairResult("treadCount must be greater than 0.");
+    return invalidStairResult("Vul minimaal 1 trede in.");
   }
 
   if (!isValidNumber(input.riserCount) || input.riserCount < 0) {
-    return invalidStairResult("riserCount must be 0 or greater.");
+    return invalidStairResult("Aantal stootborden mag niet negatief zijn.");
   }
 
   if (
     input.stripLengthM !== undefined &&
     (!isValidNumber(input.stripLengthM) || input.stripLengthM < 0)
   ) {
-    return invalidStairResult("stripLengthM must be 0 or greater when provided.");
+    return invalidStairResult("Strooklengte mag niet negatief zijn.");
   }
 
   const notes = [

@@ -59,9 +59,9 @@ export function ProjectsTable({
       render: (project) => (
         <div className="stack-sm">
           <a href={`/portal/projecten/${project.id}`}>
-            <strong>{project.title}</strong>
+            <strong>{project.titel}</strong>
           </a>
-          <small className="muted">{project.description ?? "Geen omschrijving"}</small>
+          <small className="muted">{project.omschrijving ?? "Geen omschrijving"}</small>
         </div>
       )
     },
@@ -146,14 +146,14 @@ export function ProjectsTable({
             <div className="mobile-card-header">
               <div className="mobile-card-title">
                 <a href={`/portal/projecten/${project.id}`}>
-                  <strong>{project.title}</strong>
+                  <strong>{project.titel}</strong>
                 </a>
                 <small className="muted">{project.customerName ?? "Geen klant gekoppeld"}</small>
               </div>
               <ProjectStatusBadge status={project.status} />
             </div>
             <div className="mobile-card-meta">
-              <span>{project.description ?? "Geen omschrijving"}</span>
+              <span>{project.omschrijving ?? "Geen omschrijving"}</span>
               <span>{project.rooms.length} ruimtes</span>
             </div>
             <div className="mobile-card-actions">

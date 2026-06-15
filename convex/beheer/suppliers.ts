@@ -38,7 +38,7 @@ export const list = query({
       return await ctx.db
         .query("suppliers")
         .withIndex("by_product_list_status", (q) =>
-          q.eq("tenantId", args.tenantId).eq("productListStatus", args.status!)
+          q.eq("tenantId", args.tenantId).eq("prijslijstStatus", args.status!)
         )
         .collect();
     }
@@ -54,12 +54,12 @@ export const create = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    name: v.string(),
-    contactName: v.optional(v.string()),
+    naam: v.string(),
+    contactpersoon: v.optional(v.string()),
     email: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    notes: v.optional(v.string()),
-    productListStatus: productListStatus
+    telefoon: v.optional(v.string()),
+    notities: v.optional(v.string()),
+    prijslijstStatus: productListStatus
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
@@ -67,14 +67,14 @@ export const create = mutation({
 
     return await ctx.db.insert("suppliers", {
       tenantId: args.tenantId,
-      name: args.name,
-      contactName: args.contactName,
+      naam: args.naam,
+      contactpersoon: args.contactpersoon,
       email: args.email,
-      phone: args.phone,
-      notes: args.notes,
-      productListStatus: args.productListStatus,
-      createdAt: now,
-      updatedAt: now
+      telefoon: args.telefoon,
+      notities: args.notities,
+      prijslijstStatus: args.prijslijstStatus,
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -83,23 +83,23 @@ export const updateProductListStatus = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    supplierId: v.id("suppliers"),
-    productListStatus
+    leverancierId: v.id("suppliers"),
+    prijslijstStatus: productListStatus
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
-    const supplier = await ctx.db.get(args.supplierId);
+    const supplier = await ctx.db.get(args.leverancierId);
 
     if (!supplier || supplier.tenantId !== args.tenantId) {
       throw new ConvexError("Supplier not found");
     }
 
-    await ctx.db.patch(args.supplierId, {
-      productListStatus: args.productListStatus,
-      updatedAt: Date.now()
+    await ctx.db.patch(args.leverancierId, {
+      prijslijstStatus: args.prijslijstStatus,
+      gewijzigdOp: Date.now()
     });
 
-    return args.supplierId;
+    return args.leverancierId;
   }
 });
 
@@ -136,20 +136,20 @@ export const listSuppliers = query({
           ctx.db
             .query("products")
             .withIndex("by_supplier_status", (q: any) =>
-              q.eq("tenantId", tenant._id).eq("supplierId", supplier._id).eq("status", "active")
+              q.eq("tenantId", tenant._id).eq("leverancierId", supplier._id).eq("status", "active")
             )
             .take(1000),
           ctx.db
             .query("productImportBatches")
             .withIndex("by_supplier", (q: any) =>
-              q.eq("tenantId", tenant._id).eq("supplierId", supplier._id)
+              q.eq("tenantId", tenant._id).eq("leverancierId", supplier._id)
             )
             .order("desc")
             .collect(),
           ctx.db
             .query("priceLists")
             .withIndex("by_supplier", (q: any) =>
-              q.eq("tenantId", tenant._id).eq("supplierId", supplier._id)
+              q.eq("tenantId", tenant._id).eq("leverancierId", supplier._id)
             )
             .collect()
         ]);
@@ -157,16 +157,16 @@ export const listSuppliers = query({
         const importProfileCount = profiles.filter(
           (profile: Doc<"importProfiles">) =>
             profile.status === "active" &&
-            (String(profile.supplierId ?? "") === String(supplier._id) ||
-              profile.supplierName === supplier.name)
+            (String(profile.leverancierId ?? "") === String(supplier._id) ||
+              profile.leverancierNaam === supplier.naam)
         ).length;
         const latestBatch = batches[0];
         const sourceFileNames = Array.from(
           new Set(
             [
-              ...priceLists.map((priceList: Doc<"priceLists">) => priceList.sourceFileName),
+              ...priceLists.map((priceList: Doc<"priceLists">) => priceList.bronBestandsnaam),
               ...batches.map(
-                (batch: Doc<"productImportBatches">) => batch.sourceFileName ?? batch.fileName
+                (batch: Doc<"productImportBatches">) => batch.bronBestandsnaam ?? batch.bestandsnaam
               )
             ].filter(Boolean)
           )
@@ -179,14 +179,14 @@ export const listSuppliers = query({
           sourceFileCount: sourceFileNames.length,
           sourceFileNames,
           latestImportStatus: latestBatch?.status,
-          latestImportAt: latestBatch?.committedAt ?? latestBatch?.importedAt ?? latestBatch?.createdAt
+          latestImportAt: latestBatch?.vastgelegdOp ?? latestBatch?.geimporteerdOp ?? latestBatch?.aangemaaktOp
         });
       })
     );
 
     return suppliers
       .sort((left: Doc<"suppliers">, right: Doc<"suppliers">) =>
-        left.name.localeCompare(right.name, "nl")
+        left.naam.localeCompare(right.naam, "nl")
       )
       .map((supplier: Doc<"suppliers">) =>
         toSupplier(tenant.slug, supplier, supplierMetrics.get(String(supplier._id)))
@@ -198,18 +198,18 @@ export const createSupplier = mutation({
   args: {
     tenantSlug: v.string(),
     actor: mutationActorValidator,
-    name: v.string(),
-    contactName: v.optional(v.string()),
+    naam: v.string(),
+    contactpersoon: v.optional(v.string()),
     email: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    notes: v.optional(v.string()),
-    productListStatus: v.optional(productListStatus),
-    lastContactAt: v.optional(v.number()),
-    expectedAt: v.optional(v.number())
+    telefoon: v.optional(v.string()),
+    notities: v.optional(v.string()),
+    prijslijstStatus: v.optional(productListStatus),
+    laatsteContactOp: v.optional(v.number()),
+    verwachtOp: v.optional(v.number())
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
-    const existing = await findSupplierByName(ctx, tenant._id, args.name);
+    const existing = await findSupplierByName(ctx, tenant._id, args.naam);
 
     if (existing) {
       return existing._id;
@@ -219,17 +219,17 @@ export const createSupplier = mutation({
 
     return await ctx.db.insert("suppliers", {
       tenantId: tenant._id,
-      name: args.name,
-      contactName: args.contactName,
+      naam: args.naam,
+      contactpersoon: args.contactpersoon,
       email: args.email,
-      phone: args.phone,
-      notes: args.notes,
+      telefoon: args.telefoon,
+      notities: args.notities,
       status: "active",
-      productListStatus: args.productListStatus ?? "unknown",
-      lastContactAt: args.lastContactAt,
-      expectedAt: args.expectedAt,
-      createdAt: now,
-      updatedAt: now
+      prijslijstStatus: args.prijslijstStatus ?? "unknown",
+      laatsteContactOp: args.laatsteContactOp,
+      verwachtOp: args.verwachtOp,
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -238,37 +238,37 @@ export const updateSupplier = mutation({
   args: {
     tenantSlug: v.string(),
     actor: mutationActorValidator,
-    supplierId: v.string(),
-    name: v.string(),
-    contactName: v.optional(v.string()),
+    leverancierId: v.string(),
+    naam: v.string(),
+    contactpersoon: v.optional(v.string()),
     email: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    notes: v.optional(v.string()),
-    productListStatus: v.optional(productListStatus),
-    lastContactAt: v.optional(v.number()),
-    expectedAt: v.optional(v.number()),
+    telefoon: v.optional(v.string()),
+    notities: v.optional(v.string()),
+    prijslijstStatus: v.optional(productListStatus),
+    laatsteContactOp: v.optional(v.number()),
+    verwachtOp: v.optional(v.number()),
     status: v.optional(supplierStatus)
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
-    const supplier = await ctx.db.get(args.supplierId as Id<"suppliers">);
+    const supplier = await ctx.db.get(args.leverancierId as Id<"suppliers">);
 
     if (!supplier || supplier.tenantId !== tenant._id) {
       throw new ConvexError("Supplier not found");
     }
 
     const patch: Partial<Doc<"suppliers">> = {
-      name: args.name,
-      updatedAt: Date.now()
+      naam: args.naam,
+      gewijzigdOp: Date.now()
     };
 
-    if (hasArg(args, "contactName")) patch.contactName = args.contactName;
+    if (hasArg(args, "contactpersoon")) patch.contactpersoon = args.contactpersoon;
     if (hasArg(args, "email")) patch.email = args.email;
-    if (hasArg(args, "phone")) patch.phone = args.phone;
-    if (hasArg(args, "notes")) patch.notes = args.notes;
-    if (args.productListStatus !== undefined) patch.productListStatus = args.productListStatus;
-    if (hasArg(args, "lastContactAt")) patch.lastContactAt = args.lastContactAt;
-    if (hasArg(args, "expectedAt")) patch.expectedAt = args.expectedAt;
+    if (hasArg(args, "telefoon")) patch.telefoon = args.telefoon;
+    if (hasArg(args, "notities")) patch.notities = args.notities;
+    if (args.prijslijstStatus !== undefined) patch.prijslijstStatus = args.prijslijstStatus;
+    if (hasArg(args, "laatsteContactOp")) patch.laatsteContactOp = args.laatsteContactOp;
+    if (hasArg(args, "verwachtOp")) patch.verwachtOp = args.verwachtOp;
     if (args.status !== undefined) patch.status = args.status;
 
     await ctx.db.patch(supplier._id, patch);
@@ -281,20 +281,20 @@ export const updateSupplierProductListStatus = mutation({
   args: {
     tenantSlug: v.string(),
     actor: mutationActorValidator,
-    supplierId: v.string(),
-    productListStatus
+    leverancierId: v.string(),
+    prijslijstStatus: productListStatus
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
-    const supplier = await ctx.db.get(args.supplierId as Id<"suppliers">);
+    const supplier = await ctx.db.get(args.leverancierId as Id<"suppliers">);
 
     if (!supplier || supplier.tenantId !== tenant._id) {
       throw new ConvexError("Supplier not found");
     }
 
     await ctx.db.patch(supplier._id, {
-      productListStatus: args.productListStatus,
-      updatedAt: Date.now()
+      prijslijstStatus: args.prijslijstStatus,
+      gewijzigdOp: Date.now()
     });
 
     return supplier._id;

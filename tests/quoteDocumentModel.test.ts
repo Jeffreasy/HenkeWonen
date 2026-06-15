@@ -6,26 +6,26 @@ const baseCustomer: PortalCustomer = {
   id: "customer-1",
   tenantId: "henke-wonen",
   type: "private",
-  displayName: "Familie Jansen",
-  street: "Voorbeeldstraat",
-  houseNumber: "12",
-  postalCode: "8255 AA",
-  city: "Swifterbant",
+  weergaveNaam: "Familie Jansen",
+  straat: "Voorbeeldstraat",
+  huisnummer: "12",
+  postcode: "8255 AA",
+  plaats: "Swifterbant",
   status: "active",
-  createdAt: Date.UTC(2026, 4, 1),
-  updatedAt: Date.UTC(2026, 4, 1)
+  aangemaaktOp: Date.UTC(2026, 4, 1),
+  gewijzigdOp: Date.UTC(2026, 4, 1)
 };
 
-const template: Pick<QuoteTemplate, "sections"> = {
-  sections: [
+const template: Pick<QuoteTemplate, "secties"> = {
+  secties: [
     {
-      key: "vloeren",
-      title: "Vloeren",
+      sleutel: "vloeren",
+      titel: "Vloeren",
       sortOrder: 1
     },
     {
-      key: "behang",
-      title: "Behang",
+      sleutel: "behang",
+      titel: "Behang",
       sortOrder: 2
     }
   ]
@@ -35,15 +35,15 @@ function line(overrides: Partial<PortalQuoteLine>): PortalQuoteLine {
   return {
     id: "line-1",
     quoteId: "quote-1",
-    lineType: "product",
-    title: "PVC geleverd",
-    quantity: 2,
-    unit: "m2",
-    unitPriceExVat: 100,
-    vatRate: 21,
-    lineTotalExVat: 200,
-    lineVatTotal: 42,
-    lineTotalIncVat: 242,
+    regelType: "product",
+    titel: "PVC geleverd",
+    aantal: 2,
+    eenheid: "m2",
+    eenheidsprijsExBtw: 100,
+    btwTarief: 21,
+    regelTotaalExBtw: 200,
+    regelBtwTotaal: 42,
+    regelTotaalInclBtw: 242,
     sortOrder: 1,
     ...overrides
   };
@@ -54,20 +54,20 @@ function quote(overrides: Partial<PortalQuote>): PortalQuote {
     id: "quote-1",
     tenantId: "henke-wonen",
     projectId: "project-1",
-    customerId: "customer-1",
-    quoteNumber: "OFF-2026-001",
-    title: "PVC benedenverdieping",
+    klantId: "customer-1",
+    offertenummer: "OFF-2026-001",
+    titel: "PVC benedenverdieping",
     status: "draft",
-    introText: "Hierbij mijn vrijblijvende offerte.",
-    closingText: "Hopende u een passende aanbieding te hebben gedaan.",
-    terms: ["Ruimtes leeg opleveren.\nWater en stroom beschikbaar."],
-    paymentTerms: ["100% bij oplevering.", "Betalingstermijn 8 dagen."],
-    subtotalExVat: 1234.56,
-    vatTotal: 259.26,
-    totalIncVat: 1493.82,
+    inleidingTekst: "Hierbij mijn vrijblijvende offerte.",
+    afsluitTekst: "Hopende u een passende aanbieding te hebben gedaan.",
+    voorwaarden: ["Ruimtes leeg opleveren.\nWater en stroom beschikbaar."],
+    betalingsvoorwaarden: ["100% bij oplevering.", "Betalingstermijn 8 dagen."],
+    subtotaalExBtw: 1234.56,
+    btwTotaal: 259.26,
+    totaalInclBtw: 1493.82,
     lines: [line({ metadata: { source: "quoteTemplate", sectionKey: "vloeren" } })],
-    createdAt: Date.UTC(2026, 4, 1),
-    updatedAt: Date.UTC(2026, 4, 1),
+    aangemaaktOp: Date.UTC(2026, 4, 1),
+    gewijzigdOp: Date.UTC(2026, 4, 1),
     ...overrides
   };
 }
@@ -102,8 +102,8 @@ describe("Quote Document Model", () => {
     const mixedVatModel = buildQuoteDocumentModel({
       quote: quote({
         lines: [
-          line({ id: "line-1", vatRate: 9, lineVatTotal: 18, lineTotalIncVat: 218, sortOrder: 1 }),
-          line({ id: "line-2", vatRate: 21, lineVatTotal: 42, lineTotalIncVat: 242, sortOrder: 2 })
+          line({ id: "line-1", btwTarief: 9, regelBtwTotaal: 18, regelTotaalInclBtw: 218, sortOrder: 1 }),
+          line({ id: "line-2", btwTarief: 21, regelBtwTotaal: 42, regelTotaalInclBtw: 242, sortOrder: 2 })
         ]
       }),
       customer: baseCustomer
@@ -117,8 +117,8 @@ describe("Quote Document Model", () => {
     const fallbackModel = buildQuoteDocumentModel({
       quote: quote({
         lines: [
-          line({ id: "line-2", title: "Tweede regel", sortOrder: 2, metadata: undefined }),
-          line({ id: "line-1", title: "Eerste regel", sortOrder: 1, metadata: undefined })
+          line({ id: "line-2", titel: "Tweede regel", sortOrder: 2, metadata: undefined }),
+          line({ id: "line-1", titel: "Eerste regel", sortOrder: 1, metadata: undefined })
         ]
       }),
       customer: baseCustomer,
@@ -138,11 +138,11 @@ describe("Quote Document Model", () => {
         lines: [
           line({
             id: "measurement-line",
-            unitPriceExVat: 0,
-            vatRate: 0,
-            lineTotalExVat: 0,
-            lineVatTotal: 0,
-            lineTotalIncVat: 0,
+            eenheidsprijsExBtw: 0,
+            btwTarief: 0,
+            regelTotaalExBtw: 0,
+            regelBtwTotaal: 0,
+            regelTotaalInclBtw: 0,
             metadata: {
               source: "measurement",
               measurementLineId: "measurement-line-1"

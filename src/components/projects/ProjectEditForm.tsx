@@ -47,12 +47,12 @@ export function ProjectEditForm({ project, onSave, onCancel }: ProjectEditFormPr
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    setTitle(project.title);
-    setDescription(project.description ?? "");
-    setMeasurementDate(toDateInputValue(project.measurementDate));
-    setExecutionDate(toDateInputValue(project.executionDate));
-    setInternalNotes(project.internalNotes ?? "");
-    setCustomerNotes(project.customerNotes ?? "");
+    setTitle(project.titel);
+    setDescription(project.omschrijving ?? "");
+    setMeasurementDate(toDateInputValue(project.inmeetdatum));
+    setExecutionDate(toDateInputValue(project.uitvoerdatum));
+    setInternalNotes(project.interneNotities ?? "");
+    setCustomerNotes(project.klantNotities ?? "");
   }, [project]);
 
   async function handleSubmit(event: SubmitEventLike) {

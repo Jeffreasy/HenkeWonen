@@ -240,6 +240,7 @@ const measurementCalculationTypeLabels: Record<MeasurementCalculationType, strin
   rolls: "Rollen",
   panels: "Panelen",
   stairs: "Trap",
+  matrix: "Matrix (breedte × hoogte)",
   manual: "Handmatig"
 };
 

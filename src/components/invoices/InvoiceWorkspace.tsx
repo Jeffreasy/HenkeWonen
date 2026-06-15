@@ -53,21 +53,21 @@ export default function InvoiceWorkspace({ session }: InvoiceWorkspaceProps) {
     const now = Date.now();
     const openAmount = invoices
       .filter((inv) => inv.status === "sent" || inv.status === "partially_paid")
-      .reduce((sum, inv) => sum + (inv.totalIncVat - inv.paidAmount), 0);
+      .reduce((sum, inv) => sum + (inv.totaalInclBtw - inv.betaaldBedrag), 0);
     const overdueCount = invoices.filter(
       (inv) =>
         inv.status !== "paid" &&
         inv.status !== "cancelled" &&
-        inv.dueDate < now
+        inv.vervaldatum < now
     ).length;
     const paidThisYear = invoices
       .filter(
         (inv) =>
           inv.status === "paid" &&
-          inv.paidAt &&
-          new Date(inv.paidAt).getFullYear() === new Date().getFullYear()
+          inv.betaaldOp &&
+          new Date(inv.betaaldOp).getFullYear() === new Date().getFullYear()
       )
-      .reduce((sum, inv) => sum + inv.totalIncVat, 0);
+      .reduce((sum, inv) => sum + inv.totaalInclBtw, 0);
 
     return { openAmount, overdueCount, paidThisYear, total: invoices.length };
   }, [invoices]);
@@ -78,7 +78,7 @@ export default function InvoiceWorkspace({ session }: InvoiceWorkspaceProps) {
     return invoices.filter((invoice) => {
       const matchesSearch =
         !normalizedSearch ||
-        [invoice.invoiceNumber, invoice.customerName, invoice.projectTitle]
+        [invoice.factuurnummer, invoice.customerName, invoice.projectTitle]
           .filter(Boolean)
           .join(" ")
           .toLowerCase()

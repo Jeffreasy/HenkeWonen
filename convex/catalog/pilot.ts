@@ -1,15 +1,15 @@
 type CommercialName = {
-  brandName: string;
-  collectionName?: string;
-  colorName?: string;
-  displayName: string;
+  merknaam: string;
+  collectieNaam?: string;
+  kleurnaam?: string;
+  weergaveNaam: string;
 };
 
 type PilotProductLike = {
-  name: string;
-  productKind?: string;
+  naam: string;
+  productSoort?: string;
   commercialNames?: CommercialName[];
-  colorName?: string;
+  kleurnaam?: string;
 };
 
 function normalized(value?: string) {
@@ -21,7 +21,7 @@ export function pilotHiddenReason(product: PilotProductLike, categoryName?: stri
     return "PVC Click verborgen voor pilot";
   }
 
-  if (normalized(product.productKind) === "click") {
+  if (normalized(product.productSoort) === "click") {
     return "PVC click verborgen voor pilot";
   }
 
@@ -33,7 +33,7 @@ export function isPilotHiddenProduct(product: PilotProductLike, categoryName?: s
 }
 
 export function isPvcProduct(product: PilotProductLike, categoryName?: string, supplierName?: string) {
-  const values = [categoryName, product.productKind, supplierName, product.name].map(normalized);
+  const values = [categoryName, product.productSoort, supplierName, product.naam].map(normalized);
 
   return values.some((value) => value.includes("pvc") || value === "dryback" || value === "src");
 }
@@ -49,21 +49,21 @@ export function displayProductName(
 ) {
   const isPvc = isPvcProduct(product, categoryName, supplierName);
   const floorlifeName = product.commercialNames?.find(
-    (name) => normalized(name.brandName) === "floorlife"
+    (name) => normalized(name.merknaam) === "floorlife"
   );
 
   if (floorlifeName && isPvc) {
-    return floorlifeName.displayName;
+    return floorlifeName.weergaveNaam;
   }
 
-  if (isPvc && (normalized(supplierName) === "roots" || /\broots\b/i.test(product.name))) {
-    return product.name
+  if (isPvc && (normalized(supplierName) === "roots" || /\broots\b/i.test(product.naam))) {
+    return product.naam
       .replace(/\bMOD ROOTS\b/gi, "Moduleo")
       .replace(/\bROOTS\b/gi, "Moduleo")
       .replace(/\bRoots\b/g, "Moduleo");
   }
 
-  return product.name;
+  return product.naam;
 }
 
 export function visibleCommercialNames(product: PilotProductLike, categoryName?: string) {
@@ -76,7 +76,7 @@ export function visibleCommercialNames(product: PilotProductLike, categoryName?:
   }
 
   const withoutAmbiant = product.commercialNames.filter(
-    (name) => normalized(name.brandName) !== "ambiant"
+    (name) => normalized(name.merknaam) !== "ambiant"
   );
 
   return withoutAmbiant.length ? withoutAmbiant : product.commercialNames;
@@ -254,9 +254,9 @@ export function cleanProductDisplayName(
   categoryName?: string,
   supplierName?: string
 ) {
-  const rawName = product.name ?? "";
+  const rawName = product.naam ?? "";
   const base = displayProductName(product, categoryName, supplierName);
-  const color = squashWhitespace(product.colorName ?? "");
+  const color = squashWhitespace(product.kleurnaam ?? "");
 
   if (!looksMessy(rawName, color)) {
     return base;

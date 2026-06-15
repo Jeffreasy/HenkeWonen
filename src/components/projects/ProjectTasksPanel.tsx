@@ -69,7 +69,7 @@ export function ProjectTasksPanel({
         priority: "primary",
         render: (task) => (
           <div className="stack-sm">
-            <strong>{task.title}</strong>
+            <strong>{task.titel}</strong>
             <small className="muted">{taskTypeLabel(task.type)}</small>
           </div>
         )
@@ -78,7 +78,7 @@ export function ProjectTasksPanel({
         key: "due",
         header: "Deadline",
         width: "120px",
-        render: (task) => dateText(task.dueAt)
+        render: (task) => dateText(task.vervaltOp)
       },
       {
         key: "status",
@@ -139,13 +139,13 @@ export function ProjectTasksPanel({
           <div className="mobile-card-section">
             <div className="mobile-card-header">
               <div className="mobile-card-title">
-                <strong>{task.title}</strong>
+                <strong>{task.titel}</strong>
                 <small className="muted">{taskTypeLabel(task.type)}</small>
               </div>
               <Badge variant={task.priority.tone}>{task.priority.label}</Badge>
             </div>
             <div className="mobile-card-meta">
-              <span>Deadline {dateText(task.dueAt)}</span>
+              <span>Deadline {dateText(task.vervaltOp)}</span>
               <span>{taskStatusLabel(task.status)}</span>
             </div>
             {canEdit && task.status === "open" ? (

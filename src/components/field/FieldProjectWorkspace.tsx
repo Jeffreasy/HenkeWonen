@@ -14,6 +14,7 @@ import { SectionHeader } from "../ui/SectionHeader";
 import MeasurementPanel from "../projects/MeasurementPanel";
 import QuoteBuilder from "../quotes/QuoteBuilder";
 import type { QuoteLineFormValues } from "../quotes/QuoteLineEditor";
+import { quoteLineFormToApi } from "../quotes/quote/quoteTypes";
 import { FieldVisitHeader, type FieldUrgency } from "./FieldVisitHeader";
 import { FieldActionPlan } from "./FieldActionPlan";
 import { FieldProjectDetailsGrid } from "./FieldProjectDetailsGrid";
@@ -30,7 +31,7 @@ function customerAddress(workspace: FieldProjectWorkspaceResult) {
     return undefined;
   }
 
-  return [customer.street, customer.houseNumber, customer.postalCode, customer.city]
+  return [customer.straat, customer.huisnummer, customer.postcode, customer.plaats]
     .filter(Boolean)
     .join(" ");
 }
@@ -59,8 +60,8 @@ function visitUrgency(workspace: FieldProjectWorkspaceResult): FieldUrgency {
     return {
       level: openTask.priority.level,
       label: openTask.priority.label,
-      title: openTask.title,
-      description: `Deadline ${formatDate(openTask.dueAt)}.`
+      title: openTask.titel,
+      description: `Deadline ${formatDate(openTask.vervaltOp)}.`
     };
   }
 
@@ -190,7 +191,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         projectId: workspace.project.id,
-        title: `${workspace.project.title} - conceptofferte`,
+        titel: `${workspace.project.titel} - conceptofferte`,
         createdByExternalUserId: session.userId
       });
 
@@ -220,7 +221,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
       quoteId: selectedQuote.id,
-      ...line
+      ...quoteLineFormToApi(line)
     });
     await loadWorkspace();
     return String(lineId);
@@ -254,7 +255,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
       lineId,
-      ...line
+      ...quoteLineFormToApi(line)
     });
     await loadWorkspace();
   }
@@ -296,8 +297,8 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
       quoteId: selectedQuote.id,
-      terms,
-      paymentTerms
+      voorwaarden: terms,
+      betalingsvoorwaarden: paymentTerms
     });
     await loadWorkspace();
   }
@@ -337,7 +338,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       />
 
       <FieldActionPlan
-        customerDisplayName={workspace.customer?.displayName ?? "Onbekende klant"}
+        customerDisplayName={workspace.customer?.weergaveNaam ?? "Onbekende klant"}
         address={address}
         measurementStatus={workspace.visit.measurementStatus}
         selectedQuoteStatus={selectedQuote?.status}
@@ -348,7 +349,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
         customer={workspace.customer}
         address={address}
         visit={workspace.visit}
-        projectNotes={workspace.project.customerNotes ?? workspace.project.description ?? undefined}
+        projectNotes={workspace.project.klantNotities ?? workspace.project.omschrijving ?? undefined}
       />
 
       <section className="field-measurement-section" id="inmeten">
@@ -363,7 +364,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
           session={session}
           tenantId={session.tenantId}
           projectId={workspace.project.id}
-          customerId={workspace.customer?.id ?? workspace.project.customerId}
+          customerId={workspace.customer?.id ?? workspace.project.klantId}
           projectRooms={workspace.project.rooms}
         />
       </section>
@@ -402,7 +403,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
                 onClick={() => setSelectedQuoteId(quote.id)}
               >
                 <FileText size={16} aria-hidden="true" />
-                <span>{quote.quoteNumber}</span>
+                <span>{quote.offertenummer}</span>
                 <small>{formatQuoteStatus(quote.status)}</small>
               </button>
             ))}

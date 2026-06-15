@@ -45,28 +45,28 @@ type ReadyMeasurement = {
 
 type ReadyRoom = {
   _id: string;
-  projectRoomId?: string;
-  name: string;
-  areaM2?: number;
-  perimeterM?: number;
+  projectRuimteId?: string;
+  naam: string;
+  oppervlakteM2?: number;
+  omtrekM?: number;
 };
 
 type ReadyLine = {
   _id: string;
-  roomId?: string;
-  productGroup: MeasurementProductGroup;
-  calculationType: MeasurementCalculationType;
-  input: Record<string, unknown>;
-  result: Record<string, unknown>;
-  wastePercent?: number;
-  quantity: number;
-  unit: string;
-  notes?: string;
-  quoteLineType: QuoteLineType;
+  ruimteId?: string;
+  productGroep: MeasurementProductGroup;
+  berekeningType: MeasurementCalculationType;
+  invoer: Record<string, unknown>;
+  resultaat: Record<string, unknown>;
+  snijverliesPct?: number;
+  aantal: number;
+  eenheid: string;
+  notities?: string;
+  offerteRegelType: QuoteLineType;
   productId?: string;
-  productName?: string;
-  indicativeUnitPriceExVat?: number;
-  indicativeVatRate?: number;
+  productNaam?: string;
+  indicatieveEenheidsprijsExBtw?: number;
+  indicatiefBtwTarief?: number;
 };
 
 type ReadyMeasurementLine = {
@@ -93,9 +93,9 @@ function formatNumber(value?: number) {
 
 function buildLineTitle(item: ReadyMeasurementLine) {
   const parts = [
-    formatMeasurementProductGroup(item.line.productGroup),
-    formatMeasurementCalculationType(item.line.calculationType),
-    item.room?.name
+    formatMeasurementProductGroup(item.line.productGroep),
+    formatMeasurementCalculationType(item.line.berekeningType),
+    item.room?.naam
   ].filter(Boolean);
 
   return parts.join(" - ");
@@ -103,12 +103,14 @@ function buildLineTitle(item: ReadyMeasurementLine) {
 
 /** Richtprijs incl. btw uit het meetregel-snapshot, of null. */
 function indicativeLineTotal(line: ReadyLine) {
-  if (line.indicativeUnitPriceExVat === undefined || line.indicativeVatRate === undefined) {
+  if (line.indicatieveEenheidsprijsExBtw === undefined || line.indicatiefBtwTarief === undefined) {
     return null;
   }
 
   return formatEuro(
-    roundMoney(line.quantity * calculateIncVat(line.indicativeUnitPriceExVat, line.indicativeVatRate))
+    roundMoney(
+      line.aantal * calculateIncVat(line.indicatieveEenheidsprijsExBtw, line.indicatiefBtwTarief)
+    )
   );
 }
 
@@ -201,18 +203,18 @@ export default function MeasurementLinePicker({
         key: "room",
         header: "Ruimte",
         priority: "primary",
-        render: (item) => <strong>{item.room?.name ?? "Geen ruimte"}</strong>
+        render: (item) => <strong>{item.room?.naam ?? "Geen ruimte"}</strong>
       },
       {
         key: "group",
         header: "Productgroep",
-        render: (item) => formatMeasurementProductGroup(item.line.productGroup)
+        render: (item) => formatMeasurementProductGroup(item.line.productGroep)
       },
       {
         key: "calculation",
         header: "Berekening",
         hideOnMobile: true,
-        render: (item) => formatMeasurementCalculationType(item.line.calculationType)
+        render: (item) => formatMeasurementCalculationType(item.line.berekeningType)
       },
       {
         key: "quantity",
@@ -220,7 +222,7 @@ export default function MeasurementLinePicker({
         align: "right",
         render: (item) => (
           <span style={{ whiteSpace: "nowrap" }}>
-            {formatNumber(item.line.quantity)} {formatUnit(item.line.unit)}
+            {formatNumber(item.line.aantal)} {formatUnit(item.line.eenheid)}
           </span>
         )
       },
@@ -230,14 +232,14 @@ export default function MeasurementLinePicker({
         align: "right",
         hideOnMobile: true,
         render: (item) =>
-          item.line.wastePercent !== undefined ? `${item.line.wastePercent}%` : "-"
+          item.line.snijverliesPct !== undefined ? `${item.line.snijverliesPct}%` : "-"
       },
       {
         key: "indicative",
         header: "Product / richtprijs",
         align: "right",
         render: (item) => {
-          if (!item.line.productName) {
+          if (!item.line.productNaam) {
             return "-";
           }
 
@@ -245,7 +247,7 @@ export default function MeasurementLinePicker({
             <div style={{ textAlign: "right" }}>
               <strong>{indicativeLineTotal(item.line) ?? "Nog geen prijs"}</strong>
               <div className="muted" style={{ fontSize: "var(--text-xs)" }}>
-                {item.line.productName}
+                {item.line.productNaam}
               </div>
             </div>
           );
@@ -255,13 +257,13 @@ export default function MeasurementLinePicker({
         key: "type",
         header: "Soort offertepost",
         hideOnMobile: true,
-        render: (item) => formatLineType(item.line.quoteLineType)
+        render: (item) => formatLineType(item.line.offerteRegelType)
       },
       {
         key: "note",
         header: "Notitie",
         hideOnMobile: true,
-        render: (item) => item.line.notes ?? "-"
+        render: (item) => item.line.notities ?? "-"
       }
     ],
     [selectedIds]
@@ -385,14 +387,14 @@ export default function MeasurementLinePicker({
                     </div>
                     <strong>{buildLineTitle(item)}</strong>
                     <p className="muted">
-                      {formatNumber(item.line.quantity)} {formatUnit(item.line.unit)}
-                      {item.line.wastePercent !== undefined
-                        ? ` · Snijverlies ${item.line.wastePercent}%`
+                      {formatNumber(item.line.aantal)} {formatUnit(item.line.eenheid)}
+                      {item.line.snijverliesPct !== undefined
+                        ? ` · Snijverlies ${item.line.snijverliesPct}%`
                         : ""}
                     </p>
-                    {item.line.productName ? (
+                    {item.line.productNaam ? (
                       <p>
-                        {item.line.productName}
+                        {item.line.productNaam}
                         {" · "}
                         <strong>{indicativeLineTotal(item.line) ?? "Nog geen richtprijs"}</strong>
                         {indicativeLineTotal(item.line) ? (
@@ -400,7 +402,7 @@ export default function MeasurementLinePicker({
                         ) : null}
                       </p>
                     ) : null}
-                    <p className="muted">{item.line.notes ?? "Geen notitie"}</p>
+                    <p className="muted">{item.line.notities ?? "Geen notitie"}</p>
                   </div>
                 )}
                 rows={readyLines}

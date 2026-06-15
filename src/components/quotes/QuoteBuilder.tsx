@@ -135,9 +135,9 @@ export default function QuoteBuilder({
         : null,
     [customer, defaultTemplate, project, quote]
   );
-  const [termsText, setTermsText] = useState(polishQuoteTemplateLines(quote.terms ?? []).join("\n"));
+  const [termsText, setTermsText] = useState(polishQuoteTemplateLines(quote.voorwaarden ?? []).join("\n"));
   const [paymentTermsText, setPaymentTermsText] = useState(
-    polishQuoteTemplateLines(quote.paymentTerms ?? []).join("\n")
+    polishQuoteTemplateLines(quote.betalingsvoorwaarden ?? []).join("\n")
   );
   const [isSavingTerms, setIsSavingTerms] = useState(false);
   const [editingLine, setEditingLine] = useState<PortalQuoteLine | null>(null);
@@ -179,7 +179,7 @@ export default function QuoteBuilder({
       ? null
       : (productGroupOverride ?? inferredProductGroup);
   const roomById = useMemo(
-    () => new Map((project?.rooms ?? []).map((room) => [room.id, room.name])),
+    () => new Map((project?.rooms ?? []).map((room) => [room.id, room.naam])),
     [project?.rooms]
   );
   const customerVersionReviewCount = useMemo(
@@ -192,9 +192,9 @@ export default function QuoteBuilder({
   );
 
   useEffect(() => {
-    setTermsText(polishQuoteTemplateLines(quote.terms ?? []).join("\n"));
-    setPaymentTermsText(polishQuoteTemplateLines(quote.paymentTerms ?? []).join("\n"));
-  }, [quote.id, quote.paymentTerms, quote.terms]);
+    setTermsText(polishQuoteTemplateLines(quote.voorwaarden ?? []).join("\n"));
+    setPaymentTermsText(polishQuoteTemplateLines(quote.betalingsvoorwaarden ?? []).join("\n"));
+  }, [quote.id, quote.betalingsvoorwaarden, quote.voorwaarden]);
 
   useEffect(() => {
     setEditingLine(null);
@@ -280,9 +280,9 @@ export default function QuoteBuilder({
       <div className="toolbar quote-line-actions">
         {onUpdateLine ? (
           <IconButton
-            aria-label={`Offertepost ${line.title} bewerken`}
+            aria-label={`Offertepost ${line.titel} bewerken`}
             onClick={() => setEditingLine(line)}
-            title={`Offertepost ${line.title} bewerken`}
+            title={`Offertepost ${line.titel} bewerken`}
             variant="secondary"
             size="sm"
           >
@@ -290,9 +290,9 @@ export default function QuoteBuilder({
           </IconButton>
         ) : null}
         <IconButton
-          aria-label={`Offertepost ${line.title} verwijderen`}
+          aria-label={`Offertepost ${line.titel} verwijderen`}
           onClick={() => setPendingDeleteLine(line)}
-          title={`Offertepost ${line.title} verwijderen`}
+          title={`Offertepost ${line.titel} verwijderen`}
           variant="danger"
           size="sm"
         >
@@ -307,7 +307,7 @@ export default function QuoteBuilder({
       key: "type",
       header: "Soort",
       width: "120px",
-      render: (line) => <LineTypeBadge lineType={line.lineType} />
+      render: (line) => <LineTypeBadge lineType={line.regelType} />
     },
     {
       key: "title",
@@ -315,8 +315,8 @@ export default function QuoteBuilder({
       priority: "primary",
       render: (line) => (
         <div className="stack-sm">
-          <strong>{line.title}</strong>
-          {line.description ? <small className="muted">{line.description}</small> : null}
+          <strong>{line.titel}</strong>
+          {line.omschrijving ? <small className="muted">{line.omschrijving}</small> : null}
         </div>
       )
     },
@@ -325,21 +325,21 @@ export default function QuoteBuilder({
       header: "Ruimte",
       width: "130px",
       hideOnMobile: true,
-      render: (line) => (line.projectRoomId ? roomById.get(line.projectRoomId) ?? "-" : "-")
+      render: (line) => (line.projectRuimteId ? roomById.get(line.projectRuimteId) ?? "-" : "-")
     },
     {
       key: "quantity",
       header: "Aantal",
       align: "right",
       width: "90px",
-      render: (line) => line.quantity
+      render: (line) => line.aantal
     },
     {
       key: "unit",
       header: "Eenheid",
       width: "90px",
       hideOnMobile: true,
-      render: (line) => formatUnit(line.unit)
+      render: (line) => formatUnit(line.eenheid)
     },
     {
       key: "price",
@@ -347,7 +347,7 @@ export default function QuoteBuilder({
       align: "right",
       width: "120px",
       hideOnMobile: true,
-      render: (line) => formatEuro(line.unitPriceExVat)
+      render: (line) => formatEuro(line.eenheidsprijsExBtw)
     },
     {
       key: "vat",
@@ -355,14 +355,14 @@ export default function QuoteBuilder({
       align: "right",
       width: "90px",
       hideOnMobile: true,
-      render: (line) => `${line.vatRate}%`
+      render: (line) => `${line.btwTarief}%`
     },
     {
       key: "total",
       header: "Totaal incl. btw",
       align: "right",
       width: "130px",
-      render: (line) => formatEuro(line.lineTotalIncVat)
+      render: (line) => formatEuro(line.regelTotaalInclBtw)
     },
     {
       key: "actions",
@@ -375,9 +375,9 @@ export default function QuoteBuilder({
   
   const quoteTotals = quote.lines.reduce(
     (current, line) => ({
-      subtotalExVat: current.subtotalExVat + line.lineTotalExVat,
-      vatTotal: current.vatTotal + line.lineVatTotal,
-      totalIncVat: current.totalIncVat + line.lineTotalIncVat
+      subtotalExVat: current.subtotalExVat + line.regelTotaalExBtw,
+      vatTotal: current.vatTotal + line.regelBtwTotaal,
+      totalIncVat: current.totalIncVat + line.regelTotaalInclBtw
     }),
     {
       subtotalExVat: 0,
@@ -391,7 +391,7 @@ export default function QuoteBuilder({
       mode={mode}
       surface={isFieldMode ? "plain" : "panel"}
       sortOrder={quote.lines.length + 1}
-      templateLines={defaultTemplate?.defaultLines ?? []}
+      templateLines={defaultTemplate?.standaardRegels ?? []}
       session={session}
       projectRooms={project?.rooms ?? []}
       productGroupHint={activeProductGroup}
@@ -429,33 +429,33 @@ export default function QuoteBuilder({
           <article className="quote-line-card" key={line.id} role="listitem">
             <div className="quote-line-card-copy">
               <div className="quote-line-card-heading">
-                <LineTypeBadge lineType={line.lineType} />
-                <strong>{line.title}</strong>
+                <LineTypeBadge lineType={line.regelType} />
+                <strong>{line.titel}</strong>
               </div>
-              {line.description ? <p>{line.description}</p> : null}
+              {line.omschrijving ? <p>{line.omschrijving}</p> : null}
             </div>
-            <div className="quote-line-card-values" aria-label={`Bedragen voor ${line.title}`}>
+            <div className="quote-line-card-values" aria-label={`Bedragen voor ${line.titel}`}>
               <div>
                 <span>Ruimte</span>
-                <strong>{line.projectRoomId ? roomById.get(line.projectRoomId) ?? "-" : "-"}</strong>
+                <strong>{line.projectRuimteId ? roomById.get(line.projectRuimteId) ?? "-" : "-"}</strong>
               </div>
               <div>
                 <span>Aantal</span>
                 <strong>
-                  {line.quantity} {formatUnit(line.unit)}
+                  {line.aantal} {formatUnit(line.eenheid)}
                 </strong>
               </div>
               <div>
                 <span>Prijs excl.</span>
-                <strong>{formatEuro(line.unitPriceExVat)}</strong>
+                <strong>{formatEuro(line.eenheidsprijsExBtw)}</strong>
               </div>
               <div>
                 <span>Btw</span>
-                <strong>{line.vatRate}%</strong>
+                <strong>{line.btwTarief}%</strong>
               </div>
               <div className="quote-line-total">
                 <span>Totaal incl.</span>
-                <strong>{formatEuro(line.lineTotalIncVat)}</strong>
+                <strong>{formatEuro(line.regelTotaalInclBtw)}</strong>
               </div>
             </div>
             {renderLineActionButtons(line)}
@@ -497,19 +497,19 @@ export default function QuoteBuilder({
             <div className="mobile-card-section">
               <div className="mobile-card-header">
                 <div className="mobile-card-title">
-                  <strong>{line.title}</strong>
-                  {line.description ? <small className="muted">{line.description}</small> : null}
+                  <strong>{line.titel}</strong>
+                  {line.omschrijving ? <small className="muted">{line.omschrijving}</small> : null}
                 </div>
-                <LineTypeBadge lineType={line.lineType} />
+                <LineTypeBadge lineType={line.regelType} />
               </div>
               <div className="mobile-card-meta">
                 <span>
-                  {line.projectRoomId ? roomById.get(line.projectRoomId) ?? "Geen ruimte" : "Geen ruimte"}
+                  {line.projectRuimteId ? roomById.get(line.projectRuimteId) ?? "Geen ruimte" : "Geen ruimte"}
                 </span>
                 <span>
-                  {line.quantity} {formatUnit(line.unit)}
+                  {line.aantal} {formatUnit(line.eenheid)}
                 </span>
-                <strong>{formatEuro(line.lineTotalIncVat)}</strong>
+                <strong>{formatEuro(line.regelTotaalInclBtw)}</strong>
               </div>
               {canEditDraftLines ? (
                 <div className="mobile-card-actions">
@@ -583,12 +583,12 @@ export default function QuoteBuilder({
       </div>
     ) : (
       <div className="grid">
-        {[...(quote.terms ?? []), ...(quote.paymentTerms ?? [])].map((term) => (
+        {[...(quote.voorwaarden ?? []), ...(quote.betalingsvoorwaarden ?? [])].map((term) => (
           <div className="quote-term" key={term}>
             {polishQuoteTemplateText(term)}
           </div>
         ))}
-        {(quote.terms ?? []).length === 0 && (quote.paymentTerms ?? []).length === 0 ? (
+        {(quote.voorwaarden ?? []).length === 0 && (quote.betalingsvoorwaarden ?? []).length === 0 ? (
           <EmptyState
             title="Geen voorwaarden gekoppeld"
             description="Voorwaarden verschijnen hier zodra ze aan de offerte zijn gekoppeld."
@@ -710,7 +710,7 @@ export default function QuoteBuilder({
         title="Offertepost verwijderen?"
         description={
           pendingDeleteLine
-            ? `Je verwijdert "${pendingDeleteLine.title}" uit deze conceptofferte. Dit kan alleen zolang de post nog nergens definitief aan gekoppeld is.`
+            ? `Je verwijdert "${pendingDeleteLine.titel}" uit deze conceptofferte. Dit kan alleen zolang de post nog nergens definitief aan gekoppeld is.`
             : ""
         }
         confirmLabel="Offertepost verwijderen"
@@ -736,7 +736,7 @@ export default function QuoteBuilder({
       <ConfirmDialog
         open={pendingCreateInvoice}
         title="Factuur aanmaken?"
-        description={`Er wordt een factuur aangemaakt op basis van offerte ${quote.quoteNumber}. Het totaal bedraagt ${new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(quote.totalIncVat)} incl. btw. De vervaldatum volgt de betaaltermijn van deze klant.`}
+        description={`Er wordt een factuur aangemaakt op basis van offerte ${quote.offertenummer}. Het totaal bedraagt ${new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(quote.totaalInclBtw)} incl. btw. De vervaldatum volgt de betaaltermijn van deze klant.`}
         confirmLabel="Factuur aanmaken"
         tone="warning"
         isBusy={isCreatingInvoice}
@@ -764,12 +764,12 @@ export default function QuoteBuilder({
         <section className="field-quote-compact-header">
           <div>
             <p className="eyebrow">{fieldQuoteLabel}</p>
-            <h2>{quote.title}</h2>
+            <h2>{quote.titel}</h2>
           </div>
           <StatusBadge status={quote.status} label={formatQuoteStatus(quote.status)} />
           <SummaryList
             items={[
-              { id: "number", label: "Offertenummer", value: quote.quoteNumber },
+              { id: "number", label: "Offertenummer", value: quote.offertenummer },
               { id: "lines", label: fieldLineLabel, value: quote.lines.length },
               { id: "total", label: "Totaal incl. btw", value: formatEuro(quoteTotals.totalIncVat) }
             ]}
@@ -857,15 +857,15 @@ export default function QuoteBuilder({
       <section className="panel quote-summary-panel">
         <SectionHeader
           compact
-          title={quote.title}
+          title={quote.titel}
           description="Controleer gegevens, voorwaarden en offerteposten."
           actions={statusActions}
         />
         <SummaryList
           items={[
-            { id: "number", label: "Offertenummer", value: quote.quoteNumber },
+            { id: "number", label: "Offertenummer", value: quote.offertenummer },
             { id: "lines", label: "Offerteposten", value: quote.lines.length },
-            { id: "updated", label: "Bijgewerkt", value: new Intl.DateTimeFormat("nl-NL").format(new Date(quote.updatedAt)) }
+            { id: "updated", label: "Bijgewerkt", value: new Intl.DateTimeFormat("nl-NL").format(new Date(quote.gewijzigdOp)) }
           ]}
         />
       </section>

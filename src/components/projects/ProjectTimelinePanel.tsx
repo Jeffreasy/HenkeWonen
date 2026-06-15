@@ -64,7 +64,7 @@ export function ProjectTimelinePanel({
   const hasQuote = Boolean(latestQuote);
   const canCreateInvoice = latestQuote?.status === "accepted";
   const quoteContext = latestQuote
-    ? `${latestQuote.quoteNumber} - ${formatQuoteStatus(latestQuote.status)}`
+    ? `${latestQuote.offertenummer} - ${formatQuoteStatus(latestQuote.status)}`
     : undefined;
 
   return (
@@ -140,11 +140,11 @@ export function ProjectTimelinePanel({
         }
         items={workflowEvents.map((event) => ({
           id: event.id,
-          title: event.title,
-          description: event.description,
-          meta: dateText(event.createdAt),
+          title: event.titel,
+          description: event.omschrijving,
+          meta: dateText(event.aangemaaktOp),
           badge: eventLabel(event.type),
-          tone: event.visibleToCustomer ? "info" : "neutral"
+          tone: event.zichtbaarVoorKlant ? "info" : "neutral"
         }))}
       />
     </section>

@@ -38,7 +38,7 @@ export function CustomerInfoPanel({
   onArchiveToggle
 }: CustomerInfoPanelProps) {
   const address =
-    [customer.street, customer.houseNumber, customer.postalCode, customer.city]
+    [customer.straat, customer.huisnummer, customer.postcode, customer.plaats]
       .filter(Boolean)
       .join(" ") || "";
 
@@ -46,7 +46,7 @@ export function CustomerInfoPanel({
     <section className="panel customer-detail-panel customer-info-panel">
       <SectionHeader
         compact
-        title={customer.displayName}
+        title={customer.weergaveNaam}
         description={customer.type === "business" ? "Zakelijke klant" : "Particuliere klant"}
         actions={
           <div className="toolbar customer-detail-action-bar customer-info-actions">
@@ -101,9 +101,9 @@ export function CustomerInfoPanel({
           {
             id: "phone",
             label: "Telefoon",
-            value: customer.phone ? (
+            value: customer.telefoon ? (
               <CopyableCustomerValue
-                value={customer.phone}
+                value={customer.telefoon}
                 copyLabel="Telefoonnummer kopiëren"
               />
             ) : "-"
@@ -115,14 +115,14 @@ export function CustomerInfoPanel({
               <span className="customer-info-value-text">{address}</span>
             ) : "-"
           },
-          { id: "registered", label: "Vastgelegd op", value: dateText(customer.createdAt) },
-          { id: "updated", label: "Bijgewerkt", value: dateText(customer.updatedAt) }
+          { id: "registered", label: "Vastgelegd op", value: dateText(customer.aangemaaktOp) },
+          { id: "updated", label: "Bijgewerkt", value: dateText(customer.gewijzigdOp) }
         ]}
       />
-      {customer.notes ? (
+      {customer.notities ? (
         <Card className="dossier-note" variant="muted">
           <strong>Notities en afspraken</strong>
-          <p className="muted">{customer.notes}</p>
+          <p className="muted">{customer.notities}</p>
         </Card>
       ) : null}
     </section>

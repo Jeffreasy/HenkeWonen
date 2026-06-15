@@ -11,11 +11,11 @@ type LoanedItemsListProps = {
 };
 
 function loanStatus(contact: PortalCustomerContact) {
-  if (contact.returnedAt) {
+  if (contact.geretourneerdOp) {
     return { label: "Teruggebracht", variant: "success" as const };
   }
 
-  if (contact.expectedReturnDate && contact.expectedReturnDate < Date.now()) {
+  if (contact.verwachteRetourdatum && contact.verwachteRetourdatum < Date.now()) {
     return { label: "Retour verwacht", variant: "warning" as const };
   }
 
@@ -41,14 +41,14 @@ export function LoanedItemsList({ loanedItems }: LoanedItemsListProps) {
               variant={status.variant === "warning" ? "warning" : "default"}
             >
               <div className="toolbar" style={{ justifyContent: "space-between" }}>
-                <strong>{contact.loanedItemName ?? contact.title}</strong>
+                <strong>{contact.uitgeleendItemNaam ?? contact.titel}</strong>
                 <Badge variant={status.variant}>{status.label}</Badge>
               </div>
               <SummaryList
                 items={[
-                  { id: "title", label: "Contactmoment", value: contact.title },
-                  { id: "expected", label: "Retour verwacht", value: dateText(contact.expectedReturnDate) },
-                  { id: "returned", label: "Teruggebracht", value: dateText(contact.returnedAt) }
+                  { id: "title", label: "Contactmoment", value: contact.titel },
+                  { id: "expected", label: "Retour verwacht", value: dateText(contact.verwachteRetourdatum) },
+                  { id: "returned", label: "Teruggebracht", value: dateText(contact.geretourneerdOp) }
                 ]}
               />
             </Card>

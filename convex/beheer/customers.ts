@@ -54,7 +54,7 @@ export const list = query({
 export const get = query({
   args: {
     tenantId: v.id("tenants"),
-    customerId: v.id("customers"),
+    klantId: v.id("customers"),
     actor: readActorValidator
   },
   handler: async (ctx, args) => {
@@ -64,7 +64,7 @@ export const get = query({
       "editor",
       "admin"
     ]);
-    const customer = await ctx.db.get(args.customerId);
+    const customer = await ctx.db.get(args.klantId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
       return null;
@@ -79,18 +79,18 @@ export const create = mutation({
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
     type: v.union(v.literal("private"), v.literal("business")),
-    displayName: v.string(),
-    firstName: v.optional(v.string()),
-    lastName: v.optional(v.string()),
-    companyName: v.optional(v.string()),
+    weergaveNaam: v.string(),
+    voornaam: v.optional(v.string()),
+    achternaam: v.optional(v.string()),
+    bedrijfsnaam: v.optional(v.string()),
     email: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    street: v.optional(v.string()),
-    houseNumber: v.optional(v.string()),
-    postalCode: v.optional(v.string()),
-    city: v.optional(v.string()),
-    country: v.optional(v.string()),
-    notes: v.optional(v.string())
+    telefoon: v.optional(v.string()),
+    straat: v.optional(v.string()),
+    huisnummer: v.optional(v.string()),
+    postcode: v.optional(v.string()),
+    plaats: v.optional(v.string()),
+    land: v.optional(v.string()),
+    notities: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
@@ -103,21 +103,21 @@ export const create = mutation({
     return await ctx.db.insert("customers", {
       tenantId: args.tenantId,
       type: args.type,
-      displayName: args.displayName,
-      firstName: args.firstName,
-      lastName: args.lastName,
-      companyName: args.companyName,
+      weergaveNaam: args.weergaveNaam,
+      voornaam: args.voornaam,
+      achternaam: args.achternaam,
+      bedrijfsnaam: args.bedrijfsnaam,
       email: args.email,
-      phone: args.phone,
-      street: args.street,
-      houseNumber: args.houseNumber,
-      postalCode: args.postalCode,
-      city: args.city,
-      country: args.country ?? "Nederland",
-      notes: args.notes,
+      telefoon: args.telefoon,
+      straat: args.straat,
+      huisnummer: args.huisnummer,
+      postcode: args.postcode,
+      plaats: args.plaats,
+      land: args.land ?? "Nederland",
+      notities: args.notities,
       status: "lead",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -126,7 +126,7 @@ export const updateStatus = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    customerId: v.id("customers"),
+    klantId: v.id("customers"),
     status: customerStatus
   },
   handler: async (ctx, args) => {
@@ -135,25 +135,25 @@ export const updateStatus = mutation({
       "editor",
       "admin"
     ]);
-    const customer = await ctx.db.get(args.customerId);
+    const customer = await ctx.db.get(args.klantId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
       throw new ConvexError("Customer not found");
     }
 
-    await ctx.db.patch(args.customerId, {
+    await ctx.db.patch(args.klantId, {
       status: args.status,
-      updatedAt: Date.now()
+      gewijzigdOp: Date.now()
     });
 
-    return args.customerId;
+    return args.klantId;
   }
 });
 
 export const listContacts = query({
   args: {
     tenantId: v.id("tenants"),
-    customerId: v.id("customers"),
+    klantId: v.id("customers"),
     actor: readActorValidator
   },
   handler: async (ctx, args) => {
@@ -167,7 +167,7 @@ export const listContacts = query({
     return await ctx.db
       .query("customerContacts")
       .withIndex("by_customer", (q) =>
-        q.eq("tenantId", args.tenantId).eq("customerId", args.customerId)
+        q.eq("tenantId", args.tenantId).eq("klantId", args.klantId)
       )
       .order("desc")
       .collect();
@@ -178,7 +178,7 @@ export const createContact = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    customerId: v.id("customers"),
+    klantId: v.id("customers"),
     type: v.union(
       v.literal("note"),
       v.literal("call"),
@@ -187,11 +187,11 @@ export const createContact = mutation({
       v.literal("loaned_item"),
       v.literal("agreement")
     ),
-    title: v.string(),
-    description: v.optional(v.string()),
-    loanedItemName: v.optional(v.string()),
-    expectedReturnDate: v.optional(v.number()),
-    visibleToCustomer: v.boolean(),
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
+    uitgeleendItemNaam: v.optional(v.string()),
+    verwachteRetourdatum: v.optional(v.number()),
+    zichtbaarVoorKlant: v.boolean(),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -201,7 +201,7 @@ export const createContact = mutation({
       args.actor,
       ["user", "editor", "admin"]
     );
-    const customer = await ctx.db.get(args.customerId);
+    const customer = await ctx.db.get(args.klantId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
       throw new ConvexError("Customer not found");
@@ -211,16 +211,16 @@ export const createContact = mutation({
 
     return await ctx.db.insert("customerContacts", {
       tenantId: args.tenantId,
-      customerId: args.customerId,
+      klantId: args.klantId,
       type: args.type,
-      title: args.title,
-      description: args.description,
-      loanedItemName: args.loanedItemName,
-      expectedReturnDate: args.expectedReturnDate,
-      visibleToCustomer: args.visibleToCustomer,
+      titel: args.titel,
+      omschrijving: args.omschrijving,
+      uitgeleendItemNaam: args.uitgeleendItemNaam,
+      verwachteRetourdatum: args.verwachteRetourdatum,
+      zichtbaarVoorKlant: args.zichtbaarVoorKlant,
       createdByExternalUserId: externalUserId,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -244,8 +244,8 @@ export const markLoanedItemReturned = mutation({
     }
 
     await ctx.db.patch(args.contactId, {
-      returnedAt: Date.now(),
-      updatedAt: Date.now()
+      geretourneerdOp: Date.now(),
+      gewijzigdOp: Date.now()
     });
 
     return args.contactId;
@@ -279,14 +279,14 @@ export const createCustomer = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     type: customerType,
-    displayName: v.string(),
+    weergaveNaam: v.string(),
     email: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    street: v.optional(v.string()),
-    houseNumber: v.optional(v.string()),
-    postalCode: v.optional(v.string()),
-    city: v.optional(v.string()),
-    notes: v.optional(v.string())
+    telefoon: v.optional(v.string()),
+    straat: v.optional(v.string()),
+    huisnummer: v.optional(v.string()),
+    postcode: v.optional(v.string()),
+    plaats: v.optional(v.string()),
+    notities: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
@@ -299,18 +299,18 @@ export const createCustomer = mutation({
     return await ctx.db.insert("customers", {
       tenantId: tenant._id,
       type: args.type,
-      displayName: args.displayName,
+      weergaveNaam: args.weergaveNaam,
       email: args.email,
-      phone: args.phone,
-      street: args.street,
-      houseNumber: args.houseNumber,
-      postalCode: args.postalCode,
-      city: args.city,
-      country: "Nederland",
-      notes: args.notes,
+      telefoon: args.telefoon,
+      straat: args.straat,
+      huisnummer: args.huisnummer,
+      postcode: args.postcode,
+      plaats: args.plaats,
+      land: "Nederland",
+      notities: args.notities,
       status: "lead",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -319,16 +319,16 @@ export const updateCustomer = mutation({
   args: {
     tenantSlug: v.string(),
     actor: mutationActorValidator,
-    customerId: v.string(),
+    klantId: v.string(),
     type: v.optional(customerType),
-    displayName: v.optional(v.string()),
+    weergaveNaam: v.optional(v.string()),
     email: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    street: v.optional(v.string()),
-    houseNumber: v.optional(v.string()),
-    postalCode: v.optional(v.string()),
-    city: v.optional(v.string()),
-    notes: v.optional(v.string()),
+    telefoon: v.optional(v.string()),
+    straat: v.optional(v.string()),
+    huisnummer: v.optional(v.string()),
+    postcode: v.optional(v.string()),
+    plaats: v.optional(v.string()),
+    notities: v.optional(v.string()),
     status: v.optional(customerStatus)
   },
   handler: async (ctx, args) => {
@@ -337,24 +337,24 @@ export const updateCustomer = mutation({
       "editor",
       "admin"
     ]);
-    const customer = await ctx.db.get(args.customerId as Id<"customers">);
+    const customer = await ctx.db.get(args.klantId as Id<"customers">);
 
     if (!customer || customer.tenantId !== tenant._id) {
       throw new ConvexError("Customer not found");
     }
 
-    const patch: Partial<Doc<"customers">> = { updatedAt: Date.now() };
+    const patch: Partial<Doc<"customers">> = { gewijzigdOp: Date.now() };
 
     if (args.type !== undefined) patch.type = args.type;
-    if (args.displayName !== undefined) patch.displayName = args.displayName;
+    if (args.weergaveNaam !== undefined) patch.weergaveNaam = args.weergaveNaam;
     const hasArg = (obj: any, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
     if (hasArg(args, "email")) patch.email = args.email;
-    if (hasArg(args, "phone")) patch.phone = args.phone;
-    if (hasArg(args, "street")) patch.street = args.street;
-    if (hasArg(args, "houseNumber")) patch.houseNumber = args.houseNumber;
-    if (hasArg(args, "postalCode")) patch.postalCode = args.postalCode;
-    if (hasArg(args, "city")) patch.city = args.city;
-    if (hasArg(args, "notes")) patch.notes = args.notes;
+    if (hasArg(args, "phone")) patch.telefoon = args.telefoon;
+    if (hasArg(args, "street")) patch.straat = args.straat;
+    if (hasArg(args, "houseNumber")) patch.huisnummer = args.huisnummer;
+    if (hasArg(args, "postalCode")) patch.postcode = args.postcode;
+    if (hasArg(args, "city")) patch.plaats = args.plaats;
+    if (hasArg(args, "notes")) patch.notities = args.notities;
     if (args.status !== undefined) patch.status = args.status;
 
     await ctx.db.patch(customer._id, patch);
@@ -366,7 +366,7 @@ export const updateCustomer = mutation({
 export const customerDetail = query({
   args: {
     tenantSlug: v.string(),
-    customerId: v.string(),
+    klantId: v.string(),
     actor: readActorValidator
   },
   handler: async (ctx, args) => {
@@ -376,7 +376,7 @@ export const customerDetail = query({
       "editor",
       "admin"
     ]);
-    const customer = await ctx.db.get(args.customerId as Id<"customers">);
+    const customer = await ctx.db.get(args.klantId as Id<"customers">);
 
     if (!customer || customer.tenantId !== tenant._id) {
       return null;
@@ -386,13 +386,13 @@ export const customerDetail = query({
       ctx.db
         .query("projects")
         .withIndex("by_customer", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("customerId", customer._id)
+          q.eq("tenantId", tenant._id).eq("klantId", customer._id)
         )
         .collect(),
       ctx.db
         .query("customerContacts")
         .withIndex("by_customer", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("customerId", customer._id)
+          q.eq("tenantId", tenant._id).eq("klantId", customer._id)
         )
         .order("desc")
         .collect()
@@ -414,13 +414,13 @@ export const createCustomerContact = mutation({
   args: {
     tenantSlug: v.string(),
     actor: mutationActorValidator,
-    customerId: v.string(),
+    klantId: v.string(),
     type: customerContactType,
-    title: v.string(),
-    description: v.optional(v.string()),
-    loanedItemName: v.optional(v.string()),
-    expectedReturnDate: v.optional(v.number()),
-    visibleToCustomer: v.boolean(),
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
+    uitgeleendItemNaam: v.optional(v.string()),
+    verwachteRetourdatum: v.optional(v.number()),
+    zichtbaarVoorKlant: v.boolean(),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -430,7 +430,7 @@ export const createCustomerContact = mutation({
       args.actor,
       ["user", "editor", "admin"]
     );
-    const customer = await ctx.db.get(args.customerId as Id<"customers">);
+    const customer = await ctx.db.get(args.klantId as Id<"customers">);
 
     if (!customer || customer.tenantId !== tenant._id) {
       throw new ConvexError("Customer not found");
@@ -440,16 +440,16 @@ export const createCustomerContact = mutation({
 
     return await ctx.db.insert("customerContacts", {
       tenantId: tenant._id,
-      customerId: customer._id,
+      klantId: customer._id,
       type: args.type,
-      title: args.title,
-      description: args.description,
-      loanedItemName: args.loanedItemName,
-      expectedReturnDate: args.expectedReturnDate,
-      visibleToCustomer: args.visibleToCustomer,
+      titel: args.titel,
+      omschrijving: args.omschrijving,
+      uitgeleendItemNaam: args.uitgeleendItemNaam,
+      verwachteRetourdatum: args.verwachteRetourdatum,
+      zichtbaarVoorKlant: args.zichtbaarVoorKlant,
       createdByExternalUserId: externalUserId,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });

@@ -15,15 +15,15 @@ export type PlinthCalculationResult = IndicativeCalculationResult & {
 
 export function calculatePlinths(input: PlinthCalculationInput): PlinthCalculationResult {
   if (!isValidNumber(input.perimeterM) || input.perimeterM <= 0) {
-    return invalidPlinthResult("perimeterM must be greater than 0.");
+    return invalidPlinthResult("Omtrek moet groter dan 0 zijn.");
   }
 
   if (!isValidNumber(input.doorOpeningM) || input.doorOpeningM < 0) {
-    return invalidPlinthResult("doorOpeningM must be 0 or greater.");
+    return invalidPlinthResult("Deuropening mag niet negatief zijn.");
   }
 
   if (!isValidNumber(input.wastePercent) || input.wastePercent < 0) {
-    return invalidPlinthResult("wastePercent must be 0 or greater.");
+    return invalidPlinthResult("Snijverlies mag niet negatief zijn.");
   }
 
   const netMeter = roundToTwoDecimals(Math.max(input.perimeterM - input.doorOpeningM, 0));
@@ -37,7 +37,7 @@ export function calculatePlinths(input: PlinthCalculationInput): PlinthCalculati
     quoteQuantityMeter: ceilToTwoDecimals(totalMeter),
     validationError:
       input.doorOpeningM > input.perimeterM
-        ? "doorOpeningM is greater than perimeterM; netMeter was clamped to 0."
+        ? "Deuropening is groter dan de omtrek; netto meters zijn op 0 gezet."
         : undefined,
     isIndicative: true
   };

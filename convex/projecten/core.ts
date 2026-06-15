@@ -105,9 +105,9 @@ export const create = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    customerId: v.id("customers"),
-    title: v.string(),
-    description: v.optional(v.string()),
+    klantId: v.id("customers"),
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -117,7 +117,7 @@ export const create = mutation({
       args.actor,
       ["user", "editor", "admin"]
     );
-    const customer = await ctx.db.get(args.customerId);
+    const customer = await ctx.db.get(args.klantId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
       throw new ConvexError("Customer not found");
@@ -127,65 +127,13 @@ export const create = mutation({
 
     return await ctx.db.insert("projects", {
       tenantId: args.tenantId,
-      customerId: args.customerId,
-      title: args.title,
-      description: args.description,
+      klantId: args.klantId,
+      titel: args.titel,
+      omschrijving: args.omschrijving,
       status: "lead",
       createdByExternalUserId: externalUserId,
-      createdAt: now,
-      updatedAt: now
-    });
-  }
-});
-
-export const addRoom = mutation({
-  args: {
-    tenantId: v.id("tenants"),
-    actor: mutationActorValidator,
-    projectId: v.id("projects"),
-    name: v.string(),
-    floor: v.optional(v.string()),
-    widthCm: v.optional(v.number()),
-    lengthCm: v.optional(v.number()),
-    heightCm: v.optional(v.number()),
-    areaM2: v.optional(v.number()),
-    perimeterMeter: v.optional(v.number()),
-    notes: v.optional(v.string())
-  },
-  handler: async (ctx, args) => {
-    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
-      "user",
-      "editor",
-      "admin"
-    ]);
-    const project = await ctx.db.get(args.projectId);
-
-    if (!project || project.tenantId !== args.tenantId) {
-      throw new ConvexError("Project not found");
-    }
-
-    const rooms = await ctx.db
-      .query("projectRooms")
-      .withIndex("by_project", (q) =>
-        q.eq("tenantId", args.tenantId).eq("projectId", args.projectId)
-      )
-      .collect();
-    const now = Date.now();
-
-    return await ctx.db.insert("projectRooms", {
-      tenantId: args.tenantId,
-      projectId: args.projectId,
-      name: args.name,
-      floor: args.floor,
-      widthCm: args.widthCm,
-      lengthCm: args.lengthCm,
-      heightCm: args.heightCm,
-      areaM2: args.areaM2,
-      perimeterMeter: args.perimeterMeter,
-      notes: args.notes,
-      sortOrder: rooms.length + 1,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -211,16 +159,16 @@ export const updateStatus = mutation({
 
     await ctx.db.patch(args.projectId, {
       status: args.status,
-      acceptedAt: args.status === "quote_accepted" ? Date.now() : project.acceptedAt,
-      measurementPlannedAt:
-        args.status === "measurement_planned" ? Date.now() : project.measurementPlannedAt,
-      executionPlannedAt:
-        args.status === "execution_planned" ? Date.now() : project.executionPlannedAt,
-      orderedAt: args.status === "ordering" ? Date.now() : project.orderedAt,
-      invoicedAt: args.status === "invoiced" ? Date.now() : project.invoicedAt,
-      paidAt: args.status === "paid" ? Date.now() : project.paidAt,
-      closedAt: args.status === "closed" ? Date.now() : project.closedAt,
-      updatedAt: Date.now()
+      geaccepteerdOp: args.status === "quote_accepted" ? Date.now() : project.geaccepteerdOp,
+      inmeetGeplandOp:
+        args.status === "measurement_planned" ? Date.now() : project.inmeetGeplandOp,
+      uitvoerGeplandOp:
+        args.status === "execution_planned" ? Date.now() : project.uitvoerGeplandOp,
+      besteldOp: args.status === "ordering" ? Date.now() : project.besteldOp,
+      gefactureerdOp: args.status === "invoiced" ? Date.now() : project.gefactureerdOp,
+      betaaldOp: args.status === "paid" ? Date.now() : project.betaaldOp,
+      afgeslotenOp: args.status === "closed" ? Date.now() : project.afgeslotenOp,
+      gewijzigdOp: Date.now()
     });
 
     return args.projectId;
@@ -251,13 +199,13 @@ export const listProjects = query({
         .collect()
     ]);
     const customerById = new Map(
-      customers.map((customer: Doc<"customers">) => [String(customer._id), customer.displayName])
+      customers.map((customer: Doc<"customers">) => [String(customer._id), customer.weergaveNaam])
     );
 
     return await Promise.all(
       projects.map(async (project: Doc<"projects">) => ({
         ...(await toProject(ctx, tenant.slug, project)),
-        customerName: customerById.get(String(project.customerId)) ?? "-"
+        customerName: customerById.get(String(project.klantId)) ?? "-"
       }))
     );
   }
@@ -307,9 +255,9 @@ export const createProject = mutation({
   args: {
     tenantSlug: v.string(),
     actor: mutationActorValidator,
-    customerId: v.string(),
-    title: v.string(),
-    description: v.optional(v.string()),
+    klantId: v.string(),
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -319,7 +267,7 @@ export const createProject = mutation({
       args.actor,
       ["user", "editor", "admin"]
     );
-    const customer = await ctx.db.get(args.customerId as Id<"customers">);
+    const customer = await ctx.db.get(args.klantId as Id<"customers">);
 
     if (!customer || customer.tenantId !== tenant._id) {
       throw new ConvexError("Customer not found");
@@ -329,13 +277,13 @@ export const createProject = mutation({
 
     return await ctx.db.insert("projects", {
       tenantId: tenant._id,
-      customerId: customer._id,
-      title: args.title,
-      description: args.description,
+      klantId: customer._id,
+      titel: args.titel,
+      omschrijving: args.omschrijving,
       status: "lead",
       createdByExternalUserId: externalUserId,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -345,13 +293,13 @@ export const updateProject = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     projectId: v.string(),
-    title: v.optional(v.string()),
-    description: v.optional(v.string()),
-    preferredExecutionDate: v.optional(v.number()),
-    measurementDate: v.optional(v.number()),
-    executionDate: v.optional(v.number()),
-    internalNotes: v.optional(v.string()),
-    customerNotes: v.optional(v.string()),
+    titel: v.optional(v.string()),
+    omschrijving: v.optional(v.string()),
+    gewensteUitvoerdatum: v.optional(v.number()),
+    inmeetdatum: v.optional(v.number()),
+    uitvoerdatum: v.optional(v.number()),
+    interneNotities: v.optional(v.string()),
+    klantNotities: v.optional(v.string()),
     status: v.optional(projectStatus)
   },
   handler: async (ctx, args) => {
@@ -366,17 +314,17 @@ export const updateProject = mutation({
       throw new ConvexError("Project not found");
     }
 
-    const patch: Partial<Doc<"projects">> = { updatedAt: Date.now() };
+    const patch: Partial<Doc<"projects">> = { gewijzigdOp: Date.now() };
 
-    if (args.title !== undefined) patch.title = args.title;
-    if (hasArg(args, "description")) patch.description = args.description;
-    if (hasArg(args, "preferredExecutionDate")) {
-      patch.preferredExecutionDate = args.preferredExecutionDate;
+    if (args.titel !== undefined) patch.titel = args.titel;
+    if (hasArg(args, "omschrijving")) patch.omschrijving = args.omschrijving;
+    if (hasArg(args, "gewensteUitvoerdatum")) {
+      patch.gewensteUitvoerdatum = args.gewensteUitvoerdatum;
     }
-    if (hasArg(args, "measurementDate")) patch.measurementDate = args.measurementDate;
-    if (hasArg(args, "executionDate")) patch.executionDate = args.executionDate;
-    if (hasArg(args, "internalNotes")) patch.internalNotes = args.internalNotes;
-    if (hasArg(args, "customerNotes")) patch.customerNotes = args.customerNotes;
+    if (hasArg(args, "inmeetdatum")) patch.inmeetdatum = args.inmeetdatum;
+    if (hasArg(args, "uitvoerdatum")) patch.uitvoerdatum = args.uitvoerdatum;
+    if (hasArg(args, "interneNotities")) patch.interneNotities = args.interneNotities;
+    if (hasArg(args, "klantNotities")) patch.klantNotities = args.klantNotities;
     if (args.status !== undefined) patch.status = args.status;
 
     await ctx.db.patch(project._id, patch);
@@ -411,7 +359,7 @@ export const projectDetail = query({
     }
 
     const [customer, workflowEvents, projectTasks, projectInvoices, latestQuote] = await Promise.all([
-      ctx.db.get(project.customerId),
+      ctx.db.get(project.klantId),
       ctx.db
         .query("projectWorkflowEvents")
         .withIndex("by_project", (q: any) =>
@@ -435,7 +383,7 @@ export const projectDetail = query({
 
     // Meest recente factuur (doorgaans is er maar één per project)
     const latestInvoice = projectInvoices
-      .sort((left: Doc<"invoices">, right: Doc<"invoices">) => right.createdAt - left.createdAt)
+      .sort((left: Doc<"invoices">, right: Doc<"invoices">) => right.aangemaaktOp - left.aangemaaktOp)
       .at(0);
 
     return {
@@ -445,7 +393,7 @@ export const projectDetail = query({
       workflowEvents: workflowEvents
         .sort(
           (left: Doc<"projectWorkflowEvents">, right: Doc<"projectWorkflowEvents">) =>
-            right.createdAt - left.createdAt
+            right.aangemaaktOp - left.aangemaaktOp
         )
         .map((event: Doc<"projectWorkflowEvents">) => toWorkflowEvent(tenant.slug, event)),
       projectTasks: sortProjectTasks(projectTasks).map((task: Doc<"projectTasks">) =>
@@ -454,11 +402,11 @@ export const projectDetail = query({
       invoice: latestInvoice
         ? {
             id: String(latestInvoice._id),
-            invoiceNumber: latestInvoice.invoiceNumber,
+            invoiceNumber: latestInvoice.factuurnummer,
             status: latestInvoice.status,
-            totalIncVat: latestInvoice.totalIncVat,
-            dueDate: latestInvoice.dueDate,
-            paidAmount: latestInvoice.paidAmount
+            totalIncVat: latestInvoice.totaalInclBtw,
+            dueDate: latestInvoice.vervaldatum,
+            paidAmount: latestInvoice.betaaldBedrag
           }
         : null
     };
@@ -470,9 +418,9 @@ export const addProjectRoom = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     projectId: v.string(),
-    name: v.string(),
-    areaM2: v.optional(v.number()),
-    perimeterMeter: v.optional(v.number())
+    naam: v.string(),
+    oppervlakteM2: v.optional(v.number()),
+    omtrekMeter: v.optional(v.number())
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
@@ -491,15 +439,15 @@ export const addProjectRoom = mutation({
     const roomId = await ctx.db.insert("projectRooms", {
       tenantId: tenant._id,
       projectId: project._id,
-      name: args.name,
-      areaM2: args.areaM2,
-      perimeterMeter: args.perimeterMeter,
+      naam: args.naam,
+      oppervlakteM2: args.oppervlakteM2,
+      omtrekMeter: args.omtrekMeter,
       sortOrder: rooms.length + 1,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
 
-    await ctx.db.patch(project._id, { updatedAt: now });
+    await ctx.db.patch(project._id, { gewijzigdOp: now });
 
     return roomId;
   }
@@ -509,12 +457,12 @@ export const updateProjectRoom = mutation({
   args: {
     tenantSlug: v.string(),
     actor: mutationActorValidator,
-    roomId: v.string(),
-    name: v.string(),
-    floor: v.optional(v.string()),
-    areaM2: v.optional(v.number()),
-    perimeterMeter: v.optional(v.number()),
-    notes: v.optional(v.string())
+    ruimteId: v.string(),
+    naam: v.string(),
+    verdieping: v.optional(v.string()),
+    oppervlakteM2: v.optional(v.number()),
+    omtrekMeter: v.optional(v.number()),
+    notities: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
@@ -522,7 +470,7 @@ export const updateProjectRoom = mutation({
       "editor",
       "admin"
     ]);
-    const room = await ctx.db.get(args.roomId as Id<"projectRooms">);
+    const room = await ctx.db.get(args.ruimteId as Id<"projectRooms">);
 
     if (!room || room.tenantId !== tenant._id) {
       throw new ConvexError("Project room not found");
@@ -530,14 +478,30 @@ export const updateProjectRoom = mutation({
 
     const now = Date.now();
     await ctx.db.patch(room._id, {
-      name: args.name,
-      floor: args.floor,
-      areaM2: args.areaM2,
-      perimeterMeter: args.perimeterMeter,
-      notes: args.notes,
-      updatedAt: now
+      naam: args.naam,
+      verdieping: args.verdieping,
+      oppervlakteM2: args.oppervlakteM2,
+      omtrekMeter: args.omtrekMeter,
+      notities: args.notities,
+      gewijzigdOp: now
     });
-    await ctx.db.patch(room.projectId, { updatedAt: now });
+    await ctx.db.patch(room.projectId, { gewijzigdOp: now });
+
+    // Propageer de identiteit (naam/verdieping) naar gekoppelde inmeet-ruimtes — één ruimte-identiteit.
+    // Maten propageren we bewust NIET: de gemeten maten op de inmeting zijn leidend.
+    const linkedRooms = await ctx.db
+      .query("measurementRooms")
+      .withIndex("by_project_room", (q) =>
+        q.eq("tenantId", tenant._id).eq("projectRuimteId", room._id)
+      )
+      .collect();
+    for (const measurementRoom of linkedRooms) {
+      await ctx.db.patch(measurementRoom._id, {
+        naam: args.naam,
+        verdieping: args.verdieping,
+        gewijzigdOp: now
+      });
+    }
 
     return room._id;
   }
@@ -547,7 +511,7 @@ export const deleteProjectRoom = mutation({
   args: {
     tenantSlug: v.string(),
     actor: mutationActorValidator,
-    roomId: v.string()
+    ruimteId: v.string()
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
@@ -555,7 +519,7 @@ export const deleteProjectRoom = mutation({
       "editor",
       "admin"
     ]);
-    const room = await ctx.db.get(args.roomId as Id<"projectRooms">);
+    const room = await ctx.db.get(args.ruimteId as Id<"projectRooms">);
 
     if (!room || room.tenantId !== tenant._id) {
       throw new ConvexError("Project room not found");
@@ -565,13 +529,13 @@ export const deleteProjectRoom = mutation({
       ctx.db
         .query("measurementRooms")
         .withIndex("by_project_room", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("projectRoomId", room._id)
+          q.eq("tenantId", tenant._id).eq("projectRuimteId", room._id)
         )
         .first(),
       ctx.db
         .query("quoteLines")
         .withIndex("by_room", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("projectRoomId", room._id)
+          q.eq("tenantId", tenant._id).eq("projectRuimteId", room._id)
         )
         .first()
     ]);
@@ -581,7 +545,7 @@ export const deleteProjectRoom = mutation({
     }
 
     await ctx.db.delete(room._id);
-    await ctx.db.patch(room.projectId, { updatedAt: Date.now() });
+    await ctx.db.patch(room.projectId, { gewijzigdOp: Date.now() });
 
     return room._id;
   }
@@ -614,16 +578,16 @@ export const updateProjectStatus = mutation({
 
     await ctx.db.patch(project._id, {
       status: args.status,
-      acceptedAt: args.status === "quote_accepted" ? now : project.acceptedAt,
-      measurementPlannedAt:
-        args.status === "measurement_planned" ? now : project.measurementPlannedAt,
-      executionPlannedAt:
-        args.status === "execution_planned" ? now : project.executionPlannedAt,
-      orderedAt: args.status === "ordering" ? now : project.orderedAt,
-      invoicedAt: args.status === "invoiced" ? now : project.invoicedAt,
-      paidAt: args.status === "paid" ? now : project.paidAt,
-      closedAt: args.status === "closed" ? now : project.closedAt,
-      updatedAt: now
+      geaccepteerdOp: args.status === "quote_accepted" ? now : project.geaccepteerdOp,
+      inmeetGeplandOp:
+        args.status === "measurement_planned" ? now : project.inmeetGeplandOp,
+      uitvoerGeplandOp:
+        args.status === "execution_planned" ? now : project.uitvoerGeplandOp,
+      besteldOp: args.status === "ordering" ? now : project.besteldOp,
+      gefactureerdOp: args.status === "invoiced" ? now : project.gefactureerdOp,
+      betaaldOp: args.status === "paid" ? now : project.betaaldOp,
+      afgeslotenOp: args.status === "closed" ? now : project.afgeslotenOp,
+      gewijzigdOp: now
     });
 
     if (args.workflowType && args.workflowTitle) {
@@ -631,10 +595,10 @@ export const updateProjectStatus = mutation({
         tenantId: tenant._id,
         projectId: project._id,
         type: args.workflowType,
-        title: args.workflowTitle,
-        visibleToCustomer: false,
+        titel: args.workflowTitle,
+        zichtbaarVoorKlant: false,
         createdByExternalUserId: externalUserId,
-        createdAt: now
+        aangemaaktOp: now
       });
     }
 
@@ -647,8 +611,8 @@ export const startOrPlanMeasurement = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     projectId: v.string(),
-    measurementDate: v.optional(v.number()),
-    measuredBy: v.optional(v.string())
+    inmeetdatum: v.optional(v.number()),
+    gemetenDoor: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     const { tenant, externalUserId } = await requireMutationRole(
@@ -667,7 +631,7 @@ export const startOrPlanMeasurement = mutation({
       throw new ConvexError("Afgesloten dossiers kunnen niet opnieuw worden ingemeten.");
     }
 
-    const customer = await ctx.db.get(project.customerId);
+    const customer = await ctx.db.get(project.klantId);
 
     if (!customer || customer.tenantId !== tenant._id) {
       throw new ConvexError("Customer not found");
@@ -675,27 +639,27 @@ export const startOrPlanMeasurement = mutation({
 
     const now = Date.now();
     const existingMeasurement = await latestMeasurementForProject(ctx, tenant._id, project._id);
-    const measurementDate = hasArg(args, "measurementDate")
-      ? args.measurementDate
-      : project.measurementDate ?? existingMeasurement?.measurementDate;
+    const measurementDate = hasArg(args, "inmeetdatum")
+      ? args.inmeetdatum
+      : project.inmeetdatum ?? existingMeasurement?.inmeetdatum;
     let measurementId = existingMeasurement?._id;
     let measurementCreated = false;
 
     if (existingMeasurement) {
       const measurementPatch: Partial<Doc<"measurements">> = {};
 
-      if (hasArg(args, "measurementDate") && existingMeasurement.measurementDate !== measurementDate) {
-        measurementPatch.measurementDate = measurementDate;
+      if (hasArg(args, "inmeetdatum") && existingMeasurement.inmeetdatum !== measurementDate) {
+        measurementPatch.inmeetdatum = measurementDate;
       }
 
-      if (args.measuredBy && !existingMeasurement.measuredBy) {
-        measurementPatch.measuredBy = args.measuredBy;
+      if (args.gemetenDoor && !existingMeasurement.gemetenDoor) {
+        measurementPatch.gemetenDoor = args.gemetenDoor;
       }
 
       if (Object.keys(measurementPatch).length > 0) {
         await ctx.db.patch(existingMeasurement._id, {
           ...measurementPatch,
-          updatedAt: now
+          gewijzigdOp: now
         });
       }
     } else {
@@ -703,25 +667,25 @@ export const startOrPlanMeasurement = mutation({
       measurementId = await ctx.db.insert("measurements", {
         tenantId: tenant._id,
         projectId: project._id,
-        customerId: project.customerId,
+        klantId: project.klantId,
         status: "draft",
-        measurementDate,
-        measuredBy: args.measuredBy,
+        inmeetdatum: measurementDate,
+        gemetenDoor: args.gemetenDoor,
         createdByExternalUserId: externalUserId,
-        createdAt: now,
-        updatedAt: now
+        aangemaaktOp: now,
+        gewijzigdOp: now
       });
     }
 
     const projectPatch: Partial<Doc<"projects">> = {
       status: "measurement_planned",
-      updatedAt: now
+      gewijzigdOp: now
     };
 
-    if (hasArg(args, "measurementDate")) {
-      projectPatch.measurementDate = measurementDate;
-    } else if (!project.measurementDate) {
-      projectPatch.measurementPlannedAt = undefined;
+    if (hasArg(args, "inmeetdatum")) {
+      projectPatch.inmeetdatum = measurementDate;
+    } else if (!project.inmeetdatum) {
+      projectPatch.inmeetGeplandOp = undefined;
     }
 
     await ctx.db.patch(project._id, projectPatch);
@@ -758,9 +722,9 @@ export const createWorkflowEvent = mutation({
     actor: mutationActorValidator,
     projectId: v.string(),
     type: workflowEventType,
-    title: v.string(),
-    description: v.optional(v.string()),
-    visibleToCustomer: v.boolean(),
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
+    zichtbaarVoorKlant: v.boolean(),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -780,11 +744,11 @@ export const createWorkflowEvent = mutation({
       tenantId: tenant._id,
       projectId: project._id,
       type: args.type,
-      title: args.title,
-      description: args.description,
-      visibleToCustomer: args.visibleToCustomer,
+      titel: args.titel,
+      omschrijving: args.omschrijving,
+      zichtbaarVoorKlant: args.zichtbaarVoorKlant,
       createdByExternalUserId: externalUserId,
-      createdAt: Date.now()
+      aangemaaktOp: Date.now()
     });
   }
 });
@@ -819,7 +783,7 @@ export const processProjectAction = mutation({
 
     const now = Date.now();
     const customer =
-      args.action === "invoice_created" ? await ctx.db.get(project.customerId) : null;
+      args.action === "invoice_created" ? await ctx.db.get(project.klantId) : null;
     const invoiceTermDays = invoicePaymentTermDays(
       customer && customer.tenantId === tenant._id ? customer : null
     );
@@ -885,24 +849,24 @@ export const processProjectAction = mutation({
 
     await ctx.db.patch(project._id, {
       status: actionConfig.projectStatus,
-      acceptedAt:
-        actionConfig.projectStatus === "quote_accepted" ? now : project.acceptedAt,
-      orderedAt: actionConfig.projectStatus === "ordering" ? now : project.orderedAt,
-      invoicedAt: actionConfig.projectStatus === "invoiced" ? now : project.invoicedAt,
-      closedAt:
+      geaccepteerdOp:
+        actionConfig.projectStatus === "quote_accepted" ? now : project.geaccepteerdOp,
+      besteldOp: actionConfig.projectStatus === "ordering" ? now : project.besteldOp,
+      gefactureerdOp: actionConfig.projectStatus === "invoiced" ? now : project.gefactureerdOp,
+      afgeslotenOp:
         actionConfig.projectStatus === "closed" ||
         actionConfig.projectStatus === "cancelled"
           ? now
-          : project.closedAt,
-      updatedAt: now
+          : project.afgeslotenOp,
+      gewijzigdOp: now
     });
 
     if (args.action === "quote_accepted") {
       if (latestQuote && latestQuote.status !== "accepted") {
         await ctx.db.patch(latestQuote._id, {
           status: "accepted",
-          acceptedAt: now,
-          updatedAt: now
+          geaccepteerdOp: now,
+          gewijzigdOp: now
         });
       }
 
@@ -941,7 +905,7 @@ export const processProjectAction = mutation({
     }
 
     if (args.action === "invoice_created") {
-      const invoiceDueAt = existingInvoice?.dueDate ?? args.invoiceDueAt ?? addCalendarDays(now, invoiceTermDays);
+      const invoiceDueAt = existingInvoice?.vervaldatum ?? args.invoiceDueAt ?? addCalendarDays(now, invoiceTermDays);
       await completeInvoiceWorkflow(ctx, tenant._id, project, invoiceDueAt, externalUserId);
 
       if (!existingInvoice) {
@@ -949,18 +913,18 @@ export const processProjectAction = mutation({
         await ctx.db.insert("invoices", {
           tenantId: tenant._id,
           projectId: project._id,
-          customerId: project.customerId,
+          klantId: project.klantId,
           quoteId: latestAcceptedQuote?._id,
-          invoiceNumber,
+          factuurnummer: invoiceNumber,
           status: "sent",
-          invoiceDate: now,
-          dueDate: invoiceDueAt,
-          subtotalExVat: latestAcceptedQuote?.subtotalExVat ?? 0,
-          vatTotal: latestAcceptedQuote?.vatTotal ?? 0,
-          totalIncVat: latestAcceptedQuote?.totalIncVat ?? 0,
-          paidAmount: 0,
-          createdAt: now,
-          updatedAt: now
+          factuurdatum: now,
+          vervaldatum: invoiceDueAt,
+          subtotaalExBtw: latestAcceptedQuote?.subtotaalExBtw ?? 0,
+          btwTotaal: latestAcceptedQuote?.btwTotaal ?? 0,
+          totaalInclBtw: latestAcceptedQuote?.totaalInclBtw ?? 0,
+          betaaldBedrag: 0,
+          aangemaaktOp: now,
+          gewijzigdOp: now
         });
       }
     }
@@ -970,7 +934,7 @@ export const processProjectAction = mutation({
       if (quote && ["draft", "sent"].includes(quote.status)) {
         await ctx.db.patch(quote._id, {
           status: "cancelled",
-          updatedAt: now
+          gewijzigdOp: now
         });
       }
     }
@@ -1024,9 +988,9 @@ export const updateProjectTaskStatus = mutation({
 
     await ctx.db.patch(task._id, {
       status: args.status,
-      completedAt: args.status === "done" ? now : undefined,
-      dismissedAt: args.status === "dismissed" ? now : undefined,
-      updatedAt: now
+      voltooidOp: args.status === "done" ? now : undefined,
+      afgewezenOp: args.status === "dismissed" ? now : undefined,
+      gewijzigdOp: now
     });
 
     return task._id;

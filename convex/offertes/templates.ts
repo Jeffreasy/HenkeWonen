@@ -30,24 +30,24 @@ const lineType = v.union(
 );
 
 const section = v.object({
-  key: v.string(),
-  title: v.string(),
-  description: v.optional(v.string()),
+  sleutel: v.string(),
+  titel: v.string(),
+  omschrijving: v.optional(v.string()),
   sortOrder: v.number()
 });
 
 const templateLine = v.object({
-  sectionKey: v.optional(v.string()),
-  lineType,
-  title: v.string(),
-  unit: v.string(),
-  description: v.optional(v.string()),
-  defaultQuantity: v.optional(v.number()),
+  sectieSleutel: v.optional(v.string()),
+  regelType: lineType,
+  titel: v.string(),
+  eenheid: v.string(),
+  omschrijving: v.optional(v.string()),
+  standaardAantal: v.optional(v.number()),
   sortOrder: v.number(),
-  optional: v.optional(v.boolean()),
-  defaultEnabled: v.optional(v.boolean()),
-  categoryHint: v.optional(v.string()),
-  productKindHint: v.optional(v.string())
+  optioneel: v.optional(v.boolean()),
+  standaardIngeschakeld: v.optional(v.boolean()),
+  categorieHint: v.optional(v.string()),
+  productSoortHint: v.optional(v.string())
 });
 
 export const list = query({
@@ -79,14 +79,14 @@ export const upsert = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    name: v.string(),
+    naam: v.string(),
     type: templateType,
-    introText: v.optional(v.string()),
-    closingText: v.optional(v.string()),
-    sections: v.optional(v.array(section)),
-    defaultTerms: v.array(v.string()),
-    paymentTerms: v.optional(v.array(v.string())),
-    defaultLines: v.array(templateLine)
+    inleidingTekst: v.optional(v.string()),
+    afsluitTekst: v.optional(v.string()),
+    secties: v.optional(v.array(section)),
+    standaardVoorwaarden: v.array(v.string()),
+    betalingsvoorwaarden: v.optional(v.array(v.string())),
+    standaardRegels: v.array(templateLine)
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
@@ -94,19 +94,19 @@ export const upsert = mutation({
     const existing = await ctx.db
       .query("quoteTemplates")
       .withIndex("by_type", (q) => q.eq("tenantId", args.tenantId).eq("type", args.type))
-      .filter((q) => q.eq(q.field("name"), args.name))
+      .filter((q) => q.eq(q.field("naam"), args.naam))
       .first();
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        introText: args.introText,
-        closingText: args.closingText,
-        sections: args.sections,
-        defaultTerms: args.defaultTerms,
-        paymentTerms: args.paymentTerms,
-        defaultLines: args.defaultLines,
+        inleidingTekst: args.inleidingTekst,
+        afsluitTekst: args.afsluitTekst,
+        secties: args.secties,
+        standaardVoorwaarden: args.standaardVoorwaarden,
+        betalingsvoorwaarden: args.betalingsvoorwaarden,
+        standaardRegels: args.standaardRegels,
         status: "active",
-        updatedAt: now
+        gewijzigdOp: now
       });
 
       return existing._id;
@@ -114,17 +114,17 @@ export const upsert = mutation({
 
     return await ctx.db.insert("quoteTemplates", {
       tenantId: args.tenantId,
-      name: args.name,
+      naam: args.naam,
       type: args.type,
-      introText: args.introText,
-      closingText: args.closingText,
-      sections: args.sections,
-      defaultTerms: args.defaultTerms,
-      paymentTerms: args.paymentTerms,
-      defaultLines: args.defaultLines,
+      inleidingTekst: args.inleidingTekst,
+      afsluitTekst: args.afsluitTekst,
+      secties: args.secties,
+      standaardVoorwaarden: args.standaardVoorwaarden,
+      betalingsvoorwaarden: args.betalingsvoorwaarden,
+      standaardRegels: args.standaardRegels,
       status: "active",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -144,15 +144,15 @@ export const listQuoteTemplates = query({
     return templates.map((template: Doc<"quoteTemplates">) => ({
       id: String(template._id),
       tenantId: tenant.slug,
-      name: template.name,
+      naam: template.naam,
       type: template.type,
       status: template.status,
-      introText: template.introText,
-      closingText: template.closingText,
-      sections: template.sections ?? [],
-      defaultTerms: template.defaultTerms,
-      paymentTerms: template.paymentTerms ?? [],
-      defaultLines: template.defaultLines
+      inleidingTekst: template.inleidingTekst,
+      afsluitTekst: template.afsluitTekst,
+      secties: template.secties ?? [],
+      standaardVoorwaarden: template.standaardVoorwaarden,
+      betalingsvoorwaarden: template.betalingsvoorwaarden ?? [],
+      standaardRegels: template.standaardRegels
     }));
   }
 });
@@ -162,8 +162,8 @@ export const updateQuoteTemplateContent = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     templateId: v.string(),
-    defaultTerms: v.array(v.string()),
-    paymentTerms: v.optional(v.array(v.string()))
+    standaardVoorwaarden: v.array(v.string()),
+    betalingsvoorwaarden: v.optional(v.array(v.string()))
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
@@ -174,9 +174,9 @@ export const updateQuoteTemplateContent = mutation({
     }
 
     await ctx.db.patch(template._id, {
-      defaultTerms: args.defaultTerms,
-      paymentTerms: args.paymentTerms ?? [],
-      updatedAt: Date.now()
+      standaardVoorwaarden: args.standaardVoorwaarden,
+      betalingsvoorwaarden: args.betalingsvoorwaarden ?? [],
+      gewijzigdOp: Date.now()
     });
 
     return template._id;

@@ -45,11 +45,11 @@ export function RoomEditForm({ room, onSave, onCancel }: RoomEditFormProps) {
   useAutoFocusPanel(true, formRef);
 
   useEffect(() => {
-    setName(room.name);
-    setFloor(room.floor ?? "");
-    setAreaM2(decimalText(room.areaM2));
-    setPerimeterMeter(decimalText(room.perimeterMeter));
-    setNotes(room.notes ?? "");
+    setName(room.naam);
+    setFloor(room.verdieping ?? "");
+    setAreaM2(decimalText(room.oppervlakteM2));
+    setPerimeterMeter(decimalText(room.omtrekMeter));
+    setNotes(room.notities ?? "");
   }, [room]);
 
   async function handleSubmit(event: SubmitEventLike) {
@@ -81,7 +81,7 @@ export function RoomEditForm({ room, onSave, onCancel }: RoomEditFormProps) {
     >
       <SectionHeader
         compact
-        title={`Ruimte aanpassen: ${room.name}`}
+        title={`Ruimte aanpassen: ${room.naam}`}
         description="Je corrigeert nu deze projectruimte."
       />
       <div className="grid three-column">
@@ -110,6 +110,13 @@ export function RoomEditForm({ room, onSave, onCancel }: RoomEditFormProps) {
           />
         </Field>
       </div>
+      <Field htmlFor="edit-room-floor" label="Verdieping">
+        <Input
+          id="edit-room-floor"
+          value={floor}
+          onChange={(event) => setFloor(event.target.value)}
+        />
+      </Field>
       <Field htmlFor="edit-room-notes" label="Notities">
         <Textarea
           id="edit-room-notes"

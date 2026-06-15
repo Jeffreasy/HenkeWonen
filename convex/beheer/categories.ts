@@ -30,9 +30,9 @@ export const create = mutation({
   args: {
     tenantId: v.id("tenants"),
     actor: mutationActorValidator,
-    name: v.string(),
+    naam: v.string(),
     slug: v.string(),
-    parentCategoryId: v.optional(v.id("categories")),
+    bovenliggendeCategorieId: v.optional(v.id("categories")),
     sortOrder: v.number()
   },
   handler: async (ctx, args) => {
@@ -45,11 +45,11 @@ export const create = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        name: args.name,
-        parentCategoryId: args.parentCategoryId,
+        naam: args.naam,
+        bovenliggendeCategorieId: args.bovenliggendeCategorieId,
         sortOrder: args.sortOrder,
         status: "active",
-        updatedAt: now
+        gewijzigdOp: now
       });
 
       return existing._id;
@@ -57,13 +57,13 @@ export const create = mutation({
 
     return await ctx.db.insert("categories", {
       tenantId: args.tenantId,
-      name: args.name,
+      naam: args.naam,
       slug: args.slug,
-      parentCategoryId: args.parentCategoryId,
+      bovenliggendeCategorieId: args.bovenliggendeCategorieId,
       sortOrder: args.sortOrder,
       status: "active",
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });
@@ -85,7 +85,7 @@ export const listCategories = query({
       .map((category: Doc<"categories">) => ({
         id: String(category._id),
         tenantId: tenant.slug,
-        name: category.name,
+        name: category.naam,
         slug: category.slug,
         sortOrder: category.sortOrder,
         status: category.status
@@ -97,8 +97,8 @@ export const upsertCategory = mutation({
   args: {
     tenantSlug: v.string(),
     actor: mutationActorValidator,
-    categoryId: v.optional(v.string()),
-    name: v.string(),
+    categorieId: v.optional(v.string()),
+    naam: v.string(),
     slug: v.string(),
     sortOrder: v.number(),
     status: activeStatus
@@ -107,19 +107,19 @@ export const upsertCategory = mutation({
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
     const now = Date.now();
 
-    if (args.categoryId) {
-      const category = await ctx.db.get(args.categoryId as Id<"categories">);
+    if (args.categorieId) {
+      const category = await ctx.db.get(args.categorieId as Id<"categories">);
 
       if (!category || category.tenantId !== tenant._id) {
         throw new ConvexError("Category not found");
       }
 
       await ctx.db.patch(category._id, {
-        name: args.name,
+        naam: args.naam,
         slug: args.slug,
         sortOrder: args.sortOrder,
         status: args.status,
-        updatedAt: now
+        gewijzigdOp: now
       });
 
       return category._id;
@@ -132,10 +132,10 @@ export const upsertCategory = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        name: args.name,
+        naam: args.naam,
         sortOrder: args.sortOrder,
         status: args.status,
-        updatedAt: now
+        gewijzigdOp: now
       });
 
       return existing._id;
@@ -143,12 +143,12 @@ export const upsertCategory = mutation({
 
     return await ctx.db.insert("categories", {
       tenantId: tenant._id,
-      name: args.name,
+      naam: args.naam,
       slug: args.slug,
       sortOrder: args.sortOrder,
       status: args.status,
-      createdAt: now,
-      updatedAt: now
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
   }
 });

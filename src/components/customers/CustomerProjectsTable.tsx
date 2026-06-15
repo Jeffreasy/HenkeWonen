@@ -19,9 +19,9 @@ export function CustomerProjectsTable({ projects }: CustomerProjectsTableProps) 
         render: (project) => (
           <div className="stack-sm">
             <a href={`/portal/projecten/${project.id}`}>
-              <strong>{project.title}</strong>
+              <strong>{project.titel}</strong>
             </a>
-            <small className="muted">{project.description ?? "Geen omschrijving"}</small>
+            <small className="muted">{project.omschrijving ?? "Geen omschrijving"}</small>
           </div>
         )
       },
@@ -64,9 +64,9 @@ export function CustomerProjectsTable({ projects }: CustomerProjectsTableProps) 
             <div className="mobile-card-header">
               <div className="mobile-card-title">
                 <a href={`/portal/projecten/${project.id}`}>
-                  <strong>{project.title}</strong>
+                  <strong>{project.titel}</strong>
                 </a>
-                <small className="muted">{project.description ?? "Geen omschrijving"}</small>
+                <small className="muted">{project.omschrijving ?? "Geen omschrijving"}</small>
               </div>
               <StatusBadge status={project.status} label={formatProjectStatus(project.status)} />
             </div>

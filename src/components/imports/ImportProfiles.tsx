@@ -351,9 +351,9 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         profileId: row.profileId,
-        sourceColumnName: row.sourceColumnName,
-        sourceColumnIndex: row.sourceColumnIndex,
-        vatMode: value,
+        bronKolomNaam: row.sourceColumnName,
+        bronKolomIndex: row.sourceColumnIndex,
+        btwModus: value,
         updatedByExternalUserId: session.userId
       });
       await loadReview();
@@ -384,10 +384,10 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
         actor: mutationActorFromSession(session),
         profileId,
         columns: selectedRows.map((row) => ({
-          sourceColumnName: row.sourceColumnName,
-          sourceColumnIndex: row.sourceColumnIndex
+          bronKolomNaam: row.sourceColumnName,
+          bronKolomIndex: row.sourceColumnIndex
         })),
-        vatMode,
+        btwModus: vatMode,
         updatedByExternalUserId: session.userId
       });
       setSelected((current) => {
@@ -423,8 +423,8 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
         actor: mutationActorFromSession(session),
         profileId: rows[0].profileId,
         columns: selectedRows.map((row) => ({
-          sourceColumnName: row.sourceColumnName,
-          sourceColumnIndex: row.sourceColumnIndex
+          bronKolomNaam: row.sourceColumnName,
+          bronKolomIndex: row.sourceColumnIndex
         })),
         reviewedByExternalUserId: session.userId
       });
@@ -459,7 +459,7 @@ export default function ImportProfiles({ session }: ImportProfilesProps) {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         profileId,
-        allowUnknownVatMode,
+        staBtwModusOnbekendToe: allowUnknownVatMode,
         updatedByExternalUserId: session.userId
       });
       showToast({

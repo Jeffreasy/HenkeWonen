@@ -79,7 +79,7 @@ export default function CatalogProductPicker({
           tenantSlug: session.tenantId,
           search: debouncedSearch || undefined,
           limit: 30,
-          ...(productGroupHint ? { productGroup: productGroupHint } : {})
+          ...(productGroupHint ? { productGroep: productGroupHint } : {})
         })) as { items: PortalProduct[] };
 
         if (isActive) {
@@ -111,21 +111,21 @@ export default function CatalogProductPicker({
   );
 
   function optionLabel(product: PortalProduct) {
-    const name = product.displayName ?? product.name;
+    const name = product.weergaveNaam ?? product.naam;
     const normalizedName = name.toLowerCase();
     // Kleur weglaten als die al in de (schone) naam zit, anders staat hij dubbel.
     const color =
-      product.colorName && !normalizedName.includes(product.colorName.toLowerCase())
-        ? product.colorName
+      product.kleurnaam && !normalizedName.includes(product.kleurnaam.toLowerCase())
+        ? product.kleurnaam
         : undefined;
     const parts = [name, color, product.displaySupplierName ?? product.supplier].filter(Boolean);
 
     let text = parts.join(" — ");
 
-    if (showPriceInLabel && product.priceExVat > 0) {
+    if (showPriceInLabel && product.prijsExBtw > 0) {
       // Toon de prijseenheid erbij zodat een pak-/rolprijs niet als kale stuksprijs leest.
-      const unitSuffix = product.priceUnit ? ` / ${formatUnit(product.priceUnit)}` : "";
-      text += ` — ${formatEuro(product.priceExVat)}${unitSuffix}`;
+      const unitSuffix = product.prijsEenheid ? ` / ${formatUnit(product.prijsEenheid)}` : "";
+      text += ` — ${formatEuro(product.prijsExBtw)}${unitSuffix}`;
     }
 
     return text;
@@ -148,6 +148,10 @@ export default function CatalogProductPicker({
         />
         <Select
           id={`${idPrefix}-product`}
+          // Field koppelt de description via aria-describedby aan zijn directe child,
+          // maar dat is hier de wrapper-<div>. Zet de koppeling daarom expliciet op het
+          // echte control zodat schermlezers de beschrijving bij de Select aankondigen.
+          aria-describedby={description ? `${idPrefix}-product-desc` : undefined}
           required={required}
           value={selectedProductId}
           onChange={(event) => {

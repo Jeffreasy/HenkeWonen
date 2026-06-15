@@ -1,3 +1,4 @@
+import { ClipboardList, Ruler } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -22,6 +23,7 @@ import { Input } from "../ui/Input";
 import { EmptyState } from "../ui/EmptyState";
 import { SectionHeader } from "../ui/SectionHeader";
 import { SummaryList } from "../ui/SummaryList";
+import { Tabs } from "../ui/Tabs";
 import { ProjectDetailSkeleton } from "./ProjectDetailSkeleton";
 import ProjectWorkflowRail from "./ProjectWorkflowRail";
 import MeasurementPanel from "./MeasurementPanel";
@@ -112,6 +114,14 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   const [invoiceDueDate, setInvoiceDueDate] = useState("");
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [isStartingMeasurement, setIsStartingMeasurement] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window === "undefined") {
+      return "inmeting";
+    }
+    return new URLSearchParams(window.location.search).get("tab") === "opvolging"
+      ? "opvolging"
+      : "inmeting";
+  });
   const canEditProject = canEditDossiers(session.role);
 
   const loadProject = useCallback(async () => {
@@ -145,6 +155,23 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     void loadProject();
   }, [loadProject]);
 
+  // Documenttitel = dossiernaam, zodat meerdere geopende dossier-tabs uit elkaar
+  // te houden zijn (de SSR-titel is generiek "Project").
+  useEffect(() => {
+    if (detail?.project?.titel) {
+      document.title = `${detail.project.titel} | Henke Wonen`;
+    }
+  }, [detail?.project?.titel]);
+
+  function handleTabChange(tabId: string) {
+    setActiveTab(tabId);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", tabId);
+      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+  }
+
   function defaultDateInputInDays(days: number) {
     const date = new Date();
     date.setDate(date.getDate() + days);
@@ -168,9 +195,9 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
       projectId,
-      name,
-      areaM2,
-      perimeterMeter
+      naam: name,
+      oppervlakteM2: areaM2,
+      omtrekMeter: perimeterMeter
     });
     await loadProject();
   }
@@ -199,9 +226,10 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         projectId,
-        measuredBy: session.name ?? session.email
+        gemetenDoor: session.name ?? session.email
       });
       await loadProject();
+      handleTabChange("inmeting");
       focusMeasurementPanel();
     } catch (startError) {
       console.error(startError);
@@ -228,12 +256,12 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
       projectId,
-      title: data.title,
-      description: data.description,
-      measurementDate: data.measurementDate,
-      executionDate: data.executionDate,
-      internalNotes: data.internalNotes,
-      customerNotes: data.customerNotes,
+      titel: data.title,
+      omschrijving: data.description,
+      inmeetdatum: data.measurementDate,
+      uitvoerdatum: data.executionDate,
+      interneNotities: data.internalNotes,
+      klantNotities: data.customerNotes,
       status: detail.project.status
     });
     setEditingProject(false);
@@ -258,12 +286,12 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     await client.mutation(api.portal.updateProjectRoom, {
       tenantSlug: session.tenantId,
       actor: mutationActorFromSession(session),
-      roomId,
-      name: data.name,
-      floor: data.floor,
-      areaM2: data.areaM2,
-      perimeterMeter: data.perimeterMeter,
-      notes: data.notes
+      ruimteId: roomId,
+      naam: data.name,
+      verdieping: data.floor,
+      oppervlakteM2: data.areaM2,
+      omtrekMeter: data.perimeterMeter,
+      notities: data.notes
     });
     await loadProject();
   }
@@ -282,7 +310,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       await client.mutation(api.portal.deleteProjectRoom, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        roomId: pendingRoomDelete.id
+        ruimteId: pendingRoomDelete.id
       });
       setPendingRoomDelete(null);
       await loadProject();
@@ -376,6 +404,10 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   const pendingProjectActionDetails = pendingProjectAction
     ? projectActionCopy[pendingProjectAction]
     : null;
+  // Fase-afhankelijke ruimtes: vóór de inmeting (status "lead") beheer je dossier-
+  // ruimtes in dit losse paneel; zodra de inmeting loopt nemen de inmeetruimtes het
+  // over (die syncen automatisch terug naar het dossier), dus tonen we het dan niet meer.
+  const measurementStarted = project.status !== "lead";
 
   return (
     <div className="grid">
@@ -443,76 +475,103 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
         />
       ) : null}
 
-      <ProjectRoomsPanel
-        rooms={project.rooms}
-        canEdit={canEditProject}
-        onAddRoom={handleAddRoom}
-        onSaveRoom={handleSaveRoom}
-        onDeleteRoom={setPendingRoomDelete}
+      <Tabs
+        ariaLabel="Dossieronderdelen"
+        idBase="dossier"
+        activeId={activeTab}
+        onChange={handleTabChange}
+        tabs={[
+          {
+            id: "inmeting",
+            label: "Inmeting",
+            icon: <Ruler size={15} aria-hidden="true" />,
+            content: (
+              <>
+                {!measurementStarted ? (
+                  <ProjectRoomsPanel
+                    rooms={project.rooms}
+                    canEdit={canEditProject}
+                    onAddRoom={handleAddRoom}
+                    onSaveRoom={handleSaveRoom}
+                    onDeleteRoom={setPendingRoomDelete}
+                  />
+                ) : null}
+
+                <div id="project-measurement">
+                  <MeasurementPanel
+                    customerId={project.klantId}
+                    projectId={project.id}
+                    projectRooms={project.rooms}
+                    session={session}
+                    tenantId={session.tenantId}
+                  />
+                </div>
+              </>
+            )
+          },
+          {
+            id: "opvolging",
+            label: "Opvolging",
+            icon: <ClipboardList size={15} aria-hidden="true" />,
+            content: (
+              <>
+                <div className="grid project-followup-grid">
+                  <ProjectTasksPanel
+                    tasks={projectTasks}
+                    updatingTaskId={updatingTaskId}
+                    onUpdateTaskStatus={updateProjectTaskStatus}
+                    canEdit={canEditProject}
+                  />
+
+                  <ProjectTimelinePanel
+                    workflowEvents={workflowEvents}
+                    latestQuote={detail.latestQuote ?? null}
+                    canEdit={canEditProject}
+                    onProcessAction={openProjectAction}
+                  />
+                </div>
+
+                {detail.invoice ? (
+                  <section className="panel">
+                    <SectionHeader
+                      compact
+                      title="Gekoppelde factuur"
+                      description="Automatisch aangemaakt bij de stap Gefactureerd."
+                      actions={
+                        <a
+                          href={`/portal/facturen/${detail.invoice.id}`}
+                          className="ui-button ui-button-secondary ui-button-sm"
+                        >
+                          Factuur openen
+                        </a>
+                      }
+                    />
+                    <SummaryList
+                      items={[
+                        { label: "Factuurnummer", value: detail.invoice.invoiceNumber },
+                        {
+                          label: "Status",
+                          value: <InvoiceStatusBadge status={detail.invoice.status} />
+                        },
+                        { label: "Totaal incl. btw", value: <strong>{formatEuro(detail.invoice.totalIncVat)}</strong> },
+                        { label: "Vervaldatum", value: formatDate(detail.invoice.dueDate) },
+                        {
+                          label: "Betaald",
+                          value: formatEuro(detail.invoice.paidAmount),
+                          description:
+                            detail.invoice.paidAmount >= detail.invoice.totalIncVat
+                              ? "Volledig ontvangen"
+                              : `Nog € ${(detail.invoice.totalIncVat - detail.invoice.paidAmount).toFixed(2).replace(".", ",")} te ontvangen`
+                        }
+                      ]}
+                    />
+                  </section>
+                ) : null}
+              </>
+            )
+          }
+        ]}
       />
-
-      <div className="grid project-followup-grid">
-        <ProjectTasksPanel
-          tasks={projectTasks}
-          updatingTaskId={updatingTaskId}
-          onUpdateTaskStatus={updateProjectTaskStatus}
-          canEdit={canEditProject}
-        />
-
-        <ProjectTimelinePanel
-          workflowEvents={workflowEvents}
-          latestQuote={detail.latestQuote ?? null}
-          canEdit={canEditProject}
-          onProcessAction={openProjectAction}
-        />
-      </div>
-
-      {detail.invoice ? (
-        <section className="panel">
-          <SectionHeader
-            compact
-            title="Gekoppelde factuur"
-            description="Automatisch aangemaakt bij de stap Gefactureerd."
-            actions={
-              <a
-                href={`/portal/facturen/${detail.invoice.id}`}
-                className="ui-button ui-button-secondary ui-button-sm"
-              >
-                Factuur openen
-              </a>
-            }
-          />
-          <SummaryList
-            items={[
-              { label: "Factuurnummer", value: detail.invoice.invoiceNumber },
-              {
-                label: "Status",
-                value: <InvoiceStatusBadge status={detail.invoice.status} />
-              },
-              { label: "Totaal incl. btw", value: <strong>{formatEuro(detail.invoice.totalIncVat)}</strong> },
-              { label: "Vervaldatum", value: formatDate(detail.invoice.dueDate) },
-              {
-                label: "Betaald",
-                value: formatEuro(detail.invoice.paidAmount),
-                description:
-                  detail.invoice.paidAmount >= detail.invoice.totalIncVat
-                    ? "Volledig ontvangen"
-                    : `Nog € ${(detail.invoice.totalIncVat - detail.invoice.paidAmount).toFixed(2).replace(".", ",")} te ontvangen`
-              }
-            ]}
-          />
-        </section>
-      ) : null}
-
-      <div id="project-measurement">
-        <MeasurementPanel
-          customerId={project.customerId}
-          projectId={project.id}
-          projectRooms={project.rooms}
-          session={session}
-          tenantId={session.tenantId}
-        />
-      </div>
     </div>
   );
 }

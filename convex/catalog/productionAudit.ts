@@ -141,83 +141,83 @@ export const run = query({
     }));
 
     for (const product of activeProducts) {
-      const supplier = product.supplierId ? supplierById.get(idString(product.supplierId)) : undefined;
-      const category = categoryById.get(idString(product.categoryId));
+      const supplier = product.leverancierId ? supplierById.get(idString(product.leverancierId)) : undefined;
+      const category = categoryById.get(idString(product.categorieId));
       const productSample = {
         id: idString(product._id),
-        name: product.name,
-        supplier: supplier?.name ?? "Onbekend",
-        category: category?.name ?? "Onbekend",
-        articleNumber: product.articleNumber,
-        supplierCode: product.supplierCode,
+        name: product.naam,
+        supplier: supplier?.naam ?? "Onbekend",
+        category: category?.naam ?? "Onbekend",
+        articleNumber: product.artikelnummer,
+        supplierCode: product.leverancierCode,
         ean: product.ean,
-        importKey: product.importKey,
-        sourceFileName: product.attributes?.sourceFileName,
-        sourceSheetName: product.attributes?.sourceSheetName
+        importKey: product.importSleutel,
+        sourceFileName: product.attributen?.sourceFileName,
+        sourceSheetName: product.attributen?.sourceSheetName
       };
 
-      incById(productsBySupplier, product.supplierId ?? "missing", supplier?.name ?? "Onbekend");
-      incById(productsByCategory, product.categoryId, category?.name ?? "Onbekend");
-      inc(productsByKind, product.productKind ?? "missing", "missing");
+      incById(productsBySupplier, product.leverancierId ?? "missing", supplier?.naam ?? "Onbekend");
+      incById(productsByCategory, product.categorieId, category?.naam ?? "Onbekend");
+      inc(productsByKind, product.productSoort ?? "missing", "missing");
 
       if (!priceCountByProduct[idString(product._id)]) {
         sample(productsWithoutPrices, productSample);
       }
 
-      if (!hasText(product.articleNumber) && !hasText(product.supplierCode) && !hasText(product.ean)) {
+      if (!hasText(product.artikelnummer) && !hasText(product.leverancierCode) && !hasText(product.ean)) {
         sample(productsWithoutAllCodes, productSample, 100);
       }
 
-      if (!product.supplierId) {
+      if (!product.leverancierId) {
         sample(productsWithoutSupplier, productSample);
       }
 
-      if (!product.categoryId) {
+      if (!product.categorieId) {
         sample(productsWithoutCategory, productSample);
       }
 
-      if (!hasText(product.name)) {
+      if (!hasText(product.naam)) {
         sample(productsWithoutName, productSample);
       }
 
-      if (typeof product.articleNumber !== "undefined" && typeof product.articleNumber !== "string") {
+      if (typeof product.artikelnummer !== "undefined" && typeof product.artikelnummer !== "string") {
         sample(numericArticleNumbers, productSample);
       }
 
       if (
-        /e\+\d+$/i.test(String(product.articleNumber ?? "")) ||
+        /e\+\d+$/i.test(String(product.artikelnummer ?? "")) ||
         /e\+\d+$/i.test(String(product.ean ?? "")) ||
-        /e\+\d+$/i.test(String(product.supplierCode ?? ""))
+        /e\+\d+$/i.test(String(product.leverancierCode ?? ""))
       ) {
         sample(scientificCodeSamples, productSample);
       }
 
-      if (hasText(product.importKey)) {
-        const key = String(product.importKey);
+      if (hasText(product.importSleutel)) {
+        const key = String(product.importSleutel);
         duplicateImportKeyGroups[key] = duplicateImportKeyGroups[key] ?? [];
         duplicateImportKeyGroups[key].push(productSample);
       }
 
-      if (hasText(product.articleNumber) && product.supplierId) {
-        const key = `${idString(product.supplierId)}|${product.articleNumber}`;
+      if (hasText(product.artikelnummer) && product.leverancierId) {
+        const key = `${idString(product.leverancierId)}|${product.artikelnummer}`;
         duplicateArticleGroups[key] = duplicateArticleGroups[key] ?? [];
         duplicateArticleGroups[key].push(productSample);
       }
 
-      if (hasText(product.ean) && product.supplierId) {
-        const key = `${idString(product.supplierId)}|${product.ean}`;
+      if (hasText(product.ean) && product.leverancierId) {
+        const key = `${idString(product.leverancierId)}|${product.ean}`;
         duplicateEanGroups[key] = duplicateEanGroups[key] ?? [];
         duplicateEanGroups[key].push(productSample);
       }
 
-      if (hasText(product.supplierCode) && product.supplierId) {
-        const key = `${idString(product.supplierId)}|${product.supplierCode}`;
+      if (hasText(product.leverancierCode) && product.leverancierId) {
+        const key = `${idString(product.leverancierId)}|${product.leverancierCode}`;
         duplicateSupplierCodeGroups[key] = duplicateSupplierCodeGroups[key] ?? [];
         duplicateSupplierCodeGroups[key].push(productSample);
       }
 
       for (const match of sectionProductMatches) {
-        if (String(product.name).trim().toLowerCase() === match.sectionLabel.toLowerCase()) {
+        if (String(product.naam).trim().toLowerCase() === match.sectionLabel.toLowerCase()) {
           sample(match.matches, productSample);
         }
       }
@@ -243,39 +243,39 @@ export const run = query({
 
     for (const price of prices) {
       const product = productById.get(idString(price.productId));
-      const supplier = product?.supplierId ? supplierById.get(idString(product.supplierId)) : undefined;
-      const priceList = price.priceListId ? priceListById.get(idString(price.priceListId)) : undefined;
-      const sourceFileName = text(price.sourceFileName, priceList?.sourceFileName ?? "Onbekend bestand");
+      const supplier = product?.leverancierId ? supplierById.get(idString(product.leverancierId)) : undefined;
+      const priceList = price.prijslijstId ? priceListById.get(idString(price.prijslijstId)) : undefined;
+      const sourceFileName = text(price.bronBestandsnaam, priceList?.bronBestandsnaam ?? "Onbekend bestand");
       const priceSample = {
         id: idString(price._id),
         productId: idString(price.productId),
-        productName: product?.name,
-        supplier: supplier?.name ?? "Onbekend",
+        productName: product?.naam,
+        supplier: supplier?.naam ?? "Onbekend",
         sourceFileName,
-        sourceSheetName: price.sourceSheetName,
-        sourceColumnName: price.sourceColumnName,
-        sourceColumnIndex: price.sourceColumnIndex,
-        sourceRowNumber: price.sourceRowNumber,
-        priceType: price.priceType,
-        priceUnit: price.priceUnit,
-        vatMode: price.vatMode,
-        amount: price.amount,
-        sourceKey: price.sourceKey
+        sourceSheetName: price.bronBladNaam,
+        sourceColumnName: price.bronKolomNaam,
+        sourceColumnIndex: price.bronKolomIndex,
+        sourceRowNumber: price.bronRijNummer,
+        priceType: price.prijsSoort,
+        priceUnit: price.prijsEenheid,
+        vatMode: price.btwModus,
+        amount: price.bedrag,
+        sourceKey: price.bronSleutel
       };
 
       inc(pricesBySourceFileName, sourceFileName);
-      incById(pricesBySupplier, product?.supplierId ?? "missing", supplier?.name ?? "Onbekend");
-      inc(pricesByType, price.priceType);
-      inc(pricesByVatMode, price.vatMode);
-      inc(pricesByUnit, price.priceUnit);
+      incById(pricesBySupplier, product?.leverancierId ?? "missing", supplier?.naam ?? "Onbekend");
+      inc(pricesByType, price.prijsSoort);
+      inc(pricesByVatMode, price.btwModus);
+      inc(pricesByUnit, price.prijsEenheid);
 
-      const priceListId = idString(price.priceListId);
+      const priceListId = idString(price.prijslijstId);
       if (!pricesByPriceListId[priceListId]) {
         pricesByPriceListId[priceListId] = {
           id: priceListId,
-          name: text(priceList?.name, "Onbekende prijslijst"),
+          name: text(priceList?.naam, "Onbekende prijslijst"),
           sourceFileName,
-          sourceSheetName: text(priceList?.sourceSheetName, ""),
+          sourceSheetName: text(priceList?.bronBladNaam, ""),
           count: 0
         };
       }
@@ -285,45 +285,45 @@ export const run = query({
         sample(orphanPrices, priceSample);
       }
 
-      if (price.amount <= 0) {
+      if (price.bedrag <= 0) {
         sample(amountLteZeroPrices, priceSample);
       }
 
-      if (price.vatMode === "unknown") {
+      if (price.btwModus === "unknown") {
         sample(unknownVatPrices, priceSample, 10);
       }
 
-      if (!hasText(price.priceUnit)) {
+      if (!hasText(price.prijsEenheid)) {
         sample(missingUnitPrices, priceSample);
       }
 
-      if (!hasText(price.priceType)) {
+      if (!hasText(price.prijsSoort)) {
         sample(missingPriceTypePrices, priceSample);
       }
 
       const duplicatePriceKey = [
         idString(price.productId),
-        idString(price.priceListId),
-        price.priceType,
-        price.priceUnit,
-        price.amount,
-        price.sourceColumnIndex ?? ""
+        idString(price.prijslijstId),
+        price.prijsSoort,
+        price.prijsEenheid,
+        price.bedrag,
+        price.bronKolomIndex ?? ""
       ].join("|");
       duplicatePriceRuleGroups[duplicatePriceKey] = duplicatePriceRuleGroups[duplicatePriceKey] ?? [];
       duplicatePriceRuleGroups[duplicatePriceKey].push(priceSample);
 
-      if (price.sourceKey) {
-        const sourceKey = String(price.sourceKey);
+      if (price.bronSleutel) {
+        const sourceKey = String(price.bronSleutel);
         duplicatePriceSourceKeyGroups[sourceKey] = duplicatePriceSourceKeyGroups[sourceKey] ?? [];
         duplicatePriceSourceKeyGroups[sourceKey].push(priceSample);
       }
 
       if (
         sourceFileName === "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx" &&
-        price.priceType === "commission"
+        price.prijsSoort === "commission"
       ) {
         coProCommissionPriceKeys.add(
-          `${idString(price.productId)}|${idString(price.priceListId)}|${price.amount}|${price.sourceColumnIndex}`
+          `${idString(price.productId)}|${idString(price.prijslijstId)}|${price.bedrag}|${price.bronKolomIndex}`
         );
       }
     }
@@ -352,28 +352,28 @@ export const run = query({
 
     for (const batch of batches) {
       inc(batchesByStatus, batch.status);
-      batchTotals.totalRows += batch.totalRows ?? 0;
-      batchTotals.previewRows += batch.previewRows ?? batch.totalRows ?? 0;
-      batchTotals.productRows += batch.productRows ?? 0;
-      batchTotals.importedProducts += batch.importedProducts ?? 0;
-      batchTotals.updatedProducts += batch.updatedProducts ?? 0;
-      batchTotals.skippedProducts += batch.skippedProducts ?? 0;
-      batchTotals.importedPrices += batch.importedPrices ?? 0;
-      batchTotals.skippedPrices += batch.skippedPrices ?? 0;
-      batchTotals.warningRows += batch.warningRows ?? 0;
-      batchTotals.errorRows += batch.errorRows ?? 0;
-      batchTotals.ignoredRows += batch.ignoredRows ?? 0;
-      batchTotals.zeroPriceRows += batch.zeroPriceRows ?? 0;
-      batchTotals.unknownVatModeRows += batch.unknownVatModeRows ?? 0;
-      batchTotals.duplicateProductMatches += batch.duplicateProductMatches ?? 0;
-      batchTotals.productsWithoutSupplierCode += batch.productsWithoutSupplierCode ?? 0;
-      batchTotals.orphanPriceRules += batch.orphanPriceRules ?? 0;
-      batchTotals.duplicateSourceKeys += batch.duplicateSourceKeys ?? 0;
+      batchTotals.totalRows += batch.totaalRijen ?? 0;
+      batchTotals.previewRows += batch.voorbeeldRijen ?? batch.totaalRijen ?? 0;
+      batchTotals.productRows += batch.productRijen ?? 0;
+      batchTotals.importedProducts += batch.geimporteerdeProducten ?? 0;
+      batchTotals.updatedProducts += batch.bijgewerkteProducten ?? 0;
+      batchTotals.skippedProducts += batch.overgeslagenProducten ?? 0;
+      batchTotals.importedPrices += batch.geimporteerdePrijzen ?? 0;
+      batchTotals.skippedPrices += batch.overgeslagenPrijzen ?? 0;
+      batchTotals.warningRows += batch.waarschuwingRijen ?? 0;
+      batchTotals.errorRows += batch.foutRijen ?? 0;
+      batchTotals.ignoredRows += batch.genegeerdeRijen ?? 0;
+      batchTotals.zeroPriceRows += batch.nulPrijsRijen ?? 0;
+      batchTotals.unknownVatModeRows += batch.onbekendeBtwModusRijen ?? 0;
+      batchTotals.duplicateProductMatches += batch.dubbeleProductMatches ?? 0;
+      batchTotals.productsWithoutSupplierCode += batch.productenZonderLeverancierCode ?? 0;
+      batchTotals.orphanPriceRules += batch.weesPrijsRegels ?? 0;
+      batchTotals.duplicateSourceKeys += batch.dubbeleBronSleutels ?? 0;
     }
 
-    const headlamSupplier = suppliers.find((supplier) => supplier.name === "Headlam");
+    const headlamSupplier = suppliers.find((supplier) => supplier.naam === "Headlam");
     const headlamProducts = activeProducts.filter(
-      (product) => idString(product.supplierId) === idString(headlamSupplier?._id)
+      (product) => idString(product.leverancierId) === idString(headlamSupplier?._id)
     );
     const headlamAttributeKeys = [
       "width",
@@ -394,18 +394,18 @@ export const run = query({
     const headlamAttributes: Record<string, number> = {};
     for (const key of headlamAttributeKeys) {
       headlamAttributes[key] = headlamProducts.filter(
-        (product) => product.attributes && Object.prototype.hasOwnProperty.call(product.attributes, key)
+        (product) => product.attributen && Object.prototype.hasOwnProperty.call(product.attributen, key)
       ).length;
     }
 
-    const interfloorSupplier = suppliers.find((supplier) => supplier.name === "Interfloor");
+    const interfloorSupplier = suppliers.find((supplier) => supplier.naam === "Interfloor");
     const interfloorProducts = activeProducts.filter(
-      (product) => idString(product.supplierId) === idString(interfloorSupplier?._id)
+      (product) => idString(product.leverancierId) === idString(interfloorSupplier?._id)
     );
 
     const sourceFileProducts: Record<string, Record<string, boolean>> = {};
     for (const price of prices) {
-      const sourceFileName = text(price.sourceFileName, "Onbekend bestand");
+      const sourceFileName = text(price.bronBestandsnaam, "Onbekend bestand");
       sourceFileProducts[sourceFileName] = sourceFileProducts[sourceFileName] ?? {};
       sourceFileProducts[sourceFileName][idString(price.productId)] = true;
     }
@@ -425,20 +425,20 @@ export const run = query({
         },
         withoutArticleNumberEanSupplierCode: {
           count: activeProducts.filter(
-            (product) => !hasText(product.articleNumber) && !hasText(product.supplierCode) && !hasText(product.ean)
+            (product) => !hasText(product.artikelnummer) && !hasText(product.leverancierCode) && !hasText(product.ean)
           ).length,
           samples: productsWithoutAllCodes
         },
         withoutName: {
-          count: activeProducts.filter((product) => !hasText(product.name)).length,
+          count: activeProducts.filter((product) => !hasText(product.naam)).length,
           samples: productsWithoutName
         },
         withoutSupplierId: {
-          count: activeProducts.filter((product) => !product.supplierId).length,
+          count: activeProducts.filter((product) => !product.leverancierId).length,
           samples: productsWithoutSupplier
         },
         withoutCategoryId: {
-          count: activeProducts.filter((product) => !product.categoryId).length,
+          count: activeProducts.filter((product) => !product.categorieId).length,
           samples: productsWithoutCategory
         },
         numericArticleNumbers: {
@@ -465,7 +465,7 @@ export const run = query({
         byVatMode: pricesByVatMode,
         byUnit: pricesByUnit,
         amountLteZero: {
-          count: prices.filter((price) => price.amount <= 0).length,
+          count: prices.filter((price) => price.bedrag <= 0).length,
           samples: amountLteZeroPrices
         },
         withoutProduct: {
@@ -473,7 +473,7 @@ export const run = query({
           samples: orphanPrices
         },
         vatModeUnknown: {
-          count: prices.filter((price) => price.vatMode === "unknown").length,
+          count: prices.filter((price) => price.btwModus === "unknown").length,
           samples: unknownVatPrices
         },
         missingUnit: {
@@ -492,33 +492,33 @@ export const run = query({
         totals: batchTotals,
         latest: batches
           .slice()
-          .sort((left, right) => right.createdAt - left.createdAt)
+          .sort((left, right) => right.aangemaaktOp - left.aangemaaktOp)
           .slice(0, 25)
           .map((batch) => ({
             id: idString(batch._id),
-            fileName: batch.fileName,
-            sourceFileName: batch.sourceFileName,
+            fileName: batch.bestandsnaam,
+            sourceFileName: batch.bronBestandsnaam,
             status: batch.status,
-            totalRows: batch.totalRows,
-            previewRows: batch.previewRows ?? batch.totalRows,
-            productRows: batch.productRows ?? 0,
-            importedProducts: batch.importedProducts ?? 0,
-            updatedProducts: batch.updatedProducts ?? 0,
-            importedPrices: batch.importedPrices ?? 0,
-            skippedPrices: batch.skippedPrices ?? 0,
-            warningRows: batch.warningRows ?? 0,
-            errorRows: batch.errorRows ?? 0,
-            ignoredRows: batch.ignoredRows ?? 0,
-            duplicateProductMatches: batch.duplicateProductMatches ?? 0,
-            zeroPriceRows: batch.zeroPriceRows ?? 0,
-            unknownVatModeRows: batch.unknownVatModeRows ?? 0,
-            duplicateSourceKeys: batch.duplicateSourceKeys ?? 0,
-            allowUnknownVatMode: batch.allowUnknownVatMode ?? false,
-            createdAt: batch.createdAt,
-            importedAt: batch.importedAt,
-            committedAt: batch.committedAt,
-            failedAt: batch.failedAt,
-            errorMessage: batch.errorMessage
+            totalRows: batch.totaalRijen,
+            previewRows: batch.voorbeeldRijen ?? batch.totaalRijen,
+            productRows: batch.productRijen ?? 0,
+            importedProducts: batch.geimporteerdeProducten ?? 0,
+            updatedProducts: batch.bijgewerkteProducten ?? 0,
+            importedPrices: batch.geimporteerdePrijzen ?? 0,
+            skippedPrices: batch.overgeslagenPrijzen ?? 0,
+            warningRows: batch.waarschuwingRijen ?? 0,
+            errorRows: batch.foutRijen ?? 0,
+            ignoredRows: batch.genegeerdeRijen ?? 0,
+            duplicateProductMatches: batch.dubbeleProductMatches ?? 0,
+            zeroPriceRows: batch.nulPrijsRijen ?? 0,
+            unknownVatModeRows: batch.onbekendeBtwModusRijen ?? 0,
+            duplicateSourceKeys: batch.dubbeleBronSleutels ?? 0,
+            allowUnknownVatMode: batch.staBtwModusOnbekendToe ?? false,
+            createdAt: batch.aangemaaktOp,
+            importedAt: batch.geimporteerdOp,
+            committedAt: batch.vastgelegdOp,
+            failedAt: batch.misluktOp,
+            errorMessage: batch.foutmelding
           }))
       },
       profiles: {
@@ -527,41 +527,41 @@ export const run = query({
         inactive: profiles.filter((profile) => profile.status !== "active").length,
         entries: profiles
           .slice()
-          .sort((left, right) => left.name.localeCompare(right.name, "nl"))
+          .sort((left, right) => left.naam.localeCompare(right.naam, "nl"))
           .map((profile) => ({
             id: idString(profile._id),
-            name: profile.name,
-            supplierName: profile.supplierName,
-            supplierId: idString(profile.supplierId),
-            categoryId: idString(profile.categoryId),
-            categoryName: categoryById.get(idString(profile.categoryId))?.name,
-            filePattern: profile.filePattern,
-            sheetPattern: profile.sheetPattern,
-            expectedFileExtension: profile.expectedFileExtension,
-            supportsXlsx: profile.supportsXlsx,
-            supportsXls: profile.supportsXls,
-            headerRowStrategy: profile.headerRowStrategy,
-            sectionRowStrategy: profile.sectionRowStrategy,
-            productKeyStrategy: profile.productKeyStrategy,
-            priceColumnMappings: profile.priceColumnMappings,
-            vatModeByPriceColumn: profile.vatModeByPriceColumn,
-            unitByPriceColumn: profile.unitByPriceColumn,
-            priceTypeByPriceColumn: profile.priceTypeByPriceColumn,
-            duplicateStrategy: profile.duplicateStrategy,
-            zeroPriceStrategy: profile.zeroPriceStrategy,
+            name: profile.naam,
+            supplierName: profile.leverancierNaam,
+            supplierId: idString(profile.leverancierId),
+            categoryId: idString(profile.categorieId),
+            categoryName: categoryById.get(idString(profile.categorieId))?.naam,
+            filePattern: profile.bestandPatroon,
+            sheetPattern: profile.bladPatroon,
+            expectedFileExtension: profile.verwachteBestandsextensie,
+            supportsXlsx: profile.ondersteuntXlsx,
+            supportsXls: profile.ondersteuntXls,
+            headerRowStrategy: profile.koprijStrategie,
+            sectionRowStrategy: profile.sectierijStrategie,
+            productKeyStrategy: profile.productSleutelStrategie,
+            priceColumnMappings: profile.prijskolomMappings,
+            vatModeByPriceColumn: profile.btwModusPerPrijskolom,
+            unitByPriceColumn: profile.eenheidPerPrijskolom,
+            priceTypeByPriceColumn: profile.prijsSoortPerPrijskolom,
+            duplicateStrategy: profile.dubbelenStrategie,
+            zeroPriceStrategy: profile.nulPrijsStrategie,
             status: profile.status
           }))
       },
       specialCaseChecks: {
         headlam: {
           activeProducts: headlamProducts.length,
-          uniqueSupplierCodes: new Set(headlamProducts.map((product) => product.supplierCode).filter(Boolean)).size,
+          uniqueSupplierCodes: new Set(headlamProducts.map((product) => product.leverancierCode).filter(Boolean)).size,
           priceRules:
             pricesBySourceFileName[
               "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx"
             ] ?? 0,
           productKinds: headlamProducts.reduce<Record<string, number>>((map, product) => {
-            inc(map, product.productKind ?? "missing", "missing");
+            inc(map, product.productSoort ?? "missing", "missing");
             return map;
           }, {}),
           attributeCoverage: headlamAttributes
@@ -569,20 +569,20 @@ export const run = query({
         interfloor: {
           activeProducts: interfloorProducts.length,
           articleNumbersStartingWithDot: interfloorProducts.filter((product) =>
-            String(product.articleNumber ?? "").startsWith(".")
+            String(product.artikelnummer ?? "").startsWith(".")
           ).length,
           dotArticleSamples: interfloorProducts
-            .filter((product) => String(product.articleNumber ?? "").startsWith("."))
+            .filter((product) => String(product.artikelnummer ?? "").startsWith("."))
             .slice(0, 10)
             .map((product) => ({
               id: idString(product._id),
-              name: product.name,
-              articleNumber: product.articleNumber
+              name: product.naam,
+              articleNumber: product.artikelnummer
             })),
           priceRules: pricesBySourceFileName["henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls"] ?? 0,
           units: prices.reduce<Record<string, number>>((map, price) => {
-            if (price.sourceFileName === "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls") {
-              inc(map, price.priceUnit);
+            if (price.bronBestandsnaam === "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls") {
+              inc(map, price.prijsEenheid);
             }
             return map;
           }, {})
@@ -596,13 +596,13 @@ export const run = query({
           priceRules: pricesBySourceFileName["Co-pro prijslijst lijm kit en egaline 2025-04.xlsx"] ?? 0,
           commissionPriceRules: prices.filter(
             (price) =>
-              price.sourceFileName === "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx" &&
-              price.priceType === "commission"
+              price.bronBestandsnaam === "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx" &&
+              price.prijsSoort === "commission"
           ).length,
           distinctCommissionColumnKeys: coProCommissionPriceKeys.size,
           vatModes: prices.reduce<Record<string, number>>((map, price) => {
-            if (price.sourceFileName === "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx") {
-              inc(map, price.vatMode);
+            if (price.bronBestandsnaam === "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx") {
+              inc(map, price.btwModus);
             }
             return map;
           }, {})
