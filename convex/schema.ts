@@ -780,7 +780,10 @@ export default defineSchema({
   measurementRooms: defineTable({
     tenantId: v.id("tenants"),
     inmetingId: v.id("measurements"),
-    projectRuimteId: v.optional(v.id("projectRooms")),
+    // Ruimte-model A: elke inmeet-ruimte hoort verplicht bij één dossier-ruimte
+    // (één ruimte-identiteit). De backfill (backfillMeasurementRoomLinksChunk) koppelde de
+    // bestaande data; addMeasurementRoom zet de koppeling voortaan altijd (auto-promotie).
+    projectRuimteId: v.id("projectRooms"),
     naam: v.string(),
     verdieping: v.optional(v.string()),
     breedteM: v.optional(v.number()),
