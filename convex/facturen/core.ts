@@ -217,11 +217,12 @@ export const createInvoice = mutation({
     totaalInclBtw: v.number()
   },
   handler: async (ctx, args) => {
-    const { externalUserId } = await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+    const { externalUserId, workspaceMode } = await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
       "user",
       "editor",
       "admin"
     ]);
+    ensureNotFieldMode(workspaceMode);
 
     const project = await ctx.db.get(args.projectId);
 
@@ -255,6 +256,12 @@ export const createInvoice = mutation({
         Math.abs(linkedQuote.totaalInclBtw - totaalInclBtw) > 0.01
       ) {
         throw new ConvexError("Factuurbedragen wijken af van de gekoppelde offerte.");
+      }
+      // Voorkom dubbele factuur voor dezelfde offerte (zoals createInvoiceFromQuote
+      // en processProjectAction dat al doen via existingInvoiceForQuote).
+      const existingInvoice = await existingInvoiceForQuote(ctx, args.tenantId, args.quoteId);
+      if (existingInvoice) {
+        throw new ConvexError("Er bestaat al een factuur voor deze offerte.");
       }
     }
 
@@ -299,11 +306,12 @@ export const createInvoiceFromQuote = mutation({
   handler: async (ctx, args) => {
     const tenant = await requireTenant(ctx, args.tenantSlug);
 
-    const { externalUserId } = await requireMutationRoleForTenantId(ctx, tenant._id, args.actor, [
+    const { externalUserId, workspaceMode } = await requireMutationRoleForTenantId(ctx, tenant._id, args.actor, [
       "user",
       "editor",
       "admin"
     ]);
+    ensureNotFieldMode(workspaceMode);
 
     const quoteId = ctx.db.normalizeId("quotes", args.quoteId);
 
@@ -403,11 +411,12 @@ export const updateInvoiceStatus = mutation({
     status: invoiceStatus
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+    const { tenant, workspaceMode } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
       "user",
       "editor",
       "admin"
     ]);
+    ensureNotFieldMode(workspaceMode);
 
     const invoiceId = ctx.db.normalizeId("invoices", args.invoiceId);
 
@@ -460,11 +469,18 @@ export const markInvoicePaid = mutation({
     betaaldOp: v.optional(v.number())
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+    const { tenant, workspaceMode } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
       "user",
       "editor",
       "admin"
     ]);
+    ensureNotFieldMode(workspaceMode);
+
+    // Bedrag server-side valideren (consistent met createInvoice); de frontend-guard
+    // is niet de enige verdediging tegen een negatief/ongeldig bedrag via de API.
+    if (!Number.isFinite(args.betaaldBedrag) || args.betaaldBedrag < 0) {
+      throw new ConvexError("Betaald bedrag moet een eindig, niet-negatief getal zijn.");
+    }
 
     const invoiceId = ctx.db.normalizeId("invoices", args.invoiceId);
 
