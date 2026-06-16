@@ -1,9 +1,9 @@
 import { formatStatusLabel } from "../../lib/i18n/statusLabels";
-import { Checkbox } from "../ui/Checkbox";
-import { Field } from "../ui/Field";
-import { FilterBar } from "../ui/FilterBar";
-import { SearchInput } from "../ui/SearchInput";
-import { Select } from "../ui/Select";
+import { Checkbox } from "../ui/forms/Checkbox";
+import { Field } from "../ui/forms/Field";
+import { FilterBar } from "../ui/layout/FilterBar";
+import { SearchInput } from "../ui/forms/SearchInput";
+import { Select } from "../ui/forms/Select";
 import { type ProductStatus, PRODUCT_STATUSES } from "./catalog/catalogTypes";
 
 type CategoryStat = {

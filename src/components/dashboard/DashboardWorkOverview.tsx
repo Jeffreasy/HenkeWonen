@@ -1,7 +1,8 @@
 import { ArrowRight } from "lucide-react";
 import { formatDate } from "../../lib/dates";
-import { Badge, type BadgeVariant } from "../ui/Badge";
-import { EmptyState } from "../ui/EmptyState";
+import { Badge, type BadgeVariant } from "../ui/data-display/Badge";
+import { EmptyState } from "../ui/feedback/EmptyState";
+import { Skeleton } from "../ui/feedback/Skeleton";
 
 export type DashboardWorkItem = {
   id: string;
@@ -33,7 +34,17 @@ export function DashboardWorkOverview({ isLoading, workItems }: DashboardWorkOve
       </div>
 
       {isLoading ? (
-        <div className="empty-state">Werkvoorraad laden.</div>
+        <div className="dashboard-work-list" aria-busy="true" aria-label="Werkvoorraad laden">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div className="dashboard-work-item" key={index}>
+              <span className="dashboard-work-copy">
+                <Skeleton width={88} height={20} />
+                <Skeleton width="55%" height={15} />
+                <Skeleton width="80%" height={12} />
+              </span>
+            </div>
+          ))}
+        </div>
       ) : workItems.length > 0 ? (
         <div className="dashboard-work-list">
           {workItems.map((item) => (

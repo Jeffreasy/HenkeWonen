@@ -3,6 +3,17 @@
   gap: var(--space-4);
 }
 
+/* Actie-kolom: knoppen naast elkaar houden i.p.v. verticaal stapelen in een
+   smalle kolom. De cel groeit mee met de inhoud; de tabel scrollt zo nodig
+   horizontaal (data-table-wrap heeft overflow-x: auto). */
+.data-table-actions-cell {
+  white-space: nowrap;
+}
+
+.data-table-actions-cell .toolbar {
+  flex-wrap: nowrap;
+}
+
 .issue-workbench-attention {
   border-color: rgba(154, 101, 7, 0.24);
   background: var(--issue-workbench-attention-bg);

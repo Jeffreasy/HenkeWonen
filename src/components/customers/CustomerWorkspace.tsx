@@ -7,11 +7,11 @@ import { createConvexHttpClient } from "../../lib/convex/client";
 import { measurementAutostartQuery } from "../../lib/measurementIntent";
 import type { PortalCustomer } from "../../lib/portalTypes";
 import { showToast } from "../../lib/toast";
-import { Alert } from "../ui/Alert";
-import { Button } from "../ui/Button";
+import { Alert } from "../ui/feedback/Alert";
+import { Button } from "../ui/forms/Button";
 import { FormModal } from "../ui/overlays/FormModal";
-import { SectionHeader } from "../ui/SectionHeader";
-import { StatCard } from "../ui/StatCard";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { StatCard } from "../ui/data-display/StatCard";
 import CustomerForm, { type CustomerFormValues } from "./CustomerForm";
 import CustomerList from "./CustomerList";
 

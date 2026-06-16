@@ -5,7 +5,7 @@ import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { PortalCustomer, PortalProject, ProjectStatus } from "../../lib/portalTypes";
 import { showToast } from "../../lib/toast";
-import { Alert } from "../ui/Alert";
+import { Alert } from "../ui/feedback/Alert";
 import { FormModal } from "../ui/overlays/FormModal";
 import ProjectForm, { type ProjectFormValues } from "./ProjectForm";
 import { ProjectStats } from "./ProjectStats";

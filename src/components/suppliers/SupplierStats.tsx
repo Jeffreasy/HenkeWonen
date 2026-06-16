@@ -1,4 +1,4 @@
-import { StatCard } from "../ui";
+import { StatCard } from "../ui/data-display/StatCard";
 
 type SupplierStatsProps = {
   total: number;

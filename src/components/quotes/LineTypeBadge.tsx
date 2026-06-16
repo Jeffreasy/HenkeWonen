@@ -1,6 +1,6 @@
 import type { QuoteLineType } from "../../lib/portalTypes";
 import { formatLineType } from "../../lib/i18n/statusLabels";
-import { Badge, type BadgeVariant } from "../ui/Badge";
+import { Badge, type BadgeVariant } from "../ui/data-display/Badge";
 
 type LineTypeBadgeProps = {
   lineType: QuoteLineType;

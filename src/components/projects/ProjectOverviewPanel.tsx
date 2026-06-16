@@ -1,7 +1,7 @@
 import { FileText, Pencil, Ruler, XCircle } from "lucide-react";
 import type { PortalCustomer, PortalProject } from "../../lib/portalTypes";
-import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
+import { Badge } from "../ui/data-display/Badge";
+import { Button } from "../ui/forms/Button";
 import ProjectStatusBadge from "./ProjectStatusBadge";
 
 type ProjectOverviewPanelProps = {

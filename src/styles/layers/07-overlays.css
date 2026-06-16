@@ -625,7 +625,7 @@
   box-shadow:
     0 8px 22px rgba(0, 0, 0, 0.16),
     0 2px 8px rgba(0, 0, 0, 0.1);
-  outline: 3px solid rgba(154, 95, 27, 0.34);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
   /* Geen transform op focus-visible — voorkomt onnodige layout-shift
      bij toetsenbordnavigatie en is niet zichtbaar op touch */
@@ -712,7 +712,7 @@
 }
 
 .quick-action-fab:focus-visible {
-  outline: 3px solid rgba(154, 95, 27, 0.4);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
 }
 

@@ -9,10 +9,10 @@ import type {
   FieldServiceWorkspaceResult,
   FieldWorkspaceCard
 } from "../../lib/portalTypes";
-import { Alert } from "../ui/Alert";
-import { Button } from "../ui/Button";
+import { Alert } from "../ui/feedback/Alert";
+import { Button } from "../ui/forms/Button";
 import { FormModal } from "../ui/overlays/FormModal";
-import { SearchInput } from "../ui/SearchInput";
+import { SearchInput } from "../ui/forms/SearchInput";
 import { FieldPrioritySummary } from "./FieldPrioritySummary";
 import { FieldPageTabs } from "./FieldPageTabs";
 import { FieldCardSection, type FieldSection } from "./FieldCardSection";

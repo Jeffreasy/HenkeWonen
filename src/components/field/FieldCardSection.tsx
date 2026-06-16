@@ -1,6 +1,6 @@
 import type { FieldWorkspaceBucket, FieldWorkspaceCard } from "../../lib/portalTypes";
-import { EmptyState } from "../ui/EmptyState";
-import { SectionHeader } from "../ui/SectionHeader";
+import { EmptyState } from "../ui/feedback/EmptyState";
+import { SectionHeader } from "../ui/layout/SectionHeader";
 import { FieldCard, type CardActionPreference } from "./FieldCard";
 
 export type FieldSection = {

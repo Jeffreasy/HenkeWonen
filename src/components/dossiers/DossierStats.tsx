@@ -1,4 +1,4 @@
-import { StatCard } from "../ui/StatCard";
+import { StatCard } from "../ui/data-display/StatCard";
 
 type DossierStatsProps = {
   customersCount: number;

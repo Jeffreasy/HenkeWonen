@@ -16,13 +16,13 @@ import type {
   PortalRoom,
   PortalWorkflowEvent
 } from "../../lib/portalTypes";
-import { ConfirmDialog } from "../ui/ConfirmDialog";
-import { ErrorState } from "../ui/ErrorState";
-import { Field } from "../ui/Field";
-import { Input } from "../ui/Input";
-import { EmptyState } from "../ui/EmptyState";
-import { SectionHeader } from "../ui/SectionHeader";
-import { SummaryList } from "../ui/SummaryList";
+import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
+import { ErrorState } from "../ui/feedback/ErrorState";
+import { Field } from "../ui/forms/Field";
+import { Input } from "../ui/forms/Input";
+import { EmptyState } from "../ui/feedback/EmptyState";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { SummaryList } from "../ui/data-display/SummaryList";
 import { Tabs } from "../ui/Tabs";
 import { ProjectDetailSkeleton } from "./ProjectDetailSkeleton";
 import ProjectWorkflowRail from "./ProjectWorkflowRail";

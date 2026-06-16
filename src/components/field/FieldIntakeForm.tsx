@@ -1,13 +1,13 @@
 import { ClipboardList } from "lucide-react";
 import { useState } from "react";
 import type { CustomerType } from "../../lib/portalTypes";
-import { Alert } from "../ui/Alert";
-import { Button } from "../ui/Button";
-import { Checkbox } from "../ui/Checkbox";
-import { Field } from "../ui/Field";
-import { Input } from "../ui/Input";
-import { Select } from "../ui/Select";
-import { Textarea } from "../ui/Textarea";
+import { Alert } from "../ui/feedback/Alert";
+import { Button } from "../ui/forms/Button";
+import { Checkbox } from "../ui/forms/Checkbox";
+import { Field } from "../ui/forms/Field";
+import { Input } from "../ui/forms/Input";
+import { Select } from "../ui/forms/Select";
+import { Textarea } from "../ui/forms/Textarea";
 
 export type IntakeFormValues = {
   type: CustomerType;

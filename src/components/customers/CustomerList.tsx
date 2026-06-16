@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatCustomerStatus, formatCustomerType } from "../../lib/i18n/statusLabels";
 import type { CustomerStatus, CustomerType, PortalCustomer } from "../../lib/portalTypes";
-import { Badge } from "../ui/Badge";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { Field } from "../ui/Field";
-import { FilterBar } from "../ui/FilterBar";
+import { Badge } from "../ui/data-display/Badge";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { Field } from "../ui/forms/Field";
+import { FilterBar } from "../ui/layout/FilterBar";
 import { PaginationControls } from "../ui/PaginationControls";
-import { SearchInput } from "../ui/SearchInput";
-import { Select } from "../ui/Select";
-import { StatusBadge } from "../ui/StatusBadge";
+import { SearchInput } from "../ui/forms/SearchInput";
+import { Select } from "../ui/forms/Select";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
 import { dateText } from "../projects/measurement/measurementUtils";
 
 type CustomerListProps = {

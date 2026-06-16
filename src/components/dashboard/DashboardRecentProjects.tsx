@@ -1,8 +1,9 @@
 import { Search } from "lucide-react";
 import { formatProjectStatus } from "../../lib/i18n/statusLabels";
 import type { PortalProject } from "../../lib/portalTypes";
-import { Badge } from "../ui/Badge";
-import { EmptyState } from "../ui/EmptyState";
+import { Badge } from "../ui/data-display/Badge";
+import { EmptyState } from "../ui/feedback/EmptyState";
+import { Skeleton } from "../ui/feedback/Skeleton";
 
 type DashboardRecentProjectsProps = {
   isLoading: boolean;
@@ -25,7 +26,15 @@ export function DashboardRecentProjects({ isLoading, projects }: DashboardRecent
       </div>
 
       {isLoading ? (
-        <div className="empty-state">Projecten laden.</div>
+        <div className="dashboard-project-grid" aria-busy="true" aria-label="Projecten laden">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div className="dashboard-project-link" key={index}>
+              <Skeleton width={96} height={20} />
+              <Skeleton width="70%" height={15} />
+              <Skeleton width="90%" height={12} />
+            </div>
+          ))}
+        </div>
       ) : projects.length > 0 ? (
         <div className="dashboard-project-grid">
           {projects.map((project) => (

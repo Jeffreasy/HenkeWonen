@@ -2,12 +2,12 @@ import { formatInvoiceStatus } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
 import { formatDate } from "../../lib/dates";
 import type { InvoiceStatus, PortalInvoiceRow } from "../../lib/portalTypes";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { Field } from "../ui/Field";
-import { FilterBar } from "../ui/FilterBar";
-import { SearchInput } from "../ui/SearchInput";
-import { SectionHeader } from "../ui/SectionHeader";
-import { Select } from "../ui/Select";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { Field } from "../ui/forms/Field";
+import { FilterBar } from "../ui/layout/FilterBar";
+import { SearchInput } from "../ui/forms/SearchInput";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { Select } from "../ui/forms/Select";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
 
 export type StatusFilter = "all" | InvoiceStatus;

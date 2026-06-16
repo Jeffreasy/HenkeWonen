@@ -2,12 +2,12 @@ import { CheckCheck, ShieldAlert } from "lucide-react";
 import { useMemo } from "react";
 import type { VatMappingReviewRow, VatMode } from "./ImportProfiles";
 import { formatPriceType, formatVatMode, formatUnit } from "../../lib/i18n/statusLabels";
-import { Badge, type BadgeVariant } from "../ui/Badge";
-import { Button } from "../ui/Button";
-import { Checkbox } from "../ui/Checkbox";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { InlineHelp } from "../ui/InlineHelp";
-import { Select } from "../ui/Select";
+import { Badge, type BadgeVariant } from "../ui/data-display/Badge";
+import { Button } from "../ui/forms/Button";
+import { Checkbox } from "../ui/forms/Checkbox";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { InlineHelp } from "../ui/feedback/InlineHelp";
+import { Select } from "../ui/forms/Select";
 import { numberText, rowKey, progressPercentage } from "./import/importUtils";
 
 type VatMappingGroupsProps = {

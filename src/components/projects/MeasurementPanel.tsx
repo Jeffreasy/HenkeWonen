@@ -37,22 +37,22 @@ import type {
   QuotePreparationStatus
 } from "../../lib/portalTypes";
 import CatalogProductPicker from "../catalog/CatalogProductPicker";
-import { Alert } from "../ui/Alert";
-import { Button } from "../ui/Button";
-import { Card } from "../ui/Card";
-import { ConfirmDialog } from "../ui/ConfirmDialog";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { EmptyState } from "../ui/EmptyState";
-import { ErrorState } from "../ui/ErrorState";
-import { Field } from "../ui/Field";
-import { Input } from "../ui/Input";
-import { LoadingState } from "../ui/LoadingState";
-import { SectionHeader } from "../ui/SectionHeader";
-import { Select } from "../ui/Select";
-import { StatCard } from "../ui/StatCard";
-import { StatusBadge } from "../ui/StatusBadge";
-import { SummaryList } from "../ui/SummaryList";
-import { Textarea } from "../ui/Textarea";
+import { Alert } from "../ui/feedback/Alert";
+import { Button } from "../ui/forms/Button";
+import { Card } from "../ui/data-display/Card";
+import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { EmptyState } from "../ui/feedback/EmptyState";
+import { ErrorState } from "../ui/feedback/ErrorState";
+import { Field } from "../ui/forms/Field";
+import { Input } from "../ui/forms/Input";
+import { LoadingState } from "../ui/feedback/LoadingState";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { Select } from "../ui/forms/Select";
+import { StatCard } from "../ui/data-display/StatCard";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
+import { SummaryList } from "../ui/data-display/SummaryList";
+import { Textarea } from "../ui/forms/Textarea";
 import type {
   FieldMeasureTool,
   IndicativePriceResult,

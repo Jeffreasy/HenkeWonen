@@ -1,6 +1,6 @@
 import type { ProjectStatus } from "../../lib/portalTypes";
 import { formatProjectStatus } from "../../lib/i18n/statusLabels";
-import { StatusBadge } from "../ui/StatusBadge";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
 
 type ProjectStatusBadgeProps = {
   status: ProjectStatus;

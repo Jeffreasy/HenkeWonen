@@ -2,10 +2,10 @@ import { Plus } from "lucide-react";
 import { useMemo } from "react";
 import type { PortalCustomerContact } from "../../lib/portalTypes";
 import { NoteVisibilityBadge } from "../common/NoteVisibilityBadge";
-import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { SectionHeader } from "../ui/SectionHeader";
+import { Badge } from "../ui/data-display/Badge";
+import { Button } from "../ui/forms/Button";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { SectionHeader } from "../ui/layout/SectionHeader";
 import { dateText } from "../projects/measurement/measurementUtils";
 
 type ContactListTableProps = {

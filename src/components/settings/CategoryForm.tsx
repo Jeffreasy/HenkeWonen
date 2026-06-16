@@ -3,12 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import type { SubmitEventLike } from "../../lib/events";
 import { formatStatusLabel } from "../../lib/i18n/statusLabels";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
-import { Button } from "../ui/Button";
-import { Field } from "../ui/Field";
-import { Input } from "../ui/Input";
-import { SectionHeader } from "../ui/SectionHeader";
-import { Select } from "../ui/Select";
-import { StatusBadge } from "../ui/StatusBadge";
+import { Button } from "../ui/forms/Button";
+import { Field } from "../ui/forms/Field";
+import { Input } from "../ui/forms/Input";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { Select } from "../ui/forms/Select";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
 import { type CategoryRow } from "./settings/settingsTypes";
 
 type CategoryFormProps = {

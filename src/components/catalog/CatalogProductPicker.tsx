@@ -5,10 +5,10 @@ import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatEuro } from "../../lib/money";
 import { formatUnit } from "../../lib/i18n/statusLabels";
 import type { MeasurementProductGroup, PortalProduct } from "../../lib/portalTypes";
-import { Alert } from "../ui/Alert";
-import { Field } from "../ui/Field";
-import { SearchInput } from "../ui/SearchInput";
-import { Select } from "../ui/Select";
+import { Alert } from "../ui/feedback/Alert";
+import { Field } from "../ui/forms/Field";
+import { SearchInput } from "../ui/forms/SearchInput";
+import { Select } from "../ui/forms/Select";
 
 type CatalogProductPickerProps = {
   session: AppSession;

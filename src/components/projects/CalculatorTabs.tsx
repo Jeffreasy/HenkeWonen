@@ -17,8 +17,8 @@ import {
   type ReactNode
 } from "react";
 import type { SubmitEventLike } from "../../lib/events";
-import { Alert } from "../ui/Alert";
-import { Button } from "../ui/Button";
+import { Alert } from "../ui/feedback/Alert";
+import { Button } from "../ui/forms/Button";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

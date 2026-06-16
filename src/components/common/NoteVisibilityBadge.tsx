@@ -1,5 +1,5 @@
 import { Eye, EyeOff } from "lucide-react";
-import { Badge } from "../ui/Badge";
+import { Badge } from "../ui/data-display/Badge";
 
 type NoteVisibilityBadgeProps = {
   visibleToCustomer: boolean;

@@ -4,8 +4,8 @@ import { type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatEuro } from "../../lib/money";
 import type { PortalInvoiceRow } from "../../lib/portalTypes";
-import { Alert } from "../ui/Alert";
-import { StatCard } from "../ui/StatCard";
+import { Alert } from "../ui/feedback/Alert";
+import { StatCard } from "../ui/data-display/StatCard";
 import { InvoicesTable, type StatusFilter } from "./InvoicesTable";
 
 type InvoiceWorkspaceProps = {

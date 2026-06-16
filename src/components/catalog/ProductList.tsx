@@ -4,10 +4,11 @@ import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canManage, type AppSession } from "../../lib/auth/session";
 import type { PortalProduct } from "../../lib/portalTypes";
 import { createConvexHttpClient } from "../../lib/convex/client";
+import { showToast } from "../../lib/toast";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
-import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
-import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { Badge } from "../ui/data-display/Badge";
+import { Button } from "../ui/forms/Button";
+import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
 import { ProductFilterBar } from "./ProductFilterBar";
 import { ProductEditPanel, type ProductDraft } from "./ProductEditPanel";
 import { ProductListTable } from "./ProductListTable";
@@ -209,6 +210,7 @@ export default function ProductList({ session }: ProductListProps) {
       });
       setEditingProduct(null);
       setReloadKey((current) => current + 1);
+      showToast({ title: "Product opgeslagen", tone: "success" });
     } catch (saveError) {
       console.error(saveError);
       setError("Product kon niet worden opgeslagen.");
@@ -250,6 +252,10 @@ export default function ProductList({ session }: ProductListProps) {
       });
       setPendingProductStatus(null);
       setReloadKey((current) => current + 1);
+      showToast({
+        title: nextStatus === "archived" ? "Product gearchiveerd" : "Product hersteld",
+        tone: "success"
+      });
     } catch (saveError) {
       console.error(saveError);
       setError("Productstatus kon niet worden bijgewerkt.");

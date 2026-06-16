@@ -1,5 +1,5 @@
 import { formatDate } from "../../lib/dates";
-import { SectionHeader } from "../ui/SectionHeader";
+import { SectionHeader } from "../ui/layout/SectionHeader";
 
 type CustomerInfo = {
   displayName?: string;

@@ -2,10 +2,10 @@ import { Archive, CheckCircle, FileText, Send, ShoppingCart } from "lucide-react
 import { formatQuoteStatus } from "../../lib/i18n/statusLabels";
 import type { PortalQuote } from "../../lib/portalTypes";
 import type { PortalWorkflowEvent } from "../../lib/portalTypes";
-import { Button } from "../ui/Button";
-import { EmptyState } from "../ui/EmptyState";
-import { SectionHeader } from "../ui/SectionHeader";
-import { Timeline } from "../ui/Timeline";
+import { Button } from "../ui/forms/Button";
+import { EmptyState } from "../ui/feedback/EmptyState";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { Timeline } from "../ui/data-display/Timeline";
 
 type ProjectAction =
   | "quote_accepted"

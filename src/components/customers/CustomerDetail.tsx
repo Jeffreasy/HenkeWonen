@@ -10,9 +10,9 @@ import type {
   PortalProject
 } from "../../lib/portalTypes";
 import { showToast } from "../../lib/toast";
-import { ConfirmDialog } from "../ui/ConfirmDialog";
-import { EmptyState } from "../ui/EmptyState";
-import { ErrorState } from "../ui/ErrorState";
+import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
+import { EmptyState } from "../ui/feedback/EmptyState";
+import { ErrorState } from "../ui/feedback/ErrorState";
 import { FormModal } from "../ui/overlays/FormModal";
 import { CustomerDetailSkeleton } from "./CustomerDetailSkeleton";
 

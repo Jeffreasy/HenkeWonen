@@ -1,6 +1,7 @@
 /**
  * Gedeelde types, constanten en utilities voor de suppliers-modules.
  */
+import { formatDate } from "../../../lib/dates";
 import type { PortalSupplier, ProductListStatus } from "../../../lib/portalTypes";
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
@@ -47,14 +48,7 @@ export function fromDateInputValue(value: string): number | undefined {
  * Formatteert een Unix-timestamp naar een korte datum (nl-NL).
  * Lokaal in SupplierTable — gecentraliseerd voor hergebruik.
  */
+/** Alias voor {@link formatDate} — behoudt de bestaande aanroepnaam in de suppliers-modules. */
 export function dateText(value?: number): string {
-  if (!value) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("nl-NL", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric"
-  }).format(new Date(value));
+  return formatDate(value);
 }

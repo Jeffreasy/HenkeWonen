@@ -146,4 +146,43 @@ describe("Measurements Calculators", () => {
     expect(wallpaper.isIndicative).toBe(true);
     expect(wallpaper.rollsNeeded).toBeGreaterThan(0);
   });
+
+  it("should account for pattern repeat in wallpaper calculation", () => {
+    const withRepeat = calculateWallpaperRolls({
+      wallWidthM: 4,
+      wallHeightM: 2.5,
+      patternRepeatCm: 30
+    });
+    const withoutRepeat = calculateWallpaperRolls({
+      wallWidthM: 4,
+      wallHeightM: 2.5,
+      patternRepeatCm: 0
+    });
+
+    // baanLengteM = 2.5 + 0.30 = 2.80m bij rapport
+    expect(withRepeat.baanLengteM).toBeCloseTo(2.8, 2);
+    // Een grotere baanlengte geeft meer rollen nodig
+    expect(withRepeat.rollsNeeded).toBeGreaterThanOrEqual(withoutRepeat.rollsNeeded);
+  });
+
+  it("should return validationError when baan is longer than roll", () => {
+    const result = calculateWallpaperRolls({
+      wallWidthM: 2,
+      wallHeightM: 12, // baanlengte 12m > rollengte 10.05m
+      rollLengthM: 10
+    });
+
+    expect(result.validationError).toBeTruthy();
+  });
+
+  it("should clamp netMeter to 0 when doorOpening exceeds perimeter", () => {
+    const result = calculatePlinths({
+      perimeterM: 5,
+      doorOpeningM: 8, // groter dan omtrek
+      wastePercent: 5
+    });
+
+    expect(result.netMeter).toBe(0);
+    expect(result.validationError).toBeTruthy();
+  });
 });

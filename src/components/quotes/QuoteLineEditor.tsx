@@ -6,13 +6,13 @@ import { formatLineType } from "../../lib/i18n/statusLabels";
 import type { MeasurementProductGroup, PortalProduct, PortalRoom, QuoteLineType, QuoteTemplateLine } from "../../lib/portalTypes";
 import { polishQuoteTemplateText } from "../../lib/quotes/quoteTemplateCopy";
 import CatalogProductPicker from "../catalog/CatalogProductPicker";
-import { Alert } from "../ui/Alert";
-import { Button } from "../ui/Button";
-import { Field } from "../ui/Field";
-import { Input } from "../ui/Input";
-import { SectionHeader } from "../ui/SectionHeader";
-import { Select } from "../ui/Select";
-import { Textarea } from "../ui/Textarea";
+import { Alert } from "../ui/feedback/Alert";
+import { Button } from "../ui/forms/Button";
+import { Field } from "../ui/forms/Field";
+import { Input } from "../ui/forms/Input";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { Select } from "../ui/forms/Select";
+import { Textarea } from "../ui/forms/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
 import WallpaperCalculator from "./WallpaperCalculator";
 import { LINE_TYPE_OPTIONS } from "./quote/quoteConstants";
@@ -181,6 +181,8 @@ export default function QuoteLineEditor({
       setSelectedTemplateLine(null);
       setSelectedProduct(null);
       setProjectRoomId("");
+    } catch {
+      // Fout is al gemeld via toast in de workspace; behoud de ingevoerde regel.
     } finally {
       setIsSaving(false);
     }

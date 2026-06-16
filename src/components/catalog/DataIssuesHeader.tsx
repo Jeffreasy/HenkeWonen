@@ -1,8 +1,8 @@
 import { CheckCircle2, RefreshCw, ShieldAlert } from "lucide-react";
-import { Alert } from "../ui/Alert";
-import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
-import { LoadingState } from "../ui/LoadingState";
+import { Alert } from "../ui/feedback/Alert";
+import { Badge } from "../ui/data-display/Badge";
+import { Button } from "../ui/forms/Button";
+import { LoadingState } from "../ui/feedback/LoadingState";
 import { numberText } from "./catalog/catalogUtils";
 import type { DuplicateEanIssue } from "./DataIssuesTable";
 type DuplicateEanReview = {

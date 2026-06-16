@@ -1,12 +1,12 @@
 import { Archive, Pencil, RotateCcw } from "lucide-react";
 import { formatCustomerStatus } from "../../lib/i18n/statusLabels";
 import type { PortalCustomer } from "../../lib/portalTypes";
-import { Button } from "../ui/Button";
-import { Card } from "../ui/Card";
+import { Button } from "../ui/forms/Button";
+import { Card } from "../ui/data-display/Card";
 import { CopyButton } from "../ui/forms/CopyButton";
-import { SectionHeader } from "../ui/SectionHeader";
-import { StatusBadge } from "../ui/StatusBadge";
-import { SummaryList } from "../ui/SummaryList";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
+import { SummaryList } from "../ui/data-display/SummaryList";
 import { dateText } from "../projects/measurement/measurementUtils";
 
 type CustomerInfoPanelProps = {

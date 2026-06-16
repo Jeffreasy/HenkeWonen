@@ -1,6 +1,6 @@
 import { CheckCircle2, FileSpreadsheet, ShieldAlert } from "lucide-react";
 import type { ProductImportBatch } from "../../lib/portalTypes";
-import { Badge } from "../ui/Badge";
+import { Badge } from "../ui/data-display/Badge";
 
 type ImportWorkbenchProps = {
   batchSummary: {

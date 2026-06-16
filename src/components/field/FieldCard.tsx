@@ -2,7 +2,7 @@ import { ExternalLink, Mail, MapPin, Navigation, Phone, Ruler } from "lucide-rea
 import { formatDate } from "../../lib/dates";
 import { formatMeasurementStatus, formatProjectStatus, formatQuoteStatus } from "../../lib/i18n/statusLabels";
 import type { FieldWorkspaceCard } from "../../lib/portalTypes";
-import { StatusBadge } from "../ui/StatusBadge";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
 
 export type CardActionPreference = "measure" | "quote";
 

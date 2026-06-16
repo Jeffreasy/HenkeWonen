@@ -6,11 +6,12 @@ import { canEditQuotes, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatDate } from "../../lib/dates";
 import { formatQuoteStatus } from "../../lib/i18n/statusLabels";
+import { showToast } from "../../lib/toast";
 import type { FieldProjectWorkspaceResult, PortalQuote } from "../../lib/portalTypes";
-import { Alert } from "../ui/Alert";
-import { Button } from "../ui/Button";
-import { EmptyState } from "../ui/EmptyState";
-import { SectionHeader } from "../ui/SectionHeader";
+import { Alert } from "../ui/feedback/Alert";
+import { Button } from "../ui/forms/Button";
+import { EmptyState } from "../ui/feedback/EmptyState";
+import { SectionHeader } from "../ui/layout/SectionHeader";
 import MeasurementPanel from "../projects/MeasurementPanel";
 import QuoteBuilder from "../quotes/QuoteBuilder";
 import type { QuoteLineFormValues } from "../quotes/QuoteLineEditor";
@@ -217,14 +218,20 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       return;
     }
 
-    const lineId = await client.mutation(api.portal.addQuoteLine, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      quoteId: selectedQuote.id,
-      ...quoteLineFormToApi(line)
-    });
-    await loadWorkspace();
-    return String(lineId);
+    try {
+      const lineId = await client.mutation(api.portal.addQuoteLine, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        quoteId: selectedQuote.id,
+        ...quoteLineFormToApi(line)
+      });
+      await loadWorkspace();
+      return String(lineId);
+    } catch (mutationError) {
+      console.error(mutationError);
+      showToast({ title: "Regel toevoegen mislukt", tone: "error" });
+      throw mutationError;
+    }
   }
 
   async function deleteQuoteLine(lineId: string) {
@@ -235,12 +242,19 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       return;
     }
 
-    await client.mutation(api.portal.deleteQuoteLine, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      lineId
-    });
-    await loadWorkspace();
+    try {
+      await client.mutation(api.portal.deleteQuoteLine, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        lineId
+      });
+      await loadWorkspace();
+      showToast({ title: "Regel verwijderd", tone: "success" });
+    } catch (mutationError) {
+      console.error(mutationError);
+      showToast({ title: "Regel verwijderen mislukt", tone: "error" });
+      throw mutationError;
+    }
   }
 
   async function updateQuoteLine(lineId: string, line: QuoteLineFormValues) {
@@ -251,13 +265,19 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       return;
     }
 
-    await client.mutation(api.portal.updateQuoteLine, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      lineId,
-      ...quoteLineFormToApi(line)
-    });
-    await loadWorkspace();
+    try {
+      await client.mutation(api.portal.updateQuoteLine, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        lineId,
+        ...quoteLineFormToApi(line)
+      });
+      await loadWorkspace();
+    } catch (mutationError) {
+      console.error(mutationError);
+      showToast({ title: "Regel bijwerken mislukt", tone: "error" });
+      throw mutationError;
+    }
   }
 
   async function updateQuoteStatus(status: "draft" | "sent" | "accepted" | "rejected" | "expired" | "cancelled") {
@@ -272,13 +292,20 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       return;
     }
 
-    await client.mutation(api.portal.updateQuoteStatus, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      quoteId: selectedQuote.id,
-      status
-    });
-    await loadWorkspace();
+    try {
+      await client.mutation(api.portal.updateQuoteStatus, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        quoteId: selectedQuote.id,
+        status
+      });
+      await loadWorkspace();
+      showToast({ title: "Status bijgewerkt", tone: "success" });
+    } catch (mutationError) {
+      console.error(mutationError);
+      showToast({ title: "Status bijwerken mislukt", tone: "error" });
+      throw mutationError;
+    }
   }
 
   async function updateQuoteTerms(terms: string[], paymentTerms: string[]) {
@@ -293,14 +320,21 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       return;
     }
 
-    await client.mutation(api.portal.updateQuoteTerms, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      quoteId: selectedQuote.id,
-      voorwaarden: terms,
-      betalingsvoorwaarden: paymentTerms
-    });
-    await loadWorkspace();
+    try {
+      await client.mutation(api.portal.updateQuoteTerms, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        quoteId: selectedQuote.id,
+        voorwaarden: terms,
+        betalingsvoorwaarden: paymentTerms
+      });
+      await loadWorkspace();
+      showToast({ title: "Voorwaarden opgeslagen", tone: "success" });
+    } catch (mutationError) {
+      console.error(mutationError);
+      showToast({ title: "Voorwaarden opslaan mislukt", tone: "error" });
+      throw mutationError;
+    }
   }
 
   if (isLoading) {
