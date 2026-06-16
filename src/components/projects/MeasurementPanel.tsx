@@ -7,6 +7,7 @@ import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers } from "../../lib/auth/session";
 import {
   calculateBroadloom,
+  calculateCurtainFabric,
   calculateFlooring,
   calculatePlinths,
   calculateStairs,
@@ -177,6 +178,15 @@ export default function MeasurementPanel({
   const [panelHeightM, setPanelHeightM] = useState("");
   const [wallPanelWastePercent, setWallPanelWastePercent] = useState("8");
   const [wallPanelNotes, setWallPanelNotes] = useState("");
+
+  const [curtainRoomId, setCurtainRoomId] = useState("");
+  const [curtainRailWidthM, setCurtainRailWidthM] = useState("");
+  const [curtainHeightM, setCurtainHeightM] = useState("");
+  const [curtainFabricWidthM, setCurtainFabricWidthM] = useState("1.4");
+  const [curtainFullness, setCurtainFullness] = useState("2");
+  const [curtainMakeUp, setCurtainMakeUp] = useState("banen");
+  const [curtainRapportM, setCurtainRapportM] = useState("0");
+  const [curtainNotes, setCurtainNotes] = useState("");
 
   const [stairRoomId, setStairRoomId] = useState("");
   const [stairType, setStairType] = useState("closed");
@@ -481,6 +491,26 @@ export default function MeasurementPanel({
     [panelHeightM, panelWidthM, wallHeightM, wallPanelWastePercent, wallWidthM]
   );
 
+  const curtainResult = useMemo(
+    () =>
+      calculateCurtainFabric({
+        railWidthM: parseDecimal(curtainRailWidthM) ?? 0,
+        curtainHeightM: parseDecimal(curtainHeightM) ?? 0,
+        fabricWidthM: parseDecimal(curtainFabricWidthM) ?? 0,
+        fullness: parseDecimal(curtainFullness) ?? 0,
+        makeUp: curtainMakeUp as "banen" | "kamerhoog",
+        rapportM: parseDecimal(curtainRapportM) ?? 0
+      }),
+    [
+      curtainRailWidthM,
+      curtainHeightM,
+      curtainFabricWidthM,
+      curtainFullness,
+      curtainMakeUp,
+      curtainRapportM
+    ]
+  );
+
   const stairResult = useMemo(
     () =>
       calculateStairs({
@@ -517,6 +547,8 @@ export default function MeasurementPanel({
           return "roll";
         case "wall_panels":
           return "piece";
+        case "curtains":
+          return "meter";
         case "window_covering":
           return "piece";
         case "stairs":
@@ -1523,6 +1555,16 @@ export default function MeasurementPanel({
     if (room) {
       setBroadloomLengthM(decimalText(room.lengteM));
       setBroadloomWidthM(decimalText(room.breedteM));
+    }
+  }
+
+  function applyMeasurementRoomToCurtains(roomId: string) {
+    setCurtainRoomId(roomId);
+    const room = rooms.find((item) => item._id === roomId);
+
+    if (room) {
+      setCurtainRailWidthM(decimalText(room.breedteM));
+      setCurtainHeightM(decimalText(room.hoogteM));
     }
   }
 
@@ -2692,6 +2734,106 @@ export default function MeasurementPanel({
               <Input id="stair-notes" value={stairNotes} onChange={(e) => setStairNotes(e.target.value)} />
             </Field>
             {renderProductPicker("stairs", "stairs")}
+          </>
+        )
+      },
+      {
+        id: "curtains",
+        label: isFieldMode ? "Gordijnstof meten" : "Gordijnstof",
+        icon: CALC_TAB_ICONS.curtains,
+        resultKey: curtainResult.quoteQuantityM ?? 0,
+        hasInput: Boolean(curtainRailWidthM || curtainHeightM),
+        validationError:
+          curtainRailWidthM || curtainHeightM ? curtainResult.validationError : undefined,
+        isSaving,
+        onSubmit: (event) =>
+          void addLine(event, {
+            roomId: curtainRoomId || undefined,
+            productGroup: "curtains",
+            calculationType: "manual",
+            input: {
+              railWidthM: parseDecimal(curtainRailWidthM),
+              curtainHeightM: parseDecimal(curtainHeightM),
+              fabricWidthM: parseDecimal(curtainFabricWidthM),
+              fullness: parseDecimal(curtainFullness),
+              makeUp: curtainMakeUp,
+              rapportM: parseDecimal(curtainRapportM)
+            },
+            result: curtainResult,
+            wastePercent: undefined,
+            quantity: curtainResult.quoteQuantityM,
+            unit: "meter",
+            notes: curtainNotes.trim() || undefined,
+            quoteLineType: "product",
+            tool: "curtains",
+            ...indicativeSnapshotForTool("curtains"),
+            validationError: curtainResult.validationError,
+            successMessage: "Gordijnstof-inmeting opgeslagen."
+          }),
+        result: (
+          <SummaryList
+            items={
+              calcEmptyStateItems(
+                Boolean(curtainRailWidthM || curtainHeightM),
+                curtainRailWidthM || curtainHeightM ? curtainResult.validationError : undefined
+              ) ?? [
+                {
+                  label: "Benodigde gordijnbreedte",
+                  value: formatNumber(curtainResult.requiredWidthM, " m")
+                },
+                {
+                  label: "Banen",
+                  value:
+                    curtainResult.banen === null
+                      ? "Kamerhoog (gekanteld)"
+                      : formatNumber(curtainResult.banen)
+                },
+                ...(curtainResult.dropM !== null
+                  ? [
+                      {
+                        label: "Baanlengte (incl. zoom/rapport)",
+                        value: formatNumber(curtainResult.dropM, " m")
+                      }
+                    ]
+                  : []),
+                { label: "Stofmeters", value: formatNumber(curtainResult.fabricMetersM, " m") },
+                {
+                  label: "Offertehoeveelheid",
+                  value: formatNumber(curtainResult.quoteQuantityM, " m")
+                },
+                ...indicativeSummaryItems("curtains", curtainResult.quoteQuantityM)
+              ]
+            }
+          />
+        ),
+        fields: (
+          <>
+            {renderRoomSelect("curtains-room", "Ruimte", curtainRoomId, applyMeasurementRoomToCurtains)}
+            <Field htmlFor="curtains-rail-width" label="Railbreedte in meter">
+              <Input id="curtains-rail-width" inputMode="decimal" min={0} value={curtainRailWidthM} onChange={(e) => setCurtainRailWidthM(e.target.value)} />
+            </Field>
+            <Field htmlFor="curtains-height" label="Gordijnhoogte in meter">
+              <Input id="curtains-height" inputMode="decimal" min={0} value={curtainHeightM} onChange={(e) => setCurtainHeightM(e.target.value)} />
+            </Field>
+            <Field htmlFor="curtains-fabric-width" label="Stofbreedte in meter">
+              <Input id="curtains-fabric-width" inputMode="decimal" min={0} value={curtainFabricWidthM} onChange={(e) => setCurtainFabricWidthM(e.target.value)} />
+            </Field>
+            <Field htmlFor="curtains-fullness" label="Plooifactor" helpText="Bijv. 2,0 voor dubbele plooi.">
+              <Input id="curtains-fullness" inputMode="decimal" min={0} value={curtainFullness} onChange={(e) => setCurtainFullness(e.target.value)} />
+            </Field>
+            <Field htmlFor="curtains-makeup" label="Confectie">
+              <Select id="curtains-makeup" value={curtainMakeUp} onChange={(e) => setCurtainMakeUp(e.target.value)}>
+                <option value="banen">Banen (op hoogte)</option>
+                <option value="kamerhoog">Kamerhoog (gekanteld)</option>
+              </Select>
+            </Field>
+            <Field htmlFor="curtains-rapport" label="Patroonrapport in meter" helpText="0 = geen rapport.">
+              <Input id="curtains-rapport" inputMode="decimal" min={0} value={curtainRapportM} onChange={(e) => setCurtainRapportM(e.target.value)} />
+            </Field>
+            <Field htmlFor="curtains-notes" label="Notitie">
+              <Input id="curtains-notes" value={curtainNotes} onChange={(e) => setCurtainNotes(e.target.value)} />
+            </Field>
+            {renderProductPicker("curtains", "curtains")}
           </>
         )
       },

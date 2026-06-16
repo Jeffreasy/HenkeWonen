@@ -110,6 +110,7 @@ export type FieldMeasureTool =
   | "plinths"
   | "wallpaper"
   | "wall_panels"
+  | "curtains"
   | "window_covering"
   | "stairs"
   | "manual";
