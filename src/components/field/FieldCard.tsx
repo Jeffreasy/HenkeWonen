@@ -1,4 +1,4 @@
-import { ExternalLink, Mail, MapPin, Navigation, Phone, Ruler } from "lucide-react";
+import { ExternalLink, Mail, MapPin, Navigation, Phone, Ruler, UserRound } from "lucide-react";
 import { formatDate } from "../../lib/dates";
 import { formatMeasurementStatus, formatProjectStatus, formatQuoteStatus } from "../../lib/i18n/statusLabels";
 import type { FieldWorkspaceCard } from "../../lib/portalTypes";
@@ -103,6 +103,12 @@ export function FieldCard({ card, preferredAction }: FieldCardProps) {
             </span>
           ) : null}
           {card.visitAt ? <span>Afspraak: {formatDate(card.visitAt)}</span> : null}
+          {card.measurement?.gemetenDoor ? (
+            <span>
+              <UserRound size={16} aria-hidden="true" />
+              Monteur: {card.measurement.gemetenDoor}
+            </span>
+          ) : null}
           {card.measurement ? (
             <span>Inmeting: {formatMeasurementStatus(card.measurement.status)}</span>
           ) : null}

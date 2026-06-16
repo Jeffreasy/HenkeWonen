@@ -2,6 +2,7 @@ import { mutation, query } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
 import {
   readActorValidator,
+  requireQueryRole,
   requireQueryRoleForTenantId,
   requireSyncToken,
   roleValidator,
@@ -20,6 +21,38 @@ export const list = query({
       .query("users")
       .withIndex("by_tenant", (q) => q.eq("tenantId", args.tenantId))
       .collect();
+  }
+});
+
+// Teamleden voor toewijzing (bv. monteur kiezen bij een inmeetbezoek inplannen).
+// Anders dan `list` (admin-only, tenantId) is dit toegankelijk voor elke
+// winkelmedewerker (user/editor/admin) en werkt het op tenantSlug, zodat de
+// portal-client het net als andere portal-queries kan aanroepen.
+export const listTeamMembers = query({
+  args: {
+    tenantSlug: v.string(),
+    actor: readActorValidator
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
+      .collect();
+
+    return users
+      .map((user) => ({
+        id: String(user._id),
+        naam: user.naam ?? user.email,
+        email: user.email,
+        role: user.role
+      }))
+      .sort((left, right) => left.naam.localeCompare(right.naam, "nl"));
   }
 });
 

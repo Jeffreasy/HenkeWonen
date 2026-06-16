@@ -1,4 +1,4 @@
-import { FileText, Pencil, Ruler, XCircle } from "lucide-react";
+import { CalendarClock, FileText, Pencil, Ruler, XCircle } from "lucide-react";
 import type { PortalCustomer, PortalProject } from "../../lib/portalTypes";
 import { Badge } from "../ui/data-display/Badge";
 import { Button } from "../ui/forms/Button";
@@ -10,6 +10,7 @@ type ProjectOverviewPanelProps = {
   workflowEventsCount: number;
   isStartingMeasurement: boolean;
   onStartMeasurement: () => void;
+  onPlanMeasurement: () => void;
   onEditProject: () => void;
   onCancelProject: () => void;
   canEdit: boolean;
@@ -33,6 +34,7 @@ export function ProjectOverviewPanel({
   workflowEventsCount,
   isStartingMeasurement,
   onStartMeasurement,
+  onPlanMeasurement,
   onEditProject,
   onCancelProject,
   canEdit
@@ -94,6 +96,13 @@ export function ProjectOverviewPanel({
             <FileText size={17} aria-hidden="true" />
             Offerte maken
           </a>
+          <Button
+            leftIcon={<CalendarClock size={17} aria-hidden="true" />}
+            onClick={onPlanMeasurement}
+            variant="secondary"
+          >
+            Inmeetbezoek inplannen
+          </Button>
           <Button
             isLoading={isStartingMeasurement}
             leftIcon={<Ruler size={17} aria-hidden="true" />}
