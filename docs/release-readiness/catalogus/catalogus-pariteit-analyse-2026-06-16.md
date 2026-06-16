@@ -106,8 +106,17 @@ npm run catalog:status   # met prod-target/env
 > `inclusive` (last-write-wins, correct), 10.149 "Qté"-pseudo verwijderd (prod 84.374→~74.225
 > prijsregels), 12 packageContent gecorrigeerd. **Verificatie-dry-run (stap 5) GEDAAN — schoon:**
 > vat-rule-1=31 (alleen Co-pro, correct inclusief), pseudo=0, packageContent=0, scanned=74.225 prijsregels.
-> Prod-prijsrijen = identiek aan de gecorrigeerde dev-stand. **Nog open:** alleen de profielmappings in de
-> portal-btw-workbench (stap 4) — niet urgent, maar vóór een volgende catalogus-import nodig.
+> Prod-prijsrijen = identiek aan de gecorrigeerde dev-stand.
+>
+> **Profielmappings (stap 4) GEVERIFIEERD CORRECT 2026-06-17** (read-only prod-export): 61/63 kolommen
+> `exclusive`; de enige 2 `inclusive`-kolommen zijn legitiem (Co-pro `Adviesverkoopprijs incl. BTW. per
+> verpakking` = audit C-1; Masureel `Aanbevolen verkoopprijs € incl. BTW…` = ook letterlijk "incl. BTW" +
+> niet geïmporteerd/dormant). ZTAHL-verkooplijst staat correct op `exclusive`. **Geen fix nodig** — de
+> profielen waren al goed gezet door `catalog:prod:bootstrap`; alleen de rijen (uit de pre-fix preview)
+> waren fout. Aandachtspunt: bij een toekomstige Masureel-import de btw-stand even met de business bevestigen.
+>
+> **Curatie-scope BESLOTEN 2026-06-17: "volledig houden (~20k)"** (eigenaarkeuze) — geen her-import/curatie.
+> **Catalogus-saga daarmee gesloten:** prod-data én profielen correct, volledige set behouden.
 
 Bevestigd nodig op prod: 17.070 btw-flips + 10.149 pseudo-verwijderingen + 12 packageContent-correcties.
 **Valkuil:** de default-regel flipt álles `inclusive→exclusive`, inclusief de 31 Co-pro-rijen
