@@ -339,8 +339,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       inmeetdatum: data.measurementDate,
       uitvoerdatum: data.executionDate,
       interneNotities: data.internalNotes,
-      klantNotities: data.customerNotes,
-      status: detail.project.status
+      klantNotities: data.customerNotes
     });
     setEditingProject(false);
     await loadProject();

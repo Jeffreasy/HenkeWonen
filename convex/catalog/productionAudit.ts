@@ -1,6 +1,13 @@
 import { query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { readActorValidator, requireQueryRole } from "../authz";
+
+// De audit leest alle producten + prijzen in één query voor duplicaat-/gat-detectie.
+// Op grote catalogi (prod ~25k producten / ~74k prijzen) overschrijdt dat de Convex-leeslimiet.
+// We lezen GEBONDEN (via take) en weigeren met een duidelijke fout i.p.v. een cryptische crash;
+// dezelfde aanpak als getCatalogImportStats. Een volledige audit op die schaal vraagt een
+// chunked herontwerp (aparte taak) — dit voorkomt in elk geval de read-limit-crash.
+const AUDIT_SCAN_LIMIT = 7000;
 
 function idString(value: unknown): string {
   return String(value ?? "");
@@ -74,11 +81,11 @@ export const run = query({
         ctx.db
           .query("products")
           .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
-          .collect(),
+          .take(AUDIT_SCAN_LIMIT + 1),
         ctx.db
           .query("productPrices")
           .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
-          .collect(),
+          .take(AUDIT_SCAN_LIMIT + 1),
         ctx.db
           .query("priceLists")
           .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
@@ -100,6 +107,14 @@ export const run = query({
           .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
           .collect()
       ]);
+
+    if (products.length > AUDIT_SCAN_LIMIT || prices.length > AUDIT_SCAN_LIMIT) {
+      throw new ConvexError(
+        `Catalogus te groot voor een volledige productie-audit in één query ` +
+          `(limiet ${AUDIT_SCAN_LIMIT} producten/prijzen). Audit een kleinere selectie of ` +
+          `gebruik getCatalogImportStats met summaryOnly voor tellingen.`
+      );
+    }
 
     const activeProducts = products.filter((product) => product.status === "active");
     const productById = new Map(products.map((product) => [idString(product._id), product]));
