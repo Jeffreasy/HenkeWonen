@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -51,7 +52,9 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
   const [projects, setProjects] = useState<PortalProject[]>([]);
   const [quotes, setQuotes] = useState<PortalQuote[]>([]);
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
-  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(quoteId ?? null);
+  // Selectie volgt nu de route: /portal/offertes (lijst) vs /portal/offertes/[id] (detail).
+  const selectedQuoteId = quoteId ?? null;
+  const isDetailMode = Boolean(quoteId);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -72,15 +75,20 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     setError(null);
 
     try {
-      const result = (await client.query(api.portal.listQuotesWorkspace, {
-        tenantSlug: session.tenantId
-      })) as QuoteWorkspaceResult;
+      // Detailpagina laadt alleen de betreffende offerte; de lijst laadt de volledige werkruimte.
+      const result = (quoteId
+        ? await client.query(api.portal.quoteDetailWorkspace, {
+            tenantSlug: session.tenantId,
+            quoteId
+          })
+        : await client.query(api.portal.listQuotesWorkspace, {
+            tenantSlug: session.tenantId
+          })) as QuoteWorkspaceResult;
 
       setCustomers(result.customers);
       setProjects(result.projects);
       setQuotes(result.quotes);
       setTemplates(result.templates ?? []);
-      setSelectedQuoteId((current) => (quoteId ?? current) || result.quotes[0]?.id || "");
     } catch (loadError) {
       console.error(loadError);
       setError("Offertes konden niet worden geladen.");
@@ -112,8 +120,6 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
         })
       );
 
-      await loadWorkspace();
-      setSelectedQuoteId(newQuoteId);
       setIsNewQuoteModalOpen(false);
       showToast({ title: "Offerte aangemaakt", description: title.trim(), tone: "success" });
       window.location.assign(`/portal/offertes/${newQuoteId}`);
@@ -225,6 +231,35 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     }
   }
 
+  async function updateQuoteTexts(introText: string, closingText: string) {
+    if (!selectedQuoteId) {
+      return;
+    }
+
+    const client = createConvexHttpClient(session);
+
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return;
+    }
+
+    try {
+      await client.mutation(api.portal.updateQuote, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        quoteId: selectedQuoteId,
+        inleidingTekst: introText,
+        afsluitTekst: closingText
+      });
+      await loadWorkspace();
+      showToast({ title: "Teksten opgeslagen", tone: "success" });
+    } catch (mutationError) {
+      console.error(mutationError);
+      showToast({ title: "Teksten opslaan mislukt", tone: "error" });
+      throw mutationError;
+    }
+  }
+
   async function updateQuoteStatus(status: QuoteStatus) {
     if (!selectedQuoteId) {
       return;
@@ -330,63 +365,80 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
         <Alert variant="danger" title="Offertes niet geladen" description={error} />
       ) : null}
 
-      <QuoteStats
-        total={stats.total}
-        draftCount={stats.draftCount}
-        totalValue={stats.totalValue}
-      />
+      {isDetailMode ? (
+        <>
+          <div>
+            <a className="ui-button ui-button-ghost ui-button-sm" href="/portal/offertes">
+              <ArrowLeft size={16} aria-hidden="true" />
+              Terug naar offertes
+            </a>
+          </div>
 
-      <QuotesTable
-        quotes={filteredQuotes}
-        selectedQuoteId={selectedQuoteId}
-        search={search}
-        setSearch={setSearch}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        isLoading={isLoading}
-        onNew={canEditQuote ? () => setIsNewQuoteModalOpen(true) : undefined}
-        onSelectQuote={setSelectedQuoteId}
-        customerById={customerById}
-      />
-
-      {canEditQuote ? (
-        <FormModal
-          open={isNewQuoteModalOpen}
-          title="Nieuwe offerte starten"
-          description="Selecteer een project en geef de offerte een naam."
-          size="sm"
-          onClose={() => setIsNewQuoteModalOpen(false)}
-        >
-          <CreateQuoteForm
-            projects={projects}
-            onCreateQuote={handleCreateQuote}
-          />
-        </FormModal>
-      ) : null}
-
-      {selectedQuote ? (
-        <QuoteBuilder
-          quote={selectedQuote}
-          customer={selectedCustomer}
-          canEdit={canEditQuote}
-          session={session}
-          project={selectedProject}
-          quoteTemplates={templates}
-          onAddLine={addQuoteLine}
-          onDeleteLine={deleteQuoteLine}
-          onUpdateLine={updateQuoteLine}
-          onUpdateStatus={updateQuoteStatus}
-          onMeasurementLinesImported={loadWorkspace}
-          onUpdateTerms={updateQuoteTerms}
-          onCreateInvoice={handleCreateInvoice}
-        />
-      ) : isLoading ? (
-        <LoadingState title="Offerte laden" description="Een moment geduld." />
+          {selectedQuote ? (
+            <QuoteBuilder
+              quote={selectedQuote}
+              customer={selectedCustomer}
+              canEdit={canEditQuote}
+              session={session}
+              project={selectedProject}
+              quoteTemplates={templates}
+              onAddLine={addQuoteLine}
+              onDeleteLine={deleteQuoteLine}
+              onUpdateLine={updateQuoteLine}
+              onUpdateStatus={updateQuoteStatus}
+              onMeasurementLinesImported={loadWorkspace}
+              onUpdateTerms={updateQuoteTerms}
+              onUpdateTexts={updateQuoteTexts}
+              onCreateInvoice={handleCreateInvoice}
+            />
+          ) : isLoading ? (
+            <LoadingState title="Offerte laden" description="Een moment geduld." />
+          ) : (
+            <EmptyState
+              title="Offerte niet gevonden"
+              description="Deze offerte bestaat niet (meer) of je hebt er geen toegang toe."
+              action={
+                <a className="ui-button ui-button-secondary ui-button-md" href="/portal/offertes">
+                  Naar offertes
+                </a>
+              }
+            />
+          )}
+        </>
       ) : (
-        <EmptyState
-          title="Geen offerte geselecteerd"
-          description="Selecteer een offerte uit de lijst of maak een nieuwe offerte aan."
-        />
+        <>
+          <QuoteStats
+            total={stats.total}
+            draftCount={stats.draftCount}
+            totalValue={stats.totalValue}
+          />
+
+          <QuotesTable
+            quotes={filteredQuotes}
+            search={search}
+            setSearch={setSearch}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            isLoading={isLoading}
+            onNew={canEditQuote ? () => setIsNewQuoteModalOpen(true) : undefined}
+            customerById={customerById}
+          />
+
+          {canEditQuote ? (
+            <FormModal
+              open={isNewQuoteModalOpen}
+              title="Nieuwe offerte starten"
+              description="Selecteer een project en geef de offerte een naam."
+              size="sm"
+              onClose={() => setIsNewQuoteModalOpen(false)}
+            >
+              <CreateQuoteForm
+                projects={projects}
+                onCreateQuote={handleCreateQuote}
+              />
+            </FormModal>
+          ) : null}
+        </>
       )}
     </div>
   );

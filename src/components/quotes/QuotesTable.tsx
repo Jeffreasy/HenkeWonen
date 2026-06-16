@@ -25,26 +25,22 @@ const statusOptions: Array<{ value: StatusFilter; label: string }> = [
 
 type QuotesTableProps = {
   quotes: PortalQuote[];
-  selectedQuoteId: string | null;
   search: string;
   setSearch: (value: string) => void;
   statusFilter: StatusFilter;
   setStatusFilter: (value: StatusFilter) => void;
   isLoading: boolean;
-  onSelectQuote: (quoteId: string) => void;
   customerById: Map<string, PortalCustomer>;
   onNew?: () => void;
 };
 
 export function QuotesTable({
   quotes,
-  selectedQuoteId,
   search,
   setSearch,
   statusFilter,
   setStatusFilter,
   isLoading,
-  onSelectQuote,
   customerById,
   onNew
 }: QuotesTableProps) {
@@ -54,14 +50,10 @@ export function QuotesTable({
       header: "Offerte",
       priority: "primary",
       render: (quote) => (
-        <button
-          className="quote-select-button"
-          type="button"
-          onClick={() => onSelectQuote(quote.id)}
-        >
+        <a className="quote-select-button" href={`/portal/offertes/${quote.id}`}>
           <strong>{quote.offertenummer}</strong>
           <span>{quote.titel}</span>
-        </button>
+        </a>
       )
     },
     {
@@ -162,15 +154,11 @@ export function QuotesTable({
               <strong>{formatEuro(quote.totaalInclBtw)}</strong>
             </div>
             <div className="mobile-card-actions">
-              <Button
-                onClick={() => onSelectQuote(quote.id)}
-                size="sm"
-                variant={quote.id === selectedQuoteId ? "primary" : "secondary"}
+              <a
+                className="ui-button ui-button-primary ui-button-sm"
+                href={`/portal/offertes/${quote.id}`}
               >
-                {quote.id === selectedQuoteId ? "Geselecteerd" : "Selecteren"}
-              </Button>
-              <a className="ui-button ui-button-secondary ui-button-sm" href={`/portal/offertes/${quote.id}`}>
-                Openen
+                Offerte openen
               </a>
             </div>
           </div>
