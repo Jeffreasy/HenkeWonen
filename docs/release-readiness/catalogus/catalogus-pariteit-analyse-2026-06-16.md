@@ -104,8 +104,10 @@ npm run catalog:status   # met prod-target/env
 > (`OneDrive/HenkeWonenDATA/DATABackup/henke-prod-2026-06-17.zip`), dry-run + `--apply` met de
 > gecombineerde regelset gedraaid. Resultaat: 17.070 rijen → `exclusive`, 31 Co-pro-rijen terug naar
 > `inclusive` (last-write-wins, correct), 10.149 "Qté"-pseudo verwijderd (prod 84.374→~74.225
-> prijsregels), 12 packageContent gecorrigeerd. **Nog open:** verificatie-dry-run (stap 5) en de
-> profielmappings in de portal-btw-workbench (stap 4) — anders regresseert het bij een her-import.
+> prijsregels), 12 packageContent gecorrigeerd. **Verificatie-dry-run (stap 5) GEDAAN — schoon:**
+> vat-rule-1=31 (alleen Co-pro, correct inclusief), pseudo=0, packageContent=0, scanned=74.225 prijsregels.
+> Prod-prijsrijen = identiek aan de gecorrigeerde dev-stand. **Nog open:** alleen de profielmappings in de
+> portal-btw-workbench (stap 4) — niet urgent, maar vóór een volgende catalogus-import nodig.
 
 Bevestigd nodig op prod: 17.070 btw-flips + 10.149 pseudo-verwijderingen + 12 packageContent-correcties.
 **Valkuil:** de default-regel flipt álles `inclusive→exclusive`, inclusief de 31 Co-pro-rijen
