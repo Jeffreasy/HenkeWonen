@@ -931,9 +931,9 @@ export const updateQuote = mutation({
 
     if (args.titel !== undefined) patch.titel = args.titel;
     const hasArg = (obj: any, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
-    if (hasArg(args, "validUntil")) patch.geldigTot = args.geldigTot;
-    if (hasArg(args, "introText")) patch.inleidingTekst = args.inleidingTekst;
-    if (hasArg(args, "closingText")) patch.afsluitTekst = args.afsluitTekst;
+    if (hasArg(args, "geldigTot")) patch.geldigTot = args.geldigTot;
+    if (hasArg(args, "inleidingTekst")) patch.inleidingTekst = args.inleidingTekst;
+    if (hasArg(args, "afsluitTekst")) patch.afsluitTekst = args.afsluitTekst;
 
     await ctx.db.patch(quote._id, patch);
 

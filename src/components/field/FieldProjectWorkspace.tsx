@@ -337,6 +337,35 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
     }
   }
 
+  async function updateQuoteTexts(introText: string, closingText: string) {
+    if (!selectedQuote) {
+      return;
+    }
+
+    const client = createConvexHttpClient(session);
+
+    if (!client) {
+      setError("Kan de offerteteksten nu niet opslaan.");
+      return;
+    }
+
+    try {
+      await client.mutation(api.portal.updateQuote, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        quoteId: selectedQuote.id,
+        inleidingTekst: introText,
+        afsluitTekst: closingText
+      });
+      await loadWorkspace();
+      showToast({ title: "Teksten opgeslagen", tone: "success" });
+    } catch (mutationError) {
+      console.error(mutationError);
+      showToast({ title: "Teksten opslaan mislukt", tone: "error" });
+      throw mutationError;
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="panel field-loading-state">
@@ -459,6 +488,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
             onUpdateStatus={updateQuoteStatus}
             onMeasurementLinesImported={loadWorkspace}
             onUpdateTerms={updateQuoteTerms}
+            onUpdateTexts={updateQuoteTexts}
           />
         ) : (
           <EmptyState

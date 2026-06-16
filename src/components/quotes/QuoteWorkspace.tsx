@@ -231,6 +231,35 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     }
   }
 
+  async function updateQuoteTexts(introText: string, closingText: string) {
+    if (!selectedQuoteId) {
+      return;
+    }
+
+    const client = createConvexHttpClient(session);
+
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return;
+    }
+
+    try {
+      await client.mutation(api.portal.updateQuote, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        quoteId: selectedQuoteId,
+        inleidingTekst: introText,
+        afsluitTekst: closingText
+      });
+      await loadWorkspace();
+      showToast({ title: "Teksten opgeslagen", tone: "success" });
+    } catch (mutationError) {
+      console.error(mutationError);
+      showToast({ title: "Teksten opslaan mislukt", tone: "error" });
+      throw mutationError;
+    }
+  }
+
   async function updateQuoteStatus(status: QuoteStatus) {
     if (!selectedQuoteId) {
       return;
@@ -359,6 +388,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
               onUpdateStatus={updateQuoteStatus}
               onMeasurementLinesImported={loadWorkspace}
               onUpdateTerms={updateQuoteTerms}
+              onUpdateTexts={updateQuoteTexts}
               onCreateInvoice={handleCreateInvoice}
             />
           ) : isLoading ? (

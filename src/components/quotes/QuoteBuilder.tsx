@@ -47,6 +47,7 @@ type QuoteBuilderProps = {
   onUpdateLine?: (lineId: string, line: QuoteLineFormValues) => Promise<void> | void;
   onUpdateStatus?: (status: QuoteStatus) => Promise<void> | void;
   onUpdateTerms?: (terms: string[], paymentTerms: string[]) => Promise<void> | void;
+  onUpdateTexts?: (introText: string, closingText: string) => Promise<void> | void;
   onMeasurementLinesImported?: () => Promise<void> | void;
   onCreateInvoice?: () => Promise<string | null>;
   mode?: "full" | "field";
@@ -115,6 +116,7 @@ export default function QuoteBuilder({
   onUpdateLine,
   onUpdateStatus,
   onUpdateTerms,
+  onUpdateTexts,
   onMeasurementLinesImported,
   onCreateInvoice,
   mode = "full"
@@ -141,6 +143,9 @@ export default function QuoteBuilder({
     polishQuoteTemplateLines(quote.betalingsvoorwaarden ?? []).join("\n")
   );
   const [isSavingTerms, setIsSavingTerms] = useState(false);
+  const [introText, setIntroText] = useState(quote.inleidingTekst ?? "");
+  const [closingText, setClosingText] = useState(quote.afsluitTekst ?? "");
+  const [isSavingTexts, setIsSavingTexts] = useState(false);
   const [editingLine, setEditingLine] = useState<PortalQuoteLine | null>(null);
   const [pendingDeleteLine, setPendingDeleteLine] = useState<PortalQuoteLine | null>(null);
   const [pendingStatus, setPendingStatus] = useState<QuoteStatus | null>(null);
@@ -208,6 +213,11 @@ export default function QuoteBuilder({
   }, [quote.id, quote.betalingsvoorwaarden, quote.voorwaarden]);
 
   useEffect(() => {
+    setIntroText(quote.inleidingTekst ?? "");
+    setClosingText(quote.afsluitTekst ?? "");
+  }, [quote.id, quote.inleidingTekst, quote.afsluitTekst]);
+
+  useEffect(() => {
     setEditingLine(null);
     setPendingDeleteLine(null);
     setPendingStatus(null);
@@ -225,6 +235,21 @@ export default function QuoteBuilder({
       // Fout is al gemeld via toast in de workspace.
     } finally {
       setIsSavingTerms(false);
+    }
+  }
+
+  async function saveTexts() {
+    if (!onUpdateTexts || !canEditDraftLines) {
+      return;
+    }
+
+    setIsSavingTexts(true);
+    try {
+      await onUpdateTexts(introText.trim(), closingText.trim());
+    } catch {
+      // Fout is al gemeld via toast in de workspace.
+    } finally {
+      setIsSavingTexts(false);
     }
   }
 
@@ -629,6 +654,67 @@ export default function QuoteBuilder({
     </section>
   );
 
+  const textsContent =
+    onUpdateTexts && canEditDraftLines ? (
+      <div className="grid two-column-even">
+        <Field
+          htmlFor="quote-intro-text"
+          label="Inleidingstekst"
+          description="Korte introductie bovenaan de klantversie. Nieuwe offertes nemen dit over uit het sjabloon."
+        >
+          <Textarea
+            id="quote-intro-text"
+            rows={isFieldMode ? 4 : 6}
+            value={introText}
+            onChange={(event) => setIntroText(event.target.value)}
+          />
+        </Field>
+        <Field
+          htmlFor="quote-closing-text"
+          label="Afsluitende tekst"
+          description="Afsluiting onderaan de klantversie, bijvoorbeeld een bedankje of vervolgstap."
+        >
+          <Textarea
+            id="quote-closing-text"
+            rows={isFieldMode ? 4 : 6}
+            value={closingText}
+            onChange={(event) => setClosingText(event.target.value)}
+          />
+        </Field>
+        <div className="quote-terms-action">
+          <Button
+            isLoading={isSavingTexts}
+            onClick={() => void saveTexts()}
+            variant="primary"
+            leftIcon={<Save size={16} aria-hidden="true" />}
+          >
+            Teksten opslaan
+          </Button>
+        </div>
+      </div>
+    ) : quote.inleidingTekst || quote.afsluitTekst ? (
+      <div className="grid">
+        {quote.inleidingTekst ? <div className="quote-term">{quote.inleidingTekst}</div> : null}
+        {quote.afsluitTekst ? <div className="quote-term">{quote.afsluitTekst}</div> : null}
+      </div>
+    ) : (
+      <EmptyState
+        title="Geen offerteteksten"
+        description="Inleiding en afsluiting verschijnen hier zodra ze zijn ingevuld."
+      />
+    );
+
+  const textsPanel = (
+    <section className="panel">
+      <SectionHeader
+        compact
+        title="Offerteteksten"
+        description="Inleiding en afsluiting die bovenaan en onderaan de klantversie verschijnen."
+      />
+      {textsContent}
+    </section>
+  );
+
   const customerVersionPreview = documentModel ? (
     <QuoteDocumentPreview model={documentModel} />
   ) : (
@@ -845,6 +931,12 @@ export default function QuoteBuilder({
           </details>
         ) : null}
 
+        {/* Offerteteksten: ingeklapt in field-mode (minder vaak nodig op locatie) */}
+        <details className="field-quote-disclosure">
+          <summary>Offerteteksten</summary>
+          <div className="field-quote-disclosure-content">{textsContent}</div>
+        </details>
+
         {/* Voorwaarden: altijd open in field-mode zodat buitendienst ze kan inzien */}
         <details className="field-quote-disclosure" open>
           <summary>Voorwaarden</summary>
@@ -917,6 +1009,7 @@ export default function QuoteBuilder({
 
       <div className="quote-full-width-panel">{quoteLinesPanel}</div>
       {lineEditPanel ? <div className="quote-full-width-panel">{lineEditPanel}</div> : null}
+      <div className="quote-full-width-panel">{textsPanel}</div>
       <div className="quote-full-width-panel">{termsPanel}</div>
       <div className="quote-customer-version-panel">{customerVersionPanel}</div>
     </div>
