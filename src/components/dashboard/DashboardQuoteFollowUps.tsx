@@ -2,18 +2,19 @@ import { ArrowRight } from "lucide-react";
 import { formatQuoteStatus } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
 import type { QuoteStatus } from "../../lib/portalTypes";
-import { Badge } from "../ui/Badge";
-import { EmptyState } from "../ui/EmptyState";
+import { Badge } from "../ui/data-display/Badge";
+import { EmptyState } from "../ui/feedback/EmptyState";
+import { Skeleton } from "../ui/feedback/Skeleton";
 
 export type DashboardQuoteFollowUp = {
   id: string;
-  quoteNumber: string;
-  title: string;
+  offertenummer: string;
+  titel: string;
   status: QuoteStatus;
-  totalIncVat: number;
+  totaalInclBtw: number;
   customerName: string;
   projectTitle?: string;
-  updatedAt: number;
+  gewijzigdOp: number;
 };
 
 type DashboardQuoteFollowUpsProps = {
@@ -36,7 +37,17 @@ export function DashboardQuoteFollowUps({ isLoading, quoteFollowUps }: Dashboard
       </div>
 
       {isLoading ? (
-        <div className="empty-state">Offertes laden.</div>
+        <div className="dashboard-work-list" aria-busy="true" aria-label="Offertes laden">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div className="dashboard-work-item" key={index}>
+              <span className="dashboard-work-copy">
+                <Skeleton width={84} height={20} />
+                <Skeleton width="45%" height={15} />
+                <Skeleton width="75%" height={12} />
+              </span>
+            </div>
+          ))}
+        </div>
       ) : quoteFollowUps.length > 0 ? (
         <div className="dashboard-work-list">
           {quoteFollowUps.map((quote) => (
@@ -45,13 +56,13 @@ export function DashboardQuoteFollowUps({ isLoading, quoteFollowUps }: Dashboard
                 <Badge variant={quote.status === "draft" ? "warning" : "info"}>
                   {formatQuoteStatus(quote.status)}
                 </Badge>
-                <strong>{quote.quoteNumber}</strong>
+                <strong>{quote.offertenummer}</strong>
                 <small className="muted">
-                  {quote.title} - {quote.customerName}
+                  {quote.titel} - {quote.customerName}
                 </small>
               </span>
               <span className="dashboard-work-meta">
-                <strong>{formatEuro(quote.totalIncVat)}</strong>
+                <strong>{formatEuro(quote.totaalInclBtw)}</strong>
                 <ArrowRight size={17} aria-hidden="true" />
               </span>
             </a>

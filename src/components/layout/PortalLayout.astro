@@ -40,10 +40,11 @@ const theme = Astro.cookies.get("theme")?.value || "light";
     </script>
   </head>
   <body>
+    <a href="#hoofdinhoud" class="skip-link">Naar inhoud</a>
     <div class="portal-frame">
       <Sidebar client:load session={session} pathname={pathname} />
       <PortalTopbar client:load session={session} pathname={pathname} />
-      <main class="portal-main">
+      <main class="portal-main" id="hoofdinhoud" tabindex="-1">
         <div class="portal-content">
           <slot />
         </div>

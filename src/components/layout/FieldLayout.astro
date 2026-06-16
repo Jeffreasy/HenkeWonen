@@ -36,9 +36,10 @@ const theme = Astro.cookies.get("theme")?.value || "light";
     </script>
   </head>
   <body>
+    <a href="#hoofdinhoud" class="skip-link">Naar inhoud</a>
     <div class="portal-frame field-frame">
       <FieldNavigation client:load session={session} pathname={pathname} />
-      <main class="field-main">
+      <main class="field-main" id="hoofdinhoud" tabindex="-1">
         <div class="field-content">
           <slot />
         </div>

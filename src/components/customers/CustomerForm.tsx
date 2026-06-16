@@ -2,12 +2,11 @@ import { Save } from "lucide-react";
 import { useState } from "react";
 import type { SubmitEventLike } from "../../lib/events";
 import type { CustomerType } from "../../lib/portalTypes";
-import { Button } from "../ui/Button";
-import { Field } from "../ui/Field";
-import { Input } from "../ui/Input";
-import { SectionHeader } from "../ui/SectionHeader";
-import { Select } from "../ui/Select";
-import { Textarea } from "../ui/Textarea";
+import { Button } from "../ui/forms/Button";
+import { Field } from "../ui/forms/Field";
+import { Input } from "../ui/forms/Input";
+import { Select } from "../ui/forms/Select";
+import { Textarea } from "../ui/forms/Textarea";
 
 /**
  * Wat er bij het vastleggen gebeurt:
@@ -94,11 +93,6 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
 
   return (
     <form className="panel form-grid" onSubmit={submit}>
-      <SectionHeader
-        compact
-        title="Klant of lead toevoegen"
-        description="Leg snel een klant of lead vast vanuit winkelcontact."
-      />
       <Field htmlFor="customer-type" label="Type">
         <Select
           id="customer-type"

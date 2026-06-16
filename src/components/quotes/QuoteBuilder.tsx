@@ -15,17 +15,17 @@ import type { MeasurementProductGroup } from "../../lib/portalTypes";
 import { buildQuoteDocumentModel } from "../../lib/quotes/quoteDocumentModel";
 import { PRODUCT_GROUP_OPTIONS } from "../projects/measurement/measurementTypes";
 import { polishQuoteTemplateLines, polishQuoteTemplateText } from "../../lib/quotes/quoteTemplateCopy";
-import { Button } from "../ui/Button";
-import { ConfirmDialog } from "../ui/ConfirmDialog";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { EmptyState } from "../ui/EmptyState";
-import { Field } from "../ui/Field";
-import { IconButton } from "../ui/IconButton";
+import { Button } from "../ui/forms/Button";
+import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { EmptyState } from "../ui/feedback/EmptyState";
+import { Field } from "../ui/forms/Field";
+import { IconButton } from "../ui/forms/IconButton";
 import { FormModal } from "../ui/overlays/FormModal";
-import { SectionHeader } from "../ui/SectionHeader";
-import { StatusBadge } from "../ui/StatusBadge";
-import { SummaryList } from "../ui/SummaryList";
-import { Textarea } from "../ui/Textarea";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
+import { SummaryList } from "../ui/data-display/SummaryList";
+import { Textarea } from "../ui/forms/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
 import MeasurementLinePicker from "./MeasurementLinePicker";
 import QuoteDocumentPreview from "./QuoteDocumentPreview";
@@ -90,7 +90,7 @@ const quoteStatusActions: Array<{
     status: "cancelled",
     label: "Annuleren",
     description: "De offerte wordt geannuleerd. Dit is bedoeld voor vervallen concepten of ingetrokken offertes.",
-    variant: "danger",
+    variant: "secondary",
     icon: Ban
   }
 ];
@@ -210,6 +210,8 @@ export default function QuoteBuilder({
     setIsSavingTerms(true);
     try {
       await onUpdateTerms(splitLines(termsText), splitLines(paymentTermsText));
+    } catch {
+      // Fout is al gemeld via toast in de workspace.
     } finally {
       setIsSavingTerms(false);
     }
@@ -224,6 +226,8 @@ export default function QuoteBuilder({
     try {
       await onUpdateLine(editingLine.id, values);
       setEditingLine(null);
+    } catch {
+      // Fout is al gemeld via toast; laat het bewerkformulier open staan.
     } finally {
       setIsSavingLine(false);
     }
@@ -242,6 +246,8 @@ export default function QuoteBuilder({
         setEditingLine(null);
       }
       setPendingDeleteLine(null);
+    } catch {
+      // Fout is al gemeld via toast; laat de bevestiging open staan.
     } finally {
       setIsSavingLine(false);
     }
@@ -256,6 +262,8 @@ export default function QuoteBuilder({
     try {
       await onUpdateStatus(pendingStatus);
       setPendingStatus(null);
+    } catch {
+      // Fout is al gemeld via toast; laat de bevestiging open staan.
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -270,6 +278,8 @@ export default function QuoteBuilder({
       if (invoiceId) {
         window.location.href = `/portal/facturen/${invoiceId}`;
       }
+    } catch {
+      // Fout is al gemeld via toast; laat de bevestiging open staan.
     } finally {
       setIsCreatingInvoice(false);
     }
@@ -667,16 +677,19 @@ export default function QuoteBuilder({
       <div className="toolbar quote-status-actions">
         <StatusBadge status={quote.status} label={formatQuoteStatus(quote.status)} />
         {quoteStatusActions
-          .filter((action) =>
-            isFieldMode ? fieldAllowedStatuses.has(action.status as "sent" | "accepted" | "rejected") : true
+          .filter(
+            (action) =>
+              action.status !== quote.status &&
+              (isFieldMode
+                ? fieldAllowedStatuses.has(action.status as "sent" | "accepted" | "rejected")
+                : true)
           )
           .map((action) => {
             const Icon = action.icon;
-            const isCurrent = quote.status === action.status;
 
             return (
               <Button
-                disabled={isCurrent || isUpdatingStatus}
+                disabled={isUpdatingStatus}
                 key={action.status}
                 leftIcon={<Icon size={16} aria-hidden="true" />}
                 onClick={() => setPendingStatus(action.status)}

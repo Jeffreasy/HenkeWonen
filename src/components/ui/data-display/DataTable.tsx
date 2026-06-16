@@ -10,6 +10,8 @@ export type DataTableColumn<T> = {
   align?: "left" | "center" | "right";
   priority?: "primary" | "secondary" | "tertiary";
   hideOnMobile?: boolean;
+  /** Extra class op de th/td van deze kolom (bijv. om actie-knoppen niet te laten wrappen). */
+  cellClassName?: string;
 };
 
 type DataTableProps<T> = {
@@ -87,7 +89,8 @@ export function DataTable<T>({
                   column.hideOnMobile && "data-table-cell-mobile-hidden",
                   column.align === "right" && "data-table-align-right",
                   column.align === "center" && "data-table-align-center",
-                  column.priority && `data-table-priority-${column.priority}`
+                  column.priority && `data-table-priority-${column.priority}`,
+                  column.cellClassName
                 )}
                 key={column.key}
                 style={column.width ? { width: column.width } : undefined}
@@ -107,7 +110,8 @@ export function DataTable<T>({
                     column.hideOnMobile && "data-table-cell-mobile-hidden",
                     column.align === "right" && "data-table-align-right",
                     column.align === "center" && "data-table-align-center",
-                    column.priority && `data-table-priority-${column.priority}`
+                    column.priority && `data-table-priority-${column.priority}`,
+                    column.cellClassName
                   )}
                   key={column.key}
                 >

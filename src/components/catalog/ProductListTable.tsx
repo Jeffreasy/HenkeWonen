@@ -3,10 +3,10 @@ import { useMemo } from "react";
 import { formatStatusLabel, formatUnit } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
 import type { PortalProduct } from "../../lib/portalTypes";
-import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { StatusBadge } from "../ui/StatusBadge";
+import { Badge } from "../ui/data-display/Badge";
+import { Button } from "../ui/forms/Button";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
 import { type ProductStatus } from "./catalog/catalogTypes";
 
 
@@ -116,34 +116,19 @@ export function ProductListTable({
       {
         key: "actions",
         header: "Acties",
-        width: "180px",
+        cellClassName: "data-table-actions-cell",
         render: (product) =>
           canManageProducts ? (
             <div className="toolbar">
-              <Button
-                leftIcon={<Pencil size={16} aria-hidden="true" />}
-                onClick={() => onEditProduct(product)}
-                size="sm"
-                variant="secondary"
-              >
+              <Button onClick={() => onEditProduct(product)} size="sm" variant="secondary">
                 Bewerken
               </Button>
               {product.status === "archived" ? (
-                <Button
-                  leftIcon={<RotateCcw size={16} aria-hidden="true" />}
-                  onClick={() => onChangeStatus(product, "active")}
-                  size="sm"
-                  variant="secondary"
-                >
+                <Button onClick={() => onChangeStatus(product, "active")} size="sm" variant="secondary">
                   Herstellen
                 </Button>
               ) : (
-                <Button
-                  leftIcon={<Archive size={16} aria-hidden="true" />}
-                  onClick={() => onChangeStatus(product, "archived")}
-                  size="sm"
-                  variant="danger"
-                >
+                <Button onClick={() => onChangeStatus(product, "archived")} size="sm" variant="ghost">
                   Archiveren
                 </Button>
               )}
@@ -207,7 +192,7 @@ export function ProductListTable({
                   leftIcon={<Archive size={16} aria-hidden="true" />}
                   onClick={() => onChangeStatus(product, "archived")}
                   size="sm"
-                  variant="danger"
+                  variant="ghost"
                 >
                   Archiveren
                 </Button>

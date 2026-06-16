@@ -7,7 +7,9 @@
 .portal-main {
   margin-left: 272px;
   min-height: 100vh;
-  padding: 28px;
+  /* Extra onderpadding zodat de zwevende Actie-FAB (rechtsonder) de laatste
+     tabelrij/inhoud niet overlapt. */
+  padding: 28px 28px 96px;
 }
 
 .portal-content {

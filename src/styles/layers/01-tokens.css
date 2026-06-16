@@ -9,7 +9,8 @@
   --color-surface-muted: #ded0b2;
   --color-text: #2c241b;
   --color-text-muted: #6e5f4d;
-  --color-text-subtle: #8a7966;
+  /* Subtle verdonkerd van #8a7966 (~3.46:1, AA-fail) naar ~4.7:1 op surface. */
+  --color-text-subtle: #75634d;
   --color-border: #cab998;
   --color-border-strong: #ad9a77;
   --color-accent: #9a5f1b;
@@ -25,6 +26,9 @@
   --color-danger-hover: #991b1b; /* Danger knop hover */
   --color-info: #1d4e89;
   --color-info-bg: #dbeafe;
+
+  /* Focus-ring: opaak genoeg voor duidelijke zichtbaarheid (WCAG 2.4.7). */
+  --focus-ring: rgba(122, 67, 16, 0.85);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -135,6 +139,9 @@ html[data-theme="dark"] {
   --color-info: #60a5fa;
   --color-info-bg: #172554;
 
+  /* Focus-ring dark: warmer goud-accent voor zichtbaarheid op donker. */
+  --focus-ring: rgba(246, 181, 102, 0.9);
+
   /* Shadows */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow-sm: 0 6px 16px rgba(0, 0, 0, 0.6);
@@ -200,12 +207,12 @@ textarea {
 
 :where(a, button, input, select, textarea, [role="button"], .tab):focus-visible,
 .nav-link:focus-visible {
-  outline: 3px solid rgba(154, 95, 27, 0.34);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
 :disabled,
 [aria-disabled="true"] {
   cursor: not-allowed;
-  opacity: 0.58;
+  opacity: 0.62;
 }
