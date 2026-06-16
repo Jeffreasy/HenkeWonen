@@ -14,6 +14,7 @@ import { Alert } from "../ui/feedback/Alert";
 import { Button } from "../ui/forms/Button";
 import { FormModal } from "../ui/overlays/FormModal";
 import { SearchInput } from "../ui/forms/SearchInput";
+import { Select } from "../ui/forms/Select";
 import { FieldPrioritySummary } from "./FieldPrioritySummary";
 import { FieldPageTabs } from "./FieldPageTabs";
 import { FieldCardSection, type FieldSection } from "./FieldCardSection";
@@ -165,6 +166,24 @@ function filterCards(cards: FieldWorkspaceCard[], search: string) {
   return cards.filter((card) => cardSearchText(card).includes(query));
 }
 
+// Sentinel-waarde voor "monteur nog niet toegewezen" — kan niet botsen met een
+// echte monteurnaam (gemetenDoor bevat altijd een teamlid-naam of vrije tekst).
+const UNASSIGNED_MONTEUR = "__unassigned__";
+
+function cardMonteur(card: FieldWorkspaceCard) {
+  return card.measurement?.gemetenDoor?.trim() ?? "";
+}
+
+function matchesMonteur(card: FieldWorkspaceCard, monteur: string) {
+  if (!monteur) {
+    return true;
+  }
+  if (monteur === UNASSIGNED_MONTEUR) {
+    return cardMonteur(card) === "";
+  }
+  return cardMonteur(card) === monteur;
+}
+
 function uniqueCards(cards: FieldWorkspaceCard[]) {
   const byId = new Map<string, FieldWorkspaceCard>();
 
@@ -191,6 +210,7 @@ export default function FieldServiceWorkspace({
 }: FieldServiceWorkspaceProps) {
   const [workspace, setWorkspace] = useState<FieldServiceWorkspaceResult>(emptyWorkspace);
   const [search, setSearch] = useState("");
+  const [monteurFilter, setMonteurFilter] = useState("");
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
   const [isSavingLead, setIsSavingLead] = useState(false);
   const [intakeError, setIntakeError] = useState<string | null>(null);
@@ -307,18 +327,76 @@ export default function FieldServiceWorkspace({
   const activePage = pageCopy[view];
   const primaryBucket = fieldPages.find((page) => page.view === view)?.bucket ?? "today";
   const visibleBuckets = view === "today" ? [primaryBucket, "followUp" as const] : [primaryBucket];
+
+  // Beschikbare monteurs uit alle buckets (niet alleen de zichtbare tab), zodat de
+  // keuzelijst stabiel blijft terwijl je tussen Vandaag/Inmeten/Offertes wisselt.
+  const monteurOptions = useMemo(() => {
+    const names = new Set<string>();
+    let hasUnassigned = false;
+    for (const bucket of ["today", "measure", "quote", "followUp"] as const) {
+      for (const card of workspace[bucket]) {
+        const monteur = cardMonteur(card);
+        if (monteur) {
+          names.add(monteur);
+        } else {
+          hasUnassigned = true;
+        }
+      }
+    }
+    return {
+      names: [...names].sort((left, right) => left.localeCompare(right, "nl")),
+      hasUnassigned
+    };
+  }, [workspace]);
+
+  // Als de gekozen monteur na een herlaad niet meer voorkomt, val terug op "alle".
+  useEffect(() => {
+    if (
+      monteurFilter &&
+      monteurFilter !== UNASSIGNED_MONTEUR &&
+      !monteurOptions.names.includes(monteurFilter)
+    ) {
+      setMonteurFilter("");
+    }
+  }, [monteurFilter, monteurOptions.names]);
+
+  // Scope de hele werkplek (secties, prioriteiten én tab-tellers) op de gekozen
+  // monteur; de zoekterm blijft daarbovenop als secundair tekstfilter werken.
+  const scopedWorkspace = useMemo<FieldServiceWorkspaceResult>(() => {
+    if (!monteurFilter) {
+      return workspace;
+    }
+    const keep = (card: FieldWorkspaceCard) => matchesMonteur(card, monteurFilter);
+    const today = workspace.today.filter(keep);
+    const measure = workspace.measure.filter(keep);
+    const quote = workspace.quote.filter(keep);
+    const followUp = workspace.followUp.filter(keep);
+    return {
+      today,
+      measure,
+      quote,
+      followUp,
+      counts: {
+        today: today.length,
+        measure: measure.length,
+        quote: quote.length,
+        followUp: followUp.length
+      }
+    };
+  }, [workspace, monteurFilter]);
+
   const sections = useMemo<FieldSection[]>(
     () =>
       visibleBuckets.map((bucket) => ({
         bucket,
         ...sectionCopy[bucket],
-        items: filterCards(workspace[bucket], search)
+        items: filterCards(scopedWorkspace[bucket], search)
       })),
-    [search, visibleBuckets, workspace]
+    [search, visibleBuckets, scopedWorkspace]
   );
   const pageCards = useMemo(
-    () => uniqueCards(visibleBuckets.flatMap((bucket) => workspace[bucket])),
-    [visibleBuckets, workspace]
+    () => uniqueCards(visibleBuckets.flatMap((bucket) => scopedWorkspace[bucket])),
+    [visibleBuckets, scopedWorkspace]
   );
   const priorityCounts = useMemo(
     () => countPriorities(pageCards),
@@ -328,15 +406,15 @@ export default function FieldServiceWorkspace({
   // hoeveel matchende dossiers in die bucket zitten (i.p.v. het ongefilterde totaal).
   const tabCounts = useMemo(() => {
     if (!search.trim()) {
-      return workspace.counts;
+      return scopedWorkspace.counts;
     }
     return {
-      today: filterCards(workspace.today, search).length,
-      measure: filterCards(workspace.measure, search).length,
-      quote: filterCards(workspace.quote, search).length,
-      followUp: filterCards(workspace.followUp, search).length
+      today: filterCards(scopedWorkspace.today, search).length,
+      measure: filterCards(scopedWorkspace.measure, search).length,
+      quote: filterCards(scopedWorkspace.quote, search).length,
+      followUp: filterCards(scopedWorkspace.followUp, search).length
     };
-  }, [search, workspace]);
+  }, [search, scopedWorkspace]);
 
   return (
     <div className="grid field-workspace">
@@ -362,6 +440,27 @@ export default function FieldServiceWorkspace({
               <Button size="sm" variant="ghost" onClick={() => setSearch("")}>
                 Wissen
               </Button>
+            </div>
+          ) : null}
+          {monteurOptions.names.length > 0 ? (
+            <div className="field-monteur-filter">
+              <label htmlFor="field-monteur-filter-select">Monteur</label>
+              <Select
+                id="field-monteur-filter-select"
+                aria-label="Filter dossiers op monteur"
+                value={monteurFilter}
+                onChange={(event) => setMonteurFilter(event.target.value)}
+              >
+                <option value="">Alle monteurs</option>
+                {monteurOptions.names.map((naam) => (
+                  <option key={naam} value={naam}>
+                    {naam}
+                  </option>
+                ))}
+                {monteurOptions.hasUnassigned ? (
+                  <option value={UNASSIGNED_MONTEUR}>Niet toegewezen</option>
+                ) : null}
+              </Select>
             </div>
           ) : null}
           {canCreateFieldLead ? (

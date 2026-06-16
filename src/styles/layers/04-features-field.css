@@ -221,6 +221,24 @@
   font-weight: 700;
 }
 
+.field-monteur-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.field-monteur-filter label {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.field-monteur-filter .ui-control {
+  flex: 1;
+  min-width: 0;
+}
+
 .field-page-tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
