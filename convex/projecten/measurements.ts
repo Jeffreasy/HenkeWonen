@@ -178,6 +178,21 @@ async function touchMeasurement(ctx: any, measurementId: any, updatedAt = Date.n
   await ctx.db.patch(measurementId, { gewijzigdOp: updatedAt });
 }
 
+// Bewaakt de numerieke meetregel-invoer: aantal en snijverlies-% stromen door naar de
+// offerte- en factuurtotalen, dus NaN/Infinity of negatieve/absurde waarden mogen niet
+// stilletjes worden opgeslagen. snijverliesPct is een percentage (seed gebruikt 7/5/10).
+function validateMeasurementQuantities(aantal: number, snijverliesPct?: number) {
+  if (!Number.isFinite(aantal) || aantal < 0) {
+    throw new ConvexError("Aantal moet een eindig, niet-negatief getal zijn.");
+  }
+  if (
+    snijverliesPct !== undefined &&
+    (!Number.isFinite(snijverliesPct) || snijverliesPct < 0 || snijverliesPct > 100)
+  ) {
+    throw new ConvexError("Snijverlies-% moet een getal tussen 0 en 100 zijn.");
+  }
+}
+
 /**
  * Valideert een tijdens het inmeten gekozen product: moet bij de tenant horen
  * en mag niet pilot-verborgen zijn (zelfde guard als validateQuoteLineProduct).
@@ -802,6 +817,7 @@ export const addMeasurementLine = mutation({
       "admin"
     ]);
     await requireMeasurement(ctx, args.tenantId, args.inmetingId);
+    validateMeasurementQuantities(args.aantal, args.snijverliesPct);
 
     if (args.ruimteId) {
       const room = await ctx.db.get(args.ruimteId);
@@ -925,6 +941,7 @@ export const updateMeasurementLine = mutation({
     if (line.quotePreparationStatus === "converted") {
       throw new ConvexError("Verwerkte meetregels kunnen niet direct worden aangepast.");
     }
+    validateMeasurementQuantities(args.aantal, args.snijverliesPct);
 
     if (args.ruimteId) {
       const room = await ctx.db.get(args.ruimteId);

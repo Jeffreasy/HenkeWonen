@@ -1,6 +1,11 @@
 import { query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { readActorValidator, requireQueryRole } from "../authz";
+
+// Zie productionAudit.ts: validatie leest alle producten + prijzen in één query; op grote
+// catalogi overschrijdt dat de Convex-leeslimiet. We lezen gebonden en weigeren met een
+// duidelijke fout i.p.v. een cryptische crash (volledige validatie op die schaal = aparte taak).
+const VALIDATE_SCAN_LIMIT = 7000;
 
 function idString(value: unknown): string {
   return String(value ?? "");
@@ -59,11 +64,11 @@ export const validateCatalog = query({
       ctx.db
         .query("products")
         .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
-        .collect(),
+        .take(VALIDATE_SCAN_LIMIT + 1),
       ctx.db
         .query("productPrices")
         .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
-        .collect(),
+        .take(VALIDATE_SCAN_LIMIT + 1),
       ctx.db
         .query("priceLists")
         .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
@@ -81,6 +86,13 @@ export const validateCatalog = query({
         .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
         .collect()
     ]);
+
+    if (products.length > VALIDATE_SCAN_LIMIT || prices.length > VALIDATE_SCAN_LIMIT) {
+      throw new ConvexError(
+        `Catalogus te groot voor volledige validatie in één query ` +
+          `(limiet ${VALIDATE_SCAN_LIMIT} producten/prijzen). Valideer een kleinere selectie.`
+      );
+    }
 
     const supplierById = new Map(suppliers.map((supplier) => [idString(supplier._id), supplier]));
     const categoryById = new Map(categories.map((category) => [idString(category._id), category]));

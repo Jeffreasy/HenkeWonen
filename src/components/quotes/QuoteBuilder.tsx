@@ -629,8 +629,13 @@ export default function QuoteBuilder({
       </div>
     ) : (
       <div className="grid">
-        {[...(quote.voorwaarden ?? []), ...(quote.betalingsvoorwaarden ?? [])].map((term) => (
-          <div className="quote-term" key={term}>
+        {[
+          ...(quote.voorwaarden ?? []).map((term, index) => ({ term, key: `vw-${index}` })),
+          ...(quote.betalingsvoorwaarden ?? []).map((term, index) => ({ term, key: `bv-${index}` }))
+        ].map(({ term, key }) => (
+          // Bron-prefix + index als key: dezelfde tekst kan in voorwaarden én
+          // betalingsvoorwaarden voorkomen, dus de term zelf is niet uniek.
+          <div className="quote-term" key={key}>
             {polishQuoteTemplateText(term)}
           </div>
         ))}

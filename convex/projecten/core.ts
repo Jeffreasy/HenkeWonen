@@ -299,8 +299,11 @@ export const updateProject = mutation({
     inmeetdatum: v.optional(v.number()),
     uitvoerdatum: v.optional(v.number()),
     interneNotities: v.optional(v.string()),
-    klantNotities: v.optional(v.string()),
-    status: v.optional(projectStatus)
+    klantNotities: v.optional(v.string())
+    // status staat hier BEWUST niet: statusovergangen lopen uitsluitend via
+    // updateProjectStatus/processProjectAction (met invarianten, timestamps en
+    // workflow-events). Een vrije status-patch hier zou bv. een sprong naar
+    // invoiced/paid/closed zonder factuur/offerte toestaan.
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
@@ -325,7 +328,6 @@ export const updateProject = mutation({
     if (hasArg(args, "uitvoerdatum")) patch.uitvoerdatum = args.uitvoerdatum;
     if (hasArg(args, "interneNotities")) patch.interneNotities = args.interneNotities;
     if (hasArg(args, "klantNotities")) patch.klantNotities = args.klantNotities;
-    if (args.status !== undefined) patch.status = args.status;
 
     await ctx.db.patch(project._id, patch);
 
