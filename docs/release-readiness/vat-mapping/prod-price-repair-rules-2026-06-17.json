@@ -1,0 +1,8 @@
+[
+  { "fromModes": ["unknown", "inclusive"], "toMode": "exclusive" },
+  {
+    "fromModes": ["exclusive"],
+    "toMode": "inclusive",
+    "sourceColumnNames": ["Adviesverkoopprijs incl. BTW. per verpakking"]
+  }
+]

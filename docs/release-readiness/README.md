@@ -2,6 +2,12 @@
 
 Deze map bevat dossiers die relevant zijn voor productie-vrijgave.
 
+## Actuele stand
+
+| Document | Gebruik |
+| --- | --- |
+| [Openstaand 2026-06-16](./openstaand-2026-06-16.md) | **Start hier** — geconsolideerde, geverifieerde stand van al het openstaande werk (vervangt het verspreide beeld in de losse docs hieronder; bevat de stale-cijfer-correctie na de prod-go-live van 2026-06-15) |
+
 ## Catalogusbron
 
 | Document | Gebruik |
