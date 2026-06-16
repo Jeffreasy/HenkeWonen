@@ -71,6 +71,9 @@ async function ensureCustomer(
     displayName: string;
     email?: string;
     phone?: string;
+    street?: string;
+    houseNumber?: string;
+    postalCode?: string;
     city?: string;
     status: "lead" | "active";
     notes?: string;
@@ -84,6 +87,9 @@ async function ensureCustomer(
       type: customer.type,
       email: customer.email,
       telefoon: customer.phone,
+      straat: customer.street,
+      huisnummer: customer.houseNumber,
+      postcode: customer.postalCode,
       plaats: customer.city,
       status: customer.status,
       notities: customer.notes,
@@ -99,6 +105,9 @@ async function ensureCustomer(
     weergaveNaam: customer.displayName,
     email: customer.email,
     telefoon: customer.phone,
+    straat: customer.street,
+    huisnummer: customer.houseNumber,
+    postcode: customer.postalCode,
     plaats: customer.city,
     land: "Nederland",
     notities: customer.notes,
@@ -139,6 +148,8 @@ async function ensureProject(
       | "cancelled";
     internalNotes?: string;
     customerNotes?: string;
+    measurementDate?: number;
+    executionDate?: number;
   }
 ) {
   const existing = await findProject(ctx, tenantId, project.title);
@@ -153,6 +164,13 @@ async function ensureProject(
     gefactureerdOp: past(["invoiced", "paid", "closed"]) ? timestamp : undefined
   };
 
+  // Echte planningsdatums (zoals startOrPlanMeasurement project.inmeetdatum zet
+  // en de projectbewerking uitvoerdatum). Naast de "gepland-op" mijlpaalstempels.
+  const planningDates = {
+    inmeetdatum: project.measurementDate,
+    uitvoerdatum: project.executionDate
+  };
+
   if (existing) {
     await ctx.db.patch(existing._id, {
       klantId: project.customerId,
@@ -161,6 +179,7 @@ async function ensureProject(
       status: project.status,
       interneNotities: project.internalNotes,
       klantNotities: project.customerNotes,
+      ...planningDates,
       ...statusDates,
       gewijzigdOp: timestamp
     });
@@ -177,6 +196,7 @@ async function ensureProject(
     interneNotities: project.internalNotes,
     klantNotities: project.customerNotes,
     createdByExternalUserId: nowUser,
+    ...planningDates,
     ...statusDates,
     aangemaaktOp: timestamp,
     gewijzigdOp: timestamp
@@ -344,6 +364,15 @@ async function ensureQuote(
     "Water en stroom zijn beschikbaar.",
     "Bij overschrijving hanteert Henke Wonen een betalingstermijn van 8 dagen."
   ];
+  // Gelijk aan wat createQuote uit de offertetemplate (betalingsvoorwaarden) kopieert.
+  const paymentTerms = [
+    "100% bij oplevering.",
+    "Bij bedragen boven €10.000 wordt een aanbetaling gevraagd van 30%.",
+    "Bij meubels wordt altijd een aanbetaling gevraagd van 50%.",
+    "Contante betalingen tot €3.000 worden geaccepteerd, daarboven alleen overschrijving of pin.",
+    "Bij pinbetaling wordt 2% toeslag over het gehele bedrag berekend.",
+    "Bij overschrijving hanteert Henke Wonen een betalingstermijn van 8 dagen."
+  ];
   // Een verstuurde/afgehandelde offerte is altijd ook verzonden geweest.
   const isSentOrLater = ["sent", "accepted", "rejected", "expired"].includes(quote.status);
   const statusDates = {
@@ -356,6 +385,7 @@ async function ensureQuote(
     await ctx.db.patch(existing._id, {
       status: quote.status,
       voorwaarden: terms,
+      betalingsvoorwaarden: paymentTerms,
       ...statusDates,
       gewijzigdOp: timestamp
     });
@@ -373,6 +403,7 @@ async function ensureQuote(
     inleidingTekst: "Hartelijk dank voor uw bezoek aan Henke Wonen. Hieronder vindt u onze offerte.",
     afsluitTekst: "Wij horen graag of alles naar wens is.",
     voorwaarden: terms,
+    betalingsvoorwaarden: paymentTerms,
     subtotaalExBtw: 0,
     btwTotaal: 0,
     totaalInclBtw: 0,
@@ -396,6 +427,13 @@ async function ensureQuoteLine(
     vatRate: number;
     discountExVat?: number;
     sortOrder: number;
+    // Prod-getrouw: een offerteregel hangt aan een ruimte en (bij producten) aan een
+    // catalogusproduct, en geïmporteerde meetregels dragen metadata.source = "measurement"
+    // — net als addQuoteLine / importMeasurementLinesToQuote in productie.
+    roomId?: Id<"projectRooms">;
+    product?: { id: Id<"products">; naam: string } | null;
+    description?: string;
+    source?: "measurement";
   }
 ) {
   const existing = await ctx.db
@@ -417,6 +455,9 @@ async function ensureQuoteLine(
   const lineDoc = {
     regelType: line.lineType,
     titel: line.title,
+    omschrijving: line.description,
+    projectRuimteId: line.roomId,
+    productId: line.product?.id,
     aantal: line.quantity,
     eenheid: line.unit,
     eenheidsprijsExBtw: line.unitPriceExVat,
@@ -425,7 +466,8 @@ async function ensureQuoteLine(
     sortOrder: line.sortOrder,
     regelTotaalExBtw: totals.lineTotalExVat,
     regelBtwTotaal: totals.lineVatTotal,
-    regelTotaalInclBtw: totals.lineTotalIncVat
+    regelTotaalInclBtw: totals.lineTotalIncVat,
+    metadata: line.source ? { source: line.source } : undefined
   };
 
   if (existing) {
@@ -820,6 +862,9 @@ export const run = internalMutation({
       displayName: "Familie Bakker",
       email: "fam.bakker@example.test",
       phone: "06-21847503",
+      street: "De Rede",
+      houseNumber: "12",
+      postalCode: "8251 AB",
       city: "Dronten",
       status: "active",
       notes: "PVC dryback voor woonkamer en hal; bestaande plavuizen egaliseren."
@@ -829,6 +874,9 @@ export const run = internalMutation({
       displayName: "Familie Visser",
       email: "visser.swifterbant@example.test",
       phone: "06-38194726",
+      street: "Tarpan",
+      houseNumber: "8",
+      postalCode: "8255 BG",
       city: "Swifterbant",
       status: "active",
       notes: "Traprenovatie PVC rechte trap + gordijnen woonkamer. Offerte akkoord."
@@ -838,6 +886,9 @@ export const run = internalMutation({
       displayName: "Fysiotherapie Hartog",
       email: "info@fysiohartog.example.test",
       phone: "0320-745210",
+      street: "Maerlant",
+      houseNumber: "23",
+      postalCode: "8224 AC",
       city: "Lelystad",
       status: "active",
       notes: "Projecttapijt wachtruimte en gang; inmeten buiten behandeltijden."
@@ -847,6 +898,9 @@ export const run = internalMutation({
       displayName: "Mevrouw Smit",
       email: "j.smit@example.test",
       phone: "06-50923184",
+      street: "Havezate",
+      houseNumber: "45",
+      postalCode: "8256 SJ",
       city: "Biddinghuizen",
       status: "active",
       notes: "Behang slaapkamer (Masureel) en vinyl badkamer."
@@ -856,6 +910,9 @@ export const run = internalMutation({
       displayName: "De heer Mulder",
       email: "h.mulder@example.test",
       phone: "06-14702938",
+      street: "Het Ruim",
+      houseNumber: "7",
+      postalCode: "8251 EL",
       city: "Dronten",
       status: "lead",
       notes: "Oriënteert op karpet (VT Wonen) en raamdecoratie. Nog geen afspraak."
@@ -901,7 +958,8 @@ export const run = internalMutation({
       description: "Floorlife PVC dryback in woonkamer en hal, incl. egaliseren en plinten.",
       status: "quote_sent",
       internalNotes: "Bestaande plavuizen — droogtijd egalisatie inplannen.",
-      customerNotes: "Ruimtes leeg opleveren bij aanvang."
+      customerNotes: "Ruimtes leeg opleveren bij aanvang.",
+      measurementDate: timestamp - 5 * day
     });
     const visserProjectId = await ensureProject(ctx, tenantId, {
       customerId: visserId,
@@ -909,7 +967,9 @@ export const run = internalMutation({
       description: "PVC rechte trap met zwarte strip en gordijnen woonkamer.",
       status: "execution_planned",
       internalNotes: "Co-pro trapprofielset zwart bestellen.",
-      customerNotes: "Uitvoering in overleg gepland."
+      customerNotes: "Uitvoering in overleg gepland.",
+      measurementDate: timestamp - 12 * day,
+      executionDate: timestamp + 3 * day
     });
     const fysioProjectId = await ensureProject(ctx, tenantId, {
       customerId: fysioId,
@@ -917,14 +977,16 @@ export const run = internalMutation({
       description: "Interfloor projecttapijt in wachtruimte en gang.",
       status: "measurement_planned",
       internalNotes: "Inmeten buiten behandeltijden; egaliseren ondergrond.",
-      customerNotes: "Wachtruimte blijft toegankelijk tot uitvoering."
+      customerNotes: "Wachtruimte blijft toegankelijk tot uitvoering.",
+      measurementDate: timestamp + 3 * day
     });
     const smitProjectId = await ensureProject(ctx, tenantId, {
       customerId: smitId,
       title: "Behang slaapkamer en vinyl badkamer",
       description: "Masureel behang slaapkamer en Ambiant vinyl badkamer.",
       status: "quote_draft",
-      internalNotes: "Behangrapport controleren i.v.m. patroon."
+      internalNotes: "Behangrapport controleren i.v.m. patroon.",
+      measurementDate: timestamp - 2 * day
     });
     const mulderProjectId = await ensureProject(ctx, tenantId, {
       customerId: mulderId,
@@ -943,6 +1005,17 @@ export const run = internalMutation({
     const fysioGangRoomId = await ensureRoom(ctx, tenantId, fysioProjectId, { name: "Gang", areaM2: 18.5, perimeterMeter: 24.0, sortOrder: 2 });
     const smitSlaapkamerRoomId = await ensureRoom(ctx, tenantId, smitProjectId, { name: "Slaapkamer", areaM2: 14.0, perimeterMeter: 15.2, sortOrder: 1 });
     const smitBadkamerRoomId = await ensureRoom(ctx, tenantId, smitProjectId, { name: "Badkamer", areaM2: 6.4, perimeterMeter: 10.4, sortOrder: 2 });
+
+    // ── Catalogusproducten (richtprijs-snapshot) ─────────────────────────────────
+    // Echte producten uit de catalogus, gekoppeld aan offerte- én meetregels
+    // (zoals addQuoteLine/importMeasurementLinesToQuote in productie de productId zetten).
+    const floorProduct = await findProductId(ctx, tenantId, "PVC Dryback", "wide board natural");
+    const plintProduct = await findProductId(ctx, tenantId, "Plinten", "amsterdam");
+    const trapProduct = await findProductId(ctx, tenantId, "Traprenovatie", "trapprofielset zwart");
+    const tapijtProduct = await findProductId(ctx, tenantId, "Tapijt", "400 ab active");
+    const behangProduct = await findProductId(ctx, tenantId, "Behang", "gaio oyster");
+    const vinylProduct = await findProductId(ctx, tenantId, "Vinyl", "calandro eiken");
+    const panelProduct = await findProductId(ctx, tenantId, "Wandpanelen", "torino touch paneel taupe");
 
     // ── Workflow-events ─────────────────────────────────────────────────────────
     await ensureWorkflowEvent(ctx, tenantId, bakkerProjectId, {
@@ -994,24 +1067,24 @@ export const run = internalMutation({
     });
 
     const bakkerLines = [
-      { lineType: "product" as const, title: "Floorlife PVC dryback Wide board natural", quantity: 48, unit: "m2", unitPriceExVat: 44.95, vatRate: 21, sortOrder: 1 },
-      { lineType: "material" as const, title: "PVC plakondervloer", quantity: 48, unit: "m2", unitPriceExVat: 22.95, vatRate: 21, sortOrder: 2 },
-      { lineType: "service" as const, title: "Primeren en egaliseren", quantity: 48, unit: "m2", unitPriceExVat: 15.95, vatRate: 21, sortOrder: 3 },
-      { lineType: "labor" as const, title: "Legkosten PVC rechte plank", quantity: 48, unit: "m2", unitPriceExVat: 17.5, vatRate: 21, sortOrder: 4 },
-      { lineType: "product" as const, title: "Co-pro plint Amsterdam (recht) lakfolie wit, geplaatst", quantity: 38, unit: "meter", unitPriceExVat: 8.95, vatRate: 21, sortOrder: 5 },
+      { lineType: "product" as const, title: "Floorlife PVC dryback Wide board natural", quantity: 48, unit: "m2", unitPriceExVat: 44.95, vatRate: 21, sortOrder: 1, roomId: bakkerWoonkamerRoomId, product: floorProduct, source: "measurement" as const },
+      { lineType: "material" as const, title: "PVC plakondervloer", quantity: 48, unit: "m2", unitPriceExVat: 22.95, vatRate: 21, sortOrder: 2, roomId: bakkerWoonkamerRoomId, source: "measurement" as const },
+      { lineType: "service" as const, title: "Primeren en egaliseren", quantity: 48, unit: "m2", unitPriceExVat: 15.95, vatRate: 21, sortOrder: 3, roomId: bakkerWoonkamerRoomId },
+      { lineType: "labor" as const, title: "Legkosten PVC rechte plank", quantity: 48, unit: "m2", unitPriceExVat: 17.5, vatRate: 21, sortOrder: 4, roomId: bakkerWoonkamerRoomId, source: "measurement" as const },
+      { lineType: "product" as const, title: "Co-pro plint Amsterdam (recht) lakfolie wit, geplaatst", quantity: 38, unit: "meter", unitPriceExVat: 8.95, vatRate: 21, sortOrder: 5, roomId: bakkerWoonkamerRoomId, product: plintProduct, source: "measurement" as const },
       { lineType: "text" as const, title: "Ruimtes dienen leeg te zijn bij aanvang van de werkzaamheden.", quantity: 0, unit: "tekst", unitPriceExVat: 0, vatRate: 0, sortOrder: 6 }
     ];
     const visserLines = [
-      { lineType: "manual" as const, title: "Traprenovatie PVC rechte trap incl. Co-pro trapprofielset zwart", quantity: 1, unit: "trap", unitPriceExVat: 1595, vatRate: 21, sortOrder: 1 },
-      { lineType: "product" as const, title: "Headlam gordijnstof 66MV Touw, op maat", quantity: 7.5, unit: "meter", unitPriceExVat: 38.5, vatRate: 21, sortOrder: 2 },
-      { lineType: "product" as const, title: "Gordijnrails wit incl. ophangen", quantity: 7.5, unit: "meter", unitPriceExVat: 14.95, vatRate: 21, sortOrder: 3 },
-      { lineType: "labor" as const, title: "Maken en monteren gordijnen", quantity: 2, unit: "stuk", unitPriceExVat: 55, vatRate: 21, sortOrder: 4 }
+      { lineType: "manual" as const, title: "Traprenovatie PVC rechte trap incl. Co-pro trapprofielset zwart", quantity: 1, unit: "trap", unitPriceExVat: 1595, vatRate: 21, sortOrder: 1, roomId: visserTrapRoomId, product: trapProduct, source: "measurement" as const },
+      { lineType: "product" as const, title: "Headlam gordijnstof 66MV Touw, op maat", quantity: 7.5, unit: "meter", unitPriceExVat: 38.5, vatRate: 21, sortOrder: 2, roomId: visserWoonkamerRoomId, source: "measurement" as const },
+      { lineType: "product" as const, title: "Gordijnrails wit incl. ophangen", quantity: 7.5, unit: "meter", unitPriceExVat: 14.95, vatRate: 21, sortOrder: 3, roomId: visserWoonkamerRoomId },
+      { lineType: "labor" as const, title: "Maken en monteren gordijnen", quantity: 2, unit: "stuk", unitPriceExVat: 55, vatRate: 21, sortOrder: 4, roomId: visserWoonkamerRoomId }
     ];
     const smitLines = [
-      { lineType: "product" as const, title: "Masureel behang Gaio Oyster", quantity: 6, unit: "rol", unitPriceExVat: 34.95, vatRate: 21, sortOrder: 1 },
-      { lineType: "labor" as const, title: "Aanbrengen behang (patroon)", quantity: 6, unit: "rol", unitPriceExVat: 65, vatRate: 21, sortOrder: 2 },
-      { lineType: "product" as const, title: "Ambiant vinyl Calandro eiken", quantity: 9, unit: "m2", unitPriceExVat: 29.95, vatRate: 21, sortOrder: 3 },
-      { lineType: "service" as const, title: "Egaliseren badkamervloer", quantity: 6.4, unit: "m2", unitPriceExVat: 15.95, vatRate: 21, sortOrder: 4 }
+      { lineType: "product" as const, title: "Masureel behang Gaio Oyster", quantity: 6, unit: "rol", unitPriceExVat: 34.95, vatRate: 21, sortOrder: 1, roomId: smitSlaapkamerRoomId, product: behangProduct, source: "measurement" as const },
+      { lineType: "labor" as const, title: "Aanbrengen behang (patroon)", quantity: 6, unit: "rol", unitPriceExVat: 65, vatRate: 21, sortOrder: 2, roomId: smitSlaapkamerRoomId, source: "measurement" as const },
+      { lineType: "product" as const, title: "Ambiant vinyl Calandro eiken", quantity: 9, unit: "m2", unitPriceExVat: 29.95, vatRate: 21, sortOrder: 3, roomId: smitBadkamerRoomId, product: vinylProduct, source: "measurement" as const },
+      { lineType: "service" as const, title: "Egaliseren badkamervloer", quantity: 6.4, unit: "m2", unitPriceExVat: 15.95, vatRate: 21, sortOrder: 4, roomId: smitBadkamerRoomId }
     ];
 
     for (const line of bakkerLines) {
@@ -1029,12 +1102,6 @@ export const run = internalMutation({
 
     // ── Inmetingen (buitendienst-flow: ruimtes + meetregels met productkeuze) ─────
     // Echte producten als richtprijs-snapshot; definitieve prijs blijft in de offerte.
-    const floorProduct = await findProductId(ctx, tenantId, "PVC Dryback", "wide board natural");
-    const plintProduct = await findProductId(ctx, tenantId, "Plinten", "amsterdam");
-    const trapProduct = await findProductId(ctx, tenantId, "Traprenovatie", "trapprofielset zwart");
-    const tapijtProduct = await findProductId(ctx, tenantId, "Tapijt", "400 ab active");
-    const behangProduct = await findProductId(ctx, tenantId, "Behang", "gaio oyster");
-    const vinylProduct = await findProductId(ctx, tenantId, "Vinyl", "calandro eiken");
 
     // Bakker — volledig ingemeten door Wim (PVC dryback + plinten)
     const bakkerMeasurementId = await ensureMeasurement(ctx, tenantId, bakkerProjectId, bakkerId, {
@@ -1168,20 +1235,20 @@ export const run = internalMutation({
     // elke offerte-/factuurstatus en elk calculator-type ergens voorkomt.
     // ════════════════════════════════════════════════════════════════════════════
 
-    const deGrootId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Familie De Groot", email: "degroot@example.test", phone: "06-29384756", city: "Dronten", status: "active", notes: "PVC visgraat woonkamer; offerte akkoord, materiaal in bestelling." });
-    const bistroId = await ensureCustomer(ctx, tenantId, { type: "business", displayName: "Bistro 't Centrum", email: "info@bistrocentrum.example.test", phone: "0321-612340", city: "Lelystad", status: "active", notes: "Vinyl horecavloer; opgeleverd en gefactureerd." });
-    const kosterId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Familie Koster", email: "koster@example.test", phone: "06-47382910", city: "Swifterbant", status: "active", notes: "Compleet woonpakket; afgerond en betaald." });
-    const woltersId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Familie Wolters", email: "wolters@example.test", phone: "06-58291037", city: "Biddinghuizen", status: "active", notes: "Trap en hal PVC; factuur openstaand en vervallen." });
-    const zorgId = await ensureCustomer(ctx, tenantId, { type: "business", displayName: "Zorgcentrum De Brink", email: "facilitair@debrink.example.test", phone: "0321-778820", city: "Dronten", status: "active", notes: "Wandpanelen behandelruimtes; factuur deels betaald." });
-    const dekkerId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Mevrouw Dekker", email: "dekker@example.test", phone: "06-90817263", city: "Lelystad", status: "active", notes: "Raamdecoratie woonkamer; offerte afgewezen (te duur)." });
-    const bosId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "De heer Bos", email: "bos@example.test", phone: "06-12039485", city: "Dronten", status: "lead", notes: "Vloeropdracht geannuleerd door klant." });
+    const deGrootId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Familie De Groot", email: "degroot@example.test", phone: "06-29384756", street: "De Helling", houseNumber: "4", postalCode: "8251 RT", city: "Dronten", status: "active", notes: "PVC visgraat woonkamer; offerte akkoord, materiaal in bestelling." });
+    const bistroId = await ensureCustomer(ctx, tenantId, { type: "business", displayName: "Bistro 't Centrum", email: "info@bistrocentrum.example.test", phone: "0321-612340", street: "Stationsplein", houseNumber: "9", postalCode: "8232 DL", city: "Lelystad", status: "active", notes: "Vinyl horecavloer; opgeleverd en gefactureerd." });
+    const kosterId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Familie Koster", email: "koster@example.test", phone: "06-47382910", street: "De Greente", houseNumber: "18", postalCode: "8255 AK", city: "Swifterbant", status: "active", notes: "Compleet woonpakket; afgerond en betaald." });
+    const woltersId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Familie Wolters", email: "wolters@example.test", phone: "06-58291037", street: "Kibbelhoek", houseNumber: "3", postalCode: "8256 AB", city: "Biddinghuizen", status: "active", notes: "Trap en hal PVC; factuur openstaand en vervallen." });
+    const zorgId = await ensureCustomer(ctx, tenantId, { type: "business", displayName: "Zorgcentrum De Brink", email: "facilitair@debrink.example.test", phone: "0321-778820", street: "Het Spaarne", houseNumber: "30", postalCode: "8253 PG", city: "Dronten", status: "active", notes: "Wandpanelen behandelruimtes; factuur deels betaald." });
+    const dekkerId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Mevrouw Dekker", email: "dekker@example.test", phone: "06-90817263", street: "Karveel", houseNumber: "22", postalCode: "8242 BC", city: "Lelystad", status: "active", notes: "Raamdecoratie woonkamer; offerte afgewezen (te duur)." });
+    const bosId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "De heer Bos", email: "bos@example.test", phone: "06-12039485", street: "De Lijnbaan", houseNumber: "5", postalCode: "8251 SN", city: "Dronten", status: "lead", notes: "Vloeropdracht geannuleerd door klant." });
 
     const deGrootProjectId = await ensureProject(ctx, tenantId, { customerId: deGrootId, title: "PVC visgraat woonkamer", description: "PVC visgraat met onderlaag; materiaal in bestelling.", status: "ordering", internalNotes: "Visgraat hoog snijverlies; ruim bestellen." });
     const bistroProjectId = await ensureProject(ctx, tenantId, { customerId: bistroId, title: "Vinyl horecavloer bistro", description: "Onderhoudsarme vinyl in eetzaal; opgeleverd.", status: "invoiced", internalNotes: "Buiten openingstijden gelegd." });
-    const kosterProjectId = await ensureProject(ctx, tenantId, { customerId: kosterId, title: "Compleet woonpakket", description: "PVC, plinten en gordijnen; volledig afgerond.", status: "paid", internalNotes: "Klant tevreden; referentie mogelijk." });
+    const kosterProjectId = await ensureProject(ctx, tenantId, { customerId: kosterId, title: "Compleet woonpakket", description: "PVC, plinten en gordijnen; volledig afgerond.", status: "paid", internalNotes: "Klant tevreden; referentie mogelijk.", measurementDate: timestamp - 25 * day, executionDate: timestamp - 15 * day });
     const woltersProjectId = await ensureProject(ctx, tenantId, { customerId: woltersId, title: "Trap en hal PVC", description: "Traprenovatie en hal; gefactureerd.", status: "invoiced", internalNotes: "Betaalherinnering verstuurd." });
-    const zorgProjectId = await ensureProject(ctx, tenantId, { customerId: zorgId, title: "Wandpanelen behandelruimtes", description: "Vochtbestendige wandpanelen in behandelruimtes.", status: "invoiced", internalNotes: "Aanbetaling ontvangen, restant openstaand." });
-    const dekkerProjectId = await ensureProject(ctx, tenantId, { customerId: dekkerId, title: "Raamdecoratie woonkamer", description: "Plissé en jaloezieën woonkamer.", status: "quote_rejected", internalNotes: "Klant vond prijs te hoog; mogelijk later." });
+    const zorgProjectId = await ensureProject(ctx, tenantId, { customerId: zorgId, title: "Wandpanelen behandelruimtes", description: "Vochtbestendige wandpanelen in behandelruimtes.", status: "invoiced", internalNotes: "Aanbetaling ontvangen, restant openstaand.", measurementDate: timestamp - 18 * day, executionDate: timestamp - 10 * day });
+    const dekkerProjectId = await ensureProject(ctx, tenantId, { customerId: dekkerId, title: "Raamdecoratie woonkamer", description: "Plissé en jaloezieën woonkamer.", status: "quote_rejected", internalNotes: "Klant vond prijs te hoog; mogelijk later.", measurementDate: timestamp - 8 * day });
     const bosProjectId = await ensureProject(ctx, tenantId, { customerId: bosId, title: "Geannuleerde vloeropdracht", description: "PVC woonkamer; door klant geannuleerd.", status: "cancelled", internalNotes: "Geannuleerd vóór inmeting." });
 
     const kosterWoonkamerRoomId = await ensureRoom(ctx, tenantId, kosterProjectId, { name: "Woonkamer", areaM2: 40.0, perimeterMeter: 26.0, sortOrder: 1 });
@@ -1203,6 +1270,10 @@ export const run = internalMutation({
         vatRate: number;
         discountExVat?: number;
         sortOrder: number;
+        roomId?: Id<"projectRooms">;
+        product?: { id: Id<"products">; naam: string } | null;
+        description?: string;
+        source?: "measurement";
       }>
     ): Promise<Id<"quotes">> {
       const id = await ensureQuote(ctx, tenantId, projectId, customerId, { quoteNumber: number, title, status });
@@ -1223,28 +1294,28 @@ export const run = internalMutation({
       { lineType: "service", title: "Egaliseren en primeren", quantity: 55, unit: "m2", unitPriceExVat: 15.95, vatRate: 21, sortOrder: 2 }
     ]);
     const kosterQuoteId = await quoteWithLines(kosterProjectId, kosterId, "OFF-2026-0106", "Compleet woonpakket", "accepted", [
-      { lineType: "product", title: "Floorlife PVC dryback Wide board sun kissed", quantity: 40, unit: "m2", unitPriceExVat: 44.95, vatRate: 21, sortOrder: 1 },
-      { lineType: "product", title: "Co-pro plint Amsterdam (recht) lakfolie wit", quantity: 26, unit: "meter", unitPriceExVat: 8.95, vatRate: 21, sortOrder: 2 },
-      { lineType: "labor", title: "Legkosten PVC rechte plank", quantity: 40, unit: "m2", unitPriceExVat: 17.5, vatRate: 21, sortOrder: 3 }
+      { lineType: "product", title: "Floorlife PVC dryback Wide board sun kissed", quantity: 40, unit: "m2", unitPriceExVat: 44.95, vatRate: 21, sortOrder: 1, roomId: kosterWoonkamerRoomId, product: floorProduct, source: "measurement" },
+      { lineType: "product", title: "Co-pro plint Amsterdam (recht) lakfolie wit", quantity: 26, unit: "meter", unitPriceExVat: 8.95, vatRate: 21, sortOrder: 2, roomId: kosterWoonkamerRoomId, product: plintProduct, source: "measurement" },
+      { lineType: "labor", title: "Legkosten PVC rechte plank", quantity: 40, unit: "m2", unitPriceExVat: 17.5, vatRate: 21, sortOrder: 3, roomId: kosterWoonkamerRoomId, source: "measurement" }
     ]);
     const woltersQuoteId = await quoteWithLines(woltersProjectId, woltersId, "OFF-2026-0107", "Trap en hal PVC", "accepted", [
       { lineType: "manual", title: "Traprenovatie PVC kwart draai", quantity: 1, unit: "trap", unitPriceExVat: 1695, vatRate: 21, sortOrder: 1 },
       { lineType: "product", title: "Floorlife PVC dryback hal", quantity: 9, unit: "m2", unitPriceExVat: 44.95, vatRate: 21, sortOrder: 2 }
     ]);
     const zorgQuoteId = await quoteWithLines(zorgProjectId, zorgId, "OFF-2026-0108", "Wandpanelen behandelruimtes", "accepted", [
-      { lineType: "product", title: "Co-pro Torino touch wandpaneel taupe", quantity: 24, unit: "stuk", unitPriceExVat: 34.5, vatRate: 21, sortOrder: 1 },
-      { lineType: "labor", title: "Montage wandpanelen", quantity: 32, unit: "m2", unitPriceExVat: 18.5, vatRate: 21, sortOrder: 2 }
+      { lineType: "product", title: "Co-pro Torino touch wandpaneel taupe", quantity: 24, unit: "stuk", unitPriceExVat: 34.5, vatRate: 21, sortOrder: 1, roomId: zorgBehandelRoomId, product: panelProduct, source: "measurement" },
+      { lineType: "labor", title: "Montage wandpanelen", quantity: 32, unit: "m2", unitPriceExVat: 18.5, vatRate: 21, sortOrder: 2, roomId: zorgBehandelRoomId, source: "measurement" }
     ]);
     const dekkerQuoteId = await quoteWithLines(dekkerProjectId, dekkerId, "OFF-2026-0109", "Raamdecoratie woonkamer", "rejected", [
-      { lineType: "manual", title: "Plissé raamdecoratie op maat", quantity: 4, unit: "stuk", unitPriceExVat: 245, vatRate: 21, sortOrder: 1 },
-      { lineType: "manual", title: "Houten jaloezieën op maat", quantity: 2, unit: "stuk", unitPriceExVat: 189, vatRate: 21, sortOrder: 2 }
+      { lineType: "manual", title: "Plissé raamdecoratie op maat", quantity: 4, unit: "stuk", unitPriceExVat: 245, vatRate: 21, sortOrder: 1, roomId: dekkerWoonkamerRoomId, source: "measurement" },
+      { lineType: "manual", title: "Houten jaloezieën op maat", quantity: 2, unit: "stuk", unitPriceExVat: 189, vatRate: 21, sortOrder: 2, roomId: dekkerWoonkamerRoomId, source: "measurement" }
     ]);
     const bosQuoteId = await quoteWithLines(bosProjectId, bosId, "OFF-2026-0110", "Geannuleerde vloeropdracht", "cancelled", [
       { lineType: "product", title: "PVC woonkamer (geannuleerd)", quantity: 30, unit: "m2", unitPriceExVat: 39.95, vatRate: 21, sortOrder: 1 }
     ]);
 
     // Familie Jong — offerte verlopen zonder reactie, project afgesloten (expired + closed)
-    const jongId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Familie Jong", email: "jong@example.test", phone: "06-73625481", city: "Swifterbant", status: "lead", notes: "Offerte verstuurd maar verlopen zonder reactie; dossier afgesloten." });
+    const jongId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Familie Jong", email: "jong@example.test", phone: "06-73625481", street: "Olmenlaan", houseNumber: "14", postalCode: "8255 AD", city: "Swifterbant", status: "lead", notes: "Offerte verstuurd maar verlopen zonder reactie; dossier afgesloten." });
     const jongProjectId = await ensureProject(ctx, tenantId, { customerId: jongId, title: "PVC slaapkamers (verlopen)", description: "PVC twee slaapkamers; offerte verlopen, dossier afgesloten.", status: "closed", internalNotes: "Geen reactie binnen geldigheidsduur; afgesloten." });
     const jongQuoteId = await quoteWithLines(jongProjectId, jongId, "OFF-2026-0111", "PVC slaapkamers", "expired", [
       { lineType: "product", title: "Floorlife PVC dryback Herringbone natural", quantity: 22, unit: "m2", unitPriceExVat: 46.95, vatRate: 21, sortOrder: 1 },
@@ -1265,7 +1336,6 @@ export const run = internalMutation({
     await ensureWorkflowEvent(ctx, tenantId, kosterProjectId, { type: "invoice_created", title: "Factuur voldaan", description: "Volledige betaling ontvangen.", visibleToCustomer: false });
 
     // ── Measurements voor de resterende calculator-types (panels, matrix, rails) ──
-    const panelProduct = await findProductId(ctx, tenantId, "Wandpanelen", "torino touch paneel taupe");
 
     // Koster — afgerond, ingemeten (flooring/area)
     const kosterMeasurementId = await ensureMeasurement(ctx, tenantId, kosterProjectId, kosterId, { status: "reviewed", inmeetdatum: timestamp - 25 * day, gemetenDoor: "Wim", notities: "Compleet pakket ingemeten en uitgevoerd." });
@@ -1293,7 +1363,7 @@ export const run = internalMutation({
 
     // ── Resterende projectstatussen + volledige inmeting→offerte-conversie ────────
     // Familie Smeets — offerte geaccepteerd, nog in te plannen (quote_accepted)
-    const smeetsId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Familie Smeets", email: "smeets@example.test", phone: "06-33445566", city: "Dronten", status: "active", notes: "PVC keuken en bijkeuken; offerte akkoord, inmeting/uitvoering nog plannen." });
+    const smeetsId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Familie Smeets", email: "smeets@example.test", phone: "06-33445566", street: "De Noord", houseNumber: "27", postalCode: "8251 GC", city: "Dronten", status: "active", notes: "PVC keuken en bijkeuken; offerte akkoord, inmeting/uitvoering nog plannen." });
     const smeetsProjectId = await ensureProject(ctx, tenantId, { customerId: smeetsId, title: "PVC keuken en bijkeuken", description: "PVC dryback keuken en bijkeuken; offerte geaccepteerd.", status: "quote_accepted", internalNotes: "Inmeting en uitvoering nog inplannen." });
     const smeetsQuoteId = await quoteWithLines(smeetsProjectId, smeetsId, "OFF-2026-0112", "PVC keuken en bijkeuken", "accepted", [
       { lineType: "product", title: "Floorlife PVC dryback Wide board warm natural", quantity: 24, unit: "m2", unitPriceExVat: 44.95, vatRate: 21, sortOrder: 1 },
@@ -1302,12 +1372,12 @@ export const run = internalMutation({
 
     // Familie Prins — vloer in uitvoering (in_progress) met een ECHT geconverteerde meetregel:
     // measurement converted_to_quote → meetregel 'converted' gekoppeld aan een offerteregel.
-    const prinsId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Familie Prins", email: "prins@example.test", phone: "06-77889900", city: "Lelystad", status: "active", notes: "PVC woonkamer; ingemeten, offerte akkoord, vloer wordt gelegd." });
-    const prinsProjectId = await ensureProject(ctx, tenantId, { customerId: prinsId, title: "PVC woonkamer in uitvoering", description: "PVC dryback woonkamer; meetregel verwerkt tot offerteregel, in uitvoering.", status: "in_progress", internalNotes: "Legwerk gepland; meetregel is verwerkt naar de offerte." });
+    const prinsId = await ensureCustomer(ctx, tenantId, { type: "private", displayName: "Familie Prins", email: "prins@example.test", phone: "06-77889900", street: "Schoener", houseNumber: "11", postalCode: "8243 WB", city: "Lelystad", status: "active", notes: "PVC woonkamer; ingemeten, offerte akkoord, vloer wordt gelegd." });
+    const prinsProjectId = await ensureProject(ctx, tenantId, { customerId: prinsId, title: "PVC woonkamer in uitvoering", description: "PVC dryback woonkamer; meetregel verwerkt tot offerteregel, in uitvoering.", status: "in_progress", internalNotes: "Legwerk gepland; meetregel is verwerkt naar de offerte.", measurementDate: timestamp - 6 * day, executionDate: timestamp + 1 * day });
     const prinsRoomId = await ensureRoom(ctx, tenantId, prinsProjectId, { name: "Woonkamer", areaM2: 34.0, perimeterMeter: 24.0, sortOrder: 1 });
     const prinsQuoteId = await ensureQuote(ctx, tenantId, prinsProjectId, prinsId, { quoteNumber: "OFF-2026-0113", title: "PVC woonkamer", status: "accepted" });
-    const prinsQuoteLineId = await ensureQuoteLine(ctx, tenantId, prinsQuoteId, { lineType: "product", title: "Floorlife PVC dryback Wide board natural", quantity: 36.38, unit: "m2", unitPriceExVat: 44.95, vatRate: 21, sortOrder: 1 });
-    await ensureQuoteLine(ctx, tenantId, prinsQuoteId, { lineType: "labor", title: "Legkosten PVC rechte plank", quantity: 36.38, unit: "m2", unitPriceExVat: 17.5, vatRate: 21, sortOrder: 2 });
+    const prinsQuoteLineId = await ensureQuoteLine(ctx, tenantId, prinsQuoteId, { lineType: "product", title: "Floorlife PVC dryback Wide board natural", quantity: 36.38, unit: "m2", unitPriceExVat: 44.95, vatRate: 21, sortOrder: 1, roomId: prinsRoomId, product: floorProduct, source: "measurement" });
+    await ensureQuoteLine(ctx, tenantId, prinsQuoteId, { lineType: "labor", title: "Legkosten PVC rechte plank", quantity: 36.38, unit: "m2", unitPriceExVat: 17.5, vatRate: 21, sortOrder: 2, roomId: prinsRoomId, source: "measurement" });
     await recalculateQuote(ctx, tenantId, prinsQuoteId);
     const prinsMeasurementId = await ensureMeasurement(ctx, tenantId, prinsProjectId, prinsId, { status: "converted_to_quote", inmeetdatum: timestamp - 6 * day, gemetenDoor: "Wim", notities: "Ingemeten en verwerkt naar offerte." });
     const prinsMRoom = await ensureMeasurementRoom(ctx, tenantId, prinsMeasurementId, prinsRoomId, { naam: "Woonkamer", breedteM: 4.25, lengteM: 8.0, hoogteM: 2.6, oppervlakteM2: 34.0, omtrekM: 24.0, sortOrder: 1 });
