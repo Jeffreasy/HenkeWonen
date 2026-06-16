@@ -1,4 +1,5 @@
 import { FileText, Printer, Ruler, Save } from "lucide-react";
+import { ConvexError } from "convex/values";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -303,7 +304,13 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       showToast({ title: "Status bijgewerkt", tone: "success" });
     } catch (mutationError) {
       console.error(mutationError);
-      showToast({ title: "Status bijwerken mislukt", tone: "error" });
+      showToast({
+        title:
+          mutationError instanceof ConvexError
+            ? String(mutationError.data)
+            : "Status bijwerken mislukt",
+        tone: "error"
+      });
       throw mutationError;
     }
   }
