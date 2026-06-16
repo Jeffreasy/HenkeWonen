@@ -1,4 +1,5 @@
 import { Search, UserPlus } from "lucide-react";
+import { ConvexError } from "convex/values";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -291,7 +292,13 @@ export default function FieldServiceWorkspace({
       await loadWorkspace();
     } catch (saveError) {
       console.error(saveError);
-      setIntakeError("Klant of dossier kon niet worden vastgelegd.");
+      // Toon de specifieke (NL) backend-melding als die er is; de modal blijft
+      // open met de ingevulde velden zodat de monteur direct kan corrigeren.
+      const reason =
+        saveError instanceof ConvexError && typeof saveError.data === "string"
+          ? saveError.data
+          : "Klant of dossier kon niet worden vastgelegd.";
+      setIntakeError(`${reason} Controleer de gegevens of probeer het opnieuw.`);
     } finally {
       setIsSavingLead(false);
     }
@@ -317,6 +324,19 @@ export default function FieldServiceWorkspace({
     () => countPriorities(pageCards),
     [pageCards]
   );
+  // Tab-tellers volgen de actieve zoekterm: zoek je op "Jan", dan toont elke tab
+  // hoeveel matchende dossiers in die bucket zitten (i.p.v. het ongefilterde totaal).
+  const tabCounts = useMemo(() => {
+    if (!search.trim()) {
+      return workspace.counts;
+    }
+    return {
+      today: filterCards(workspace.today, search).length,
+      measure: filterCards(workspace.measure, search).length,
+      quote: filterCards(workspace.quote, search).length,
+      followUp: filterCards(workspace.followUp, search).length
+    };
+  }, [search, workspace]);
 
   return (
     <div className="grid field-workspace">
@@ -362,7 +382,7 @@ export default function FieldServiceWorkspace({
         </div>
       </section>
 
-      <FieldPageTabs activeView={view} counts={workspace.counts} />
+      <FieldPageTabs activeView={view} counts={tabCounts} />
 
       {intakeNotice ? (
         <Alert variant="success" title="Lead vastgelegd" description={intakeNotice} />
