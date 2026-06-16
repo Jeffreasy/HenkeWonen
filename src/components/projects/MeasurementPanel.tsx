@@ -6,6 +6,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers } from "../../lib/auth/session";
 import {
+  calculateBroadloom,
   calculateFlooring,
   calculatePlinths,
   calculateStairs,
@@ -146,6 +147,13 @@ export default function MeasurementPanel({
   const [floorPatternType, setFloorPatternType] = useState("straight");
   const [floorNotes, setFloorNotes] = useState("");
   const [floorPatternAutoFilled, setFloorPatternAutoFilled] = useState(false);
+
+  const [broadloomRoomId, setBroadloomRoomId] = useState("");
+  const [broadloomWidthM, setBroadloomWidthM] = useState("");
+  const [broadloomLengthM, setBroadloomLengthM] = useState("");
+  const [broadloomRollWidthM, setBroadloomRollWidthM] = useState("4");
+  const [broadloomWastePercent, setBroadloomWastePercent] = useState("7");
+  const [broadloomNotes, setBroadloomNotes] = useState("");
 
   const [plinthRoomId, setPlinthRoomId] = useState("");
   const [plinthPerimeterM, setPlinthPerimeterM] = useState("");
@@ -420,6 +428,17 @@ export default function MeasurementPanel({
     [floorLengthM, floorPatternType, floorWastePercent, floorWidthM]
   );
 
+  const broadloomResult = useMemo(
+    () =>
+      calculateBroadloom({
+        roomWidthM: parseDecimal(broadloomWidthM) ?? 0,
+        roomLengthM: parseDecimal(broadloomLengthM) ?? 0,
+        rollWidthM: parseDecimal(broadloomRollWidthM) ?? 0,
+        wastePercent: parseDecimal(broadloomWastePercent) ?? 0
+      }),
+    [broadloomWidthM, broadloomLengthM, broadloomRollWidthM, broadloomWastePercent]
+  );
+
   const plinthResult = useMemo(
     () =>
       calculatePlinths({
@@ -490,6 +509,8 @@ export default function MeasurementPanel({
       switch (tool) {
         case "flooring":
           return "m2";
+        case "broadloom":
+          return "meter";
         case "plinths":
           return "meter";
         case "wallpaper":
@@ -1495,6 +1516,16 @@ export default function MeasurementPanel({
     }
   }
 
+  function applyMeasurementRoomToBroadloom(roomId: string) {
+    setBroadloomRoomId(roomId);
+    const room = rooms.find((item) => item._id === roomId);
+
+    if (room) {
+      setBroadloomLengthM(decimalText(room.lengteM));
+      setBroadloomWidthM(decimalText(room.breedteM));
+    }
+  }
+
   function applyMeasurementRoomToPlinth(roomId: string) {
     setPlinthRoomId(roomId);
     const room = rooms.find((item) => item._id === roomId);
@@ -2305,6 +2336,86 @@ export default function MeasurementPanel({
               <Input id="floor-notes" value={floorNotes} onChange={(e) => setFloorNotes(e.target.value)} />
             </Field>
             {renderProductPicker("flooring", "flooring")}
+          </>
+        )
+      },
+      {
+        id: "broadloom",
+        label: isFieldMode ? "Rolgoed meten" : "Rolgoed (tapijt/vinyl)",
+        icon: CALC_TAB_ICONS.broadloom,
+        resultKey: broadloomResult.quoteQuantityM ?? 0,
+        hasInput: Boolean(broadloomWidthM || broadloomLengthM),
+        validationError:
+          broadloomWidthM || broadloomLengthM ? broadloomResult.validationError : undefined,
+        isSaving,
+        onSubmit: (event) =>
+          void addLine(event, {
+            roomId: broadloomRoomId || undefined,
+            productGroup: "flooring",
+            calculationType: "area",
+            input: {
+              roomWidthM: parseDecimal(broadloomWidthM),
+              roomLengthM: parseDecimal(broadloomLengthM),
+              rollWidthM: parseDecimal(broadloomRollWidthM),
+              wastePercent: parseDecimal(broadloomWastePercent)
+            },
+            result: broadloomResult,
+            wastePercent: parseDecimal(broadloomWastePercent),
+            quantity: broadloomResult.quoteQuantityM,
+            unit: "meter",
+            notes: broadloomNotes.trim() || undefined,
+            quoteLineType: "product",
+            tool: "broadloom",
+            ...indicativeSnapshotForTool("broadloom"),
+            validationError: broadloomResult.validationError,
+            successMessage: "Rolgoed-inmeting opgeslagen."
+          }),
+        result: (
+          <SummaryList
+            items={
+              calcEmptyStateItems(
+                Boolean(broadloomWidthM || broadloomLengthM),
+                broadloomWidthM || broadloomLengthM ? broadloomResult.validationError : undefined
+              ) ?? [
+                { label: "Netto oppervlakte", value: formatNumber(broadloomResult.areaM2, " m²") },
+                { label: "Banen", value: formatNumber(broadloomResult.strips) },
+                {
+                  label: "Lopende meters (incl. snijverlies)",
+                  value: formatNumber(broadloomResult.runningMeterM, " m")
+                },
+                {
+                  label: "Offertehoeveelheid",
+                  value: formatNumber(broadloomResult.quoteQuantityM, " m")
+                },
+                ...indicativeSummaryItems("broadloom", broadloomResult.quoteQuantityM)
+              ]
+            }
+          />
+        ),
+        fields: (
+          <>
+            {renderRoomSelect("broadloom-room", "Ruimte", broadloomRoomId, applyMeasurementRoomToBroadloom)}
+            <Field htmlFor="broadloom-width" label="Kamerbreedte in meter">
+              <Input id="broadloom-width" inputMode="decimal" min={0} value={broadloomWidthM} onChange={(e) => setBroadloomWidthM(e.target.value)} />
+            </Field>
+            <Field htmlFor="broadloom-length" label="Kamerlengte in meter">
+              <Input id="broadloom-length" inputMode="decimal" min={0} value={broadloomLengthM} onChange={(e) => setBroadloomLengthM(e.target.value)} />
+            </Field>
+            <Field
+              htmlFor="broadloom-roll-width"
+              label="Rolbreedte in meter"
+              helpText="De zuinigste legrichting (banen langs lengte of breedte) wordt automatisch gekozen."
+            >
+              <Input id="broadloom-roll-width" inputMode="decimal" min={0} value={broadloomRollWidthM} onChange={(e) => setBroadloomRollWidthM(e.target.value)} />
+            </Field>
+            {renderWasteProfileSelect("broadloom-waste-profile", "Snijverlies-profiel", getProfilesForGroup("flooring"), (profileId) => setWasteFromProfile(profileId, setBroadloomWastePercent, "flooring"), "Kies een profiel om het percentage hieronder te vullen — of vul het zelf in.")}
+            <Field htmlFor="broadloom-waste" label="Snijverlies %">
+              <Input id="broadloom-waste" inputMode="decimal" min={0} value={broadloomWastePercent} onChange={(e) => setBroadloomWastePercent(e.target.value)} />
+            </Field>
+            <Field htmlFor="broadloom-notes" label="Notitie">
+              <Input id="broadloom-notes" value={broadloomNotes} onChange={(e) => setBroadloomNotes(e.target.value)} />
+            </Field>
+            {renderProductPicker("broadloom", "flooring")}
           </>
         )
       },
