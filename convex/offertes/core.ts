@@ -636,6 +636,28 @@ export const updateQuoteStatus = mutation({
       throw new ConvexError("Project not found");
     }
 
+    // Prijsreview-gate: een offerte mag niet naar 'verstuurd' of 'akkoord' zolang er
+    // ongeprijsde (€0) regels in staan — bv. een verwijderd/inactief product dat als €0
+    // binnenkwam. Alleen prijsdragende regels tellen mee; tekst- en kortingsregels niet.
+    if (args.status === "sent" || args.status === "accepted") {
+      const lines = await ctx.db
+        .query("quoteLines")
+        .withIndex("by_quote", (q: any) => q.eq("tenantId", tenant._id).eq("quoteId", quote._id))
+        .collect();
+      const chargeableTypes = ["product", "material", "labor", "service", "manual"];
+      const hasUnpricedLine = lines.some(
+        (line: Doc<"quoteLines">) =>
+          chargeableTypes.includes(line.regelType) &&
+          line.aantal > 0 &&
+          line.eenheidsprijsExBtw === 0
+      );
+      if (hasUnpricedLine) {
+        throw new ConvexError(
+          "De offerte bevat nog regels zonder prijs (€0). Controleer en prijs deze regels voordat je de offerte verstuurt of op akkoord zet."
+        );
+      }
+    }
+
     const now = Date.now();
     const quotePatch: Partial<Doc<"quotes">> = {
       status: args.status,
