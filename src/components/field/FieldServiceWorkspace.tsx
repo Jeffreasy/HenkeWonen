@@ -1,4 +1,5 @@
 import { Search, UserPlus } from "lucide-react";
+import { ConvexError } from "convex/values";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -291,7 +292,13 @@ export default function FieldServiceWorkspace({
       await loadWorkspace();
     } catch (saveError) {
       console.error(saveError);
-      setIntakeError("Klant of dossier kon niet worden vastgelegd.");
+      // Toon de specifieke (NL) backend-melding als die er is; de modal blijft
+      // open met de ingevulde velden zodat de monteur direct kan corrigeren.
+      const reason =
+        saveError instanceof ConvexError && typeof saveError.data === "string"
+          ? saveError.data
+          : "Klant of dossier kon niet worden vastgelegd.";
+      setIntakeError(`${reason} Controleer de gegevens of probeer het opnieuw.`);
     } finally {
       setIsSavingLead(false);
     }
