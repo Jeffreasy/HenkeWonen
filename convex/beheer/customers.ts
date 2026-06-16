@@ -349,12 +349,12 @@ export const updateCustomer = mutation({
     if (args.weergaveNaam !== undefined) patch.weergaveNaam = args.weergaveNaam;
     const hasArg = (obj: any, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
     if (hasArg(args, "email")) patch.email = args.email;
-    if (hasArg(args, "phone")) patch.telefoon = args.telefoon;
-    if (hasArg(args, "street")) patch.straat = args.straat;
-    if (hasArg(args, "houseNumber")) patch.huisnummer = args.huisnummer;
-    if (hasArg(args, "postalCode")) patch.postcode = args.postcode;
-    if (hasArg(args, "city")) patch.plaats = args.plaats;
-    if (hasArg(args, "notes")) patch.notities = args.notities;
+    if (hasArg(args, "telefoon")) patch.telefoon = args.telefoon;
+    if (hasArg(args, "straat")) patch.straat = args.straat;
+    if (hasArg(args, "huisnummer")) patch.huisnummer = args.huisnummer;
+    if (hasArg(args, "postcode")) patch.postcode = args.postcode;
+    if (hasArg(args, "plaats")) patch.plaats = args.plaats;
+    if (hasArg(args, "notities")) patch.notities = args.notities;
     if (args.status !== undefined) patch.status = args.status;
 
     await ctx.db.patch(customer._id, patch);

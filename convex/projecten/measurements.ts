@@ -543,6 +543,16 @@ export const addMeasurementRoom = mutation({
       .collect();
     const now = Date.now();
 
+    // Idempotent: dezelfde ruimte niet dubbel toevoegen (bv. dubbelklik op een
+    // preset-knop of twee apparaten). Match op genormaliseerde naam binnen deze inmeting.
+    const duplicateRoom = rooms.find(
+      (room) => room.naam.trim().toLowerCase() === args.naam.trim().toLowerCase()
+    );
+    if (duplicateRoom) {
+      await touchMeasurement(ctx, args.inmetingId, now);
+      return duplicateRoom._id;
+    }
+
     const roomId = await ctx.db.insert("measurementRooms", {
       tenantId: args.tenantId,
       inmetingId: args.inmetingId,

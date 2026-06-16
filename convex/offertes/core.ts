@@ -265,10 +265,10 @@ async function recalculateQuote(ctx: any, tenantId: any, quoteId: any) {
     .collect();
 
   const subtotalExVat = roundMoney(
-    lines.reduce((sum: number, line: any) => sum + line.lineTotalExVat, 0)
+    lines.reduce((sum: number, line: any) => sum + line.regelTotaalExBtw, 0)
   );
   const vatTotal = roundMoney(
-    lines.reduce((sum: number, line: any) => sum + line.lineVatTotal, 0)
+    lines.reduce((sum: number, line: any) => sum + line.regelBtwTotaal, 0)
   );
   const totalIncVat = roundMoney(subtotalExVat + vatTotal);
 
@@ -461,7 +461,7 @@ export const deleteQuoteLine = mutation({
         .collect();
 
       const linkedLine = mLines.find(
-        (ml: any) => ml.convertedQuoteLineId === line._id
+        (ml: any) => ml.geconverteerdeOfferteregelId === line._id
       );
 
       if (linkedLine) {
