@@ -10,6 +10,7 @@ import {
   calculateCurtainFabric,
   calculateFlooring,
   calculatePlinths,
+  calculateScreed,
   calculateStairs,
   calculateWallPanels,
   calculateWallpaperRolls
@@ -155,6 +156,11 @@ export default function MeasurementPanel({
   const [broadloomRollWidthM, setBroadloomRollWidthM] = useState("4");
   const [broadloomWastePercent, setBroadloomWastePercent] = useState("7");
   const [broadloomNotes, setBroadloomNotes] = useState("");
+
+  const [screedRoomId, setScreedRoomId] = useState("");
+  const [screedAreaM2, setScreedAreaM2] = useState("");
+  const [screedLayerThicknessMm, setScreedLayerThicknessMm] = useState("3");
+  const [screedNotes, setScreedNotes] = useState("");
 
   const [plinthRoomId, setPlinthRoomId] = useState("");
   const [plinthPerimeterM, setPlinthPerimeterM] = useState("");
@@ -449,6 +455,15 @@ export default function MeasurementPanel({
     [broadloomWidthM, broadloomLengthM, broadloomRollWidthM, broadloomWastePercent]
   );
 
+  const screedResult = useMemo(
+    () =>
+      calculateScreed({
+        areaM2: parseDecimal(screedAreaM2) ?? 0,
+        layerThicknessMm: parseDecimal(screedLayerThicknessMm) ?? 0
+      }),
+    [screedAreaM2, screedLayerThicknessMm]
+  );
+
   const plinthResult = useMemo(
     () =>
       calculatePlinths({
@@ -541,6 +556,8 @@ export default function MeasurementPanel({
           return "m2";
         case "broadloom":
           return "meter";
+        case "screed":
+          return "m2";
         case "plinths":
           return "meter";
         case "wallpaper":
@@ -1568,6 +1585,15 @@ export default function MeasurementPanel({
     }
   }
 
+  function applyMeasurementRoomToScreed(roomId: string) {
+    setScreedRoomId(roomId);
+    const room = rooms.find((item) => item._id === roomId);
+
+    if (room) {
+      setScreedAreaM2(decimalText(room.oppervlakteM2));
+    }
+  }
+
   function applyMeasurementRoomToPlinth(roomId: string) {
     setPlinthRoomId(roomId);
     const room = rooms.find((item) => item._id === roomId);
@@ -2458,6 +2484,72 @@ export default function MeasurementPanel({
               <Input id="broadloom-notes" value={broadloomNotes} onChange={(e) => setBroadloomNotes(e.target.value)} />
             </Field>
             {renderProductPicker("broadloom", "flooring")}
+          </>
+        )
+      },
+      {
+        id: "screed",
+        label: isFieldMode ? "Egaliseren meten" : "Egaliseren",
+        icon: CALC_TAB_ICONS.screed,
+        resultKey: screedResult.packsNeeded ?? 0,
+        hasInput: Boolean(screedAreaM2),
+        validationError: screedAreaM2 ? screedResult.validationError : undefined,
+        isSaving,
+        onSubmit: (event) =>
+          void addLine(event, {
+            roomId: screedRoomId || undefined,
+            productGroup: "other",
+            calculationType: "area",
+            input: {
+              areaM2: parseDecimal(screedAreaM2),
+              layerThicknessMm: parseDecimal(screedLayerThicknessMm)
+            },
+            result: screedResult,
+            wastePercent: undefined,
+            quantity: parseDecimal(screedAreaM2) ?? 0,
+            unit: "m2",
+            notes: screedNotes.trim() || undefined,
+            quoteLineType: "service",
+            tool: "screed",
+            ...indicativeSnapshotForTool("screed"),
+            validationError: screedResult.validationError,
+            successMessage: "Egaliseren-inmeting opgeslagen."
+          }),
+        result: (
+          <SummaryList
+            items={
+              calcEmptyStateItems(
+                Boolean(screedAreaM2),
+                screedAreaM2 ? screedResult.validationError : undefined
+              ) ?? [
+                { label: "Oppervlakte", value: formatNumber(parseDecimal(screedAreaM2) ?? 0, " m²") },
+                {
+                  label: "Benodigd egalisatiemiddel",
+                  value: formatNumber(screedResult.kgNeeded, " kg")
+                },
+                { label: "Zakken (richt)", value: formatNumber(screedResult.packsNeeded) },
+                ...indicativeSummaryItems("screed", parseDecimal(screedAreaM2) ?? 0)
+              ]
+            }
+          />
+        ),
+        fields: (
+          <>
+            {renderRoomSelect("screed-room", "Ruimte", screedRoomId, applyMeasurementRoomToScreed)}
+            <Field htmlFor="screed-area" label="Oppervlakte in m²">
+              <Input id="screed-area" inputMode="decimal" min={0} value={screedAreaM2} onChange={(e) => setScreedAreaM2(e.target.value)} />
+            </Field>
+            <Field
+              htmlFor="screed-thickness"
+              label="Laagdikte in mm"
+              helpText="Verbruik en zakinhoud volgen de standaard bedrijfsregel."
+            >
+              <Input id="screed-thickness" inputMode="decimal" min={0} value={screedLayerThicknessMm} onChange={(e) => setScreedLayerThicknessMm(e.target.value)} />
+            </Field>
+            <Field htmlFor="screed-notes" label="Notitie">
+              <Input id="screed-notes" value={screedNotes} onChange={(e) => setScreedNotes(e.target.value)} />
+            </Field>
+            {renderProductPicker("screed", "other")}
           </>
         )
       },

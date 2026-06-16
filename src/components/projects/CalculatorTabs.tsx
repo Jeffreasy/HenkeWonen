@@ -5,6 +5,7 @@ import {
   Layers,
   LayoutGrid,
   Minus,
+  PaintBucket,
   PanelRight,
   Pencil,
   Rows3,
@@ -27,6 +28,7 @@ import { Button } from "../ui/forms/Button";
 export type CalcTabId =
   | "flooring"
   | "broadloom"
+  | "screed"
   | "plinths"
   | "wallpaper"
   | "wall_panels"
@@ -63,6 +65,7 @@ type CalculatorTabsProps = {
 export const CALC_TAB_ICONS: Record<CalcTabId, ReactNode> = {
   flooring: <SquareStack size={15} aria-hidden="true" />,
   broadloom: <Rows3 size={15} aria-hidden="true" />,
+  screed: <PaintBucket size={15} aria-hidden="true" />,
   plinths: <Minus size={15} aria-hidden="true" />,
   wallpaper: <Layers size={15} aria-hidden="true" />,
   wall_panels: <PanelRight size={15} aria-hidden="true" />,

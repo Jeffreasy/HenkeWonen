@@ -107,6 +107,7 @@ export type MeasurementData = {
 export type FieldMeasureTool =
   | "flooring"
   | "broadloom"
+  | "screed"
   | "plinths"
   | "wallpaper"
   | "wall_panels"
