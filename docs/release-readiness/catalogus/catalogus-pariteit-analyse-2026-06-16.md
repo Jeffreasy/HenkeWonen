@@ -100,6 +100,13 @@ npm run catalog:status   # met prod-target/env
 
 ## Reparatie (eigenaaractie — AI muteert prod niet)
 
+> **UITGEVOERD 2026-06-17 (stap 1–3):** backup gemaakt
+> (`OneDrive/HenkeWonenDATA/DATABackup/henke-prod-2026-06-17.zip`), dry-run + `--apply` met de
+> gecombineerde regelset gedraaid. Resultaat: 17.070 rijen → `exclusive`, 31 Co-pro-rijen terug naar
+> `inclusive` (last-write-wins, correct), 10.149 "Qté"-pseudo verwijderd (prod 84.374→~74.225
+> prijsregels), 12 packageContent gecorrigeerd. **Nog open:** verificatie-dry-run (stap 5) en de
+> profielmappings in de portal-btw-workbench (stap 4) — anders regresseert het bij een her-import.
+
 Bevestigd nodig op prod: 17.070 btw-flips + 10.149 pseudo-verwijderingen + 12 packageContent-correcties.
 **Valkuil:** de default-regel flipt álles `inclusive→exclusive`, inclusief de 31 Co-pro-rijen
 `Adviesverkoopprijs incl. BTW. per verpakking` die wél legitiem inclusief zijn (audit C-1). Daarom een
