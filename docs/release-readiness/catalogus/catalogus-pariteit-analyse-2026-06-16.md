@@ -17,12 +17,14 @@
    `docs/generated/catalog-import-preview.json` (de bron die `catalog:import:prod` leest) is gedateerd
    **2026-06-01** — vóór de Fase 0-fixes en de parser-fix van **2026-06-13**. Het is sinds 06-01 niet
    opnieuw gegenereerd op deze machine.
-4. **Gevolg + correctie:** de prod-datakwaliteit is NIET aantoonbaar schoon. De Texdecor-categoriefix
-   is ná de import los op prod gedraaid (`repair_texdecor_categories.mjs`, geverifieerd 0 matches), maar
-   de **btw-stand en pseudo-prijs-opschoning zijn voor prod niet bevestigd**. Een eerdere snelle aanname
-   ("de 06-13 prod-data-auditcijfers zijn stale want de catalogus is vervangen") is te kort door de bocht:
-   de catalogus is vervangen, maar mogelijk uit de **pre-fix 06-01 preview**, waardoor de prijs-issues
-   kunnen zijn meegekomen.
+4. **Gevolg — BEVESTIGD op prod (2026-06-17 dry-run):** de prod-prijsdata staat nog op de pre-Fase-0-stand.
+   `node tools/repair_price_data.mjs --env-file=.env.production --target=production` (read-only) matcht:
+   **17.070 prijsregels met verkeerde btw** (`inclusive`/`unknown` → moet `exclusive`; Texdecor CASCAM 10.171
+   + PBA 6.662 + ZTAHL 132 + Lamelio 74 + Co-pro 31), **10.149 pseudo-prijzen** ("Qté multiple d'achat"),
+   **12 producten** met `packageContentM2` ×1000 te groot. Dit matcht de 2026-06-13-audit (17.039 / 10.149)
+   bijna exact → de catalogus is vervangen uit de **pre-fix 06-01 preview**; alleen de Texdecor-categorie is
+   daarna los gerepareerd, de btw/pseudo niet. Een eerdere snelle aanname ("die auditcijfers zijn stale")
+   was dus fout. **Reparatie nodig vóór de richtprijs naar prod mag** (zie §Reparatie onderaan).
 
 ## De drie builds (tijdlijn)
 
@@ -95,6 +97,30 @@ npm run catalog:vat:export -- --target=production
 # 3. Prod-status (read-only tellingen)
 npm run catalog:status   # met prod-target/env
 ```
+
+## Reparatie (eigenaaractie — AI muteert prod niet)
+
+Bevestigd nodig op prod: 17.070 btw-flips + 10.149 pseudo-verwijderingen + 12 packageContent-correcties.
+**Valkuil:** de default-regel flipt álles `inclusive→exclusive`, inclusief de 31 Co-pro-rijen
+`Adviesverkoopprijs incl. BTW. per verpakking` die wél legitiem inclusief zijn (audit C-1). Daarom een
+gecombineerde regelset (catch-all eerst, Co-pro-terugcorrectie daarna): `prod-price-repair-rules-2026-06-17.json`.
+
+1. **Backup prod** (hard vereist): `npx convex export --prod --path <pad-buiten-repo>/henke-prod-<datum>.zip`.
+2. **Dry-run met de gecombineerde regels** (verifieer dat Co-pro netto inclusief blijft):
+   ```
+   node tools/repair_price_data.mjs --env-file=.env.production --target=production \
+     --rules-file=docs/release-readiness/vat-mapping/prod-price-repair-rules-2026-06-17.json
+   ```
+3. **Apply** (muteert prod — bewust):
+   ```
+   node tools/repair_price_data.mjs --env-file=.env.production --target=production --apply \
+     --confirm-production-price-repair \
+     --rules-file=docs/release-readiness/vat-mapping/prod-price-repair-rules-2026-06-17.json
+   ```
+4. **Profielmappings gelijktrekken in de portal-btw-workbench** (anders komt de oude btw-stand terug bij een
+   volgende import — de tool waarschuwt hier expliciet voor, o.a. de ZTAHL-verkooplijst stond op `inclusive`).
+5. **Her-verifiëren**: dry-run opnieuw → enige resterende match mag alléén de 31 Co-pro-rijen zijn (die horen
+   inclusief te blijven); pseudo = 0; packageContent = 0.
 
 ## Samenvatting
 

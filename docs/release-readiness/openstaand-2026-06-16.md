@@ -9,13 +9,13 @@
 De prod-data-audit van **2026-06-13** (`data-issues/convex-prod-data-audit-2026-06-13.md`)
 rapporteert grote prijs-/catalogusfouten op de **oude** prod-catalogus: ~17.039 verkeerd-`inclusive`
 btw-rijen, ~10.149 pseudo-prijzen ("Qté multiple d'achat"), 6.991 Texdecor-behang in "Overig", 988 namen.
-Die oude catalogus is op **2026-06-15** gewist en her-geïmporteerd — **maar vermoedelijk uit de
-verouderde `catalog-import-preview.json` van 2026-06-01**, die vóór de Fase 0-fixes en de parser-fix
-(beide 2026-06-13) is gegenereerd. Alleen de **Texdecor-categorie** is daarna los op prod gerepareerd
-(`repair_texdecor_categories.mjs`, 0 matches). De **btw-stand en de "Qté"-pseudo-prijzen zijn voor prod
-NIET bevestigd** — de upload-strip vangt die laatste niet. Dus: de 06-13-cijfers zijn mogelijk grotendeels
-nog van toepassing op huidige prod. Dit is een **open technisch punt**, geen afgesloten zaak.
-→ Volledige analyse + beslisroute: [catalogus-pariteit-analyse-2026-06-16](./catalogus/catalogus-pariteit-analyse-2026-06-16.md).
+Die oude catalogus is op **2026-06-15** gewist en her-geïmporteerd uit de **verouderde
+`catalog-import-preview.json` van 2026-06-01** (vóór de Fase 0-fixes + parser-fix, beide 2026-06-13).
+Alleen de **Texdecor-categorie** is daarna los op prod gerepareerd. **BEVESTIGD op prod (2026-06-17,
+read-only dry-run):** 17.070 prijsregels met verkeerde btw + 10.149 pseudo-prijzen + 12 packageContent-
+fouten — vrijwel exact de 06-13-auditcijfers. De prod-prijsdata staat dus nog op de pre-Fase-0-stand en
+**moet gerepareerd vóór de richtprijs naar prod mag** (verkeerde btw = ~21% fout).
+→ Volledige analyse + reparatieroute: [catalogus-pariteit-analyse-2026-06-16](./catalogus/catalogus-pariteit-analyse-2026-06-16.md).
 
 ## Status: live, kernpoorten gesloten
 
