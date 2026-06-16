@@ -11,10 +11,10 @@ rapporteert grote prijs-/catalogusfouten op de **oude** prod-catalogus: ~17.039 
 btw-rijen, ~10.149 pseudo-prijzen ("Qté multiple d'achat"), 6.991 Texdecor-behang in "Overig", 988 namen.
 Die oude catalogus is op **2026-06-15** gewist en her-geïmporteerd uit de **verouderde
 `catalog-import-preview.json` van 2026-06-01** (vóór de Fase 0-fixes + parser-fix, beide 2026-06-13).
-Alleen de **Texdecor-categorie** is daarna los op prod gerepareerd. **BEVESTIGD op prod (2026-06-17,
-read-only dry-run):** 17.070 prijsregels met verkeerde btw + 10.149 pseudo-prijzen + 12 packageContent-
-fouten — vrijwel exact de 06-13-auditcijfers. De prod-prijsdata staat dus nog op de pre-Fase-0-stand en
-**moet gerepareerd vóór de richtprijs naar prod mag** (verkeerde btw = ~21% fout).
+Alleen de **Texdecor-categorie** was daarna los op prod gerepareerd. Een read-only dry-run bevestigde op
+2026-06-17 dat de prod-prijsdata nog op de pre-Fase-0-stand stond (17.070 verkeerde btw + 10.149 pseudo +
+12 packageContent — vrijwel exact de 06-13-auditcijfers). **✅ Inmiddels gerepareerd + geverifieerd schoon
+(2026-06-17)** en de profielmappings zijn geverifieerd correct. De catalogus-saga is daarmee gesloten.
 → Volledige analyse + reparatieroute: [catalogus-pariteit-analyse-2026-06-16](./catalogus/catalogus-pariteit-analyse-2026-06-16.md).
 
 ## Status: live, kernpoorten gesloten
@@ -33,7 +33,7 @@ fouten — vrijwel exact de 06-13-auditcijfers. De prod-prijsdata staat dus nog 
 | # | Punt | Bewijs | Actie |
 |---|---|---|---|
 | 1 | **18 calculator-bedrijfsregels onbevestigd.** Alle `labor_surcharge = 0` (arbeid nergens beprijsd); snijverlies-%, gordijn-plooifactor/zoom zijn aannames. Voeden richtprijs én offerte-hoeveelheden. | `convex/catalog/calculatorRulesSeed.ts:297-440` (`vereistKlantInput:true`); test `tests/calculatorRulesSeed.test.ts:18` vergrendelt "18 placeholders". | Bevestigen met Wim/Simone → daarna triviale seed-update. Verzachting: prijs wordt definitief in de offerte gezet ("richtprijs"-ontwerp); hoeveelheden/snijverlies tellen wel echt mee. |
-| 2 | **Catalogus-bron/pariteit + prod-datakwaliteit.** Eén bronset (32 Excels); prod = rauwe/pre-fix build, dev = gecureerde/post-fix build. Prod-prijsdata (btw-stand, "Qté"-pseudo-prijzen) is **niet aantoonbaar schoon**. | [catalogus-pariteit-analyse-2026-06-16](./catalogus/catalogus-pariteit-analyse-2026-06-16.md). | **(a)** Prod read-only verifiëren (`catalog:vat:export --target=production`); **(b)** owner kiest curatie-scope (volledig vs. gecureerd); **(c)** verse preview → dev → diff → één gecontroleerde prod-stap. |
+| 2 | **Catalogus-bron/pariteit + prod-datakwaliteit — ✅ AFGEROND 2026-06-17.** Prod-prijsdata gerepareerd + geverifieerd schoon (17.070 btw + 10.149 pseudo + 12 packageContent). Profielmappings geverifieerd correct (61/63 exclusive, 2 legitiem inclusief). Curatie-scope besloten: **volledig houden (~20k)**. | [catalogus-pariteit-analyse-2026-06-16](./catalogus/catalogus-pariteit-analyse-2026-06-16.md). | Geen openstaande actie. Aandachtspunt: bij toekomstige Masureel-import btw even met business bevestigen. |
 | 3 | **Duplicate-EAN backlog** — geaccepteerd/geparkeerd by design (1.871 groepen prod). | `data-issues/duplicate-ean-prod-acceptatie-2026-06-13.md`. | Geen, tenzij her-open-trigger. |
 
 ## 🟧 Owner ops/security (live-prod hygiëne)
