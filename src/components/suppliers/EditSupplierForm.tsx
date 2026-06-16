@@ -1,6 +1,13 @@
 import { Save , X} from "lucide-react";
 import { useEffect, useRef, useState, type SubmitEvent } from "react";
-import { Card, SectionHeader, StatusBadge, Field, Input, Select, Textarea, Button } from "../ui";
+import { Card } from "../ui/data-display/Card";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
+import { Field } from "../ui/forms/Field";
+import { Input } from "../ui/forms/Input";
+import { Select } from "../ui/forms/Select";
+import { Textarea } from "../ui/forms/Textarea";
+import { Button } from "../ui/forms/Button";
 import { formatStatusLabel, formatProductListStatus } from "../../lib/i18n/statusLabels";
 import type { PortalSupplier, ProductListStatus } from "../../lib/portalTypes";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";

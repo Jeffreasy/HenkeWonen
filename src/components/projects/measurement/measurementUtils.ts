@@ -3,6 +3,8 @@
  * Geen side effects, geen React-dependencies — veilig te importeren overal.
  */
 
+import { formatDate } from "../../../lib/dates";
+
 // ─── Getal parsing ────────────────────────────────────────────────────────────
 
 /**
@@ -53,16 +55,9 @@ export function formatNumber(value?: number, suffix = ""): string {
  * Formatteert een Unix-timestamp (ms) naar leesbare datum (nl-NL).
  * Geeft "-" terug bij undefined/0.
  */
+/** Alias voor {@link formatDate} — behoudt de bestaande aanroepnaam in de inmeting. */
 export function dateText(value?: number): string {
-  if (!value) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("nl-NL", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric"
-  }).format(new Date(value));
+  return formatDate(value);
 }
 
 /**

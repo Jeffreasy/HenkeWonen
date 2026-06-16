@@ -4,7 +4,7 @@
  */
 import { Archive, RotateCcw } from "lucide-react";
 import type { ProductImportBatch } from "../../../lib/portalTypes";
-import type { BadgeVariant } from "../../ui/Badge";
+import type { BadgeVariant } from "../../ui/data-display/Badge";
 import type { VatMappingReviewRow } from "../ImportProfiles";
 
 // ─── Getal / datum weergave ───────────────────────────────────────────────────

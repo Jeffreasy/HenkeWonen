@@ -1,5 +1,5 @@
 import { formatEuro } from "../../lib/money";
-import { StatCard } from "../ui/StatCard";
+import { StatCard } from "../ui/data-display/StatCard";
 
 type QuoteStatsProps = {
   total: number;

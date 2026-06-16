@@ -1,12 +1,12 @@
 import { Save , X} from "lucide-react";
 import { useState } from "react";
 import { formatStatusLabel } from "../../lib/i18n/statusLabels";
-import { Button } from "../ui/Button";
-import { Field } from "../ui/Field";
-import { Input } from "../ui/Input";
-import { SectionHeader } from "../ui/SectionHeader";
-import { Select } from "../ui/Select";
-import { StatusBadge } from "../ui/StatusBadge";
+import { Button } from "../ui/forms/Button";
+import { Field } from "../ui/forms/Field";
+import { Input } from "../ui/forms/Input";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { Select } from "../ui/forms/Select";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
 import { type ProductStatus, PRODUCT_STATUSES } from "./catalog/catalogTypes";
 
 

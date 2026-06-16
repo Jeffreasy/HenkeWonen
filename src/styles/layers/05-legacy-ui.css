@@ -96,27 +96,6 @@
   color: #fff;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.92rem;
-}
-
-.table th,
-.table td {
-  border-bottom: 1px solid var(--line);
-  padding: 12px;
-  text-align: left;
-  vertical-align: top;
-}
-
-.table th {
-  color: var(--muted);
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 .badge {
   display: inline-flex;
   align-items: center;
@@ -181,34 +160,6 @@
 .tab.active {
   background: var(--ink);
   color: #fff;
-}
-
-.quote-lines {
-  display: grid;
-  gap: 10px;
-}
-
-.quote-line {
-  display: grid;
-  grid-template-columns: 120px minmax(180px, 1fr) repeat(4, minmax(80px, 0.5fr)) 40px;
-  gap: 10px;
-  align-items: center;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface-raised);
-  padding: 10px;
-}
-
-.total-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  border-top: 1px solid var(--line);
-  padding-top: 10px;
-}
-
-.total-row strong {
-  font-size: 1.1rem;
 }
 
 .empty-state {

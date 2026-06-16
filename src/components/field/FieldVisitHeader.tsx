@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, Clock3, Mail, Phone } from "lucide-react";
 import { formatMeasurementStatus, formatProjectStatus } from "../../lib/i18n/statusLabels";
-import { StatusBadge } from "../ui/StatusBadge";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
 
 export type FieldUrgency = {
   level: "red" | "orange" | "green";

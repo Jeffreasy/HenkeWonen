@@ -9,7 +9,7 @@ import {
 } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
 import type { PortalCustomer, PortalProject, QuoteStatus } from "../../lib/portalTypes";
-import { Alert } from "../ui/Alert";
+import { Alert } from "../ui/feedback/Alert";
 import { DossierStats } from "./DossierStats";
 import { DossierSearchPanel, type DossierType, type DossierSearchRow } from "./DossierSearchPanel";
 import { DossierActions } from "./DossierActions";

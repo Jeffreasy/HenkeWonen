@@ -1,10 +1,10 @@
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useMemo } from "react";
 import type { PortalProjectTask } from "../../lib/portalTypes";
-import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { SectionHeader } from "../ui/SectionHeader";
+import { Badge } from "../ui/data-display/Badge";
+import { Button } from "../ui/forms/Button";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { SectionHeader } from "../ui/layout/SectionHeader";
 
 type ProjectTasksPanelProps = {
   tasks: PortalProjectTask[];

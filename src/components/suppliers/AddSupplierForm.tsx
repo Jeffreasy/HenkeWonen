@@ -1,6 +1,12 @@
 import { Save } from "lucide-react";
 import { useState, type SubmitEvent } from "react";
-import { Card, SectionHeader, Field, Input, Select, Textarea, Button } from "../ui";
+import { Card } from "../ui/data-display/Card";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { Field } from "../ui/forms/Field";
+import { Input } from "../ui/forms/Input";
+import { Select } from "../ui/forms/Select";
+import { Textarea } from "../ui/forms/Textarea";
+import { Button } from "../ui/forms/Button";
 import { formatProductListStatus } from "../../lib/i18n/statusLabels";
 import type { ProductListStatus } from "../../lib/portalTypes";
 import { PRODUCT_LIST_STATUSES, fromDateInputValue } from "./supplier/supplierUtils";

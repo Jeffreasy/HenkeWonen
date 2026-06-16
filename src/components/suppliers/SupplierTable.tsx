@@ -1,17 +1,14 @@
 import { Pencil, Archive, RotateCcw, Plus } from "lucide-react";
 import { useMemo } from "react";
-import {
-  Card,
-  SectionHeader,
-  FilterBar,
-  SearchInput,
-  Field,
-  Select,
-  DataTable,
-  StatusBadge,
-  Button,
-  type DataTableColumn
-} from "../ui";
+import { Card } from "../ui/data-display/Card";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { FilterBar } from "../ui/layout/FilterBar";
+import { SearchInput } from "../ui/forms/SearchInput";
+import { Field } from "../ui/forms/Field";
+import { Select } from "../ui/forms/Select";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
+import { Button } from "../ui/forms/Button";
 import {
   formatStatusLabel,
   formatProductListStatus,

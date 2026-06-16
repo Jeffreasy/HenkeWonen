@@ -1,7 +1,7 @@
 import { formatEuro } from "../../lib/money";
 import type { PortalQuoteLine } from "../../lib/portalTypes";
-import { SectionHeader } from "../ui/SectionHeader";
-import { SummaryList } from "../ui/SummaryList";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { SummaryList } from "../ui/data-display/SummaryList";
 
 type QuoteTotalsProps = {
   lines: PortalQuoteLine[];

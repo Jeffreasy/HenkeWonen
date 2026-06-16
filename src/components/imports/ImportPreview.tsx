@@ -6,7 +6,7 @@ import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatImportStatus } from "../../lib/i18n/statusLabels";
 import type { ProductImportBatch, ProductImportRow } from "../../lib/portalTypes";
 import type { SubmitEventLike } from "../../lib/events";
-import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
 import { ImportWorkbench } from "./ImportWorkbench";
 import { StartImportForm } from "./StartImportForm";
 import { ImportBatchesTable } from "./ImportBatchesTable";

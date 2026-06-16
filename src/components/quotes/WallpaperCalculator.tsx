@@ -4,12 +4,12 @@ import {
   calculateWallpaperRolls,
   type WallpaperCalculationResult
 } from "../../lib/calculators/wallpaperCalculator";
-import { Alert } from "../ui/Alert";
-import { Button } from "../ui/Button";
-import { Field } from "../ui/Field";
-import { Input } from "../ui/Input";
-import { SectionHeader } from "../ui/SectionHeader";
-import { SummaryList } from "../ui/SummaryList";
+import { Alert } from "../ui/feedback/Alert";
+import { Button } from "../ui/forms/Button";
+import { Field } from "../ui/forms/Field";
+import { Input } from "../ui/forms/Input";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { SummaryList } from "../ui/data-display/SummaryList";
 
 type WallpaperCalculatorProps = {
   onUseResult?: (result: WallpaperCalculationResult) => void;

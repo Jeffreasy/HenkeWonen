@@ -1,9 +1,9 @@
 import type { PortalCustomerContact } from "../../lib/portalTypes";
-import { Badge } from "../ui/Badge";
-import { Card } from "../ui/Card";
-import { EmptyState } from "../ui/EmptyState";
-import { SectionHeader } from "../ui/SectionHeader";
-import { SummaryList } from "../ui/SummaryList";
+import { Badge } from "../ui/data-display/Badge";
+import { Card } from "../ui/data-display/Card";
+import { EmptyState } from "../ui/feedback/EmptyState";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { SummaryList } from "../ui/data-display/SummaryList";
 import { dateText } from "../projects/measurement/measurementUtils";
 
 type LoanedItemsListProps = {

@@ -1,9 +1,9 @@
 import { Archive, Pencil, RotateCcw } from "lucide-react";
 import { formatStatusLabel } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
-import { Button } from "../ui/Button";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { StatusBadge } from "../ui/StatusBadge";
+import { Button } from "../ui/forms/Button";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
 import { type ServiceRuleRow } from "./settings/settingsTypes";
 
 type ServiceRulesTableProps = {

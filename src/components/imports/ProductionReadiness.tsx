@@ -3,12 +3,12 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
-import { Alert } from "../ui/Alert";
-import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
-import { Checklist } from "../ui/Checklist";
-import { StatCard } from "../ui/StatCard";
-import { SummaryList } from "../ui/SummaryList";
+import { Alert } from "../ui/feedback/Alert";
+import { Badge } from "../ui/data-display/Badge";
+import { Button } from "../ui/forms/Button";
+import { Checklist } from "../ui/forms/Checklist";
+import { StatCard } from "../ui/data-display/StatCard";
+import { SummaryList } from "../ui/data-display/SummaryList";
 import { numberText } from "./import/importUtils";
 
 type ProductionReadinessProps = {

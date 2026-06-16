@@ -8,9 +8,9 @@ import {
   formatVatRate
 } from "../../lib/quotes/quoteDocumentFormatting";
 import { formatStatusLabel } from "../../lib/i18n/statusLabels";
-import { Alert } from "../ui/Alert";
-import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
+import { Alert } from "../ui/feedback/Alert";
+import { Badge } from "../ui/data-display/Badge";
+import { Button } from "../ui/forms/Button";
 
 type QuoteDocumentPreviewProps = {
   model: QuoteDocumentModel;

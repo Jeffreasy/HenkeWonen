@@ -1,12 +1,12 @@
 import { Save } from "lucide-react";
 import { formatRecommendation } from "../../lib/i18n/statusLabels";
-import { Badge, type BadgeVariant } from "../ui/Badge";
-import { Button } from "../ui/Button";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { Field } from "../ui/Field";
-import { Select } from "../ui/Select";
-import { StatusBadge } from "../ui/StatusBadge";
-import { Textarea } from "../ui/Textarea";
+import { Badge, type BadgeVariant } from "../ui/data-display/Badge";
+import { Button } from "../ui/forms/Button";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { Field } from "../ui/forms/Field";
+import { Select } from "../ui/forms/Select";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
+import { Textarea } from "../ui/forms/Textarea";
 import { numberText, dateTimeText } from "./catalog/catalogUtils";
 
 export type DuplicateEanDecision =

@@ -2,11 +2,11 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { SubmitEventLike } from "../../lib/events";
 import type { PortalRoom } from "../../lib/portalTypes";
-import { Button } from "../ui/Button";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { Field } from "../ui/Field";
-import { Input } from "../ui/Input";
-import { SectionHeader } from "../ui/SectionHeader";
+import { Button } from "../ui/forms/Button";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { Field } from "../ui/forms/Field";
+import { Input } from "../ui/forms/Input";
+import { SectionHeader } from "../ui/layout/SectionHeader";
 import { RoomEditForm } from "./RoomEditForm";
 
 type ProjectRoomsPanelProps = {

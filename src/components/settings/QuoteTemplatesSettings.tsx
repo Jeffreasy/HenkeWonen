@@ -4,11 +4,11 @@ import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { QuoteTemplate } from "../../lib/portalTypes";
-import { Alert } from "../ui/Alert";
-import { EmptyState } from "../ui/EmptyState";
-import { ErrorState } from "../ui/ErrorState";
-import { LoadingState } from "../ui/LoadingState";
-import { StatCard } from "../ui/StatCard";
+import { Alert } from "../ui/feedback/Alert";
+import { EmptyState } from "../ui/feedback/EmptyState";
+import { ErrorState } from "../ui/feedback/ErrorState";
+import { LoadingState } from "../ui/feedback/LoadingState";
+import { StatCard } from "../ui/data-display/StatCard";
 import { QuoteTemplateCard } from "./QuoteTemplateCard";
 
 type QuoteTemplatesSettingsProps = {

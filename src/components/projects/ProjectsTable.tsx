@@ -1,13 +1,13 @@
 import { Plus } from "lucide-react";
 import { formatProjectStatus } from "../../lib/i18n/statusLabels";
 import type { PortalProject, ProjectStatus } from "../../lib/portalTypes";
-import { Button } from "../ui/Button";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { Field } from "../ui/Field";
-import { FilterBar } from "../ui/FilterBar";
-import { SearchInput } from "../ui/SearchInput";
-import { SectionHeader } from "../ui/SectionHeader";
-import { Select } from "../ui/Select";
+import { Button } from "../ui/forms/Button";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { Field } from "../ui/forms/Field";
+import { FilterBar } from "../ui/layout/FilterBar";
+import { SearchInput } from "../ui/forms/SearchInput";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { Select } from "../ui/forms/Select";
 import ProjectStatusBadge from "./ProjectStatusBadge";
 
 type PortalProjectRow = PortalProject & {

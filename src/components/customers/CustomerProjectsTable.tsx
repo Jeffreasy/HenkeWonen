@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { formatProjectStatus } from "../../lib/i18n/statusLabels";
 import type { PortalProject } from "../../lib/portalTypes";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { SectionHeader } from "../ui/SectionHeader";
-import { StatusBadge } from "../ui/StatusBadge";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
 
 type CustomerProjectsTableProps = {
   projects: PortalProject[];

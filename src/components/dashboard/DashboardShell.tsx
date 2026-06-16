@@ -5,7 +5,7 @@ import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { PortalProject } from "../../lib/portalTypes";
 import ProductionReadiness from "../imports/ProductionReadiness";
-import { Alert } from "../ui/Alert";
+import { Alert } from "../ui/feedback/Alert";
 import { DashboardFocusCards } from "./DashboardFocusCards";
 import { DashboardInvoiceStrip } from "./DashboardInvoiceStrip";
 import { DashboardWorkOverview, type DashboardWorkItem } from "./DashboardWorkOverview";

@@ -1,7 +1,7 @@
 import { CheckCircle2, Circle, CircleAlert } from "lucide-react";
 import { formatProjectStatus } from "../../lib/i18n/statusLabels";
 import type { ProjectStatus } from "../../lib/portalTypes";
-import { Badge } from "../ui/Badge";
+import { Badge } from "../ui/data-display/Badge";
 
 type ProjectWorkflowRailProps = {
   status: ProjectStatus;

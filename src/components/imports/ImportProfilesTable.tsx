@@ -2,12 +2,12 @@ import { Archive, RotateCcw } from "lucide-react";
 import { useMemo } from "react";
 import type { ImportProfileSummary } from "./ImportProfiles";
 import { formatImportProfileStatus } from "../../lib/i18n/statusLabels";
-import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { FilterBar } from "../ui/FilterBar";
-import { SearchInput } from "../ui/SearchInput";
-import { StatusBadge } from "../ui/StatusBadge";
+import { Badge } from "../ui/data-display/Badge";
+import { Button } from "../ui/forms/Button";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { FilterBar } from "../ui/layout/FilterBar";
+import { SearchInput } from "../ui/forms/SearchInput";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
 import { type ProfileStatusFilter } from "./import/importTypes";
 
 type ImportProfilesTableProps = {

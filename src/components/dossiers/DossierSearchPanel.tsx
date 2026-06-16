@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatDate } from "../../lib/dates";
-import { DataTable, type DataTableColumn } from "../ui/DataTable";
-import { Field } from "../ui/Field";
-import { FilterBar } from "../ui/FilterBar";
+import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
+import { Field } from "../ui/forms/Field";
+import { FilterBar } from "../ui/layout/FilterBar";
 import { PaginationControls } from "../ui/PaginationControls";
-import { SearchInput } from "../ui/SearchInput";
-import { SectionHeader } from "../ui/SectionHeader";
-import { Select } from "../ui/Select";
-import { StatusBadge } from "../ui/StatusBadge";
+import { SearchInput } from "../ui/forms/SearchInput";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { Select } from "../ui/forms/Select";
+import { StatusBadge } from "../ui/data-display/StatusBadge";
 
 export type DossierType = "all" | "customer" | "project" | "quote";
 

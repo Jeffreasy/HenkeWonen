@@ -2,11 +2,11 @@ import { Save , X} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { SubmitEventLike } from "../../lib/events";
 import type { PortalProject } from "../../lib/portalTypes";
-import { Button } from "../ui/Button";
-import { Field } from "../ui/Field";
-import { Input } from "../ui/Input";
-import { SectionHeader } from "../ui/SectionHeader";
-import { Textarea } from "../ui/Textarea";
+import { Button } from "../ui/forms/Button";
+import { Field } from "../ui/forms/Field";
+import { Input } from "../ui/forms/Input";
+import { SectionHeader } from "../ui/layout/SectionHeader";
+import { Textarea } from "../ui/forms/Textarea";
 
 type ProjectEditFormProps = {
   project: PortalProject;

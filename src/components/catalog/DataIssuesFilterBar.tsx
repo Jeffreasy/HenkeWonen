@@ -1,9 +1,9 @@
 import { Filter } from "lucide-react";
-import { Badge } from "../ui/Badge";
-import { Field } from "../ui/Field";
-import { FilterBar } from "../ui/FilterBar";
-import { SearchInput } from "../ui/SearchInput";
-import { Select } from "../ui/Select";
+import { Badge } from "../ui/data-display/Badge";
+import { Field } from "../ui/forms/Field";
+import { FilterBar } from "../ui/layout/FilterBar";
+import { SearchInput } from "../ui/forms/SearchInput";
+import { Select } from "../ui/forms/Select";
 import { formatRecommendation } from "../../lib/i18n/statusLabels";
 import { numberText } from "./catalog/catalogUtils";
 import { STATUS_FILTERS } from "./catalog/catalogTypes";

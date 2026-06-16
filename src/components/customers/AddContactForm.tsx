@@ -1,11 +1,11 @@
 import { CalendarDays, Save } from "lucide-react";
 import { useState } from "react";
 import type { PortalCustomerContact } from "../../lib/portalTypes";
-import { Button } from "../ui/Button";
-import { Field } from "../ui/Field";
-import { Input } from "../ui/Input";
-import { Select } from "../ui/Select";
-import { Textarea } from "../ui/Textarea";
+import { Button } from "../ui/forms/Button";
+import { Field } from "../ui/forms/Field";
+import { Input } from "../ui/forms/Input";
+import { Select } from "../ui/forms/Select";
+import { Textarea } from "../ui/forms/Textarea";
 import { dateText } from "../projects/measurement/measurementUtils";
 
 export type AddContactFormValues = {

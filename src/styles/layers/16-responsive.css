@@ -484,10 +484,6 @@
     display: none;
   }
 
-  .quote-line {
-    grid-template-columns: 1fr;
-  }
-
   .quote-document-preview-header,
   .quote-document-control-panel,
   .quote-document-cover,
