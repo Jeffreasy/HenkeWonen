@@ -181,6 +181,8 @@ export default function QuoteLineEditor({
       setSelectedTemplateLine(null);
       setSelectedProduct(null);
       setProjectRoomId("");
+    } catch {
+      // Fout is al gemeld via toast in de workspace; behoud de ingevoerde regel.
     } finally {
       setIsSaving(false);
     }
