@@ -9,6 +9,7 @@ import type {
   QuoteStatus,
   QuoteTemplate
 } from "../../lib/portalTypes";
+import { formatDate } from "../../lib/dates";
 import { formatMeasurementProductGroup, formatQuoteStatus, formatUnit } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
 import type { MeasurementProductGroup } from "../../lib/portalTypes";
@@ -151,6 +152,16 @@ export default function QuoteBuilder({
   const canEditDraftLines = canEdit && quote.status === "draft";
   const fieldQuoteLabel = quote.status === "draft" ? "Conceptofferte" : "Klantversie";
   const fieldLineLabel = quote.status === "draft" ? "Conceptposten" : "Offerteposten";
+  const customerName = customer?.weergaveNaam ?? "Onbekende klant";
+  const customerAddress = customer
+    ? [
+        [customer.straat, customer.huisnummer].filter(Boolean).join(" "),
+        [customer.postcode, customer.plaats].filter(Boolean).join(" ")
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : "";
+  const validUntilLabel = quote.geldigTot ? formatDate(quote.geldigTot) : "Niet ingevuld";
 
   // ── Catalogusfilter inferentie (field-mode) ──────────────────────────────────
   const inferredProductGroup = useMemo((): MeasurementProductGroup | null => {
@@ -782,6 +793,7 @@ export default function QuoteBuilder({
           <StatusBadge status={quote.status} label={formatQuoteStatus(quote.status)} />
           <SummaryList
             items={[
+              { id: "customer", label: "Klant", value: customerName },
               { id: "number", label: "Offertenummer", value: quote.offertenummer },
               { id: "lines", label: fieldLineLabel, value: quote.lines.length },
               { id: "total", label: "Totaal incl. btw", value: formatEuro(quoteTotals.totalIncVat) }
@@ -876,9 +888,12 @@ export default function QuoteBuilder({
         />
         <SummaryList
           items={[
+            { id: "customer", label: "Klant", value: customerName },
+            ...(customerAddress ? [{ id: "address", label: "Adres", value: customerAddress }] : []),
             { id: "number", label: "Offertenummer", value: quote.offertenummer },
+            { id: "valid", label: "Geldig tot", value: validUntilLabel },
             { id: "lines", label: "Offerteposten", value: quote.lines.length },
-            { id: "updated", label: "Bijgewerkt", value: new Intl.DateTimeFormat("nl-NL").format(new Date(quote.gewijzigdOp)) }
+            { id: "updated", label: "Bijgewerkt", value: formatDate(quote.gewijzigdOp) }
           ]}
         />
       </section>
