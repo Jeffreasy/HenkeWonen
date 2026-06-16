@@ -75,9 +75,15 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     setError(null);
 
     try {
-      const result = (await client.query(api.portal.listQuotesWorkspace, {
-        tenantSlug: session.tenantId
-      })) as QuoteWorkspaceResult;
+      // Detailpagina laadt alleen de betreffende offerte; de lijst laadt de volledige werkruimte.
+      const result = (quoteId
+        ? await client.query(api.portal.quoteDetailWorkspace, {
+            tenantSlug: session.tenantId,
+            quoteId
+          })
+        : await client.query(api.portal.listQuotesWorkspace, {
+            tenantSlug: session.tenantId
+          })) as QuoteWorkspaceResult;
 
       setCustomers(result.customers);
       setProjects(result.projects);
@@ -89,7 +95,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     } finally {
       setIsLoading(false);
     }
-  }, [session.tenantId]);
+  }, [quoteId, session.tenantId]);
 
   useEffect(() => {
     void loadWorkspace();

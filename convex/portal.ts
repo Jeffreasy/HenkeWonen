@@ -226,6 +226,7 @@ export {
 } from "./projecten/core";
 export {
   listQuotesWorkspace,
+  quoteDetailWorkspace,
   createQuote,
   updateQuote,
   addQuoteLine,

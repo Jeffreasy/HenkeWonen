@@ -788,6 +788,55 @@ export const listQuotesWorkspace = query({
   }
 });
 
+// Detailpagina (/portal/offertes/[id]): zelfde vorm als listQuotesWorkspace,
+// maar geschaald naar één offerte zodat niet de hele catalogus aan offertes
+// wordt geladen om er één te tonen.
+export const quoteDetailWorkspace = query({
+  args: {
+    tenantSlug: v.string(),
+    actor: readActorValidator,
+    quoteId: v.string()
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
+
+    const quoteDoc = await ctx.db.get(args.quoteId as Id<"quotes">);
+
+    if (!quoteDoc || quoteDoc.tenantId !== tenant._id) {
+      return { customers: [], projects: [], quotes: [], templates: [] };
+    }
+
+    const [customerDoc, projectDoc, templates] = await Promise.all([
+      ctx.db.get(quoteDoc.klantId),
+      ctx.db.get(quoteDoc.projectId),
+      ctx.db
+        .query("quoteTemplates")
+        .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+        .collect()
+    ]);
+
+    return {
+      customers:
+        customerDoc && customerDoc.tenantId === tenant._id
+          ? [toCustomer(tenant.slug, customerDoc)]
+          : [],
+      projects:
+        projectDoc && projectDoc.tenantId === tenant._id
+          ? [await toProject(ctx, tenant.slug, projectDoc)]
+          : [],
+      quotes: [await toQuote(ctx, tenant.slug, quoteDoc)],
+      templates: templates
+        .filter((template: Doc<"quoteTemplates">) => template.status === "active")
+        .map((template: Doc<"quoteTemplates">) => toQuoteTemplate(tenant.slug, template))
+    };
+  }
+});
+
 export const createQuote = mutation({
   args: {
     tenantSlug: v.string(),
