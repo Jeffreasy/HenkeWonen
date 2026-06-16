@@ -663,6 +663,7 @@ export type FieldWorkspaceCard = {
     id: string;
     status: MeasurementStatus;
     inmeetdatum?: number;
+    gemetenDoor?: string;
     gewijzigdOp: number;
   } | null;
 };

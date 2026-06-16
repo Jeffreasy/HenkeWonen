@@ -209,6 +209,7 @@ export const dashboard = query({
 
 // Re-exports
 export { listCustomers, createCustomer, updateCustomer, customerDetail, createCustomerContact } from "./beheer/customers";
+export { listTeamMembers } from "./beheer/users";
 export {
   listProjects,
   dossierWorkspace,

@@ -29,6 +29,7 @@ import ProjectWorkflowRail from "./ProjectWorkflowRail";
 import MeasurementPanel from "./MeasurementPanel";
 import { ProjectOverviewPanel } from "./ProjectOverviewPanel";
 import { ProjectEditForm } from "./ProjectEditForm";
+import { PlanMeasurementModal, type TeamMember } from "./PlanMeasurementModal";
 import { ProjectRoomsPanel } from "./ProjectRoomsPanel";
 import { ProjectTasksPanel } from "./ProjectTasksPanel";
 import { ProjectTimelinePanel } from "./ProjectTimelinePanel";
@@ -114,6 +115,9 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   const [invoiceDueDate, setInvoiceDueDate] = useState("");
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [isStartingMeasurement, setIsStartingMeasurement] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [isPlanningMeasurement, setIsPlanningMeasurement] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(() => {
     if (typeof window === "undefined") {
       return "inmeting";
@@ -154,6 +158,36 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   useEffect(() => {
     void loadProject();
   }, [loadProject]);
+
+  // Teamleden voor de monteur-keuze bij het inplannen van een inmeetbezoek.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTeamMembers() {
+      const client = createConvexHttpClient(session);
+      if (!client) {
+        return;
+      }
+
+      try {
+        const members = await client.query(api.portal.listTeamMembers, {
+          tenantSlug: session.tenantId
+        });
+        if (!cancelled) {
+          setTeamMembers((members ?? []) as TeamMember[]);
+        }
+      } catch (teamError) {
+        // Niet-blokkerend: zonder lijst kan de monteur nog steeds leeg blijven.
+        console.error(teamError);
+      }
+    }
+
+    void loadTeamMembers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
 
   // Documenttitel = dossiernaam, zodat meerdere geopende dossier-tabs uit elkaar
   // te houden zijn (de SSR-titel is generiek "Project").
@@ -236,6 +270,50 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       setError("Inmeting kon niet worden gestart.");
     } finally {
       setIsStartingMeasurement(false);
+    }
+  }
+
+  function toDateInputValue(value?: number): string {
+    if (!value) {
+      return "";
+    }
+    const date = new Date(value);
+    const month = `${date.getMonth() + 1}`.padStart(2, "0");
+    const day = `${date.getDate()}`.padStart(2, "0");
+    return `${date.getFullYear()}-${month}-${day}`;
+  }
+
+  async function planMeasurementVisit(data: { date: string; measuredBy: string }) {
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return;
+    }
+
+    const inmeetdatum = fromDateInputValue(data.date);
+    if (!inmeetdatum) {
+      showToast({ title: "Kies eerst een datum", tone: "error" });
+      return;
+    }
+
+    setIsPlanningMeasurement(true);
+    try {
+      await client.mutation(api.portal.startOrPlanMeasurement, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        projectId,
+        inmeetdatum,
+        gemetenDoor: data.measuredBy.trim() || undefined
+      });
+      setIsPlanModalOpen(false);
+      await loadProject();
+      handleTabChange("inmeting");
+      showToast({ title: "Inmeetbezoek ingepland", tone: "success" });
+    } catch (planError) {
+      console.error(planError);
+      showToast({ title: "Inplannen mislukt", tone: "error" });
+    } finally {
+      setIsPlanningMeasurement(false);
     }
   }
 
@@ -459,6 +537,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
           workflowEventsCount={workflowEvents.length}
           isStartingMeasurement={isStartingMeasurement}
           onStartMeasurement={startMeasurementWorkflow}
+          onPlanMeasurement={() => setIsPlanModalOpen(true)}
           onEditProject={() => setEditingProject((current) => !current)}
           onCancelProject={() => openProjectAction("cancelled")}
           canEdit={canEditProject}
@@ -466,6 +545,22 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
 
         <ProjectWorkflowRail status={project.status} />
       </div>
+
+      <PlanMeasurementModal
+        open={isPlanModalOpen}
+        teamMembers={teamMembers}
+        defaultDate={
+          project.inmeetdatum ? toDateInputValue(project.inmeetdatum) : defaultDateInputInDays(1)
+        }
+        defaultMeasuredBy={
+          teamMembers.find(
+            (member) => member.email === session.email || member.naam === session.name
+          )?.naam ?? ""
+        }
+        isSaving={isPlanningMeasurement}
+        onSubmit={(data) => void planMeasurementVisit(data)}
+        onClose={() => setIsPlanModalOpen(false)}
+      />
 
       {canEditProject && editingProject ? (
         <ProjectEditForm

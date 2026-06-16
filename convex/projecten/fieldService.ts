@@ -485,6 +485,7 @@ export const fieldServiceWorkspace = query({
                   id: String(measurement._id),
                   status: measurement.status,
                   inmeetdatum: measurement.inmeetdatum,
+                  gemetenDoor: measurement.gemetenDoor,
                   gewijzigdOp: measurement.gewijzigdOp
                 }
               : null
