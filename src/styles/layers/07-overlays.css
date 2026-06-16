@@ -92,8 +92,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 40px;   /* Was 32px — vergroot naar touch-safe 40px */
-  height: 40px;  /* Minimaal 44px gewenst, 40px is acceptabel compromis */
+  width: 44px;   /* Touch-safe minimum (WCAG 2.5.5) — buitendienst is mobiel-first */
+  height: 44px;
   margin-top: -4px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);

@@ -317,6 +317,19 @@ export default function FieldServiceWorkspace({
     () => countPriorities(pageCards),
     [pageCards]
   );
+  // Tab-tellers volgen de actieve zoekterm: zoek je op "Jan", dan toont elke tab
+  // hoeveel matchende dossiers in die bucket zitten (i.p.v. het ongefilterde totaal).
+  const tabCounts = useMemo(() => {
+    if (!search.trim()) {
+      return workspace.counts;
+    }
+    return {
+      today: filterCards(workspace.today, search).length,
+      measure: filterCards(workspace.measure, search).length,
+      quote: filterCards(workspace.quote, search).length,
+      followUp: filterCards(workspace.followUp, search).length
+    };
+  }, [search, workspace]);
 
   return (
     <div className="grid field-workspace">
@@ -362,7 +375,7 @@ export default function FieldServiceWorkspace({
         </div>
       </section>
 
-      <FieldPageTabs activeView={view} counts={workspace.counts} />
+      <FieldPageTabs activeView={view} counts={tabCounts} />
 
       {intakeNotice ? (
         <Alert variant="success" title="Lead vastgelegd" description={intakeNotice} />
