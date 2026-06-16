@@ -456,7 +456,7 @@ export const updateMeasurement = mutation({
       "editor",
       "admin"
     ]);
-    await requireMeasurement(ctx, args.tenantId, args.inmetingId);
+    const measurement = await requireMeasurement(ctx, args.tenantId, args.inmetingId);
 
     const patch: Record<string, unknown> = {
       gewijzigdOp: Date.now()
@@ -479,6 +479,22 @@ export const updateMeasurement = mutation({
     }
 
     await ctx.db.patch(args.inmetingId, patch);
+
+    // Houd de inmeetdatum op het dossier in sync met de inmeting, zodat winkel en
+    // buitendienst dezelfde planningsdatum zien (M5: bidirectionele sync).
+    if (hasArg(args, "inmeetdatum")) {
+      const project = await ctx.db.get(measurement.projectId as Id<"projects">);
+      if (
+        project &&
+        project.tenantId === args.tenantId &&
+        project.inmeetdatum !== args.inmeetdatum
+      ) {
+        await ctx.db.patch(project._id, {
+          inmeetdatum: args.inmeetdatum,
+          gewijzigdOp: Date.now()
+        });
+      }
+    }
 
     return args.inmetingId;
   }

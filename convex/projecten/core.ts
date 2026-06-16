@@ -329,6 +329,18 @@ export const updateProject = mutation({
 
     await ctx.db.patch(project._id, patch);
 
+    // Houd de inmeetdatum in sync met de laatste inmeting (zoals startOrPlanMeasurement),
+    // zodat winkel en buitendienst niet uiteenlopende datums tonen.
+    if (hasArg(args, "inmeetdatum")) {
+      const measurement = await latestMeasurementForProject(ctx, tenant._id, project._id);
+      if (measurement && measurement.inmeetdatum !== args.inmeetdatum) {
+        await ctx.db.patch(measurement._id, {
+          inmeetdatum: args.inmeetdatum,
+          gewijzigdOp: Date.now()
+        });
+      }
+    }
+
     return project._id;
   }
 });
