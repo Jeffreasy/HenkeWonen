@@ -7,8 +7,8 @@ Centrale ingang voor alle documentatie van de Henke Wonen portal.
 | Ik wil... | Lees dit |
 | --- | --- |
 | De portal gebruiken als medewerker | [Klantdocumentatie](./klant/README.md) |
-| Snel starten met de dagelijkse flow | [Quickstart](./klant/henke-wonen-portal-quickstart-2026-04-30.md) |
-| De volledige gebruikershandleiding lezen | [Workflowhandleiding](./klant/henke-wonen-portal-workflow-handleiding-2026-04-30.md) |
+| Snel starten met de dagelijkse flow | [Quickstart V2.0](./PilotLaunch/V2.0/henke-wonen-portal-quickstart-Print.pdf) |
+| De volledige gebruikershandleiding lezen | [Workflow Handleiding V2.0](./PilotLaunch/V2.0/henke-wonen-portal-workflow-handleiding-Print.pdf) |
 | De technische opbouw begrijpen | [Technische documentatie](./technisch/README.md) |
 | Releaseblokkades en btw-mapping volgen | [Release-readiness](./release-readiness/README.md) |
 | Gegenereerde importbestanden bekijken | [Generated](./generated/README.md) |
@@ -23,7 +23,7 @@ Centrale ingang voor alle documentatie van de Henke Wonen portal.
 | [release-readiness](./release-readiness/README.md) | Btw-mapping, productieblokkades en datakwaliteitsreviews |
 | [generated](./generated/README.md) | Automatisch gegenereerde import- en auditbestanden (niet handmatig aanpassen) |
 | [artifacts](./artifacts/README.md) | QA-screenshots en pilot-documenten |
-| [PilotLaunch](./PilotLaunch/) | Pilot-launchpakketten per versie (V1.0, V1.1, V2.0) met print-PDF's en HTML-bronnen |
+| [PilotLaunch](./PilotLaunch/README.md) | Klant-launchpakketten: V2.0 (actief) + V1.0 (historisch), met print-PDF's en HTML-bron |
 | [archief](./archief/README.md) | Historische audits, faseverslagen en gearchiveerde versies |
 
 ## Huidige hoofdstatus
