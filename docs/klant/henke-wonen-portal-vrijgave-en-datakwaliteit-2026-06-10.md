@@ -1,5 +1,8 @@
 # Henke Wonen Portal - Vrijgave- & Datakwaliteitgids
 
+> [!CAUTION]
+> **Vervallen — vervangen door V2.0.** Deze V1-versie is niet meer actueel (oude cijfers: 20 profielen / 61 van 61 / 0 EAN). Gebruik de bijgewerkte, code-geverifieerde **Vrijgave & Datakwaliteit V2.0** (21 profielen / 63 kolommen / ~1.871 geparkeerde EAN-groepen): [HTML-bron](../PilotLaunch/V2.0/henke-wonen-portal-vrijgave-en-datakwaliteit.html) of `PilotLaunch/V2.0/henke-wonen-portal-vrijgave-en-datakwaliteit-Print.pdf`.
+
 Datum: 10 juni 2026  
 Doelgroep: Beheerders en directie Henke Wonen  
 Status: Gecontroleerde productiestatus en toelichting voor pilot-vrijgave

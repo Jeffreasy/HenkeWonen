@@ -1,5 +1,8 @@
 # Henke Wonen portal - quickstart
 
+> [!CAUTION]
+> **Vervallen — vervangen door V2.0.** Deze V1-versie is niet meer actueel. Gebruik de bijgewerkte, code-geverifieerde **Quickstart V2.0**: [HTML-bron](../PilotLaunch/V2.0/henke-wonen-portal-quickstart.html) of `PilotLaunch/V2.0/henke-wonen-portal-quickstart-Print.pdf`.
+
 Datum: 30 april 2026  
 Laatst gecontroleerd: 10 juni 2026<br>
 Doel: snel starten met de dagelijkse basisflow
