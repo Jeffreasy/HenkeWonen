@@ -80,6 +80,18 @@ describe("calculateCurtainFabric (gordijnstof)", () => {
     expect(r.fabricMetersM).toBe(6); // 3 × 2 (gekanteld)
   });
 
+  it("weigert kamerhoog wanneer de stof smaller is dan gordijnhoogte + zoom", () => {
+    const r = calculateCurtainFabric({
+      railWidthM: 3,
+      curtainHeightM: 2.6,
+      fabricWidthM: 1.4, // < 2.6 + 0.3 zoom → fysiek niet kamerhoog te kantelen
+      fullness: 2,
+      makeUp: "kamerhoog"
+    });
+    expect(r.validationError).toBeTruthy();
+    expect(r.fabricMetersM).toBe(0);
+  });
+
   it("valideert ongeldige invoer", () => {
     expect(
       calculateCurtainFabric({

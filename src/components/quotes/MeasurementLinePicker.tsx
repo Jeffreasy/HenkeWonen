@@ -1,4 +1,4 @@
-import { Ruler } from "lucide-react";
+import { RefreshCw, Ruler } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -318,19 +318,42 @@ export default function MeasurementLinePicker({
         title={isFieldMode ? "Meetregels naar conceptofferte" : "Inmeting overnemen"}
         description={summaryLabel}
         actions={
-          <Button
-            leftIcon={<Ruler size={16} aria-hidden="true" />}
-            onClick={() => setIsOpen((current) => !current)}
-            variant="secondary"
-          >
-            {isOpen
-              ? isFieldMode
-                ? "Meetregels sluiten"
-                : "Inmeting sluiten"
-              : isFieldMode
-                ? "Meetregels kiezen"
-                : "Inmeting overnemen"}
-          </Button>
+          <div className="toolbar">
+            {isOpen ? (
+              <Button
+                leftIcon={<RefreshCw size={15} aria-hidden="true" />}
+                onClick={() => void loadReadyLines()}
+                isLoading={isLoading}
+                variant="ghost"
+              >
+                Verversen
+              </Button>
+            ) : null}
+            <Button
+              leftIcon={<Ruler size={16} aria-hidden="true" />}
+              onClick={() =>
+                setIsOpen((current) => {
+                  const next = !current;
+                  // Herlaad bij openen: in de buitendienst staan Inmeten en de
+                  // conceptofferte op dezelfde pagina, dus net klaargezette regels
+                  // moeten verschijnen zonder paginareload.
+                  if (next) {
+                    void loadReadyLines();
+                  }
+                  return next;
+                })
+              }
+              variant="secondary"
+            >
+              {isOpen
+                ? isFieldMode
+                  ? "Meetregels sluiten"
+                  : "Inmeting sluiten"
+                : isFieldMode
+                  ? "Meetregels kiezen"
+                  : "Inmeting overnemen"}
+            </Button>
+          </div>
         }
       />
 

@@ -104,17 +104,10 @@ export type MeasurementData = {
 
 // ─── Calculator tool types ────────────────────────────────────────────────────
 
-export type FieldMeasureTool =
-  | "flooring"
-  | "broadloom"
-  | "screed"
-  | "plinths"
-  | "wallpaper"
-  | "wall_panels"
-  | "curtains"
-  | "window_covering"
-  | "stairs"
-  | "manual";
+// Eén bron van waarheid: een rekenmachine-tool IS een calculator-tab. Zo kan een
+// nieuwe module niet in één union vergeten worden (voorheen twee identieke unions).
+export type { CalcTabId } from "../CalculatorTabs";
+export type FieldMeasureTool = import("../CalculatorTabs").CalcTabId;
 
 /** Beschikbare raambekleding-matrices van api.catalog.pricing.listMatrixOptions. */
 export type MatrixOptions = {

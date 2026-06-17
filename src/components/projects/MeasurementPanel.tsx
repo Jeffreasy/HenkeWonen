@@ -572,6 +572,12 @@ export default function MeasurementPanel({
           return "stairs";
         case "manual":
           return manualUnit;
+        default: {
+          // Exhaustiveness: een nieuwe rekenmachine-module zonder eigen prijs-eenheid
+          // breekt hier compile-time i.p.v. stil op een verkeerde eenheid te belanden.
+          const _exhaustive: never = tool;
+          return _exhaustive;
+        }
       }
     },
     [manualUnit]
@@ -2321,7 +2327,7 @@ export default function MeasurementPanel({
   );
 
   function buildCalcTabs(): CalcTab[] {
-    return [
+    const tabs: CalcTab[] = [
       {
         id: "flooring",
         label: isFieldMode ? "Vloer meten" : "Vloer",
@@ -3176,6 +3182,21 @@ export default function MeasurementPanel({
         )
       }
     ];
+
+    // Exhaustiveness-guard (dev): elke rekenmachine-module (CALC_TAB_ICONS is een
+    // Record<CalcTabId,…> en dus compleet) moet een tab krijgen. Vergeet je 'm in deze
+    // array, dan zou de tab stil verdwijnen — hier valt dat meteen op in dev.
+    if (import.meta.env.DEV) {
+      const aanwezig = new Set(tabs.map((t) => t.id));
+      const ontbrekend = (Object.keys(CALC_TAB_ICONS) as CalcTabId[]).filter(
+        (id) => !aanwezig.has(id)
+      );
+      if (ontbrekend.length > 0) {
+        console.error(`[Rekenhulpen] ontbrekende tab(s) in buildCalcTabs: ${ontbrekend.join(", ")}`);
+      }
+    }
+
+    return tabs;
   }
 
   function renderMeasurementLinesCard() {

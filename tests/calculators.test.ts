@@ -165,6 +165,19 @@ describe("Measurements Calculators", () => {
     expect(withRepeat.rollsNeeded).toBeGreaterThanOrEqual(withoutRepeat.rollsNeeded);
   });
 
+  it("applies waste to the strip count, not the rounded roll count (no doubling on small jobs)", () => {
+    // 1m breed → 2 banen; 1m hoog, rol 10,05m → 10 banen/rol → basis = 1 rol.
+    // 10% snijverlies mag dit NIET naar 2 rollen tillen (oude bug: ceil(1×1,1)=2).
+    const result = calculateWallpaperRolls({
+      wallWidthM: 1,
+      wallHeightM: 1,
+      wastePercent: 10
+    });
+
+    expect(result.baseRollsNeeded).toBe(1);
+    expect(result.rollsNeeded).toBe(1);
+  });
+
   it("should return validationError when baan is longer than roll", () => {
     const result = calculateWallpaperRolls({
       wallWidthM: 2,

@@ -77,8 +77,16 @@ const UNIT_COMPATIBILITY: Record<string, string[]> = {
   // "step"/"trede" = hoeveelheid in treden; "stairs" (1 hele trap) bewust NIET
   // gemapt op trede-prijzen — dat zou 1 × prijs-per-trede rekenen.
   step: ["step"],
-  trede: ["step"]
+  trede: ["step"],
+  // "stairs" (1 hele trap) en "custom" (maatwerk) hebben bewust GEEN compatibele
+  // auto-prijseenheid: de prijs is hier maatwerk/handmatig. Expliciet gemapt op [] zodat
+  // een ongemapte (vergeten) eenheid herkenbaar blijft i.p.v. stil via de fallback te gaan.
+  stairs: [],
+  custom: []
 };
+
+/** Alle meeteenheden die de rekenmachine-modules kunnen produceren (CI-guard). */
+export const KNOWN_MEASUREMENT_UNITS = Object.keys(UNIT_COMPATIBILITY);
 
 function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
