@@ -1146,5 +1146,46 @@ export default defineSchema({
   })
     .index("by_project", ["tenantId", "projectId"])
     .index("by_customer", ["tenantId", "klantId"])
-    .index("by_type", ["tenantId", "type"])
+    .index("by_type", ["tenantId", "type"]),
+
+  // ── Agenda & beschikbaarheid (monteurs) ────────────────────────────────────
+  // Terugkerende werktijden per monteur (gebruiker), per weekdag.
+  // weekdag: 0 = maandag … 6 = zondag. Tijden in minuten sinds middernacht
+  // (bv. 480 = 08:00, 1020 = 17:00).
+  monteurWerktijden: defineTable({
+    tenantId: v.id("tenants"),
+    userId: v.id("users"),
+    weekdag: v.number(),
+    startMinuut: v.number(),
+    eindMinuut: v.number(),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
+  })
+    .index("by_tenant", ["tenantId"])
+    .index("by_monteur", ["tenantId", "userId"]),
+
+  // Afwezigheid/verlof/blokkade per monteur — onderbreekt de beschikbaarheid.
+  // vanafDatum/totDatum: Unix-ms (dag-granulariteit bij heleDag, totDatum inclusief).
+  // Bij een tijdvak (heleDag=false) gelden start-/eindMinuut binnen die dag(en).
+  monteurAfwezigheid: defineTable({
+    tenantId: v.id("tenants"),
+    userId: v.id("users"),
+    type: v.union(
+      v.literal("verlof"),
+      v.literal("ziek"),
+      v.literal("blokkade"),
+      v.literal("overig")
+    ),
+    vanafDatum: v.number(),
+    totDatum: v.number(),
+    heleDag: v.boolean(),
+    startMinuut: v.optional(v.number()),
+    eindMinuut: v.optional(v.number()),
+    reden: v.optional(v.string()),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
+  })
+    .index("by_tenant", ["tenantId"])
+    .index("by_monteur", ["tenantId", "userId"])
+    .index("by_periode", ["tenantId", "vanafDatum"])
 });
