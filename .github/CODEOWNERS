@@ -1,0 +1,43 @@
+# CODEOWNERS — Henke Wonen portal
+# -----------------------------------------------------------------------------
+# Stuurt WIE een PR moet goedkeuren (GitHub-native). Staat los van CodeRabbit's
+# path_instructions (die sturen WAT/HOE de bot reviewt) — de paden hieronder
+# spiegelen bewust .coderabbit.yaml zodat AI-focus en menselijke eigenaar
+# samenvallen.
+#
+# Maak hiervan een echte merge-gate: GitHub > Settings > Branches >
+# branch protection rule op `main` > "Require review from Code Owners".
+# Voeg @coderabbitai toe als reviewer om ook de bot-goedkeuring af te dwingen.
+#
+# Vandaag vrijwel solo (LaventeCare -> Henke Wonen): één eigenaar. Splits per
+# team zodra het team groeit (bijv. convex/** @org/backend, src/** @org/frontend).
+# -----------------------------------------------------------------------------
+
+# Standaard-eigenaar voor alles wat hieronder niet specifieker is.
+*                               @Jeffreasy
+
+# --- Security-kritisch -------------------------------------------------------
+/convex/authz.ts                @Jeffreasy
+/convex/schema.ts               @Jeffreasy
+/src/lib/auth/**                @Jeffreasy
+/src/middleware.ts              @Jeffreasy
+/src/pages/api/**               @Jeffreasy
+
+# --- Financieel domein -------------------------------------------------------
+/convex/facturen/**             @Jeffreasy
+/convex/offertes/**             @Jeffreasy
+/convex/portalUtils.ts          @Jeffreasy
+/src/lib/money.ts               @Jeffreasy
+/src/lib/calculators/**         @Jeffreasy
+/src/lib/quotes/**              @Jeffreasy
+
+# --- Catalogus & destructieve/productie-tooling ------------------------------
+/convex/catalog/**              @Jeffreasy
+/convex/beheer/clearTenantData.ts  @Jeffreasy
+/convex/seed/**                 @Jeffreasy
+/tools/**                       @Jeffreasy
+
+# --- Guardrail-tests & CI ----------------------------------------------------
+/tests/workflowGuardrails.test.ts  @Jeffreasy
+/.github/**                     @Jeffreasy
+/.coderabbit.yaml               @Jeffreasy
