@@ -133,6 +133,10 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
 
   it("should restrict hard database deletes to the whitelisted set of operations", () => {
     expect(deleteBlocks.map(({ file, name }) => `${file}:${name}`).sort()).toEqual([
+      // Agenda-beheer: tenant-gescoped + editor/admin-authz; setMonteurWerktijden
+      // vervangt het weekrooster (verwijder-dan-invoeg), removeAfwezigheid wist 1 rij.
+      "convex/beheer/agenda.ts:removeAfwezigheid",
+      "convex/beheer/agenda.ts:setMonteurWerktijden",
       "convex/catalog/import.ts:deleteProductsByCategoryChunk",
       "convex/catalog/import.ts:deleteProductsBySupplierChunk",
       "convex/catalog/import.ts:resetCatalogChunk",
