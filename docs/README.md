@@ -23,6 +23,7 @@ Centrale ingang voor alle documentatie van de Henke Wonen portal.
 | [release-readiness](./release-readiness/README.md) | Btw-mapping, productieblokkades en datakwaliteitsreviews |
 | [generated](./generated/README.md) | Automatisch gegenereerde import- en auditbestanden (niet handmatig aanpassen) |
 | [artifacts](./artifacts/README.md) | QA-screenshots en pilot-documenten |
+| [PilotLaunch](./PilotLaunch/) | Pilot-launchpakketten per versie (V1.0, V1.1, V2.0) met print-PDF's en HTML-bronnen |
 | [archief](./archief/README.md) | Historische audits, faseverslagen en gearchiveerde versies |
 
 ## Huidige hoofdstatus
@@ -41,6 +42,6 @@ Onderstaande bestanden worden aangestuurd door scripts — niet handmatig verpla
 - `docs/generated/catalog-import-summary.json` — machine-readable output
 - `docs/generated/catalog-import-sample.md` — sample output
 - `docs/release-readiness/vat-mapping/vat-mapping-decisions.json` — input voor apply-script
-- `docs/audits/reconciliation/02_source_inventory.md` — gegenereerd door reconciliatiescript
+- `docs/archief/audits/reconciliation/02_source_inventory.md` — gegenereerd door reconciliatiescript
 
 Zie [docs/generated/README.md](./generated/README.md) voor volledige details.

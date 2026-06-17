@@ -6,7 +6,7 @@ Convex serverless backend voor het Henke Wonen portal. Zie [`schema.ts`](schema.
 
 | Map / Bestand | Functie |
 | --- | --- |
-| `schema.ts` | Volledig datamodel — 30 tabellen met indexen |
+| `schema.ts` | Volledig datamodel — 32 tabellen met indexen |
 | `authz.ts` | Query- en mutatiebeveiliging: actor-token validatie, rol-checks |
 | `portal.ts` | Gecombineerde portalqueries (dashboard, dossiers) |
 | `portalUtils.ts` | Gedeelde utiliteiten voor Convex functies |
