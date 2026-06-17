@@ -637,8 +637,13 @@ export const backfillMeasurementRoomLinksChunk = mutation({
     const batchSize = Math.min(Math.max(args.batchSize ?? 200, 50), 500);
     const dryRun = args.dryRun ?? true;
 
+    // Tenant-gescoped pagineren via de index (prefix op tenantId) i.p.v. een
+    // volledige-tabel-scan die rijen van alle tenants buffert. Een backfill-run
+    // moet met deze querievorm starten; cursors van een eerdere (ongeïndexeerde)
+    // run zijn niet herbruikbaar.
     const paginated = await ctx.db
       .query("measurementRooms")
+      .withIndex("by_measurement", (q) => q.eq("tenantId", tenant._id))
       .paginate({ numItems: batchSize, cursor: args.cursor ?? null });
 
     let scanned = 0;
@@ -648,7 +653,6 @@ export const backfillMeasurementRoomLinksChunk = mutation({
     let skippedNoMeasurement = 0;
 
     for (const room of paginated.page) {
-      if (room.tenantId !== tenant._id) continue;
       scanned += 1;
 
       if (room.projectRuimteId) {
