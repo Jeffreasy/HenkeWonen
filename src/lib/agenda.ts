@@ -21,6 +21,40 @@ export const AFWEZIGHEID_LABEL: Record<string, string> = {
   overig: "Overig"
 };
 
+// ── Inmeet-regels (Henke Wonen) ───────────────────────────────────────────────
+// De autoriteit voor de regels (inmeetdagen di/wo/do, venster 16:30–17:30,
+// capaciteit 2 met klein=1/volledig=2) ligt server-side in convex/beheer/agenda.ts;
+// de frontend leest die waarden uit het antwoord van `inmeetBeschikbaarheid`.
+export type Omvang = "klein" | "volledig";
+export const OMVANG_LABEL: Record<Omvang, string> = {
+  klein: "Klein klusje (1-2 ramen / 1 ruimte)",
+  volledig: "Volledige woning (ramen, vloeren, …)"
+};
+
+/** Capaciteit die een klusgrootte inneemt: volledige woning = 2, klein = 1. */
+export function omvangUnits(omvang: Omvang): number {
+  return omvang === "volledig" ? 2 : 1;
+}
+
+/** Spiegelt het resultaat van de Convex-query `inmeetBeschikbaarheid`. */
+export type InmeetBeschikbaarheid = {
+  monteur: { id: string; naam: string };
+  weekdag: number;
+  isInmeetdag: boolean;
+  venster: { startMinuut: number; eindMinuut: number };
+  maxCapaciteit: number;
+  gebruikteCapaciteit: number;
+  vrijeCapaciteit: number;
+  afwezig: { type: string; reden: string | null } | null;
+  bezoeken: {
+    inmetingId: string;
+    projectId: string;
+    projectTitel: string;
+    klantNaam: string;
+    omvang: string | null;
+  }[];
+};
+
 /** Minuten sinds middernacht → "HH:MM". */
 export function formatMinuut(minuut: number): string {
   const u = Math.floor(minuut / 60);

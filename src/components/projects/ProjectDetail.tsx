@@ -42,6 +42,7 @@ type ProjectDetailProps = {
 
 type ProjectDetailResult = {
   project: PortalProject;
+  inmeetOmvang?: "klein" | "volledig" | null;
   customer: PortalCustomer | null;
   workflowEvents?: PortalWorkflowEvent[];
   projectTasks?: PortalProjectTask[];
@@ -283,7 +284,11 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     return `${date.getFullYear()}-${month}-${day}`;
   }
 
-  async function planMeasurementVisit(data: { date: string; measuredBy: string }) {
+  async function planMeasurementVisit(data: {
+    date: string;
+    measuredBy: string;
+    omvang: "klein" | "volledig";
+  }) {
     const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -303,7 +308,8 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
         actor: mutationActorFromSession(session),
         projectId,
         inmeetdatum,
-        gemetenDoor: data.measuredBy.trim() || undefined
+        gemetenDoor: data.measuredBy.trim() || undefined,
+        omvang: data.omvang
       });
       setIsPlanModalOpen(false);
       await loadProject();
@@ -547,7 +553,10 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
 
       <PlanMeasurementModal
         open={isPlanModalOpen}
+        session={session}
         teamMembers={teamMembers}
+        excludeProjectId={projectId}
+        defaultOmvang={detail.inmeetOmvang ?? "klein"}
         defaultDate={
           project.inmeetdatum ? toDateInputValue(project.inmeetdatum) : defaultDateInputInDays(1)
         }

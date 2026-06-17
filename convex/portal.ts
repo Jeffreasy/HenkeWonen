@@ -245,6 +245,7 @@ export { fieldServiceWorkspace, fieldProjectWorkspace } from "./projecten/fieldS
 export { listInvoices, invoiceDetail, createInvoice, createInvoiceFromQuote, updateInvoiceStatus, markInvoicePaid } from "./facturen/core";
 export {
   agendaWeek,
+  inmeetBeschikbaarheid,
   getMonteurWerktijden,
   setMonteurWerktijden,
   listAfwezigheid,

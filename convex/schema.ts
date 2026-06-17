@@ -768,6 +768,9 @@ export default defineSchema({
     status: measurementStatus,
     inmeetdatum: v.optional(v.number()),
     gemetenDoor: v.optional(v.string()),
+    // Klusgrootte voor inmeet-capaciteit: "klein" (1-2 ramen / 1 ruimte) telt als
+    // 1 plek, "volledig" (hele woning) als 2 — per inmeetdag is er ruimte voor 2.
+    omvang: v.optional(v.union(v.literal("klein"), v.literal("volledig"))),
     notities: v.optional(v.string()),
     createdByExternalUserId: v.optional(v.string()),
     aangemaaktOp: v.number(),

@@ -372,28 +372,30 @@ export const projectDetail = query({
       return null;
     }
 
-    const [customer, workflowEvents, projectTasks, projectInvoices, latestQuote] = await Promise.all([
-      ctx.db.get(project.klantId),
-      ctx.db
-        .query("projectWorkflowEvents")
-        .withIndex("by_project", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("projectId", project._id)
-        )
-        .collect(),
-      ctx.db
-        .query("projectTasks")
-        .withIndex("by_project", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("projectId", project._id)
-        )
-        .collect(),
-      ctx.db
-        .query("invoices")
-        .withIndex("by_project", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("projectId", project._id)
-        )
-        .collect(),
-      latestQuoteForProject(ctx, tenant._id, project._id)
-    ]);
+    const [customer, workflowEvents, projectTasks, projectInvoices, latestQuote, latestMeasurement] =
+      await Promise.all([
+        ctx.db.get(project.klantId),
+        ctx.db
+          .query("projectWorkflowEvents")
+          .withIndex("by_project", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("projectId", project._id)
+          )
+          .collect(),
+        ctx.db
+          .query("projectTasks")
+          .withIndex("by_project", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("projectId", project._id)
+          )
+          .collect(),
+        ctx.db
+          .query("invoices")
+          .withIndex("by_project", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("projectId", project._id)
+          )
+          .collect(),
+        latestQuoteForProject(ctx, tenant._id, project._id),
+        latestMeasurementForProject(ctx, tenant._id, project._id)
+      ]);
 
     // Meest recente factuur (doorgaans is er maar één per project)
     const latestInvoice = projectInvoices
@@ -402,6 +404,9 @@ export const projectDetail = query({
 
     return {
       project: await toProject(ctx, tenant.slug, project),
+      // Klusgrootte van de laatste inmeting — zodat herplannen niet stil terugvalt
+      // naar "klein" en de capaciteitstelling klopt blijft.
+      inmeetOmvang: latestMeasurement?.omvang ?? null,
       customer: customer ? toCustomer(tenant.slug, customer) : null,
       latestQuote: latestQuote ? toQuoteSummary(tenant.slug, latestQuote) : null,
       workflowEvents: workflowEvents
@@ -626,7 +631,8 @@ export const startOrPlanMeasurement = mutation({
     actor: mutationActorValidator,
     projectId: v.string(),
     inmeetdatum: v.optional(v.number()),
-    gemetenDoor: v.optional(v.string())
+    gemetenDoor: v.optional(v.string()),
+    omvang: v.optional(v.union(v.literal("klein"), v.literal("volledig")))
   },
   handler: async (ctx, args) => {
     const { tenant, externalUserId } = await requireMutationRole(
@@ -666,8 +672,14 @@ export const startOrPlanMeasurement = mutation({
         measurementPatch.inmeetdatum = measurementDate;
       }
 
-      if (args.gemetenDoor && !existingMeasurement.gemetenDoor) {
+      // Werk de monteur bij wanneer een (andere) naam wordt meegegeven — anders
+      // blijft de capaciteit bij herplannen op de oude monteur staan.
+      if (args.gemetenDoor && args.gemetenDoor !== existingMeasurement.gemetenDoor) {
         measurementPatch.gemetenDoor = args.gemetenDoor;
+      }
+
+      if (hasArg(args, "omvang") && args.omvang !== existingMeasurement.omvang) {
+        measurementPatch.omvang = args.omvang;
       }
 
       if (Object.keys(measurementPatch).length > 0) {
@@ -685,6 +697,7 @@ export const startOrPlanMeasurement = mutation({
         status: "draft",
         inmeetdatum: measurementDate,
         gemetenDoor: args.gemetenDoor,
+        omvang: args.omvang,
         createdByExternalUserId: externalUserId,
         aangemaaktOp: now,
         gewijzigdOp: now

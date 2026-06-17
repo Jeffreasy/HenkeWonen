@@ -5,6 +5,25 @@ import { mutationActorValidator, readActorValidator, requireMutationRole, requir
 
 const DAG_MS = 24 * 60 * 60 * 1000;
 
+// ── Inmeet-regels (Henke Wonen) ───────────────────────────────────────────────
+// Inmeten kan alleen op di/wo/do, in het aankomstvenster 16:30–17:30. Per
+// inmeetdag is er ruimte voor 2 "plekken": een klein klusje (1-2 ramen / 1 ruimte)
+// telt als 1, een volledige woning als 2. Zo passen 2× klein óf 1× volledig.
+const INMEET_DAGEN = [1, 2, 3]; // 0=maandag .. 6=zondag → di, wo, do
+const INMEET_START_MINUUT = 16 * 60 + 30; // 16:30
+const INMEET_EIND_MINUUT = 17 * 60 + 30; // 17:30
+const INMEET_CAPACITEIT = 2;
+
+/** Weekdag (0=maandag .. 6=zondag), consistent met src/lib/agenda.weekdagVan. */
+function weekdagVanMs(ms: number): number {
+  return (new Date(ms).getDay() + 6) % 7;
+}
+
+/** Capaciteit die een klus inneemt: volledige woning = 2, anders (incl. onbekend) = 1. */
+function omvangUnits(omvang?: string | null): number {
+  return omvang === "volledig" ? 2 : 1;
+}
+
 const afwezigheidType = v.union(
   v.literal("verlof"),
   v.literal("ziek"),
@@ -360,5 +379,91 @@ export const agendaWeek = query({
     }
 
     return { weekStart, weekEnd, monteurs: result };
+  }
+});
+
+// ── Inmeet-beschikbaarheid (één monteur, één dag) ─────────────────────────────
+// Hint bij het inplannen van een inmeetbezoek: is het een inmeetdag (di/wo/do),
+// is de monteur die dag afwezig, en is er binnen het venster 16:30–17:30 nog
+// ruimte (capaciteit 2; klein=1, volledig=2)? `excludeProjectId` laat het bezoek
+// van het dossier dat je nu plant buiten de telling, zodat herplannen niet
+// zichzelf meetelt.
+export const inmeetBeschikbaarheid = query({
+  args: {
+    tenantSlug: v.string(),
+    actor: readActorValidator,
+    userId: v.id("users"),
+    datum: v.number(),
+    excludeProjectId: v.optional(v.id("projects"))
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+    const monteur = await requireMonteur(ctx, tenant._id, args.userId);
+    const naam = monteur.naam ?? monteur.email;
+
+    const weekdag = weekdagVanMs(args.datum);
+    const isInmeetdag = INMEET_DAGEN.includes(weekdag);
+
+    // De inmeetdatum is rond het middaguur verankerd (zie fromDateInputValue),
+    // dus [datum-12u, datum+12u) dekt precies de kalenderdag.
+    const dagStart = args.datum - DAG_MS / 2;
+    const dagEind = args.datum + DAG_MS / 2;
+
+    const afwezigRows = await ctx.db
+      .query("monteurAfwezigheid")
+      .withIndex("by_monteur", (q: any) => q.eq("tenantId", tenant._id).eq("userId", args.userId))
+      .collect();
+    const afwezigRij = afwezigRows.find(
+      (a: Doc<"monteurAfwezigheid">) => a.vanafDatum < dagEind && a.totDatum >= dagStart
+    );
+    const afwezig = afwezigRij
+      ? { type: afwezigRij.type, reden: afwezigRij.reden ?? null }
+      : null;
+
+    const metingen = await ctx.db
+      .query("measurements")
+      .withIndex("by_measurement_date", (q: any) =>
+        q.eq("tenantId", tenant._id).gte("inmeetdatum", dagStart).lt("inmeetdatum", dagEind)
+      )
+      .collect();
+
+    const eigen = metingen.filter(
+      (m: Doc<"measurements">) =>
+        (m.gemetenDoor ?? "") === naam &&
+        (!args.excludeProjectId || m.projectId !== args.excludeProjectId)
+    );
+
+    let gebruikteCapaciteit = 0;
+    const bezoeken = [];
+    for (const m of eigen) {
+      gebruikteCapaciteit += omvangUnits(m.omvang);
+      const project = await ctx.db.get(m.projectId);
+      const klant = await ctx.db.get(m.klantId);
+      bezoeken.push({
+        inmetingId: String(m._id),
+        projectId: String(m.projectId),
+        projectTitel:
+          project && project.tenantId === tenant._id ? project.titel ?? "Project" : "Project",
+        klantNaam:
+          klant && klant.tenantId === tenant._id ? klant.weergaveNaam ?? "Klant" : "Klant",
+        omvang: m.omvang ?? null
+      });
+    }
+
+    return {
+      monteur: { id: String(monteur._id), naam },
+      weekdag,
+      isInmeetdag,
+      venster: { startMinuut: INMEET_START_MINUUT, eindMinuut: INMEET_EIND_MINUUT },
+      maxCapaciteit: INMEET_CAPACITEIT,
+      gebruikteCapaciteit,
+      vrijeCapaciteit: Math.max(0, INMEET_CAPACITEIT - gebruikteCapaciteit),
+      afwezig,
+      bezoeken
+    };
   }
 });

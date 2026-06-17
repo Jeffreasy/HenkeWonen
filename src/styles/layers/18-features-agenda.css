@@ -115,3 +115,30 @@
   border: 1px solid var(--color-accent-soft);
   border-radius: var(--radius-md, 10px);
 }
+
+/* Beschikbaarheids-hint bij het inplannen van een inmeetbezoek */
+.inmeet-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm, 6px);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+}
+.inmeet-hint svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+.inmeet-hint.ok {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+.inmeet-hint.waarschuwing {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+.inmeet-hint.laden {
+  color: var(--color-text-muted, #6e7e85);
+}
