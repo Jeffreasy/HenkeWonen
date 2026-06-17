@@ -587,7 +587,9 @@ export const fieldProjectWorkspace = query({
       visit: {
         status: visitAt ? "Afspraak bekend" : "Nog geen meetmoment",
         visitAt,
-        measurementStatus: measurement?.status
+        measurementStatus: measurement?.status,
+        gemetenDoor: measurement?.gemetenDoor,
+        omvang: measurement?.omvang
       }
     };
   }

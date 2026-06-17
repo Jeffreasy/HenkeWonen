@@ -1,4 +1,4 @@
-import { mutation, query } from "../_generated/server";
+import { internalMutation, mutation, query } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { mutationActorValidator, readActorValidator, requireMutationRole, requireQueryRole } from "../authz";
@@ -22,6 +22,18 @@ function weekdagVanMs(ms: number): number {
 /** Capaciteit die een klus inneemt: volledige woning = 2, anders (incl. onbekend) = 1. */
 function omvangUnits(omvang?: string | null): number {
   return omvang === "volledig" ? 2 : 1;
+}
+
+/**
+ * Bepaalt of een inmeting bij een monteur hoort. Leidend is de stabiele
+ * gemetenDoorUserId; alleen als die ontbreekt (oude/legacy of vrije-tekst rijen)
+ * vallen we terug op de naam. Zo breken hernoemen of dubbele namen niets.
+ */
+function hoortBijMonteur(meting: Doc<"measurements">, monteurId: Id<"users">, naam: string): boolean {
+  if (meting.gemetenDoorUserId) {
+    return meting.gemetenDoorUserId === monteurId;
+  }
+  return (meting.gemetenDoor ?? "") === naam;
 }
 
 const afwezigheidType = v.union(
@@ -269,10 +281,12 @@ export const agendaWeek = query({
     tenantSlug: v.string(),
     actor: readActorValidator,
     weekStart: v.number(),
-    userId: v.optional(v.id("users"))
+    userId: v.optional(v.id("users")),
+    /** Buitendienst: toon alleen de eigen week (de monteur die de query doet). */
+    alleenEigen: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+    const { tenant, externalUserId } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
       "user",
       "editor",
       "admin"
@@ -281,12 +295,26 @@ export const agendaWeek = query({
     const weekStart = args.weekStart;
     const weekEnd = weekStart + 7 * DAG_MS;
 
-    const monteurs = args.userId
-      ? [await requireMonteur(ctx, tenant._id, args.userId)]
-      : await ctx.db
+    let monteurs: Doc<"users">[];
+    if (args.userId) {
+      monteurs = [await requireMonteur(ctx, tenant._id, args.userId)];
+    } else if (args.alleenEigen) {
+      // Scope op de ingelogde gebruiker zelf (via externalUserId, niet de UI-string).
+      const eigen = (
+        await ctx.db
+          .query("users")
+          .withIndex("by_external_user", (q: any) => q.eq("externalUserId", externalUserId))
+          .collect()
+      ).find((u: Doc<"users">) => u.tenantId === tenant._id);
+      monteurs = eigen ? [eigen] : [];
+    } else {
+      monteurs = (
+        await ctx.db
           .query("users")
           .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-          .collect();
+          .collect()
+      ).filter((u: Doc<"users">) => u.role !== "viewer"); // kijkers doen geen inmetingen
+    }
 
     // Geboekte inmeetbezoeken in de week (tenant-gescopet via de datum-index),
     // daarna per monteur gematcht op naam (gemetenDoor is de monteurnaam).
@@ -319,6 +347,7 @@ export const agendaWeek = query({
         klantNaam: klant?.weergaveNaam ?? "Klant",
         inmeetdatum: meting.inmeetdatum ?? null,
         gemetenDoor: meting.gemetenDoor ?? null,
+        gemetenDoorUserId: meting.gemetenDoorUserId ? String(meting.gemetenDoorUserId) : null,
         status: meting.status
       };
     }
@@ -362,8 +391,8 @@ export const agendaWeek = query({
           reden: a.reden
         }));
 
-      const eigenMetingen = metingen.filter(
-        (m: Doc<"measurements">) => (m.gemetenDoor ?? "") === naam
+      const eigenMetingen = metingen.filter((m: Doc<"measurements">) =>
+        hoortBijMonteur(m, monteur._id, naam)
       );
       const bezoeken = [];
       for (const m of eigenMetingen) {
@@ -433,7 +462,7 @@ export const inmeetBeschikbaarheid = query({
 
     const eigen = metingen.filter(
       (m: Doc<"measurements">) =>
-        (m.gemetenDoor ?? "") === naam &&
+        hoortBijMonteur(m, monteur._id, naam) &&
         (!args.excludeProjectId || m.projectId !== args.excludeProjectId)
     );
 
@@ -465,5 +494,52 @@ export const inmeetBeschikbaarheid = query({
       afwezig,
       bezoeken
     };
+  }
+});
+
+// ── Migratie: koppel bestaande inmetingen op userId ───────────────────────────
+// Eenmalige backfill: zet gemetenDoorUserId op basis van de gemetenDoor-naam,
+// per tenant. Alleen bij een ÉÉNduidige naam-match; bij 0 of meerdere matches
+// blijft de rij ongemoeid (de naam-fallback in hoortBijMonteur dekt die nog).
+// Intern (geen publieke API). Draai met: npx convex run beheer/agenda:backfillGemetenDoorUserId
+// Aanname: het aantal measurements past binnen één Convex-transactie (inmetingen zijn
+// laagvolume — ~1 per project). Bij forse groei: omzetten naar een chunked variant met
+// cursor (zie backfillMeasurementRoomLinksChunk). De naam-fallback in hoortBijMonteur houdt
+// het systeem correct werken, ook als deze backfill (nog) niet of slechts deels is gedraaid.
+export const backfillGemetenDoorUserId = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const metingen = await ctx.db.query("measurements").collect();
+    const usersPerTenant = new Map<string, Doc<"users">[]>();
+    let bijgewerkt = 0;
+    let ambigu = 0;
+    const now = Date.now();
+
+    for (const meting of metingen) {
+      if (meting.gemetenDoorUserId || !meting.gemetenDoor) {
+        continue;
+      }
+      const tenantKey = String(meting.tenantId);
+      if (!usersPerTenant.has(tenantKey)) {
+        usersPerTenant.set(
+          tenantKey,
+          await ctx.db
+            .query("users")
+            .withIndex("by_tenant", (q: any) => q.eq("tenantId", meting.tenantId))
+            .collect()
+        );
+      }
+      const matches = (usersPerTenant.get(tenantKey) ?? []).filter(
+        (u: Doc<"users">) => (u.naam ?? u.email) === meting.gemetenDoor
+      );
+      if (matches.length === 1) {
+        await ctx.db.patch(meting._id, { gemetenDoorUserId: matches[0]._id, gewijzigdOp: now });
+        bijgewerkt += 1;
+      } else if (matches.length > 1) {
+        ambigu += 1; // dubbele naam — laat staan, naam-fallback blijft werken
+      }
+    }
+
+    return { totaal: metingen.length, bijgewerkt, ambigu };
   }
 });

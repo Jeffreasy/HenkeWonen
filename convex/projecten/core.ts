@@ -404,9 +404,10 @@ export const projectDetail = query({
 
     return {
       project: await toProject(ctx, tenant.slug, project),
-      // Klusgrootte van de laatste inmeting — zodat herplannen niet stil terugvalt
-      // naar "klein" en de capaciteitstelling klopt blijft.
+      // Laatste inmeting: klusgrootte + toegewezen monteur — zodat herplannen
+      // terugvalt op de bestaande waarden i.p.v. stil te resetten.
       inmeetOmvang: latestMeasurement?.omvang ?? null,
+      inmeetMonteur: latestMeasurement?.gemetenDoor ?? null,
       customer: customer ? toCustomer(tenant.slug, customer) : null,
       latestQuote: latestQuote ? toQuoteSummary(tenant.slug, latestQuote) : null,
       workflowEvents: workflowEvents
@@ -632,6 +633,7 @@ export const startOrPlanMeasurement = mutation({
     projectId: v.string(),
     inmeetdatum: v.optional(v.number()),
     gemetenDoor: v.optional(v.string()),
+    gemetenDoorUserId: v.optional(v.id("users")),
     omvang: v.optional(v.union(v.literal("klein"), v.literal("volledig")))
   },
   handler: async (ctx, args) => {
@@ -641,6 +643,14 @@ export const startOrPlanMeasurement = mutation({
       args.actor,
       ["user", "editor", "admin"]
     );
+
+    // Verifieer dat een meegegeven monteur tot deze tenant hoort (tenant-isolatie).
+    if (args.gemetenDoorUserId) {
+      const monteur = await ctx.db.get(args.gemetenDoorUserId);
+      if (!monteur || monteur.tenantId !== tenant._id) {
+        throw new ConvexError("Monteur niet gevonden.");
+      }
+    }
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
@@ -672,10 +682,19 @@ export const startOrPlanMeasurement = mutation({
         measurementPatch.inmeetdatum = measurementDate;
       }
 
-      // Werk de monteur bij wanneer een (andere) naam wordt meegegeven — anders
-      // blijft de capaciteit bij herplannen op de oude monteur staan.
-      if (args.gemetenDoor && args.gemetenDoor !== existingMeasurement.gemetenDoor) {
-        measurementPatch.gemetenDoor = args.gemetenDoor;
+      // Monteur-toewijzing telt als "expliciet" zodra gemetenDoor wordt meegestuurd
+      // (de plan-modal doet dat altijd, ook als lege string). Naam én userId blijven
+      // dan synchroon: leeg = loskoppelen (beide wissen), teamlid = beide zetten,
+      // vrije tekst = naam zetten + oude userId wissen. Zo blijft de capaciteit/agenda
+      // (die userId-primair matcht) niet op een oude monteur hangen.
+      if (hasArg(args, "gemetenDoor")) {
+        const naam = args.gemetenDoor?.trim() ? args.gemetenDoor.trim() : undefined;
+        if (naam !== existingMeasurement.gemetenDoor) {
+          measurementPatch.gemetenDoor = naam;
+        }
+        if (args.gemetenDoorUserId !== existingMeasurement.gemetenDoorUserId) {
+          measurementPatch.gemetenDoorUserId = args.gemetenDoorUserId;
+        }
       }
 
       if (hasArg(args, "omvang") && args.omvang !== existingMeasurement.omvang) {
@@ -696,7 +715,8 @@ export const startOrPlanMeasurement = mutation({
         klantId: project.klantId,
         status: "draft",
         inmeetdatum: measurementDate,
-        gemetenDoor: args.gemetenDoor,
+        gemetenDoor: args.gemetenDoor?.trim() ? args.gemetenDoor.trim() : undefined,
+        gemetenDoorUserId: args.gemetenDoorUserId,
         omvang: args.omvang,
         createdByExternalUserId: externalUserId,
         aangemaaktOp: now,

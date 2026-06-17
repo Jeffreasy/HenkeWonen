@@ -1,5 +1,5 @@
-/* Agenda & monteur-beschikbaarheid — alleen layout; kleuren/kaders via de
-   bestaande UI-primitives (Card, Badge, Button) en design-tokens. */
+/* Agenda & monteur-beschikbaarheid — layout + lichte accenten. Uitsluitend
+   design-tokens voor kleuren/spacing; structuur via Card/Badge/Button-primitives. */
 
 .agenda-toolbar {
   display: flex;
@@ -16,19 +16,17 @@
   flex: 1 1 auto;
 }
 
-.agenda-monteur {
-  margin-bottom: var(--space-4);
-}
-.agenda-monteur-head {
+/* Elke monteur is een Card (ui-card levert surface/border/padding). */
+.agenda-monteur .agenda-monteur-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 .agenda-monteur-head h3 {
   margin: 0;
-  font-size: var(--text-md);
+  font-size: var(--text-lg);
 }
 
 .agenda-week {
@@ -37,14 +35,14 @@
   gap: var(--space-2);
 }
 .agenda-dag {
-  border: 1px solid var(--color-accent-soft);
-  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: var(--space-2);
   min-height: 92px;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  background: var(--color-surface, #fff);
+  background: var(--color-surface);
 }
 .agenda-dag-kop {
   display: flex;
@@ -55,40 +53,67 @@
 .agenda-dag-kop .dag-naam {
   font-weight: 600;
 }
+.agenda-dag-kop .dag-vandaag {
+  font-weight: 600;
+  color: var(--color-accent-strong);
+}
 .agenda-dag-kop .dag-datum {
-  color: var(--color-text-muted, #6e7e85);
-  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 .agenda-dag.is-vandaag {
   border-color: var(--color-accent);
   box-shadow: inset 0 0 0 1px var(--color-accent);
 }
 .agenda-dag.niet-ingeroosterd {
-  background: var(--color-muted-soft, #f5f7f8);
-  color: var(--color-text-muted, #6e7e85);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
 }
 
 .agenda-werktijd {
-  font-size: 0.78rem;
-  color: var(--color-text-muted, #6e7e85);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 .agenda-bezoek {
-  font-size: 0.78rem;
-  line-height: 1.3;
+  display: block;
+  font-size: var(--text-sm);
+  line-height: var(--line-tight);
   border-left: 3px solid var(--color-accent);
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
   background: var(--color-accent-soft);
+  color: inherit;
+  text-decoration: none;
+  transition: filter 0.12s ease;
 }
 .agenda-bezoek b {
   display: block;
 }
+.agenda-bezoek:hover {
+  filter: brightness(0.97);
+}
+.agenda-bezoek:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
 .agenda-leeg {
-  font-size: 0.78rem;
-  color: var(--color-text-muted, #6e7e85);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.agenda-alert-actie {
+  margin-top: var(--space-2);
 }
 
-/* Beheerpaneel (werktijden + afwezigheid) */
+/* Beheerpaneel (weekrooster + afwezigheid) */
+.beschikbaarheid-kop {
+  margin: 0 0 var(--space-2);
+}
+.beschikbaarheid-kop-ruim {
+  margin-top: var(--space-5);
+}
+.beschikbaarheid-actie {
+  margin-top: var(--space-3);
+}
 .beschikbaarheid-rooster {
   display: grid;
   grid-template-columns: 7rem 1fr 1fr;
@@ -98,7 +123,12 @@
 .beschikbaarheid-rooster .kop {
   font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--color-text-muted, #6e7e85);
+  color: var(--color-text-muted);
+}
+.rooster-dag-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 .afwezigheid-lijst {
   display: flex;
@@ -112,8 +142,8 @@
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-accent-soft);
-  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 /* Beschikbaarheids-hint bij het inplannen van een inmeetbezoek */
@@ -123,9 +153,9 @@
   gap: var(--space-2);
   margin: 0;
   padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   font-size: var(--text-sm);
-  line-height: 1.35;
+  line-height: var(--line-normal);
 }
 .inmeet-hint svg {
   flex: 0 0 auto;
@@ -140,5 +170,5 @@
   background: var(--color-warning-bg);
 }
 .inmeet-hint.laden {
-  color: var(--color-text-muted, #6e7e85);
+  color: var(--color-text-muted);
 }

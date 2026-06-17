@@ -1,7 +1,7 @@
 import { convexTest } from "convex-test";
 import { expect, test, vi } from "vitest";
 import schema from "../../convex/schema";
-import { api } from "../../convex/_generated/api";
+import { api, internal } from "../../convex/_generated/api";
 
 // convex-test laadt de functie-modules; tests staan buiten convex/, dus expliciet de glob.
 const modules = import.meta.glob("../../convex/**/!(*.*.*)*.*s");
@@ -97,7 +97,8 @@ async function seedBezoekMet(
   tenantId: any,
   gemetenDoor: string,
   inmeetdatum: number,
-  omvang?: "klein" | "volledig"
+  omvang?: "klein" | "volledig",
+  gemetenDoorUserId?: any
 ): Promise<any> {
   const now = Date.now();
   return await t.run(async (ctx) => {
@@ -124,6 +125,7 @@ async function seedBezoekMet(
       status: "draft",
       inmeetdatum,
       gemetenDoor,
+      gemetenDoorUserId,
       omvang,
       aangemaaktOp: now,
       gewijzigdOp: now
@@ -527,3 +529,157 @@ test("startOrPlanMeasurement: herplannen behoudt omvang en werkt de monteur bij"
   });
   expect(wimRes.gebruikteCapaciteit).toBe(0);
 });
+
+test("inmeetBeschikbaarheid/agendaWeek: koppelt op userId, ongevoelig voor hernoemen", async () => {
+  enableDevAuth();
+  const t = convexTest(schema, modules);
+  const tenantId = await seedTenant(t);
+  const wim = await seedMonteur(t, tenantId, "Wim");
+
+  // Bezoek met userId-koppeling maar een AFWIJKENDE naam (alsof de monteur later
+  // hernoemd is): userId is leidend, dus dit telt nog steeds mee bij Wim.
+  await seedBezoekMet(t, tenantId, "Oude Naam", DI_16_JUNI, "volledig", wim);
+
+  const res = await t.query(api.portal.inmeetBeschikbaarheid, {
+    tenantSlug: "henke-wonen",
+    actor,
+    userId: wim,
+    datum: DI_16_JUNI
+  });
+  expect(res.gebruikteCapaciteit).toBe(2); // gevonden via userId, niet via naam
+
+  const week = await t.query(api.portal.agendaWeek, {
+    tenantSlug: "henke-wonen",
+    actor,
+    weekStart: startVanWeek(DI_16_JUNI),
+    userId: wim
+  });
+  expect(week.monteurs[0].bezoeken).toHaveLength(1);
+  expect(week.monteurs[0].bezoeken[0].gemetenDoorUserId).toBe(String(wim));
+});
+
+test("backfillGemetenDoorUserId: vult userId op eenduidige naam, laat dubbele namen staan", async () => {
+  enableDevAuth();
+  const t = convexTest(schema, modules);
+  const tenantId = await seedTenant(t);
+  const wim = await seedMonteur(t, tenantId, "Wim");
+
+  // Eén eenduidige naam (Wim) zonder userId → moet gekoppeld worden.
+  const wimProject = await seedBezoekMet(t, tenantId, "Wim", DI_16_JUNI, "klein");
+  // Dubbele naam (twee "Tom") zonder userId → ambigu, blijft ongekoppeld.
+  await seedMonteur(t, tenantId, "Tom");
+  await seedMonteur(t, tenantId, "Tom");
+  await seedBezoekMet(t, tenantId, "Tom", WO_17_JUNI, "klein");
+
+  const res = await t.mutation(internal.beheer.agenda.backfillGemetenDoorUserId, {});
+  expect(res.bijgewerkt).toBe(1);
+  expect(res.ambigu).toBe(1);
+
+  const wimMeting = await t.run((ctx) =>
+    ctx.db
+      .query("measurements")
+      .withIndex("by_project", (q) => q.eq("tenantId", tenantId).eq("projectId", wimProject))
+      .first()
+  );
+  expect(wimMeting?.gemetenDoorUserId).toBe(wim);
+});
+
+test("startOrPlanMeasurement: loskoppelen én vrije-tekst wissen de oude monteur-userId", async () => {
+  enableDevAuth();
+  const t = convexTest(schema, modules);
+  const tenantId = await seedTenant(t);
+  const wim = await seedMonteur(t, tenantId, "Wim");
+  const projectId = await seedBezoekMet(t, tenantId, "Wim", DI_16_JUNI, "volledig", wim);
+
+  async function meting() {
+    return await t.run((ctx) =>
+      ctx.db
+        .query("measurements")
+        .withIndex("by_project", (q) => q.eq("tenantId", tenantId).eq("projectId", projectId))
+        .first()
+    );
+  }
+  async function wimCapaciteit() {
+    const r = await t.query(api.portal.inmeetBeschikbaarheid, {
+      tenantSlug: "henke-wonen",
+      actor,
+      userId: wim,
+      datum: DI_16_JUNI
+    });
+    return r.gebruikteCapaciteit;
+  }
+
+  expect(await wimCapaciteit()).toBe(2); // start: bij Wim
+
+  // (a) Loskoppelen via lege monteurnaam ("Nog niet toegewezen") wist beide velden.
+  await t.mutation(api.portal.startOrPlanMeasurement, {
+    tenantSlug: "henke-wonen",
+    actor,
+    projectId,
+    inmeetdatum: DI_16_JUNI,
+    gemetenDoor: "",
+    omvang: "volledig"
+  });
+  expect((await meting())?.gemetenDoorUserId).toBeUndefined();
+  expect((await meting())?.gemetenDoor).toBeUndefined();
+  expect(await wimCapaciteit()).toBe(0); // niet langer bij Wim
+
+  // Opnieuw aan Wim koppelen ...
+  await t.mutation(api.portal.startOrPlanMeasurement, {
+    tenantSlug: "henke-wonen",
+    actor,
+    projectId,
+    gemetenDoor: "Wim",
+    gemetenDoorUserId: wim,
+    omvang: "volledig"
+  });
+  expect(await wimCapaciteit()).toBe(2);
+
+  // (b) ... daarna herplannen op een vrije-tekst naam (geen teamlid): naam gezet, userId gewist.
+  await t.mutation(api.portal.startOrPlanMeasurement, {
+    tenantSlug: "henke-wonen",
+    actor,
+    projectId,
+    gemetenDoor: "Extern Bedrijf",
+    omvang: "volledig"
+  });
+  expect((await meting())?.gemetenDoor).toBe("Extern Bedrijf");
+  expect((await meting())?.gemetenDoorUserId).toBeUndefined();
+  expect(await wimCapaciteit()).toBe(0); // telt niet meer bij Wim
+});
+
+test("agendaWeek alleenEigen: scope op de actor zelf via externalUserId (niet een UI-id)", async () => {
+  enableDevAuth();
+  const t = convexTest(schema, modules);
+  const tenantId = await seedTenant(t);
+  // De actor is admin "dev-admin-1"; haal z'n Convex _id op.
+  const adminId = await t.run(async (ctx) => {
+    const u = await ctx.db
+      .query("users")
+      .withIndex("by_external_user", (q) => q.eq("externalUserId", externalUserId))
+      .first();
+    return u?._id;
+  });
+  await seedMonteur(t, tenantId, "Wim"); // andere monteur — mag NIET in 'eigen week' staan
+  await seedBezoekMet(t, tenantId, "Admin", DI_16_JUNI, "klein", adminId);
+  await seedBezoekMet(t, tenantId, "Wim", DI_16_JUNI, "klein");
+
+  const res = await t.query(api.portal.agendaWeek, {
+    tenantSlug: "henke-wonen",
+    actor,
+    weekStart: startVanWeek(DI_16_JUNI),
+    alleenEigen: true
+  });
+  expect(res.monteurs).toHaveLength(1);
+  expect(res.monteurs[0].monteur.id).toBe(String(adminId));
+  expect(res.monteurs[0].bezoeken).toHaveLength(1);
+});
+
+// startVanWeek importeren vanuit de lib zou een React-vrije helper vereisen in de
+// convex-testomgeving; bereken de maandag hier lokaal (0=zo..6=za → ma).
+function startVanWeek(ms: number): number {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d.getTime();
+}

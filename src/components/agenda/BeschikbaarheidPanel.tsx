@@ -30,6 +30,8 @@ type Props = {
   afwezigheden: Afwezigheid[];
   onClose: () => void;
   onSaved: () => void;
+  /** Lichte refresh van de hoofd-agenda zónder het paneel te sluiten. */
+  onChanged?: () => void;
 };
 
 function timeNaarMinuut(value: string): number {
@@ -51,7 +53,8 @@ export default function BeschikbaarheidPanel({
   werktijden,
   afwezigheden,
   onClose,
-  onSaved
+  onSaved,
+  onChanged
 }: Props) {
   const [rooster, setRooster] = useState<RoosterRij[]>(() =>
     WEEKDAG_LANG.map((_, weekdag) => {
@@ -72,6 +75,8 @@ export default function BeschikbaarheidPanel({
   const [afVanaf, setAfVanaf] = useState(vandaag);
   const [afTot, setAfTot] = useState(vandaag);
   const [afReden, setAfReden] = useState("");
+
+  const periodeOngeldig = dateInputNaarMs(afTot) < dateInputNaarMs(afVanaf);
 
   function client() {
     const c = createConvexHttpClient(session);
@@ -116,6 +121,7 @@ export default function BeschikbaarheidPanel({
   async function afwezigheidToevoegen() {
     const c = client();
     if (!c) return;
+    if (periodeOngeldig) return;
     setBezig(true);
     try {
       const id = await c.mutation(api.portal.addAfwezigheid, {
@@ -141,6 +147,7 @@ export default function BeschikbaarheidPanel({
       ]);
       setAfReden("");
       showToast({ title: "Afwezigheid toegevoegd", tone: "success" });
+      onChanged?.();
     } catch (e) {
       console.error(e);
       showToast({ title: "Toevoegen mislukt", description: "Controleer de datums.", tone: "error" });
@@ -159,6 +166,7 @@ export default function BeschikbaarheidPanel({
         afwezigheidId: id as Id<"monteurAfwezigheid">
       });
       setLijst((l) => l.filter((a) => a.id !== id));
+      onChanged?.();
     } catch (e) {
       console.error(e);
       showToast({ title: "Verwijderen mislukt", tone: "error" });
@@ -173,7 +181,7 @@ export default function BeschikbaarheidPanel({
       size="lg"
       onClose={onClose}
     >
-      <h4>Weekrooster</h4>
+      <h4 className="beschikbaarheid-kop">Weekrooster</h4>
       <div className="beschikbaarheid-rooster">
         <span className="kop">Dag</span>
         <span className="kop">Van</span>
@@ -188,7 +196,7 @@ export default function BeschikbaarheidPanel({
           />
         ))}
       </div>
-      <div style={{ marginTop: "var(--space-3)" }}>
+      <div className="beschikbaarheid-actie">
         <Button
           variant="primary"
           size="sm"
@@ -200,7 +208,7 @@ export default function BeschikbaarheidPanel({
         </Button>
       </div>
 
-      <h4 style={{ marginTop: "var(--space-5)" }}>Afwezigheid</h4>
+      <h4 className="beschikbaarheid-kop beschikbaarheid-kop-ruim">Afwezigheid</h4>
       <div className="afwezigheid-lijst">
         {lijst.length === 0 ? <span className="agenda-leeg">Geen afwezigheid ingepland.</span> : null}
         {lijst.map((a) => (
@@ -222,7 +230,7 @@ export default function BeschikbaarheidPanel({
         ))}
       </div>
 
-      <div className="grid two-column" style={{ marginTop: "var(--space-3)" }}>
+      <div className="grid two-column beschikbaarheid-actie">
         <Field label="Type" htmlFor="af-type">
           <Select id="af-type" value={afType} onChange={(e) => setAfType(e.target.value as AfwezigheidType)}>
             <option value="verlof">Verlof</option>
@@ -237,15 +245,26 @@ export default function BeschikbaarheidPanel({
         <Field label="Van" htmlFor="af-vanaf">
           <Input id="af-vanaf" type="date" value={afVanaf} onChange={(e) => setAfVanaf(e.target.value)} />
         </Field>
-        <Field label="Tot en met" htmlFor="af-tot">
-          <Input id="af-tot" type="date" value={afTot} onChange={(e) => setAfTot(e.target.value)} />
+        <Field
+          label="Tot en met"
+          htmlFor="af-tot"
+          error={periodeOngeldig ? "Einddatum ligt vóór de startdatum." : undefined}
+        >
+          <Input
+            id="af-tot"
+            type="date"
+            min={afVanaf}
+            value={afTot}
+            onChange={(e) => setAfTot(e.target.value)}
+          />
         </Field>
       </div>
-      <div style={{ marginTop: "var(--space-3)" }}>
+      <div className="beschikbaarheid-actie">
         <Button
           variant="secondary"
           size="sm"
           isLoading={bezig}
+          disabled={periodeOngeldig}
           leftIcon={<Plus size={15} aria-hidden="true" />}
           onClick={afwezigheidToevoegen}
         >
@@ -269,7 +288,7 @@ function FragmentRow({
 }) {
   return (
     <>
-      <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+      <label className="rooster-dag-label">
         <input
           type="checkbox"
           checked={rij.actief}

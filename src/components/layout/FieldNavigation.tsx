@@ -1,5 +1,6 @@
 import {
   BriefcaseBusiness,
+  CalendarClock,
   CalendarDays,
   FileText,
   LayoutDashboard,
@@ -25,6 +26,7 @@ const fieldHomePath = "/portal/buitendienst";
 const fieldTodayPath = `${fieldHomePath}/vandaag`;
 const fieldMeasurePath = `${fieldHomePath}/inmeten`;
 const fieldQuotePath = `${fieldHomePath}/conceptoffertes`;
+const fieldAgendaPath = "/portal/agenda";
 
 function currentPathname(pathname?: string) {
   if (pathname) {
@@ -74,6 +76,7 @@ function fieldNavGroups(pathname: string, hash: string): FieldNavGroup[] {
   const onToday = isTodayPath(pathname);
   const onMeasure = pathname === fieldMeasurePath;
   const onQuote = pathname === fieldQuotePath;
+  const onAgenda = pathname === fieldAgendaPath;
 
   const groups: FieldNavGroup[] = [
     {
@@ -101,6 +104,12 @@ function fieldNavGroups(pathname: string, hash: string): FieldNavGroup[] {
           icon: FileText,
           active: onQuote || (onProject && hash === "#conceptofferte"),
           quickbar: true
+        },
+        {
+          href: fieldAgendaPath,
+          label: "Agenda",
+          icon: CalendarClock,
+          active: onAgenda
         }
       ]
     }

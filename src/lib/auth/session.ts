@@ -81,6 +81,11 @@ export function canViewFinancials(role: AppRole): boolean {
   return role === "admin" || role === "editor";
 }
 
+/** Whether the user can manage monteur-beschikbaarheid (weekrooster + afwezigheid). `editor` and `admin` — gelijk aan de server-side authz van de agenda-mutaties. */
+export function canManageAgenda(role: AppRole): boolean {
+  return role === "admin" || role === "editor";
+}
+
 /** Returns true if the session is in field/buitendienst mode. */
 export function isFieldWorkspace(session: AppSession): boolean {
   return session.workspaceMode === "field";

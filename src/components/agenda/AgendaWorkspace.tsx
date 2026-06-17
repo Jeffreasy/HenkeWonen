@@ -1,7 +1,7 @@
 import { CalendarClock, ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
-import { canManage, type AppSession } from "../../lib/auth/session";
+import { canManageAgenda, isFieldWorkspace, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import {
   AFWEZIGHEID_LABEL,
@@ -18,6 +18,7 @@ import {
 import { Alert } from "../ui/feedback/Alert";
 import { Badge } from "../ui/data-display/Badge";
 import { Button } from "../ui/forms/Button";
+import { Card } from "../ui/data-display/Card";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { LoadingState } from "../ui/feedback/LoadingState";
 import BeschikbaarheidPanel from "./BeschikbaarheidPanel";
@@ -42,9 +43,19 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [beheerMonteur, setBeheerMonteur] = useState<MonteurAgenda | null>(null);
-  const mag = canManage(session.role);
+  const mag = canManageAgenda(session.role);
+  const veld = isFieldWorkspace(session);
+  const lastRequestId = useRef(0);
+
+  const projectHref = useCallback(
+    (projectId: string) =>
+      veld ? `/portal/buitendienst/projecten/${projectId}` : `/portal/projecten/${projectId}`,
+    [veld]
+  );
 
   const load = useCallback(async () => {
+    const requestId = lastRequestId.current + 1;
+    lastRequestId.current = requestId;
     const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de agenda nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -56,16 +67,27 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
     try {
       const result = await client.query(api.portal.agendaWeek, {
         tenantSlug: session.tenantId,
-        weekStart
+        weekStart,
+        // Buitendienst: alleen de eigen week (server resolvet de monteur veilig).
+        alleenEigen: veld
       });
+      // Negeer verouderde antwoorden bij snel weeknavigeren (race-guard).
+      if (requestId !== lastRequestId.current) {
+        return;
+      }
       setMonteurs((result?.monteurs ?? []) as MonteurAgenda[]);
     } catch (loadError) {
       console.error(loadError);
+      if (requestId !== lastRequestId.current) {
+        return;
+      }
       setError("De agenda kon niet worden geladen.");
     } finally {
-      setIsLoading(false);
+      if (requestId === lastRequestId.current) {
+        setIsLoading(false);
+      }
     }
-  }, [session, weekStart]);
+  }, [session, weekStart, veld]);
 
   useEffect(() => {
     void load();
@@ -83,7 +105,15 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
 
   return (
     <div className="grid">
-      {error ? <Alert variant="danger" title="Agenda niet geladen" description={error} /> : null}
+      {error ? (
+        <Alert variant="danger" title="Agenda niet geladen" description={error}>
+          <div className="agenda-alert-actie">
+            <Button variant="secondary" size="sm" onClick={() => void load()}>
+              Opnieuw proberen
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
 
       <div className="agenda-toolbar">
         <Button
@@ -105,7 +135,9 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
         >
           Volgende
         </Button>
-        <span className="agenda-week-label">{weekLabel}</span>
+        <span className="agenda-week-label" aria-live="polite">
+          {weekLabel}
+        </span>
         <span className="agenda-spacer" />
       </div>
 
@@ -119,7 +151,7 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
         />
       ) : (
         monteurs.map((m) => (
-          <section className="agenda-monteur" key={m.monteur.id}>
+          <Card key={m.monteur.id} className="agenda-monteur">
             <div className="agenda-monteur-head">
               <h3>{m.monteur.naam}</h3>
               {mag ? (
@@ -137,15 +169,20 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
               {dagen.map((dagMs, i) => {
                 const status = dagStatusVoorMonteur(dagMs, m.werktijden, m.afwezigheden, m.bezoeken);
                 const ingeroosterd = Boolean(status.werktijd);
+                const isVandaag = dagMs === vandaag;
                 return (
                   <div
                     className={`agenda-dag${ingeroosterd ? "" : " niet-ingeroosterd"}${
-                      dagMs === vandaag ? " is-vandaag" : ""
+                      isVandaag ? " is-vandaag" : ""
                     }`}
                     key={dagMs}
+                    aria-current={isVandaag ? "date" : undefined}
                   >
                     <div className="agenda-dag-kop">
-                      <span className="dag-naam">{WEEKDAG_KORT[i]}</span>
+                      <span className="dag-naam">
+                        {WEEKDAG_KORT[i]}
+                        {isVandaag ? <span className="dag-vandaag"> · vandaag</span> : null}
+                      </span>
                       <span className="dag-datum">{dagFormatter.format(new Date(dagMs))}</span>
                     </div>
 
@@ -165,7 +202,12 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
                     ))}
 
                     {status.bezoeken.map((b) => (
-                      <a className="agenda-bezoek" href={`/portal/projecten/${b.projectId}`} key={b.inmetingId}>
+                      <a
+                        className="agenda-bezoek"
+                        href={projectHref(b.projectId)}
+                        key={b.inmetingId}
+                        aria-label={`Bezoek ${b.klantNaam} — ${b.projectTitel}`}
+                      >
                         <b>{b.klantNaam}</b>
                         {b.projectTitel}
                       </a>
@@ -178,7 +220,7 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
                 );
               })}
             </div>
-          </section>
+          </Card>
         ))
       )}
 
@@ -189,6 +231,7 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
           werktijden={beheerMonteur.werktijden}
           afwezigheden={beheerMonteur.afwezigheden}
           onClose={() => setBeheerMonteur(null)}
+          onChanged={() => void load()}
           onSaved={() => {
             setBeheerMonteur(null);
             void load();

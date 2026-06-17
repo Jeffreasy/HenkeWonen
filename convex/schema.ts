@@ -768,6 +768,10 @@ export default defineSchema({
     status: measurementStatus,
     inmeetdatum: v.optional(v.number()),
     gemetenDoor: v.optional(v.string()),
+    // Stabiele koppeling naar de monteur (users-tabel). gemetenDoor (naam) blijft
+    // staan als leesbaar label + fallback voor oude rijen; userId is leidend voor
+    // agenda/capaciteit zodat hernoemen of dubbele namen niets breken.
+    gemetenDoorUserId: v.optional(v.id("users")),
     // Klusgrootte voor inmeet-capaciteit: "klein" (1-2 ramen / 1 ruimte) telt als
     // 1 plek, "volledig" (hele woning) als 2 — per inmeetdag is er ruimte voor 2.
     omvang: v.optional(v.union(v.literal("klein"), v.literal("volledig"))),

@@ -38,7 +38,12 @@ type PlanMeasurementModalProps = {
   /** Het dossier dat nu gepland wordt — z'n eigen bezoek telt niet mee in de capaciteit. */
   excludeProjectId?: string;
   isSaving: boolean;
-  onSubmit: (data: { date: string; measuredBy: string; omvang: Omvang }) => void;
+  onSubmit: (data: {
+    date: string;
+    measuredBy: string;
+    measuredByUserId?: string;
+    omvang: Omvang;
+  }) => void;
   onClose: () => void;
 };
 
@@ -74,10 +79,13 @@ export function PlanMeasurementModal({
     wasOpenRef.current = open;
   }, [open, defaultDate, defaultMeasuredBy, defaultOmvang]);
 
+  // Kijkers (viewer) doen geen inmetingen en worden ook in de agenda verborgen —
+  // bied ze hier dus niet als monteur aan, zodat toewijzing en weergave consistent zijn.
+  const monteurOpties = teamMembers.filter((member) => member.role !== "viewer");
   // Behoud een bestaande (vrije-tekst) monteurnaam die niet in de teamlijst
   // staat, zodat we 'm niet stilletjes wegvagen.
-  const knownNames = new Set(teamMembers.map((member) => member.naam));
-  const monteurId = teamMembers.find((member) => member.naam === measuredBy)?.id ?? null;
+  const knownNames = new Set(monteurOpties.map((member) => member.naam));
+  const monteurId = monteurOpties.find((member) => member.naam === measuredBy)?.id ?? null;
 
   // Live beschikbaarheid: is het een inmeetdag, is de monteur vrij en past de klus?
   useEffect(() => {
@@ -130,7 +138,7 @@ export function PlanMeasurementModal({
     if (!date) {
       return;
     }
-    onSubmit({ date, measuredBy, omvang });
+    onSubmit({ date, measuredBy, measuredByUserId: monteurId ?? undefined, omvang });
   }
 
   function renderHint() {
@@ -215,7 +223,7 @@ export function PlanMeasurementModal({
             {measuredBy && !knownNames.has(measuredBy) ? (
               <option value={measuredBy}>{measuredBy}</option>
             ) : null}
-            {teamMembers.map((member) => (
+            {monteurOpties.map((member) => (
               <option key={member.id} value={member.naam}>
                 {member.naam}
               </option>

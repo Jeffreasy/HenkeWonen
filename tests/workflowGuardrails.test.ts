@@ -293,7 +293,7 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
 
   it("should keep mobile modals above quick actions and touch-scrollable", () => {
     const overlayStyles = read("src/styles/layers/07-overlays.css");
-    const responsiveStyles = read("src/styles/layers/16-responsive.css");
+    const responsiveStyles = read("src/styles/layers/17-responsive.css");
     const componentStyles = read("src/styles/layers/06-ui-components.css");
 
     expect(overlayStyles).toContain(".form-modal-backdrop");
@@ -313,7 +313,7 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     const customerDetail = read("src/components/customers/CustomerDetail.tsx");
     const customerInfoPanel = read("src/components/customers/CustomerInfoPanel.tsx");
     const featureStyles = read("src/styles/layers/13-features-projects.css");
-    const responsiveStyles = read("src/styles/layers/16-responsive.css");
+    const responsiveStyles = read("src/styles/layers/17-responsive.css");
 
     expect(customerDetail).toContain('size="md"');
     expect(customerDetail).toContain("omschrijving: values.description");
