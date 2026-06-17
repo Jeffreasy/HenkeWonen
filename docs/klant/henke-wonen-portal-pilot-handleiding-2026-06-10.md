@@ -1,5 +1,8 @@
 # Henke Wonen Portal - Pilot Handleiding
 
+> [!CAUTION]
+> **Vervallen — vervangen door V2.0.** Deze V1-versie is niet meer actueel. Gebruik de bijgewerkte, code-geverifieerde **Pilot Handleiding V2.0**: [HTML-bron](../PilotLaunch/V2.0/henke-wonen-portal-pilot-handleiding.html) of `PilotLaunch/V2.0/henke-wonen-portal-pilot-handleiding-Print.pdf`.
+
 Datum: 10 juni 2026  
 Doelgroep: Henke Wonen winkel-, backoffice- en buitendienstmedewerkers  
 Status: Definitieve pilot-documentatie

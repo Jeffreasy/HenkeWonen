@@ -1,5 +1,8 @@
 # Henke Wonen portal - workflowhandleiding
 
+> [!CAUTION]
+> **Vervallen — vervangen door V2.0.** Deze V1-versie is niet meer actueel. Gebruik de bijgewerkte, code-geverifieerde **Workflow Handleiding V2.0**: [HTML-bron](../PilotLaunch/V2.0/henke-wonen-portal-workflow-handleiding.html) of `PilotLaunch/V2.0/henke-wonen-portal-workflow-handleiding-Print.pdf`.
+
 Datum: 30 april 2026  
 Laatst gecontroleerd: 10 juni 2026<br>
 Doelgroep: Henke Wonen medewerkers  
