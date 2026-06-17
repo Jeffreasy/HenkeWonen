@@ -1,0 +1,20 @@
+---
+import PortalLayout from "../../components/layout/PortalLayout.astro";
+import AgendaWorkspace from "../../components/agenda/AgendaWorkspace";
+import { PageHeader } from "../../components/ui/layout/PageHeader";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+---
+
+<PortalLayout title="Agenda" session={session}>
+  <PageHeader
+    eyebrow="Planning"
+    title="Agenda & beschikbaarheid"
+    description="Zie per monteur de geplande inmeetbezoeken en wanneer er ruimte is voor een nieuwe afspraak."
+  />
+  <AgendaWorkspace client:load session={session} />
+</PortalLayout>

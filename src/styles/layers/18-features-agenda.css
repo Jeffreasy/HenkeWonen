@@ -1,0 +1,117 @@
+/* Agenda & monteur-beschikbaarheid — alleen layout; kleuren/kaders via de
+   bestaande UI-primitives (Card, Badge, Button) en design-tokens. */
+
+.agenda-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.agenda-toolbar .agenda-week-label {
+  font-weight: 600;
+  min-width: 16ch;
+}
+.agenda-toolbar .agenda-spacer {
+  flex: 1 1 auto;
+}
+
+.agenda-monteur {
+  margin-bottom: var(--space-4);
+}
+.agenda-monteur-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.agenda-monteur-head h3 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.agenda-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.agenda-dag {
+  border: 1px solid var(--color-accent-soft);
+  border-radius: var(--radius-md, 10px);
+  padding: var(--space-2);
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  background: var(--color-surface, #fff);
+}
+.agenda-dag-kop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+}
+.agenda-dag-kop .dag-naam {
+  font-weight: 600;
+}
+.agenda-dag-kop .dag-datum {
+  color: var(--color-text-muted, #6e7e85);
+  font-size: 0.78rem;
+}
+.agenda-dag.is-vandaag {
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+.agenda-dag.niet-ingeroosterd {
+  background: var(--color-muted-soft, #f5f7f8);
+  color: var(--color-text-muted, #6e7e85);
+}
+
+.agenda-werktijd {
+  font-size: 0.78rem;
+  color: var(--color-text-muted, #6e7e85);
+}
+.agenda-bezoek {
+  font-size: 0.78rem;
+  line-height: 1.3;
+  border-left: 3px solid var(--color-accent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--color-accent-soft);
+}
+.agenda-bezoek b {
+  display: block;
+}
+.agenda-leeg {
+  font-size: 0.78rem;
+  color: var(--color-text-muted, #6e7e85);
+}
+
+/* Beheerpaneel (werktijden + afwezigheid) */
+.beschikbaarheid-rooster {
+  display: grid;
+  grid-template-columns: 7rem 1fr 1fr;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+}
+.beschikbaarheid-rooster .kop {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted, #6e7e85);
+}
+.afwezigheid-lijst {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.afwezigheid-rij {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-accent-soft);
+  border-radius: var(--radius-md, 10px);
+}
