@@ -10,10 +10,17 @@ Backend voor de catalogusimport-pipeline: preview, validatie, import-batches, pr
 | `import.ts` | Import-batch verwerking en row-import logica |
 | `imports.ts` | Batch-overzichten en status-management |
 | `validation.ts` | Import-validatie: btw-modus, prijzen, EAN, source-keys |
-| `review.ts` | Catalogusreview en import-row inspectiefuncties |
+| `review.ts` | Catalogusreview, btw-mapping-review, duplicate-EAN-kwesties en `productionReadiness` (`READY`/`BLOCKED`) |
 | `reconciliation.ts` | Reconcilieer lokale preview vs. Convex development-stand |
 | `productionAudit.ts` | Productie-importaudit en statistieken |
-| `pilot.ts` | Pilot-specifieke catalogusfuncties |
+| `pilot.ts` | Pilot-presentatie: PVC-Click verbergen, Roots→Moduleo, Floorlife/Ambiant-weergave, `cleanProductDisplayName` |
+| `pricing.ts` | Richtprijs-lookup (`getIndicativePrice`) voor de inmeetmodule |
+| `pricingRules.ts` | Deterministische, pure prijskeuzeregel (klantgerichte richtprijs + matrix-selectie) |
+| `maintenance.ts` | Onderhoudsmutaties op prijsdata (btw-modus repareren, pseudo-prijsregels verwijderen) |
+| `pickerSearch.ts` | Productzoeker voor de product-pickers (inmeting + offertebouwer) |
+| `priceColumnKey.ts` | `toAsciiFieldKey`: maakt prijskolom-headers Convex-veilig (ASCII-only) |
+| `priceMatrices.ts` | Seed + lookup van de breedte×hoogte-richtprijsmatrices voor raambekleding |
+| `calculatorRules.ts` | Seed van calculator-regels (marge-delers + bedrijfsregels) |
 
 ## Import-pipeline
 
@@ -27,7 +34,7 @@ Excel/CSV (lokaal)
 
 ## BTW-guardrail
 
-Productie-import is geblokkeerd zolang er prijsregels zijn met `vatMode = "unknown"`.
+Productie-import is geblokkeerd zolang er prijskolom-mappings met `btwModus = "unknown"` zijn zonder bewuste override. `review.productionReadiness` rapporteert dit als `productionImportStatus: "READY"` (geen onopgeloste btw-mappings) of `"BLOCKED"`. De definitieve commit (`import.commitPreviewBatchChunk`) weigert bovendien zolang de batch onbekende-btw-rijen heeft zonder `staBtwModusOnbekendToe`.
 
 - Bekijk de actuele stand: [`docs/release-readiness/vat-mapping/`](../../docs/release-readiness/vat-mapping/)
 - Beslisbestand: `docs/release-readiness/vat-mapping/vat-mapping-decisions.json`
@@ -45,10 +52,18 @@ De importlaag bewaakt:
 | --- | --- |
 | Geen producten zonder prijs | Elke geïmporteerde productrij moet ≥1 prijsregel hebben |
 | Geen orphan price rules | Prijsregels zonder product worden geblokkeerd |
-| Geen duplicate source keys | Dubbele importsleutels worden als warning gemarkeerd |
-| Geen prijs ≤ 0 | Nulprijzen worden overgeslagen (tenzij leverancier-specifiek) |
+| Geen duplicate source keys | In de preview als waarschuwing geteld; de definitieve commit weigert bij dubbele `bronSleutel` |
+| Geen foutregels | De commit weigert zolang de batch `foutRijen > 0` heeft |
+| Geen prijs ≤ 0 | Prijsregels met `amount ≤ 0` worden overgeslagen |
 | Sectionrijen ≠ product | Header/section-rijen worden nooit als product geïmporteerd |
 | EAN-duplicaten | Worden als waarschuwing getoond, nooit automatisch samengevoegd |
+
+## Richtprijs & matrix
+
+De inmeetmodule toont een indicatieve richtprijs; de offerte blijft definitief.
+
+- `pricing.getIndicativePrice` levert per product een klantgerichte richtprijs. `pricingRules.ts` bevat de pure, deterministische keuzeregel: alleen klantgerichte prijstypes (`advice_retail`/`retail`), btw genormaliseerd, en bij twijfel géén prijs (`btwModus`/`vatMode` `"unknown"` levert nooit een richtprijs op).
+- Raambekleding gebruikt een breedte×hoogte-richtprijsmatrix (`priceMatrices.ts` + tabel `priceMatrices`), geseed uit HenkeWonenDATA en idempotent op (`tenantId`, `productToolSleutel`, `prijsgroep`, `bronBlad`).
 
 ## Convex-deployment targets
 

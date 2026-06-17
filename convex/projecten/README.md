@@ -16,7 +16,7 @@ Backend voor projectbeheer, inmeting (buitendienst) en de koppeling naar de offe
 ```
 Project openen
     ↓ Tab "Inmeting" openen
-    ↓ Inmeting starten (measurements.ts: createMeasurement)
+    ↓ Inmeting starten (core.ts: startOrPlanMeasurement / measurements.ts: createForProject)
     ↓ Meetruimtes toevoegen (measurementRooms)
     ↓ Calculator gebruiken → meetregel opslaan (measurementLines)
     ↓ Meetregel klaarzetten (status: ready_for_quote)
@@ -50,11 +50,15 @@ Pure utility-functies in [`src/lib/calculators/`](../../src/lib/calculators/):
 | Wandpanelen | panelen of stuks |
 | Gordijnen | breedte × hoogte × plusfactor |
 | Trap | aantallen per trede/zijkant |
+| Tapijt/vinyl op rol (broadloom) | banen + lopende meters in de zuinigste legrichting, incl. snijverlies |
+| Gordijnstof (curtain) | banen + baanlengte of gekantelde lopende meters stof |
+| Egaliseren (screed) | benodigde kg → aantal zakken |
+| Raambekleding-matrix | richtprijs via breedte × hoogte-matrix ("offerte op maat" buiten bereik) |
 
 ## Statusmachine meetregels
 
 ```
-draft → ready_for_quote → converted_to_quote
+draft → ready_for_quote → converted
 ```
 
 ## Guardrails

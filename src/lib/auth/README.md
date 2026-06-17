@@ -14,7 +14,7 @@ Authenticatie- en permissielaag van het Henke Wonen portal.
 | `laventeCareCookies.ts` | Cookie-rewrite logica (LaventeCare → Henke-domein) |
 | `laventeCareSession.ts` | Session-parsing uit LaventeCare tokens/cookies |
 | `devAuthProvider.ts` | Lokale dev-auth (NOOIT in productie actief zonder `ALLOW_DEV_AUTH=true`) |
-| `authzToken.ts` | Maakt korte-levensduur JWT voor Convex-mutatie-autorisatie |
+| `authzToken.ts` | Mint korte-levensduur HMAC-SHA256-tokens voor Convex: `actor`-tokens (mutatie-autorisatie) en `sync`-tokens (sessiesync) |
 | `sessionSync.ts` | Synchroniseert sessiegegevens naar Convex na elke authenticatie |
 
 ## Auth-modes
