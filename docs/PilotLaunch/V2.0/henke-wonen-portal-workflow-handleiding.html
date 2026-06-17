@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>Henke Wonen — Workflow Handleiding V2.0</title>
+<link rel="stylesheet" href="assets/brand.css">
+</head>
+<body>
+
+<!-- ===================== COVER ===================== -->
+<section class="page">
+  <div class="cover-head">
+    <div class="brand"><span class="mark"></span><span class="word">LAVENTECARE</span></div>
+    <div class="meta">Workflow Handleiding&nbsp;&nbsp;|&nbsp;&nbsp;17 juni 2026</div>
+  </div>
+  <div class="cover-deco"></div>
+  <div class="cover-body">
+    <div class="eyebrow">Workflow Gids</div>
+    <h1 class="cover-title"><span class="l1">Henke Wonen</span><span class="l2">Workflow Handleiding</span></h1>
+    <p class="cover-lead">Volledige uitleg en operationeel handboek van de dagelijkse portalworkflow voor winkel en backoffice. Bijgewerkt voor de uitbreidingen sinds de pilot-start.</p>
+
+    <div class="infocards">
+      <div class="infocard"><div class="k">Voor</div><div class="v">Henke Wonen</div><div class="s">Opgesteld door LaventeCare</div></div>
+      <div class="infocard"><div class="k">Datum</div><div class="v">17 juni 2026</div><div class="s">Versiedatum</div></div>
+      <div class="infocard"><div class="k">Versie</div><div class="v">Pilot 2026 · V2.0</div><div class="s">Workflowgids</div></div>
+      <div class="infocard"><div class="k">Focus</div><div class="v">Gebruikshandboek</div><div class="s">18 secties · bijgewerkt</div></div>
+    </div>
+
+    <div class="toc">
+      <div class="k">Inhoudsopgave</div>
+      <div class="toc-grid">
+        <div class="toc-item"><span class="n">01</span><span>Inleiding</span></div>
+        <div class="toc-item"><span class="n">10</span><span>Leveranciers opvolgen</span></div>
+        <div class="toc-item"><span class="n">02</span><span>Hoofdnavigatie</span></div>
+        <div class="toc-item"><span class="n">11</span><span>Prijslijsten</span></div>
+        <div class="toc-item"><span class="n">03</span><span>Dashboard &amp; Pipeline</span></div>
+        <div class="toc-item"><span class="n">12</span><span>Btw controle &amp; importprofielen</span></div>
+        <div class="toc-item"><span class="n">04</span><span>Klanten &amp; Dossiers</span></div>
+        <div class="toc-item"><span class="n">13</span><span>Dubbele EAN-waarschuwingen</span></div>
+        <div class="toc-item"><span class="n">05</span><span>Projecten &amp; Statuses</span></div>
+        <div class="toc-item"><span class="n">14</span><span>Beheer/instellingen</span></div>
+        <div class="toc-item"><span class="n">06</span><span>Inmeten &amp; Wizards</span></div>
+        <div class="toc-item"><span class="n">15</span><span>Veelvoorkomende situaties</span></div>
+        <div class="toc-item"><span class="n">07</span><span>Offertes &amp; Offertebuilder</span></div>
+        <div class="toc-item"><span class="n">16</span><span>Veilig werken &amp; Controle</span></div>
+        <div class="toc-item"><span class="n">08</span><span>Offerteteksten</span></div>
+        <div class="toc-item"><span class="n">17</span><span>Wat doet de portal BEWUST niet?</span></div>
+        <div class="toc-item"><span class="n">09</span><span>Catalogus</span></div>
+        <div class="toc-item"><span class="n">18</span><span>Begrippenlijst</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="cover-foot">
+    <span><b>Web</b>&nbsp; laventecare.nl</span>
+    <span><b>Mail</b>&nbsp; jeffrey@laventecare.nl</span>
+    <span>Spiegelstraat 6, 8251ZB Dronten, Nederland</span>
+  </div>
+</section>
+
+<!-- ===================== PAGINA 2 ===================== -->
+<section class="page">
+  <div class="runhead">
+    <div class="brand"><span class="mark"></span><span class="word">LAVENTECARE</span></div>
+    <div class="doctag">WORKFLOW HANDLEIDING · HENKE WONEN</div>
+  </div>
+
+  <div class="section">
+    <div class="num">01</div>
+    <div>
+      <div class="head">Inleiding</div>
+      <ul class="list">
+        <li>De Henke Wonen portal fungeert als centrale backoffice voor klanten, projecten, inmetingen, offertes, catalogus, leveranciers en importcontrole.</li>
+        <li>De workflow verloopt gestructureerd van klant → project → inmeting → offerte → uitvoering/factuurmoment.</li>
+        <li>Het systeem stelt maten en hoeveelheden vast; product, prijs en btw controleer je later handmatig in de offerte.</li>
+        <li>Voor raambekleding toont de inmeting wél een <b>indicatieve</b> richtprijs ter plaatse; prijs en btw worden definitief pas in de offerte vastgesteld.</li>
+        <li>Catalogusimport wordt geblokkeerd zolang btw-mappings ontbreken. Dubbele EAN-waarschuwingen worden nooit automatisch samengevoegd. Facturen en offertes zijn printbaar; er is geen automatische boekhoudkoppeling.</li>
+      </ul>
+      <div class="rail">
+        <div class="step"><div class="dot">1</div><div class="lbl"><b>Klant</b><span>Aanmaken &amp; dossier</span></div></div>
+        <div class="step"><div class="dot">2</div><div class="lbl"><b>Project</b><span>Status opvolgen</span></div></div>
+        <div class="step"><div class="dot">3</div><div class="lbl"><b>Inmeting</b><span>Maten &amp; rekenhulpen</span></div></div>
+        <div class="step"><div class="dot">4</div><div class="lbl"><b>Offerte</b><span>Productregels &amp; btw</span></div></div>
+        <div class="step"><div class="dot">5</div><div class="lbl"><b>Uitvoering</b><span>Factuurmoment</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="num">02</div>
+    <div>
+      <div class="head">Hoofdnavigatie</div>
+      <ul class="list">
+        <li><b>Start:</b> Overzicht van de actieve pipeline, facturenstrip en productiegereedheid.</li>
+        <li><b>Dossiers:</b> Zoeken naar klanten, projecten en offertes, en starten van Klant vastleggen of Project aanmaken.</li>
+        <li><b>Offertes:</b> Offertes maken, offerteposten beheren en totalen controleren.</li>
+        <li><b>Facturen:</b> Facturen bekijken en opvolgen.</li>
+        <li><b>Catalogus:</b> Producten en prijsinformatie raadplegen.</li>
+        <li><b>Buitendienst:</b> Mobiele werkplek voor vandaag, inmeten en conceptoffertes.</li>
+        <li><b>Leveranciers:</b> Leveranciers en productlijststatussen opvolgen.</li>
+        <li><b>Prijslijsten:</b> Importbatches en importcontrole bekijken.</li>
+        <li><b>Btw controle:</b> Btw-mappings per prijskolom beoordelen.</li>
+        <li><b>Productcontrole:</b> Datakwaliteitsissues zoals dubbele EAN beoordelen.</li>
+        <li><b>Beheer/instellingen:</b> Werkzaamheden, productgroepen en offerteteksten beheren.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot"><span>LaventeCare&nbsp;|&nbsp;KvK 88162710&nbsp;|&nbsp;Btw-id NL004553268B57&nbsp;|&nbsp;8251ZB Dronten&nbsp;|&nbsp;AV van toepassing: laventecare.nl/voorwaarden</span><span>Pagina 2 van 10</span></div>
+</section>
+
+<!-- ===================== PAGINA 3 ===================== -->
+<section class="page">
+  <div class="runhead">
+    <div class="brand"><span class="mark"></span><span class="word">LAVENTECARE</span></div>
+    <div class="doctag">WORKFLOW HANDLEIDING · HENKE WONEN</div>
+  </div>
+
+  <div class="section">
+    <div class="num">03</div>
+    <div>
+      <div class="head">Dashboard &amp; Pipeline</div>
+      <ul class="list">
+        <li><b>Dashboard:</b> Snel inzicht in actieve projecten, conceptoffertes en catalogusregels.</li>
+        <li><b>Productiegereedheid:</b> Status 'geblokkeerd' bij ontbrekende btw-mappings, of status 'gereed' (vrijgegeven voor import).</li>
+        <li><b>EAN-waarschuwingen:</b> Worden getoond ter beoordeling, maar blokkeren de productie-import niet automatisch.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="num">04</div>
+    <div>
+      <div class="head">Klanten &amp; Dossiers</div>
+      <ul class="list">
+        <li><b>Klant aanmaken:</b> Maak de klant aan via Dossiers → Klant vastleggen of rechtsonder Actie → Nieuwe aanvraag. Vul basisvelden in; straat, huisnummer en postcode vul je via Bewerken in.</li>
+        <li><b>Zoeken:</b> Snel zoeken op klantnaam en filters op actieve statussen toepassen.</li>
+        <li><b>Klantdossier:</b> Centraal dossier met basisgegevens, projecten, contactmomenten en uitgeleende monsters.</li>
+        <li><b>Uitgeleend item:</b> Registreer staal/monster via type 'Uitgeleend' om dit retour te kunnen volgen in het dossier.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot"><span>LaventeCare&nbsp;|&nbsp;KvK 88162710&nbsp;|&nbsp;Btw-id NL004553268B57&nbsp;|&nbsp;8251ZB Dronten&nbsp;|&nbsp;AV van toepassing: laventecare.nl/voorwaarden</span><span>Pagina 3 van 10</span></div>
+</section>
+
+<!-- ===================== PAGINA 4 ===================== -->
+<section class="page">
+  <div class="runhead">
+    <div class="brand"><span class="mark"></span><span class="word">LAVENTECARE</span></div>
+    <div class="doctag">WORKFLOW HANDLEIDING · HENKE WONEN</div>
+  </div>
+
+  <div class="section">
+    <div class="num">05</div>
+    <div>
+      <div class="head">Projecten &amp; Statuses</div>
+      <ul class="list">
+        <li><b>Project aanmaken:</b> Elk project hoort bij een klant. Vul projectnaam en omschrijving in (bijv. 'PVC benedenverdieping').</li>
+        <li><b>Workflowstatussen:</b> Lead → Inmeting gepland → Offerteconcept → Offerte verzonden → Offerte akkoord → Bestellen → Uitvoering gepland → In uitvoering → Gefactureerd → Betaald → Gesloten.</li>
+        <li><b>Ruimtes <span class="tag-new">Nieuw</span>:</b> Voeg projectruimtes toe (woonkamer, hal) met globale maten als startpunt. Inmeet-ruimte en dossier-ruimte vormen nu één identiteit: een inmeet-ruimte koppelt automatisch (auto-promotie) aan precies één dossier-ruimte.</li>
+        <li><b>Werkprocesmomenten:</b> Snelle acties voor akkoord (vereist echte offerte), bestelling, factuur aanmaken en export naar boekhouder (geen automatische boekhoudkoppeling).</li>
+        <li><b>Inmeetbezoek inplannen <span class="tag-new">Nieuw</span>:</b> Plan vanuit de winkel een inmeetbezoek in met datum én monteur; de buitendienst ziet dit terug en kan op monteur filteren.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="num">06</div>
+    <div>
+      <div class="head">Inmeten &amp; Wizards</div>
+      <ul class="list">
+        <li><b>Inmeting starten:</b> Start de inmeting in het project, vul datum en notities in. De inmeetdatum synchroniseert nu bidirectioneel tussen dossier en inmeting.</li>
+        <li><b>Meetruimtes:</b> Registreer nauwkeurige maatvoering (lengte, breedte, omtrek) binnen een inmeting.</li>
+        <li><b>Calculatiewizards:</b> Rekenhulpen voor Vloer, Plinten, Behang, Wandpanelen en Trap, en <b>nieuw</b>: tapijt/vinyl op rol (broadloom), gordijnstof (lopende meters stof) en egaliseren/screed (m² × laagdikte → kg en zakken). Controleer snij- en maatverlies altijd zelf.</li>
+        <li><b>Richtprijs raambekleding <span class="tag-new">Nieuw</span>:</b> Voor raambekleding toont de inmeting een <b>indicatieve</b> richtprijs op basis van een breedte×hoogte-prijsmatrix. Prijs en btw worden definitief pas in de offerte vastgesteld.</li>
+        <li><b>Klaarzetten voor offerte:</b> Zet gecontroleerde regels op 'Klaar voor offerte' om ze in te laden in de offertebuilder. Statussen: Concept, Klaar voor offerte, Verwerkt.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot"><span>LaventeCare&nbsp;|&nbsp;KvK 88162710&nbsp;|&nbsp;Btw-id NL004553268B57&nbsp;|&nbsp;8251ZB Dronten&nbsp;|&nbsp;AV van toepassing: laventecare.nl/voorwaarden</span><span>Pagina 4 van 10</span></div>
+</section>
+
+<!-- ===================== PAGINA 5 ===================== -->
+<section class="page">
+  <div class="runhead">
+    <div class="brand"><span class="mark"></span><span class="word">LAVENTECARE</span></div>
+    <div class="doctag">WORKFLOW HANDLEIDING · HENKE WONEN</div>
+  </div>
+
+  <div class="section">
+    <div class="num">07</div>
+    <div>
+      <div class="head">Offertes &amp; Offertebuilder</div>
+      <ul class="list">
+        <li><b>Offerte aanmaken <span class="tag-new">Nieuw</span>:</b> Start een offerte en vul een naam in. Een offerte opent nu op een eigen <b>detailpagina</b> (niet meer inline onder de tabel). De basisgegevens — klant, adres en geldig tot — staan in de samenvatting. Standaardvoorwaarden en teksten worden overgenomen.</li>
+        <li><b>Handmatige posten:</b> Voeg product-, service-, arbeid- of kortingsregels toe met prijs excl. btw en btw-tarief.</li>
+        <li><b>Inmeting overnemen:</b> Selecteer meetregels die klaarstaan en voeg ze toe. Een eventuele richtprijs komt als indicatieve voorinvulling mee (zichtbaar gemarkeerd); de prijsreview blijft verplicht. Controleer product, prijs en btw handmatig — de prijs wordt pas in de offerte definitief.</li>
+        <li><b>Totalen &amp; status <span class="tag-new">Nieuw</span>:</b> Controleer subtotaal, btw en totaal; de kortingsopbouw is nu zichtbaar in de totalen. Prijsreview-gate: een offerte met een prijsdragende regel van € 0,00 kan niet op 'Verzonden' of 'Geaccepteerd'. Facturen kunnen alleen op basis van een geaccepteerde offerte.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="num">08</div>
+    <div>
+      <div class="head">Offerteteksten</div>
+      <ul class="list">
+        <li><b>Sjabloonbeheer:</b> Beheer de indeling voor Vloeren, Plinten, Gordijnen, Traprenovatie, Wandafwerking en Behang.</li>
+        <li><b>Voorwaarden <span class="tag-new">Nieuw</span>:</b> Offerteteksten en voorwaarden zijn nu per offerte bewerkbaar. Een sjabloonwijziging geldt alleen voor nieuwe offertes en raakt bestaande offertes niet.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot"><span>LaventeCare&nbsp;|&nbsp;KvK 88162710&nbsp;|&nbsp;Btw-id NL004553268B57&nbsp;|&nbsp;8251ZB Dronten&nbsp;|&nbsp;AV van toepassing: laventecare.nl/voorwaarden</span><span>Pagina 5 van 10</span></div>
+</section>
+
+<!-- ===================== PAGINA 6 ===================== -->
+<section class="page">
+  <div class="runhead">
+    <div class="brand"><span class="mark"></span><span class="word">LAVENTECARE</span></div>
+    <div class="doctag">WORKFLOW HANDLEIDING · HENKE WONEN</div>
+  </div>
+
+  <div class="section">
+    <div class="num">09</div>
+    <div>
+      <div class="head">Catalogus</div>
+      <ul class="list">
+        <li><b>Zoeken:</b> Zoek op productnaam, artikelnummer, kleur of leverancier.</li>
+        <li><b>Prijscontrole:</b> Controleer prijs excl. btw en de eenheid. Prijzen hebben pas productiestatus na btw-mapping.</li>
+      </ul>
+      <div class="callout"><b>Nieuw:</b> de productiecatalogus draait inmiddels live en volledig Nederlandstalig; inmeet- en dossierschermen tonen nu correct Nederlands.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="num">10</div>
+    <div>
+      <div class="head">Leveranciers opvolgen</div>
+      <ul class="list">
+        <li><b>Opvolging:</b> Volg de status van productlijsten per leverancier (Onbekend, Opgevraagd, Ontvangen, Download beschikbaar).</li>
+        <li><b>Leverancier toevoegen:</b> Registreer contactgegevens, gekoppelde producten en importprofielen per leverancier.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot"><span>LaventeCare&nbsp;|&nbsp;KvK 88162710&nbsp;|&nbsp;Btw-id NL004553268B57&nbsp;|&nbsp;8251ZB Dronten&nbsp;|&nbsp;AV van toepassing: laventecare.nl/voorwaarden</span><span>Pagina 6 van 10</span></div>
+</section>
+
+<!-- ===================== PAGINA 7 ===================== -->
+<section class="page">
+  <div class="runhead">
+    <div class="brand"><span class="mark"></span><span class="word">LAVENTECARE</span></div>
+    <div class="doctag">WORKFLOW HANDLEIDING · HENKE WONEN</div>
+  </div>
+
+  <div class="section">
+    <div class="num">11</div>
+    <div>
+      <div class="head">Prijslijsten</div>
+      <ul class="list">
+        <li><b>Voorvertoning:</b> Gecontroleerde importbatches met rijen gelabeld als productregel, kopregel, waarschuwing of fout.</li>
+        <li><b>Definitief verwerken:</b> Alleen mogelijk als er geen blokkades zijn (zoals foutregels of ontbrekende btw-mappings).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="num">12</div>
+    <div>
+      <div class="head">Btw controle en importprofielen</div>
+      <ul class="list">
+        <li><b>Btw-status toewijzen:</b> Prijslijsten worden pas in productie geladen als de btw-status per kolom (inclusief of exclusief) is ingesteld.</li>
+        <li><b>Open mappings:</b> Filter op 'Te beoordelen' en map kolommen handmatig om de importblokkade op te heffen.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot"><span>LaventeCare&nbsp;|&nbsp;KvK 88162710&nbsp;|&nbsp;Btw-id NL004553268B57&nbsp;|&nbsp;8251ZB Dronten&nbsp;|&nbsp;AV van toepassing: laventecare.nl/voorwaarden</span><span>Pagina 7 van 10</span></div>
+</section>
+
+<!-- ===================== PAGINA 8 ===================== -->
+<section class="page">
+  <div class="runhead">
+    <div class="brand"><span class="mark"></span><span class="word">LAVENTECARE</span></div>
+    <div class="doctag">WORKFLOW HANDLEIDING · HENKE WONEN</div>
+  </div>
+
+  <div class="section">
+    <div class="num">13</div>
+    <div>
+      <div class="head">Dubbele EAN-waarschuwingen</div>
+      <ul class="list">
+        <li><b>Datakwaliteit:</b> Bekijk dubbele EAN-waarschuwingen (veelvoorkomend bij behangcollecties).</li>
+        <li><b>Beoordeling:</b> Kies handmatig een reviewbeslissing (Gescheiden houden, Later beoordelen voor samenvoegen, Fout in leverancierbestand, Bewust dubbel toegestaan). Producten worden nooit automatisch samengevoegd.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="num">14</div>
+    <div>
+      <div class="head">Beheer/instellingen</div>
+      <ul class="list">
+        <li><b>Werkzaamheden:</b> Beheer standaard uurtarieven en werkzaamheden.</li>
+        <li><b>Categorieën:</b> Beheer cataloguscategorieën en productgroepen.</li>
+        <li><b>Sjablonen:</b> Beheer standaardvoorwaarden en offertesjabloonregels onder offerteteksten.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot"><span>LaventeCare&nbsp;|&nbsp;KvK 88162710&nbsp;|&nbsp;Btw-id NL004553268B57&nbsp;|&nbsp;8251ZB Dronten&nbsp;|&nbsp;AV van toepassing: laventecare.nl/voorwaarden</span><span>Pagina 8 van 10</span></div>
+</section>
+
+<!-- ===================== PAGINA 9 ===================== -->
+<section class="page">
+  <div class="runhead">
+    <div class="brand"><span class="mark"></span><span class="word">LAVENTECARE</span></div>
+    <div class="doctag">WORKFLOW HANDLEIDING · HENKE WONEN</div>
+  </div>
+
+  <div class="section">
+    <div class="num">15</div>
+    <div>
+      <div class="head">Veelvoorkomende situaties</div>
+      <div class="block"><h4>Nieuwe klant komt in de winkel</h4><p>Ga naar Dossiers. Zoek of de klant al bestaat, kies 'Klant vastleggen' indien onbekend en maak daarna via 'Project aanmaken' een projectdossier aan.</p></div>
+      <div class="block"><h4>Klant wil offerte voor PVC-vloer</h4><p>Maak project en ruimtes aan → Start inmeting → Bereken vloer en plinten → Zet meetregels klaar → Maak offerte → Inmeting overnemen → Controleer product, prijs en btw.</p></div>
+      <div class="block"><h4>Inmeetbezoek inplannen met monteur <span class="tag-new">Nieuw</span></h4><p>Plan vanuit de winkel een inmeetbezoek in met datum én monteur. De buitendienst filtert de planning op monteur; de inmeetdatum synchroniseert bidirectioneel met het dossier.</p></div>
+      <div class="block"><h4>Productie-import is geblokkeerd door btw-mapping</h4><p>Ga naar Btw controle → Filter op 'Te beoordelen' → Wijs per kolom handmatig btw inclusief/exclusief toe → Controleer het dashboard.</p></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="num">16</div>
+    <div>
+      <div class="head">Veilig werken &amp; Controle</div>
+      <ul class="list">
+        <li>Controleer alle maten, legrichting en snijverliezen.</li>
+        <li>Controleer altijd handmatig product, prijs en btw; vertrouw niet blind op defaults.</li>
+        <li>Een richtprijs (bijv. raambekleding) is <b>indicatief</b> en nooit een verkoopprijs; verstuur of accordeer geen offerte met een € 0,00 prijsregel (prijsreview-gate).</li>
+        <li>Zet meetregels pas klaar voor offerte na actieve inmeetcontrole.</li>
+        <li>Controleer voorwaarden en betalingsafspraken per individuele offerte.</li>
+        <li>Zet een project pas op 'Offerte akkoord' als de offerte zelf door de klant is geaccepteerd.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot"><span>LaventeCare&nbsp;|&nbsp;KvK 88162710&nbsp;|&nbsp;Btw-id NL004553268B57&nbsp;|&nbsp;8251ZB Dronten&nbsp;|&nbsp;AV van toepassing: laventecare.nl/voorwaarden</span><span>Pagina 9 van 10</span></div>
+</section>
+
+<!-- ===================== PAGINA 10 ===================== -->
+<section class="page">
+  <div class="runhead">
+    <div class="brand"><span class="mark"></span><span class="word">LAVENTECARE</span></div>
+    <div class="doctag">WORKFLOW HANDLEIDING · HENKE WONEN</div>
+  </div>
+
+  <div class="section">
+    <div class="num">17</div>
+    <div>
+      <div class="head">Wat doet de portal BEWUST niet automatisch?</div>
+      <ul class="list">
+        <li>Verkoopprijs of product selecteren bij het overnemen van meetregels.</li>
+        <li>Een indicatieve richtprijs automatisch tot verkoopprijs maken.</li>
+        <li>Btw kiezen bij onbekende kolommen van nieuwe prijslijsten.</li>
+        <li>Producten automatisch samenvoegen op basis van een gedeelde EAN.</li>
+        <li>Bestaande offertes aanpassen wanneer een sjabloon wijzigt.</li>
+        <li>Productie-import verwerken zolang btw-mappings openstaan.</li>
+        <li>Automatisch een factuur maken zonder geaccepteerde offerte, of automatisch exporteren naar de boekhouding.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="num">18</div>
+    <div>
+      <div class="head">Begrippenlijst</div>
+      <ul class="list">
+        <li><b>Klant:</b> Persoon of bedrijf waarvoor Henke Wonen werkt.</li>
+        <li><b>Project:</b> Werkdossier rondom een specifieke klantvraag.</li>
+        <li><b>Inmeting:</b> Vastlegging van maten, hoeveelheden en notities op locatie.</li>
+        <li><b>Meetruimte:</b> Ruimte binnen een inmeting met vastgelegde maatvoering.</li>
+        <li><b>Meetregel:</b> Een berekende of handmatige hoeveelheid uit de inmeting.</li>
+        <li><b>Snijverlies:</b> Extra materiaal voor zagen, patroonverlies of legrichting.</li>
+        <li><b>Offertepost:</b> Regel op een offerte (product, arbeid, materiaal, korting of tekst).</li>
+        <li><b>Btw-mapping:</b> Beslissing per prijskolom of bedragen in- of exclusief btw zijn.</li>
+        <li><b>Dubbele EAN-waarschuwing:</b> Barcode die meermaals voorkomt bij een leverancier.</li>
+        <li><b>Klaar voor offerte:</b> Meetregel is gecontroleerd en kan in de offertebuilder worden geladen.</li>
+        <li><b>Richtprijs <span class="tag-new">Nieuw</span>:</b> Indicatieve prijsaanwijzing tijdens de inmeting (bijv. raambekleding-matrix); geen verkoopprijs.</li>
+        <li><b>Prijsreview-gate <span class="tag-new">Nieuw</span>:</b> Blokkade tegen het versturen/accorderen van een offerte met een € 0,00 prijsdragende regel.</li>
+        <li><b>Ruimte-identiteit <span class="tag-new">Nieuw</span>:</b> Een inmeet-ruimte hoort bij precies één dossier-ruimte.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot"><span>LaventeCare&nbsp;|&nbsp;KvK 88162710&nbsp;|&nbsp;Btw-id NL004553268B57&nbsp;|&nbsp;8251ZB Dronten&nbsp;|&nbsp;AV van toepassing: laventecare.nl/voorwaarden</span><span>Pagina 10 van 10</span></div>
+</section>
+
+</body>
+</html>

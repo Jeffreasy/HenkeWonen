@@ -1,0 +1,155 @@
+/* LaventeCare — Henke Wonen documentatiesjabloon (V2.0)
+   Reproductie van het V1.0 print-sjabloon voor Chrome headless --print-to-pdf. */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --teal: #0E8A77;
+  --teal-dark: #0B6E5F;
+  --navy: #152A38;
+  --ink: #3C474C;
+  --muted: #6E7E85;
+  --faint: #8C999E;
+  --card-bg: #F5F8F8;
+  --card-border: #E0EAEA;
+  --hair: #E4EAEA;
+  --page: 210mm;
+}
+
+* { box-sizing: border-box; }
+
+@page { size: A4; margin: 0; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  color: var(--ink);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.page {
+  position: relative;
+  width: var(--page);
+  min-height: 297mm;
+  padding: 18mm 16mm 20mm;
+  page-break-after: always;
+  overflow: hidden;
+  background: #fff;
+}
+.page:last-child { page-break-after: auto; }
+
+/* ---------- Merk-logo ---------- */
+.brand { display: flex; align-items: center; gap: 9px; }
+.brand .mark {
+  width: 26px; height: 26px; flex: 0 0 26px;
+  border: 2px solid var(--teal); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.brand .mark::before, .brand .mark::after {
+  content: ""; position: absolute; width: 7px; height: 7px;
+  border: 2px solid var(--teal); border-radius: 50%;
+}
+.brand .mark::before { left: 3px; }
+.brand .mark::after { right: 3px; }
+.brand .word { font-weight: 700; letter-spacing: 3px; font-size: 12px; color: var(--navy); }
+
+/* ---------- Lopende header (contentpagina's) ---------- */
+.runhead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 10px; border-bottom: 1px solid var(--hair); margin-bottom: 22px;
+}
+.runhead .doctag { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--teal); text-transform: uppercase; }
+
+/* ---------- Voettekst ---------- */
+.foot {
+  position: absolute; left: 16mm; right: 16mm; bottom: 12mm;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 8.5px; color: var(--faint);
+  border-top: 1px solid var(--hair); padding-top: 7px;
+}
+
+/* ---------- Coverpagina ---------- */
+.cover-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 14px; border-bottom: 1px solid var(--hair);
+}
+.cover-head .meta { font-size: 11px; color: var(--muted); }
+.cover-deco {
+  position: absolute; top: 120px; right: -130px;
+  width: 520px; height: 520px; border: 1.5px solid #EEF4F3; border-radius: 50%;
+  z-index: 0;
+}
+.cover-body { position: relative; z-index: 1; margin-top: 86px; }
+.eyebrow { font-size: 13px; font-weight: 700; letter-spacing: 5px; color: var(--teal); text-transform: uppercase; }
+.cover-title { margin: 16px 0 0; line-height: 1.04; }
+.cover-title .l1 { display: block; font-size: 52px; font-weight: 800; color: var(--navy); letter-spacing: -0.5px; }
+.cover-title .l2 { display: block; font-size: 52px; font-weight: 800; color: var(--teal); letter-spacing: -0.5px; }
+.cover-lead { margin: 18px 0 0; max-width: 70%; font-size: 14px; color: var(--ink); line-height: 1.5; }
+
+.infocards { margin-top: 34px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.infocard {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-top: 3px solid var(--teal); border-radius: 10px; padding: 16px 18px;
+}
+.infocard .k { font-size: 10px; font-weight: 700; letter-spacing: 2.5px; color: var(--muted); text-transform: uppercase; }
+.infocard .v { margin-top: 9px; font-size: 16px; font-weight: 700; color: var(--teal); }
+.infocard .s { margin-top: 2px; font-size: 12px; color: var(--muted); }
+
+.toc {
+  margin-top: 22px; border: 1px solid var(--card-border); border-radius: 12px;
+  padding: 18px 22px; background: #FBFDFD;
+}
+.toc .k { font-size: 11px; font-weight: 700; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; }
+.toc-grid { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 36px; }
+.toc-item { display: flex; gap: 12px; font-size: 13px; color: var(--ink); }
+.toc-item .n { font-weight: 700; color: var(--teal); min-width: 18px; }
+
+.cover-foot {
+  position: absolute; left: 16mm; right: 16mm; bottom: 14mm;
+  display: flex; gap: 34px; align-items: center;
+  font-size: 11px; color: var(--muted);
+  border-top: 1px solid var(--hair); padding-top: 12px;
+}
+.cover-foot b { color: var(--navy); font-weight: 600; }
+
+/* ---------- Secties ---------- */
+.section { display: grid; grid-template-columns: 40px 1fr; gap: 14px; margin-bottom: 26px; page-break-inside: avoid; }
+.section .num { font-size: 15px; font-weight: 700; color: var(--teal); padding-top: 2px; }
+.section .head { font-size: 16px; font-weight: 700; color: var(--navy); padding-bottom: 8px; border-bottom: 1px solid var(--hair); margin-bottom: 12px; }
+
+/* genoemde subblokken met teal accentbalk */
+.block { border-left: 3px solid var(--teal); padding: 1px 0 1px 14px; margin: 0 0 14px; }
+.block h4 { margin: 0 0 4px; font-size: 12.5px; font-weight: 700; color: var(--teal); }
+.block p { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--ink); }
+
+/* opsommingen */
+ul.list { margin: 0; padding: 0; list-style: none; }
+ul.list > li { position: relative; padding-left: 16px; margin-bottom: 9px; font-size: 12.5px; line-height: 1.55; color: var(--ink); }
+ul.list > li::before { content: "–"; position: absolute; left: 0; color: var(--teal); font-weight: 700; }
+.list b, .block b, .lead-list b { color: var(--navy); }
+
+/* stappen-rail */
+.rail { margin: 6px 0 0; }
+.rail .step { display: grid; grid-template-columns: 30px 1fr; gap: 14px; padding-bottom: 14px; position: relative; }
+.rail .step:not(:last-child)::after { content: ""; position: absolute; left: 14px; top: 30px; bottom: 0; width: 1.5px; background: #DCE7E6; }
+.rail .dot { width: 28px; height: 28px; border-radius: 50%; background: var(--teal); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; z-index: 1; }
+.rail .lbl b { display: block; font-size: 13px; color: var(--navy); }
+.rail .lbl span { font-size: 12px; color: var(--muted); }
+
+/* metric-kaarten */
+.metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 4px 0 6px; }
+.metric { border: 1px solid var(--card-border); border-radius: 10px; padding: 14px 16px; background: #fff; }
+.metric .k { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--teal); text-transform: uppercase; }
+.metric .v { margin-top: 7px; font-size: 22px; font-weight: 800; color: var(--navy); }
+.metric .s { margin-top: 2px; font-size: 11px; color: var(--muted); }
+
+/* "Nieuw in V2" badge */
+.tag-new { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #fff; background: var(--teal); border-radius: 4px; padding: 2px 7px; vertical-align: middle; margin-left: 6px; }
+.callout { background: #F0F8F6; border: 1px solid #CDE8E1; border-radius: 10px; padding: 14px 16px; margin: 4px 0 14px; font-size: 12.5px; line-height: 1.55; color: var(--ink); }
+.callout b { color: var(--teal-dark); }
+.lead-list { margin: 0 0 6px; padding: 0; list-style: none; }
+.lead-list > li { position: relative; padding-left: 16px; margin-bottom: 9px; font-size: 13px; line-height: 1.55; }
+.lead-list > li::before { content: "–"; position: absolute; left: 0; color: var(--teal); font-weight: 700; }
