@@ -62,6 +62,7 @@ export type MeasurementLineDoc = {
   notities?: string;
   offerteRegelType: QuoteLineType;
   quotePreparationStatus: QuotePreparationStatus;
+  handmatigAangepast?: boolean;
   productId?: string;
   productNaam?: string;
   indicatieveEenheidsprijsExBtw?: number;

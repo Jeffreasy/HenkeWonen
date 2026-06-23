@@ -613,3 +613,102 @@ export const deleteDocumentsByIdChunk = mutation({
     };
   }
 });
+
+/**
+ * Zet alle producten van één categorie (op slug) op status "inactive" — een
+ * omkeerbare "soft delete" die collecties uit de catalogus én de product-pickers
+ * haalt zonder producten, prijzen of offertehistorie te verwijderen. De pickers
+ * tonen alleen status="active" (zie catalog/pickerSearch.ts), dus inactief
+ * verbergt het product zonder verwijzingen te breken.
+ *
+ * Klantbesluit 2026-06-17: palletcollectie, douchepanelen, lijm, kit en de
+ * egaliseren-producten uit de catalogus (egaliseren blijft als legkost in
+ * serviceCostRules — andere tabel, hier niet geraakt).
+ *
+ * Chunked via cursor, admin-only, letterlijke confirm, dryRun-default. Reeds
+ * inactieve producten worden overgeslagen, dus idempotent/herhaalbaar.
+ * Herstellen = status terug op "active" zetten.
+ *
+ * Aansturing: tools/deactivate_catalog_categories.mjs
+ */
+export const deactivateProductsByCategoryChunk = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    confirm: v.literal("DEACTIVATE_PRODUCTS_BY_CATEGORY"),
+    categorySlug: v.string(),
+    // reactivate=true keert de soft-delete om: zet inactieve producten van deze
+    // categorie terug op "active". Zo is de actie met één commando terug te draaien.
+    reactivate: v.optional(v.boolean()),
+    dryRun: v.optional(v.boolean()),
+    batchSize: v.optional(v.number()),
+    cursor: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const tenantId = tenant._id;
+    const batchSize = Math.min(Math.max(args.batchSize ?? 200, 25), 500);
+    const dryRun = args.dryRun ?? true;
+    const reactivate = args.reactivate ?? false;
+    const targetStatus = reactivate ? "active" : "inactive";
+
+    const category = await ctx.db
+      .query("categories")
+      .withIndex("by_slug", (q: any) => q.eq("tenantId", tenantId).eq("slug", args.categorySlug))
+      .first();
+
+    if (!category) {
+      return {
+        dryRun,
+        reactivate,
+        categorySlug: args.categorySlug,
+        categoryFound: false,
+        scanned: 0,
+        matched: 0,
+        changed: 0,
+        isDone: true,
+        continueCursor: ""
+      };
+    }
+
+    const paginated = await ctx.db
+      .query("products")
+      .withIndex("by_category", (q: any) =>
+        q.eq("tenantId", tenantId).eq("categorieId", category._id)
+      )
+      .paginate({ numItems: batchSize, cursor: args.cursor ?? null });
+
+    let matched = 0;
+    let changed = 0;
+
+    for (const product of paginated.page) {
+      // Deactiveren: alles wat nog niet inactief is. Reactiveren: alleen wat inactief is.
+      // Producten die al de doelstatus hebben, worden overgeslagen (idempotent).
+      const isTarget = reactivate ? product.status === "inactive" : product.status !== "inactive";
+
+      if (!isTarget) {
+        continue;
+      }
+
+      matched += 1;
+
+      if (!dryRun) {
+        await ctx.db.patch(product._id, { status: targetStatus, gewijzigdOp: Date.now() });
+        changed += 1;
+      }
+    }
+
+    return {
+      dryRun,
+      reactivate,
+      categorySlug: args.categorySlug,
+      categoryName: category.naam,
+      categoryFound: true,
+      scanned: paginated.page.length,
+      matched,
+      changed: dryRun ? 0 : changed,
+      isDone: paginated.isDone,
+      continueCursor: paginated.continueCursor
+    };
+  }
+});

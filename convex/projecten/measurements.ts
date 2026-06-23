@@ -787,7 +787,9 @@ export const deleteMeasurementRoom = mutation({
       .first();
 
     if (line) {
-      throw new ConvexError("Deze meetruimte bevat meetregels en kan niet veilig worden verwijderd.");
+      throw new ConvexError(
+        "Deze meetruimte bevat meetregels en kan niet veilig worden verwijderd."
+      );
     }
 
     await ctx.db.delete(room._id);
@@ -826,11 +828,7 @@ export const addMeasurementLine = mutation({
     if (args.ruimteId) {
       const room = await ctx.db.get(args.ruimteId);
 
-      if (
-        !room ||
-        room.tenantId !== args.tenantId ||
-        room.inmetingId !== args.inmetingId
-      ) {
+      if (!room || room.tenantId !== args.tenantId || room.inmetingId !== args.inmetingId) {
         throw new ConvexError("Measurement room not found");
       }
     }
@@ -843,7 +841,8 @@ export const addMeasurementLine = mutation({
 
     // Richtprijs-snapshot bewaren bij een gekozen product óf bij een productloze richtprijs
     // (raambekleding-matrix: geen catalogusproduct, maar wél een indicatieve prijs).
-    const keepSnapshot = Boolean(args.productId) || args.indicatieveEenheidsprijsExBtw !== undefined;
+    const keepSnapshot =
+      Boolean(args.productId) || args.indicatieveEenheidsprijsExBtw !== undefined;
 
     const lineId = await ctx.db.insert("measurementLines", {
       tenantId: args.tenantId,
@@ -865,13 +864,123 @@ export const addMeasurementLine = mutation({
       indicatiefBtwTarief: keepSnapshot ? args.indicatiefBtwTarief : undefined,
       indicatievePrijsEenheid: keepSnapshot ? args.indicatievePrijsEenheid : undefined,
       indicatievePrijsSoort: keepSnapshot ? args.indicatievePrijsSoort : undefined,
-      indicatiefVastgelegdOp: keepSnapshot ? args.indicatiefVastgelegdOp ?? now : undefined,
+      indicatiefVastgelegdOp: keepSnapshot ? (args.indicatiefVastgelegdOp ?? now) : undefined,
       aangemaaktOp: now,
       gewijzigdOp: now
     });
     await touchMeasurement(ctx, args.inmetingId, now);
 
     return lineId;
+  }
+});
+
+/**
+ * Voegt meerdere meetregels in één keer toe (Fase C — workflow product → ruimtes → maten).
+ * Eén gekozen product/dienst wordt op N ruimtes toegepast: de client berekent per ruimte de
+ * regel met de gedeelde afleidings-engine (src/lib/quotes/roomLineDerivation.ts) en stuurt de
+ * kant-en-klare regels mee. De server valideert elke regel net als addMeasurementLine
+ * (hoeveelheid, ruimte hoort bij deze inmeting, product is selecteerbaar) en bewaart de
+ * richtprijs-snapshot. Ruimte- en productcontroles worden gecachet omdat dezelfde ruimte/product
+ * vaak in meerdere regels terugkomt.
+ */
+const MAX_BULK_LINES = 200;
+
+export const addMeasurementLinesBulk = mutation({
+  args: {
+    tenantId: v.id("tenants"),
+    actor: mutationActorValidator,
+    inmetingId: v.id("measurements"),
+    regels: v.array(
+      v.object({
+        ruimteId: v.optional(v.id("measurementRooms")),
+        productGroep: productGroup,
+        berekeningType: calculationType,
+        invoer: v.any(),
+        resultaat: v.any(),
+        snijverliesPct: v.optional(v.number()),
+        aantal: v.number(),
+        eenheid: v.string(),
+        notities: v.optional(v.string()),
+        offerteRegelType: quoteLineType,
+        ...indicativeSnapshotArgs
+      })
+    )
+  },
+  handler: async (ctx, args) => {
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+    await requireMeasurement(ctx, args.tenantId, args.inmetingId);
+
+    if (args.regels.length === 0) {
+      return { lineIds: [], count: 0 };
+    }
+
+    if (args.regels.length > MAX_BULK_LINES) {
+      throw new ConvexError(`Maximaal ${MAX_BULK_LINES} regels per keer.`);
+    }
+
+    const checkedRooms = new Set<string>();
+    const checkedProducts = new Set<string>();
+    const now = Date.now();
+    const lineIds: Array<Id<"measurementLines">> = [];
+
+    for (const regel of args.regels) {
+      validateMeasurementQuantities(regel.aantal, regel.snijverliesPct);
+
+      if (regel.ruimteId && !checkedRooms.has(regel.ruimteId)) {
+        const room = await ctx.db.get(regel.ruimteId);
+
+        if (!room || room.tenantId !== args.tenantId || room.inmetingId !== args.inmetingId) {
+          throw new ConvexError("Measurement room not found");
+        }
+
+        checkedRooms.add(regel.ruimteId);
+      }
+
+      if (regel.productId && !checkedProducts.has(regel.productId)) {
+        await requireSelectableProduct(ctx, args.tenantId, regel.productId);
+        checkedProducts.add(regel.productId);
+      }
+
+      const keepSnapshot =
+        Boolean(regel.productId) || regel.indicatieveEenheidsprijsExBtw !== undefined;
+
+      const lineId = await ctx.db.insert("measurementLines", {
+        tenantId: args.tenantId,
+        inmetingId: args.inmetingId,
+        ruimteId: regel.ruimteId,
+        productGroep: regel.productGroep,
+        berekeningType: regel.berekeningType,
+        invoer: regel.invoer,
+        resultaat: regel.resultaat,
+        snijverliesPct: regel.snijverliesPct,
+        aantal: regel.aantal,
+        eenheid: regel.eenheid,
+        notities: regel.notities,
+        offerteRegelType: regel.offerteRegelType,
+        quotePreparationStatus: "draft",
+        productId: regel.productId,
+        productNaam: keepSnapshot ? regel.productNaam : undefined,
+        indicatieveEenheidsprijsExBtw: keepSnapshot
+          ? regel.indicatieveEenheidsprijsExBtw
+          : undefined,
+        indicatiefBtwTarief: keepSnapshot ? regel.indicatiefBtwTarief : undefined,
+        indicatievePrijsEenheid: keepSnapshot ? regel.indicatievePrijsEenheid : undefined,
+        indicatievePrijsSoort: keepSnapshot ? regel.indicatievePrijsSoort : undefined,
+        indicatiefVastgelegdOp: keepSnapshot ? (regel.indicatiefVastgelegdOp ?? now) : undefined,
+        aangemaaktOp: now,
+        gewijzigdOp: now
+      });
+
+      lineIds.push(lineId);
+    }
+
+    await touchMeasurement(ctx, args.inmetingId, now);
+
+    return { lineIds, count: lineIds.length };
   }
 });
 
@@ -895,7 +1004,9 @@ export const updateMeasurementLineStatus = mutation({
     }
 
     if (args.quotePreparationStatus === "converted") {
-      throw new ConvexError("Gebruik de verwerkingsactie om een meetregel aan een offerte te koppelen.");
+      throw new ConvexError(
+        "Gebruik de verwerkingsactie om een meetregel aan een offerte te koppelen."
+      );
     }
 
     const now = Date.now();
@@ -926,6 +1037,7 @@ export const updateMeasurementLine = mutation({
     notities: v.optional(v.string()),
     offerteRegelType: quoteLineType,
     quotePreparationStatus: v.optional(quotePreparationStatus),
+    handmatigAangepast: v.optional(v.boolean()),
     ...indicativeSnapshotArgs,
     /** Expliciet de productkeuze + snapshot wissen (undefined overleeft JSON niet). */
     clearProduct: v.optional(v.boolean())
@@ -962,29 +1074,35 @@ export const updateMeasurementLine = mutation({
     // Productkeuze: alleen overschrijven als de aanroeper het veld meestuurt of
     // expliciet wist via clearProduct (undefined overleeft JSON-serialisatie niet).
     const touchesProduct = hasArg(args, "productId") || args.clearProduct === true;
-    const nextProductId = args.clearProduct === true ? undefined : touchesProduct ? args.productId : line.productId;
+    const nextProductId =
+      args.clearProduct === true ? undefined : touchesProduct ? args.productId : line.productId;
 
-    // Een productloze matrix-richtprijs (raambekleding) wordt herkend aan indicativePriceType "matrix".
-    // De aanroeper mag zo'n snapshot opnieuw meesturen (her-prijzen bij gewijzigde maten) zónder product.
-    const sendsMatrixSnapshot =
-      args.indicatievePrijsSoort === "matrix" && args.indicatieveEenheidsprijsExBtw !== undefined;
-    const usesArgsSnapshot = touchesProduct || sendsMatrixSnapshot;
+    // Productloze richtprijzen (raambekleding-matrix = "matrix"; dienst/legkost = "service_rule")
+    // mogen opnieuw worden meegestuurd (her-prijzen bij gewijzigde maten) zónder product.
+    const isProductlessSnapshotType = (type?: string) =>
+      type === "matrix" || type === "service_rule";
+    const sendsProductlessSnapshot =
+      isProductlessSnapshotType(args.indicatievePrijsSoort) &&
+      args.indicatieveEenheidsprijsExBtw !== undefined;
+    const usesArgsSnapshot = touchesProduct || sendsProductlessSnapshot;
     const snapshotSource = usesArgsSnapshot ? args : line;
-    const isMatrixSnapshot =
-      snapshotSource.indicatievePrijsSoort === "matrix" &&
+    const isProductlessSnapshot =
+      isProductlessSnapshotType(snapshotSource.indicatievePrijsSoort) &&
       snapshotSource.indicatieveEenheidsprijsExBtw !== undefined;
 
     // Behoud een prijssnapshot wanneer er een product is én de prijseenheid bij de (mogelijk
-    // gewijzigde) meeteenheid past, OF wanneer het een productloze matrix-richtprijs is. Anders
+    // gewijzigde) meeteenheid past, OF wanneer het een productloze richtprijs is. Anders
     // vervalt de prijs zodat geen m²-prijs × meters de offerte in stroomt. clearProduct wist altijd.
     const keepPriceSnapshot = Boolean(
       args.clearProduct !== true &&
-        ((nextProductId &&
-          snapshotSource.indicatieveEenheidsprijsExBtw !== undefined &&
-          (touchesProduct || isUnitCompatible(args.eenheid, snapshotSource.indicatievePrijsEenheid))) ||
-          (!nextProductId && isMatrixSnapshot))
+      ((nextProductId &&
+        snapshotSource.indicatieveEenheidsprijsExBtw !== undefined &&
+        (touchesProduct ||
+          isUnitCompatible(args.eenheid, snapshotSource.indicatievePrijsEenheid))) ||
+        (!nextProductId && isProductlessSnapshot))
     );
-    const keepProductName = args.clearProduct !== true && (Boolean(nextProductId) || isMatrixSnapshot);
+    const keepProductName =
+      args.clearProduct !== true && (Boolean(nextProductId) || isProductlessSnapshot);
 
     await ctx.db.patch(line._id, {
       ruimteId: args.ruimteId,
@@ -998,15 +1116,20 @@ export const updateMeasurementLine = mutation({
       notities: args.notities,
       offerteRegelType: args.offerteRegelType,
       quotePreparationStatus: args.quotePreparationStatus ?? line.quotePreparationStatus,
+      handmatigAangepast: args.handmatigAangepast ?? line.handmatigAangepast,
       productId: nextProductId,
       productNaam: keepProductName ? snapshotSource.productNaam : undefined,
-      indicatieveEenheidsprijsExBtw: keepPriceSnapshot ? snapshotSource.indicatieveEenheidsprijsExBtw : undefined,
+      indicatieveEenheidsprijsExBtw: keepPriceSnapshot
+        ? snapshotSource.indicatieveEenheidsprijsExBtw
+        : undefined,
       indicatiefBtwTarief: keepPriceSnapshot ? snapshotSource.indicatiefBtwTarief : undefined,
-      indicatievePrijsEenheid: keepPriceSnapshot ? snapshotSource.indicatievePrijsEenheid : undefined,
+      indicatievePrijsEenheid: keepPriceSnapshot
+        ? snapshotSource.indicatievePrijsEenheid
+        : undefined,
       indicatievePrijsSoort: keepPriceSnapshot ? snapshotSource.indicatievePrijsSoort : undefined,
       indicatiefVastgelegdOp: keepPriceSnapshot
         ? usesArgsSnapshot
-          ? args.indicatiefVastgelegdOp ?? Date.now()
+          ? (args.indicatiefVastgelegdOp ?? Date.now())
           : line.indicatiefVastgelegdOp
         : undefined,
       gewijzigdOp: Date.now()
@@ -1088,11 +1211,7 @@ export const markMeasurementLineConverted = mutation({
 
     const quoteLine = await ctx.db.get(args.quoteLineId);
 
-    if (
-      !quoteLine ||
-      quoteLine.tenantId !== args.tenantId ||
-      quoteLine.quoteId !== args.quoteId
-    ) {
+    if (!quoteLine || quoteLine.tenantId !== args.tenantId || quoteLine.quoteId !== args.quoteId) {
       throw new ConvexError("Quote line not found");
     }
 
@@ -1139,13 +1258,13 @@ export const seedDefaultWasteProfiles = mutation({
       {
         productGroup: "flooring",
         name: "PVC rechte plank",
-        defaultWastePercent: 7,
+        defaultWastePercent: 3,
         description: "Indicatief snijverlies voor PVC in rechte plank."
       },
       {
         productGroup: "flooring",
         name: "PVC visgraat",
-        defaultWastePercent: 12,
+        defaultWastePercent: 5,
         description: "Indicatief snijverlies voor PVC visgraat."
       },
       {

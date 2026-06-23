@@ -27,7 +27,9 @@ export const list = query({
     actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
+    // Lezen mag door iedereen die mag inmeten/offreren (user/editor/admin): de inmeet-flow
+    // koppelt diensten/legkosten aan ruimtes. Beheren (create/update) blijft admin-only.
+    await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, ["user", "editor", "admin"]);
 
     return await ctx.db
       .query("serviceCostRules")

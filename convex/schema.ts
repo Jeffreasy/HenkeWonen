@@ -813,6 +813,9 @@ export default defineSchema({
     notities: v.optional(v.string()),
     offerteRegelType: quoteLineType,
     quotePreparationStatus,
+    // True = hoeveelheid is handmatig aangepast; wordt dan NIET automatisch herrekend bij
+    // een latere wijziging van de ruimtematen (krijgt in plaats daarvan een controle-seintje).
+    handmatigAangepast: v.optional(v.boolean()),
     // Optionele productkeuze tijdens het inmeten + richtprijs-snapshot.
     // Snapshot = prijs op keuzemoment; de offerte blijft de plek voor de definitieve prijs.
     productId: v.optional(v.id("products")),
