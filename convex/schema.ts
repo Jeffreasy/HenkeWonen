@@ -224,6 +224,9 @@ export default defineSchema({
     // gebruiker expliciet op true staat, toont de agenda alleen die (whitelist); zolang
     // niemand is aangevinkt valt 'ie terug op alle niet-viewers (backward-compatible).
     toonInAgenda: v.optional(v.boolean()),
+    // Optionele weergavenaam-override voor de agenda/teamlijst (bv. "Winkel" voor Simone).
+    // Los van het gesynchroniseerde `naam`-veld, zodat een auth-sync 'm niet overschrijft.
+    agendaWeergaveNaam: v.optional(v.string()),
     aangemaaktOp: v.number(),
     gewijzigdOp: v.number()
   })
