@@ -87,8 +87,39 @@ Keuze (niet pilot-blokkerend):
   later marge-delers/opslagen uit één tabel willen laten halen). Tot die tijd misleidt 'ie alleen in audits.
 - De test `tests/calculatorRulesSeed.test.ts` die "18 placeholders" vergrendelt, vervalt dan mee.
 
+## E. Bron-validatie + ontbrekende arbeidsregels (uit HenkeWonenDATA)
+
+Grondige uitlezing van de bronbestanden in `HenkeWonenDATA` (24 jun):
+
+**Bevestigd — `serviceCostRules` is een getrouwe import.** De 19 tarieven onder A komen 1-op-1 uit het
+interne master-bestand **`Henke Wonen Jeffrey.xlsx`**, tabblad *"Werkzaamheden kosten totaal"* (peildatum
+**23 apr 2026**). Wim/Simone hoeven dus alleen te bevestigen dat ze nog actueel zijn.
+
+**De volledige arbeids-taxonomie staat in `Offerte voorbeeld.xlsx`** (Henke's eigen offerte-template). Daaruit
+blijkt dat een paar arbeidsregels die er op elke offerte op kunnen staan, **geen tarief in het systeem hebben**
+(ze worden nu handmatig als "0,00" ingevuld). Die zijn nergens gedigitaliseerd — alleen Wim/Simone kennen ze:
+
+| Ontbrekende arbeidsregel | Eenheid (uit offerte) | Nu |
+|---|---|---|
+| **Gordijn-confectie (maakloon)** | per stel/stuk | handmatig |
+| **Gordijnrail "kompleet geplaatst"** | per meter | handmatig |
+| **Plint montage** ("plint geplaatst") | per meter | handmatig |
+| **Wandpanelen montage** ("geplaatst incl. lijm") | per stuk | handmatig |
+| Zwevende ondervloer leggen (evt. = PVC plakondervloer €22,95) | per m² | verifiëren |
+| Raambekleding-montage plissé/jaloezie/duette | per stuk | mogelijk al in de matrix-prijs ("kompleet geplaatst") |
+
+> **Vraag aan Wim/Simone:** wat zijn jullie tarieven voor de **vetgedrukte** vier? Dan voeg ik ze toe als
+> nieuwe `serviceCostRules` en is de arbeidszijde compleet.
+
+**Materiaal vs. arbeid — niet verwarren.** De bronbestanden `Prijslijst Traprenovatie Floorlife` (traptreden-
+sets €27,45–99,50/trede), `Prijslijst Wandpanelen`, `Douchepanelen en tegels`, en de gordijnstof-lijsten
+("Incl. MV" = Mart Visser, per meter) zijn **materiaal-catalogi** — die staan al als producten in de catalogus.
+Arbeid en materiaal worden in de offerte als aparte regels gevoerd; alleen de arbeidstarieven hierboven ontbreken.
+
 ## Samenvatting voor de pilot
 
-Geen €0-arbeid-probleem. Te doen: Wim/Simone **A** (19 serviceCostRules-tarieven) + **B** (7 snijverlies-%'s)
-**verifiëren** (waarden bestaan al), en **C** (4 gordijn-/egaline-defaults) bevestigen. Dat is de hele
-business-bevestiging — veel kleiner dan de oorspronkelijke "18 placeholders".
+Geen €0-arbeid-probleem. Te doen voor Wim/Simone: **A** (19 serviceCostRules-tarieven) + **B** (7
+snijverlies-%'s) **verifiëren** (bestaan al, bron-geverifieerd uit hun eigen master-sheet), **C** (4 gordijn-/
+egaline-defaults) bevestigen, en **E** (4 ontbrekende arbeidstarieven: confectie, rail, plint, wandpaneel-
+montage) **aanleveren**. Dat is de hele business-bevestiging — veel concreter dan de oorspronkelijke "18
+placeholders", en grotendeels al gevuld.
