@@ -36,7 +36,7 @@ Volgorde: pilot-kritisch eerst. **Maak vóór elke prod-mutatie eerst een verse 
   ```
   Zorg dat `ALLOW_DEV_AUTH`/`ALLOW_DEV_AUTHZ_TOKENS` NIET gezet zijn. Runbook: `auth-env-status-2026-06-01.md`.
 - [ ] **Echte LaventeCare-login-smoke** (login → `/portal` → `/portal/buitendienst` → `/portal/beheer` + `/portal/catalogus` → logout, incl. MFA; bevestig dat `/portal` na logout naar `/login` redirect). **Blokker:** vereist een echt LaventeCare-testaccount dat nog aangeleverd moet worden.
-- [ ] **Calculator-regels** door Wim/Simone laten bevestigen — zie `calculator-bedrijfsregels-bevestiging-2026-06-24.md` (prioriteit: de 7 arbeids-opslagen op €0).
+- [ ] **Reken-/arbeidswaarden** door Wim/Simone laten **verifiëren** — zie `calculator-bedrijfsregels-bevestiging-2026-06-24.md`. NB (na onderzoek): geen €0-arbeid-probleem; arbeid zit al in `serviceCostRules` en snijverlies in `wasteProfiles` (beide gevuld) → alleen verifiëren + 4 gordijn-/egaline-code-defaults bevestigen. De `calculatorRules`-tabel is inert (post-pilot droppen).
 
 ### 🟧 Prod-data-hygiëne (met verse backup vooraf)
 - [ ] **13 cascade-wezen opruimen** (2 projectRooms, 3 projectTasks, 7 workflowEvents, 1 quoteLine):
