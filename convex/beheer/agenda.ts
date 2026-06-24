@@ -30,6 +30,22 @@ export function isInmeetdag(datumMs: number): boolean {
 }
 
 /**
+ * Nette weergavenaam voor een gebruiker in de agenda/teamlijst: het ingestelde naam-veld,
+ * anders een opgemaakte afleiding van het e-mail-lokaaldeel ("Wim@henkewonen.nl" → "Wim",
+ * "jan.jansen@…" → "Jan Jansen"). Voorkomt dat ruwe e-mailadressen in de agenda staan.
+ */
+export function weergaveNaam(user: { naam?: string | null; email: string }): string {
+  if (user.naam && user.naam.trim()) return user.naam.trim();
+  const local = (user.email ?? "").split("@")[0] ?? "";
+  if (!local) return user.email ?? "";
+  return local
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((deel) => deel.charAt(0).toUpperCase() + deel.slice(1))
+    .join(" ");
+}
+
+/**
  * Bepaalt of een inmeting bij een monteur hoort. Leidend is de stabiele
  * gemetenDoorUserId; alleen als die ontbreekt (oude/legacy of vrije-tekst rijen)
  * vallen we terug op de naam. Zo breken hernoemen of dubbele namen niets.
@@ -550,7 +566,8 @@ export const agendaWeek = query({
       }
 
       result.push({
-        monteur: { id: String(monteur._id), naam, role: monteur.role },
+        // `naam` (e-mail-fallback) blijft voor de match; voor de weergave een nette naam.
+        monteur: { id: String(monteur._id), naam: weergaveNaam(monteur), role: monteur.role },
         werktijden,
         afwezigheden,
         bezoeken
@@ -619,7 +636,7 @@ export const inmeetBeschikbaarheid = query({
     }
 
     return {
-      monteur: { id: String(monteur._id), naam: besch.naam },
+      monteur: { id: String(monteur._id), naam: weergaveNaam(monteur) },
       weekdag: besch.weekdag,
       isInmeetdag: besch.isInmeetdag,
       venster: { startMinuut: INMEET_START_MINUUT, eindMinuut: INMEET_EIND_MINUUT },
