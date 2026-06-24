@@ -78,6 +78,11 @@ export default function BeschikbaarheidPanel({
 
   const periodeOngeldig = dateInputNaarMs(afTot) < dateInputNaarMs(afVanaf);
 
+  // Een actieve roosterdag moet een eindtijd ná de starttijd hebben.
+  const rijOngeldig = (r: RoosterRij) =>
+    r.actief && timeNaarMinuut(r.start) >= timeNaarMinuut(r.eind);
+  const roosterOngeldig = rooster.some(rijOngeldig);
+
   function client() {
     const c = createConvexHttpClient(session);
     if (!c) {
@@ -93,6 +98,7 @@ export default function BeschikbaarheidPanel({
   async function roosterOpslaan() {
     const c = client();
     if (!c) return;
+    if (roosterOngeldig) return;
     const werktijdenInput = rooster
       .filter((r) => r.actief)
       .map((r) => ({
@@ -190,6 +196,7 @@ export default function BeschikbaarheidPanel({
           <FragmentRow
             key={r.weekdag}
             rij={r}
+            ongeldig={rijOngeldig(r)}
             onToggle={(actief) => setRij(r.weekdag, { actief })}
             onStart={(start) => setRij(r.weekdag, { start })}
             onEind={(eind) => setRij(r.weekdag, { eind })}
@@ -201,6 +208,7 @@ export default function BeschikbaarheidPanel({
           variant="primary"
           size="sm"
           isLoading={bezig}
+          disabled={roosterOngeldig}
           leftIcon={<Save size={15} aria-hidden="true" />}
           onClick={roosterOpslaan}
         >
@@ -277,11 +285,13 @@ export default function BeschikbaarheidPanel({
 
 function FragmentRow({
   rij,
+  ongeldig,
   onToggle,
   onStart,
   onEind
 }: {
   rij: RoosterRij;
+  ongeldig: boolean;
   onToggle: (actief: boolean) => void;
   onStart: (v: string) => void;
   onEind: (v: string) => void;
@@ -301,6 +311,7 @@ function FragmentRow({
         type="time"
         value={rij.start}
         disabled={!rij.actief}
+        aria-invalid={ongeldig || undefined}
         onChange={(e) => onStart(e.target.value)}
         aria-label={`${WEEKDAG_LANG[rij.weekdag]} starttijd`}
       />
@@ -308,9 +319,15 @@ function FragmentRow({
         type="time"
         value={rij.eind}
         disabled={!rij.actief}
+        aria-invalid={ongeldig || undefined}
         onChange={(e) => onEind(e.target.value)}
         aria-label={`${WEEKDAG_LANG[rij.weekdag]} eindtijd`}
       />
+      {ongeldig ? (
+        <span className="rooster-rij-fout" role="alert">
+          Eindtijd moet ná de starttijd liggen.
+        </span>
+      ) : null}
     </>
   );
 }

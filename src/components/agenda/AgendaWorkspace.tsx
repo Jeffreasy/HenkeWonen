@@ -5,6 +5,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { canManageAgenda, isFieldWorkspace, type AppSession } from "../../lib/auth/session";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { createConvexHttpClient } from "../../lib/convex/client";
+import { showToast } from "../../lib/toast";
 import {
   AFWEZIGHEID_LABEL,
   WEEKDAG_KORT,
@@ -54,6 +55,7 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
   const [error, setError] = useState<string | null>(null);
   const [beheerMonteur, setBeheerMonteur] = useState<MonteurAgenda | null>(null);
   const [teamLeden, setTeamLeden] = useState<AgendaLid[]>([]);
+  const [teamError, setTeamError] = useState<string | null>(null);
   const mag = canManageAgenda(session.role);
   const veld = isFieldWorkspace(session);
   const lastRequestId = useRef(0);
@@ -111,8 +113,10 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
     try {
       const res = await client.query(api.portal.listTeamMembers, { tenantSlug: session.tenantId });
       setTeamLeden(((res ?? []) as AgendaLid[]).filter((u) => u.role !== "viewer"));
-    } catch (teamError) {
-      console.error(teamError);
+      setTeamError(null);
+    } catch (loadTeamError) {
+      console.error(loadTeamError);
+      setTeamError("De teamlijst kon niet worden geladen.");
     }
   }, [mag, session]);
 
@@ -134,6 +138,11 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
       await load(); // agenda herladen — de whitelist kan nu wijzigen
     } catch (toggleError) {
       console.error(toggleError);
+      showToast({
+        title: "Zichtbaarheid niet opgeslagen",
+        description: "Probeer het opnieuw.",
+        tone: "error"
+      });
       await loadTeam(); // herstel de echte stand bij een fout
     }
   }
@@ -269,29 +278,41 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
         ))
       )}
 
-      {mag && teamLeden.length > 0 ? (
+      {mag && (teamLeden.length > 0 || teamError) ? (
         <Card className="agenda-leden">
           <h3>Wie staat in de agenda</h3>
-          <p className="agenda-leden-hint">
-            Vink aan wie als monteur in de agenda verschijnt. Zodra je iemand aanvinkt, toont de
-            agenda alléén de aangevinkte personen — handig om bijvoorbeeld admin-/dev-accounts te
-            verbergen.
-          </p>
-          <ul className="agenda-leden-lijst">
-            {teamLeden.map((lid) => (
-              <li key={lid.id} className="agenda-lid">
-                <label className="agenda-lid-label">
-                  <input
-                    type="checkbox"
-                    checked={lid.toonInAgenda === true}
-                    onChange={(event) => void toggleZichtbaar(lid.id, event.target.checked)}
-                  />
-                  <span className="agenda-lid-naam">{lid.naam}</span>
-                  <span className="agenda-lid-email">{lid.email}</span>
-                </label>
-              </li>
-            ))}
-          </ul>
+          {teamError ? (
+            <Alert variant="danger" title="Teamlijst niet geladen" description={teamError}>
+              <div className="agenda-alert-actie">
+                <Button variant="secondary" size="sm" onClick={() => void loadTeam()}>
+                  Opnieuw proberen
+                </Button>
+              </div>
+            </Alert>
+          ) : (
+            <>
+              <p className="agenda-leden-hint">
+                Vink aan wie als monteur in de agenda verschijnt. Zodra je iemand aanvinkt, toont de
+                agenda alléén de aangevinkte personen — handig om bijvoorbeeld admin-/dev-accounts te
+                verbergen.
+              </p>
+              <ul className="agenda-leden-lijst">
+                {teamLeden.map((lid) => (
+                  <li key={lid.id} className="agenda-lid">
+                    <label className="agenda-lid-label">
+                      <input
+                        type="checkbox"
+                        checked={lid.toonInAgenda === true}
+                        onChange={(event) => void toggleZichtbaar(lid.id, event.target.checked)}
+                      />
+                      <span className="agenda-lid-naam">{lid.naam}</span>
+                      <span className="agenda-lid-email">{lid.email}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </Card>
       ) : null}
 
