@@ -272,6 +272,33 @@ export const removeAfwezigheid = mutation({
   }
 });
 
+// ── Agenda-leden ─────────────────────────────────────────────────────────────
+// Bepaalt of een gebruiker als monteur in de week-agenda verschijnt. Editor/admin
+// kan dit per gebruiker aan/uit zetten (bv. dev-/admin-accounts verbergen).
+export const setAgendaZichtbaarheid = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    userId: v.id("users"),
+    toonInAgenda: v.boolean()
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "editor",
+      "admin"
+    ]);
+    const user = await ctx.db.get(args.userId);
+    if (!user || user.tenantId !== tenant._id) {
+      throw new ConvexError("Gebruiker niet gevonden.");
+    }
+    await ctx.db.patch(args.userId, {
+      toonInAgenda: args.toonInAgenda,
+      gewijzigdOp: Date.now()
+    });
+    return { userId: String(args.userId), toonInAgenda: args.toonInAgenda };
+  }
+});
+
 // ── Agenda (week) ────────────────────────────────────────────────────────────
 // Levert per monteur de werktijden, afwezigheden én geboekte inmeetbezoeken in
 // een week van 7 dagen vanaf `weekStart`. "Bereikbaar" wordt in de UI afgeleid
@@ -308,12 +335,16 @@ export const agendaWeek = query({
       ).find((u: Doc<"users">) => u.tenantId === tenant._id);
       monteurs = eigen ? [eigen] : [];
     } else {
-      monteurs = (
+      const nietViewers = (
         await ctx.db
           .query("users")
           .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
           .collect()
       ).filter((u: Doc<"users">) => u.role !== "viewer"); // kijkers doen geen inmetingen
+      // Whitelist zodra er minstens één gebruiker expliciet op `toonInAgenda: true` staat;
+      // anders (nog niet geconfigureerd) alle niet-viewers, zodat de agenda nooit leeg is.
+      const aangevinkt = nietViewers.filter((u: Doc<"users">) => u.toonInAgenda === true);
+      monteurs = aangevinkt.length > 0 ? aangevinkt : nietViewers;
     }
 
     // Geboekte inmeetbezoeken in de week (tenant-gescopet via de datum-index),
