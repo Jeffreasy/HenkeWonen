@@ -10,7 +10,7 @@ export const dashboard = query({
     actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+    const { tenant, workspaceMode } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
       "viewer",
       "user",
       "editor",
@@ -202,7 +202,12 @@ export const dashboard = query({
         };
       }),
       projects: visibleProjects,
-      invoiceStats: { openAmount, overdueCount }
+      // Buitendienst (field-mode) ziet bewust geen factuurbedragen — consistent met de
+      // ensureNotFieldMode-grens op de facturen zelf. Genormaliseerd op 0 i.p.v. de echte stand.
+      invoiceStats:
+        workspaceMode === "field"
+          ? { openAmount: 0, overdueCount: 0 }
+          : { openAmount, overdueCount }
     };
   }
 });

@@ -638,6 +638,52 @@ export const updateQuoteTerms = mutation({
   }
 });
 
+/**
+ * Bevrijdt alle uit een offerte geïmporteerde inmeetregels: zet ze terug op
+ * 'ready_for_quote' en wist de conversie-refs, zodat de buitendienst-inmeting
+ * opnieuw naar een (andere) offerte kan worden geïmporteerd. Aanroepen zodra een
+ * offerte definitief niet meer leidend is (afgewezen/geannuleerd/auto-geannuleerd) —
+ * anders blijven de meetregels permanent op 'converted' staan en verdwijnen ze uit
+ * de import-picker, waardoor het inmeetwerk onbruikbaar wordt voor een nieuwe offerte.
+ */
+async function restoreMeasurementLinesForQuote(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  projectId: Id<"projects">,
+  quoteId: Id<"quotes">
+): Promise<void> {
+  const now = Date.now();
+  const measurements = await ctx.db
+    .query("measurements")
+    .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
+    .collect();
+
+  for (const measurement of measurements) {
+    const mLines = await ctx.db
+      .query("measurementLines")
+      .withIndex("by_measurement", (q: any) =>
+        q.eq("tenantId", tenantId).eq("inmetingId", measurement._id)
+      )
+      .collect();
+
+    let touched = false;
+    for (const ml of mLines) {
+      if (ml.geconverteerdeOfferteId === quoteId && ml.quotePreparationStatus === "converted") {
+        await ctx.db.patch(ml._id, {
+          quotePreparationStatus: "ready_for_quote",
+          geconverteerdeOfferteId: undefined,
+          geconverteerdeOfferteregelId: undefined,
+          gewijzigdOp: now
+        });
+        touched = true;
+      }
+    }
+    if (touched) {
+      await ctx.db.patch(measurement._id, { gewijzigdOp: now });
+    }
+  }
+}
+
 export const updateQuoteStatus = mutation({
   args: {
     tenantSlug: v.string(),
@@ -742,6 +788,8 @@ export const updateQuoteStatus = mutation({
             status: "cancelled",
             gewijzigdOp: now
           });
+          // Bevrijd de inmeetregels van de zojuist auto-geannuleerde offerte.
+          await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, other._id);
         }
       }
     }
@@ -805,10 +853,12 @@ export const updateQuoteStatus = mutation({
     if (args.status === "cancelled") {
       await addProjectEvent(ctx, tenant._id, project._id, "closed", "Offerte geannuleerd", externalUserId);
       await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "dismissed", quote._id);
+      await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, quote._id);
     }
 
     if (args.status === "rejected") {
       await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "dismissed", quote._id);
+      await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, quote._id);
     }
 
     return quote._id;
