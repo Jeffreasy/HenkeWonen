@@ -3,7 +3,7 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { mutationActorValidator, readActorValidator, requireMutationRole, requireQueryRole } from "../authz";
 
-const DAG_MS = 24 * 60 * 60 * 1000;
+export const DAG_MS = 24 * 60 * 60 * 1000;
 
 // ── Inmeet-regels (Henke Wonen) ───────────────────────────────────────────────
 // Inmeten kan alleen op di/wo/do, in het aankomstvenster 16:30–17:30. Per
@@ -12,11 +12,19 @@ const DAG_MS = 24 * 60 * 60 * 1000;
 const INMEET_DAGEN = [1, 2, 3]; // 0=maandag .. 6=zondag → di, wo, do
 const INMEET_START_MINUUT = 16 * 60 + 30; // 16:30
 const INMEET_EIND_MINUUT = 17 * 60 + 30; // 17:30
-const INMEET_CAPACITEIT = 2;
+export const INMEET_CAPACITEIT = 2;
 
 /** Weekdag (0=maandag .. 6=zondag), consistent met src/lib/agenda.weekdagVan. */
-function weekdagVanMs(ms: number): number {
+export function weekdagVanMs(ms: number): number {
   return (new Date(ms).getDay() + 6) % 7;
+}
+
+/** Maandag 00:00 (lokaal) van de week waarin `ms` valt — server-side spiegel van startVanWeek. */
+export function startVanWeekMs(ms: number): number {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - weekdagVanMs(d.getTime()));
+  return d.getTime();
 }
 
 /** Capaciteit die een klus inneemt: volledige woning = 2, anders (incl. onbekend) = 1. */
@@ -55,7 +63,11 @@ export function weergaveNaam(user: {
  * gemetenDoorUserId; alleen als die ontbreekt (oude/legacy of vrije-tekst rijen)
  * vallen we terug op de naam. Zo breken hernoemen of dubbele namen niets.
  */
-function hoortBijMonteur(meting: Doc<"measurements">, monteurId: Id<"users">, naam: string): boolean {
+export function hoortBijMonteur(
+  meting: Doc<"measurements">,
+  monteurId: Id<"users">,
+  naam: string
+): boolean {
   if (meting.gemetenDoorUserId) {
     return meting.gemetenDoorUserId === monteurId;
   }
