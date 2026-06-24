@@ -157,6 +157,26 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
     }
   }
 
+  async function saveNaam(userId: string, naam: string, huidige: string) {
+    if (naam.trim() === huidige.trim()) return; // niets gewijzigd
+    const client = createConvexHttpClient(session);
+    if (!client) return;
+    try {
+      await client.mutation(api.portal.setAgendaWeergaveNaam, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        userId: userId as Id<"users">,
+        naam
+      });
+      await loadTeam();
+      await load(); // de monteur-kaarten tonen de nieuwe naam
+    } catch (naamError) {
+      console.error(naamError);
+      showToast({ title: "Naam niet opgeslagen", description: "Probeer het opnieuw.", tone: "error" });
+      await loadTeam();
+    }
+  }
+
   const dagen = useMemo(() => weekDagen(weekStart), [weekStart]);
   const vandaag = useMemo(() => {
     const d = new Date();
@@ -327,20 +347,28 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
               <p className="agenda-leden-hint">
                 Vink aan wie als monteur in de agenda verschijnt. Zodra je iemand aanvinkt, toont de
                 agenda alléén de aangevinkte personen — handig om bijvoorbeeld admin-/dev-accounts te
-                verbergen.
+                verbergen. Je kunt de weergavenaam hier ook aanpassen (bv. "Winkel").
               </p>
               <ul className="agenda-leden-lijst">
                 {teamLeden.map((lid) => (
                   <li key={lid.id} className="agenda-lid">
-                    <label className="agenda-lid-label">
-                      <input
-                        type="checkbox"
-                        checked={lid.toonInAgenda === true}
-                        onChange={(event) => void toggleZichtbaar(lid.id, event.target.checked)}
-                      />
-                      <span className="agenda-lid-naam">{lid.naam}</span>
-                      <span className="agenda-lid-email">{lid.email}</span>
-                    </label>
+                    <input
+                      type="checkbox"
+                      checked={lid.toonInAgenda === true}
+                      onChange={(event) => void toggleZichtbaar(lid.id, event.target.checked)}
+                      aria-label={`${lid.naam} in de agenda tonen`}
+                    />
+                    <input
+                      className="agenda-lid-naam-input"
+                      type="text"
+                      defaultValue={lid.naam}
+                      aria-label={`Weergavenaam van ${lid.email}`}
+                      onBlur={(event) => void saveNaam(lid.id, event.target.value, lid.naam)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") event.currentTarget.blur();
+                      }}
+                    />
+                    <span className="agenda-lid-email">{lid.email}</span>
                   </li>
                 ))}
               </ul>

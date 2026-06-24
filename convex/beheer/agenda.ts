@@ -34,7 +34,12 @@ export function isInmeetdag(datumMs: number): boolean {
  * anders een opgemaakte afleiding van het e-mail-lokaaldeel ("Wim@henkewonen.nl" → "Wim",
  * "jan.jansen@…" → "Jan Jansen"). Voorkomt dat ruwe e-mailadressen in de agenda staan.
  */
-export function weergaveNaam(user: { naam?: string | null; email: string }): string {
+export function weergaveNaam(user: {
+  agendaWeergaveNaam?: string | null;
+  naam?: string | null;
+  email: string;
+}): string {
+  if (user.agendaWeergaveNaam && user.agendaWeergaveNaam.trim()) return user.agendaWeergaveNaam.trim();
   if (user.naam && user.naam.trim()) return user.naam.trim();
   const local = (user.email ?? "").split("@")[0] ?? "";
   if (!local) return user.email ?? "";
@@ -426,6 +431,33 @@ export const setAgendaZichtbaarheid = mutation({
       gewijzigdOp: Date.now()
     });
     return { userId: String(args.userId), toonInAgenda: args.toonInAgenda };
+  }
+});
+
+// Stel de weergavenaam-override voor de agenda/teamlijst in (bv. "Winkel" voor Simone).
+// Lege/witruimte-waarde wist de override → terug naar het naam-veld / e-mail-afleiding.
+export const setAgendaWeergaveNaam = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    userId: v.id("users"),
+    naam: v.string()
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "editor",
+      "admin"
+    ]);
+    const user = await ctx.db.get(args.userId);
+    if (!user || user.tenantId !== tenant._id) {
+      throw new ConvexError("Gebruiker niet gevonden.");
+    }
+    const naam = args.naam.trim();
+    await ctx.db.patch(args.userId, {
+      agendaWeergaveNaam: naam ? naam : undefined,
+      gewijzigdOp: Date.now()
+    });
+    return { userId: String(args.userId), agendaWeergaveNaam: naam || null };
   }
 });
 

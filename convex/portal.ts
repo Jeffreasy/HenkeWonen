@@ -256,7 +256,8 @@ export {
   listAfwezigheid,
   addAfwezigheid,
   removeAfwezigheid,
-  setAgendaZichtbaarheid
+  setAgendaZichtbaarheid,
+  setAgendaWeergaveNaam
 } from "./beheer/agenda";
 // clearTenantData is INTERN (internalMutation) en wordt bewust NIET geherexporteerd in de publieke portal-API.
 // Aanroepen via Convex dashboard of `npx convex run beheer/clearTenantData:clearTenantData`.

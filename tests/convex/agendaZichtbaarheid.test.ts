@@ -56,6 +56,29 @@ test("agendaWeek toont alléén de aangevinkte gebruikers (whitelist) — admin 
   expect(namen).toEqual(["Simone", "Wim"]);
 });
 
+test("setAgendaWeergaveNaam zet de weergavenaam (Winkel) en wist 'm weer terug naar de afgeleide naam", async () => {
+  stubAuth();
+  const t = convexTest(schema, modules);
+  const ids = await setup(t);
+
+  await t.mutation(api.portal.setAgendaWeergaveNaam, {
+    tenantSlug: "henke-wonen", actor, userId: ids.simoneId, naam: "Winkel"
+  });
+  await t.mutation(api.portal.setAgendaZichtbaarheid, {
+    tenantSlug: "henke-wonen", actor, userId: ids.simoneId, toonInAgenda: true
+  });
+
+  const res = await t.query(api.portal.agendaWeek, { tenantSlug: "henke-wonen", actor, weekStart: Date.now() });
+  expect(res.monteurs.map((m: { monteur: { naam: string } }) => m.monteur.naam)).toEqual(["Winkel"]);
+
+  // Lege waarde wist de override → terug naar het naam-veld (Simone).
+  await t.mutation(api.portal.setAgendaWeergaveNaam, {
+    tenantSlug: "henke-wonen", actor, userId: ids.simoneId, naam: "  "
+  });
+  const res2 = await t.query(api.portal.agendaWeek, { tenantSlug: "henke-wonen", actor, weekStart: Date.now() });
+  expect(res2.monteurs.map((m: { monteur: { naam: string } }) => m.monteur.naam)).toEqual(["Simone"]);
+});
+
 test("uitvinken zet de gebruiker terug; zonder aangevinkte valt de agenda terug op alle niet-viewers", async () => {
   stubAuth();
   const t = convexTest(schema, modules);
