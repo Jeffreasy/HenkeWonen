@@ -5,10 +5,14 @@
 > gedeeld `projects`-dossier delen. Focus: waar lekt of dupliceert data bij de overdracht, en is de mode-grens
 > consistent?
 
-## Eindoordeel: **nog NIET pilot-klaar — 1 echte blocker + 2 hoog, maar fixes zijn klein**
+## Eindoordeel: **opgelost → pilot-klaar** (was: 1 blocker + 2 hoog)
 
-Het fundament is solide en de happy-path werkt; de risico's zitten in **onomkeerbare/lekkende randgevallen**.
-Anders dan de algemene audit (die "launch-waardig" gaf) vindt deze gerichte audit één **operationele blocker**.
+> **Status-update 2026-06-24:** de blocker (#1) en het dashboard-lek (#3) zijn **gefixt + getest** (PR #37).
+> Voor #2 besliste de eigenaar dat **buitendienst offertes bewust mág finaliseren** — geen codewijziging, de
+> "winkel finaliseert"-aanname was achterhaald. Daarmee is de samenwerking pilot-klaar.
+
+Het fundament is solide en de happy-path werkt; de risico's zaten in **onomkeerbare/lekkende randgevallen** —
+die zijn nu gedicht.
 
 ## Naden-kaart (de handoff-keten)
 
@@ -32,20 +36,20 @@ Anders dan de algemene audit (die "launch-waardig" gaf) vindt deze gerichte audi
    meten af. `convex/offertes/core.ts` (updateQuoteStatus 805-812 + auto-cancel 728-747 vs herstel alleen in
    deleteQuoteLine 485). **Fix:** gedeelde helper `restoreMeasurementLinesForQuote(quoteId)` (zet terug op
    `ready_for_quote`, wis geconverteerde-offerte-refs), aanroepen vanuit updateQuoteStatus (rejected/cancelled) +
-   de auto-cancel-lus. Klein, gericht.
+   de auto-cancel-lus. Klein, gericht. **✅ GEFIXT + getest (PR #37):** helper toegevoegd; 3 convex-tests
+   (rejected/cancelled/auto-cancel).
 
-2. **🟠 Buitendienst kan offertes zelf finaliseren (verstuurd/akkoord) — winkel finaliseert dus NIET.**
-   In strijd met de gedocumenteerde flow ("conceptofferte buitendienst → definitieve offerte winkel"). `QuoteBuilder`
-   mode=field toont bewust de finaliseer-knoppen ([QuoteBuilder.tsx:775](src/components/quotes/QuoteBuilder.tsx:775))
-   en `updateQuoteStatus` ([offertes/core.ts:641](convex/offertes/core.ts:641)) heeft **geen** workspaceMode-check.
-   Accepteren patcht projectstatus → `quote_accepted`, annuleert concurrerende drafts, maakt taken aan. **Fix:**
-   beslis expliciet wie finaliseert. Winkel-exclusief → `ensureNotFieldMode`-gate in updateQuoteStatus (UI-knoppen
-   verbergen volstaat niet, de mutation is direct aanroepbaar). Anders → corrigeer de documentatie/projectkaart.
+2. **✅ Buitendienst mág offertes finaliseren — bewuste keuze (geen bug).** De code laat het toe
+   ([QuoteBuilder.tsx:775](src/components/quotes/QuoteBuilder.tsx:775) fieldAllowedStatuses +
+   [offertes/core.ts:641](convex/offertes/core.ts:641) geen workspaceMode-gate). **Eigenaarsbesluit 2026-06-24:**
+   Wim/Simone sluiten deals ter plekke (klant akkoord tijdens de inmeting), dus buitendienst finaliseert bewust.
+   De "winkel finaliseert"-aanname was achterhaald → **geen codewijziging**; alleen de factuur blijft winkel-exclusief.
 
 3. **🟠 Dashboard lekt openstaande/achterstallige factuurbedragen naar field-mode.**
-   `portal:dashboard` `invoiceStats` ([portal.ts:205](convex/portal.ts:205)) geeft openstaand bedrag + achterstallig
-   terug **zonder** `ensureNotFieldMode` — exact de data die op facturen bewust geblokkeerd is. Bereikbaar via
-   `/portal?full=1` → DashboardShell. **Fix:** `ensureNotFieldMode` in de dashboard-handler (of `invoiceStats` weglaten voor field).
+   `portal:dashboard` `invoiceStats` ([portal.ts:205](convex/portal.ts:205)) gaf openstaand bedrag + achterstallig
+   terug **zonder** field-grens — exact de data die op facturen bewust geblokkeerd is. Bereikbaar via
+   `/portal?full=1` → DashboardShell. **✅ GEFIXT + getest (PR #37):** voor `workspaceMode='field'` worden de
+   factuurbedragen op 0 genormaliseerd; 2 convex-tests (winkel ziet bedrag, buitendienst niet).
 
 ---
 
