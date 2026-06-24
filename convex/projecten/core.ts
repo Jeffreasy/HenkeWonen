@@ -9,7 +9,7 @@ import {
   requireQueryRoleForTenantId
 } from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
-import { berekenInmeetBeschikbaarheid, isInmeetdag, omvangUnits } from "../beheer/agenda";
+import { assertInmeetBoeking } from "../beheer/agenda";
 import {
   toProject,
   toCustomer,
@@ -300,7 +300,9 @@ export const updateProject = mutation({
     inmeetdatum: v.optional(v.number()),
     uitvoerdatum: v.optional(v.number()),
     interneNotities: v.optional(v.string()),
-    klantNotities: v.optional(v.string())
+    klantNotities: v.optional(v.string()),
+    // Bewust de inmeet-regels overrulen bij het zetten van de inmeetdatum vanuit het dossier.
+    force: v.optional(v.boolean())
     // status staat hier BEWUST niet: statusovergangen lopen uitsluitend via
     // updateProjectStatus/processProjectAction (met invarianten, timestamps en
     // workflow-events). Een vrije status-patch hier zou bv. een sprong naar
@@ -316,6 +318,23 @@ export const updateProject = mutation({
 
     if (!project || project.tenantId !== tenant._id) {
       throw new ConvexError("Project not found");
+    }
+
+    // De inmeetdatum vanuit het dossier synct naar de inmeting, dus dezelfde inmeet-regels gelden
+    // (geen niet-inmeetdag / volle of afwezige toegewezen monteur). Resolve de eventueel toegewezen
+    // monteur van de laatste inmeting voor de capaciteits-/afwezigheidscheck.
+    if (hasArg(args, "inmeetdatum")) {
+      const laatste = await latestMeasurementForProject(ctx, tenant._id, project._id);
+      const monteur = (laatste?.gemetenDoorUserId
+        ? await ctx.db.get(laatste.gemetenDoorUserId)
+        : null) as Doc<"users"> | null;
+      await assertInmeetBoeking(ctx, tenant._id, {
+        datumMs: args.inmeetdatum,
+        monteur: monteur && monteur.tenantId === tenant._id ? monteur : null,
+        omvang: laatste?.omvang,
+        excludeProjectId: project._id,
+        force: args.force
+      });
     }
 
     const patch: Partial<Doc<"projects">> = { gewijzigdOp: Date.now() };
@@ -677,33 +696,18 @@ export const startOrPlanMeasurement = mutation({
       ? args.inmeetdatum
       : project.inmeetdatum ?? existingMeasurement?.inmeetdatum;
 
-    // Plan-guard: dwing de inmeet-regels server-side af (tenzij bewust geforceerd), zodat de
-    // agenda geen operationeel-onmogelijke staat krijgt — geen boeking op een niet-inmeetdag,
-    // op een afwezige monteur, of boven de dagcapaciteit. inmeetBeschikbaarheid rekent dezelfde regels als hint.
-    // Alleen handhaven wanneer de gebruiker actief een datum of monteur (opnieuw) zet; een pure
-    // start-/statusactie mag een al bestaande inmeetdatum niet retroactief afkeuren.
+    // Plan-guard: dwing de inmeet-regels server-side af (tenzij bewust geforceerd), zodat de agenda
+    // geen operationeel-onmogelijke staat krijgt. Alleen handhaven wanneer de gebruiker actief een
+    // datum of monteur (opnieuw) zet; een pure start-/statusactie mag een al bestaande inmeetdatum
+    // niet retroactief afkeuren. Dezelfde guard draait op elk schrijfpad (zie assertInmeetBoeking).
     const zetDatumOfMonteur = hasArg(args, "inmeetdatum") || hasArg(args, "gemetenDoorUserId");
-    if (!args.force && zetDatumOfMonteur && measurementDate != null) {
-      if (!isInmeetdag(measurementDate)) {
-        throw new ConvexError("Inmeten kan alleen op dinsdag, woensdag of donderdag.");
-      }
-      if (monteurDoc) {
-        const besch = await berekenInmeetBeschikbaarheid(
-          ctx,
-          tenant._id,
-          monteurDoc,
-          measurementDate,
-          project._id
-        );
-        if (besch.afwezig) {
-          throw new ConvexError("De gekozen monteur is die dag afwezig. Kies een andere datum of monteur.");
-        }
-        const nodig = omvangUnits(args.omvang ?? existingMeasurement?.omvang);
-        if (besch.gebruikteCapaciteit + nodig > besch.maxCapaciteit) {
-          throw new ConvexError("De inmeetdag van deze monteur is vol. Kies een andere datum of monteur.");
-        }
-      }
-    }
+    await assertInmeetBoeking(ctx, tenant._id, {
+      datumMs: zetDatumOfMonteur ? measurementDate : null,
+      monteur: monteurDoc,
+      omvang: args.omvang ?? existingMeasurement?.omvang,
+      excludeProjectId: project._id,
+      force: args.force
+    });
 
     let measurementId = existingMeasurement?._id;
     let measurementCreated = false;

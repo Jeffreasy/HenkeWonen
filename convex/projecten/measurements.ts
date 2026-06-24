@@ -9,7 +9,8 @@ import {
 } from "../authz";
 import { pilotHiddenReason } from "../catalog/pilot";
 import { isUnitCompatible } from "../catalog/pricingRules";
-import type { Id } from "../_generated/dataModel";
+import { assertInmeetBoeking } from "../beheer/agenda";
+import type { Doc, Id } from "../_generated/dataModel";
 
 /** Genormaliseerde ruimtenaam voor dedup (trim + lowercase). */
 function normalizeRoomName(naam: string): string {
@@ -463,7 +464,9 @@ export const updateMeasurement = mutation({
     status: v.optional(measurementStatus),
     inmeetdatum: v.optional(v.number()),
     gemetenDoor: v.optional(v.string()),
-    notities: v.optional(v.string())
+    notities: v.optional(v.string()),
+    // Bewust de inmeet-regels overrulen bij het zetten van de inmeetdatum.
+    force: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
     await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
@@ -472,6 +475,22 @@ export const updateMeasurement = mutation({
       "admin"
     ]);
     const measurement = await requireMeasurement(ctx, args.tenantId, args.inmetingId);
+
+    // Plan-guard ook hier: dit form (office/field 'Inmeting samenvatting') zet de inmeetdatum direct
+    // en synct die naar het dossier. Resolve de eventueel toegewezen monteur van deze inmeting voor
+    // de capaciteits-/afwezigheidscheck, zodat geen schrijfpad de inmeet-regels omzeilt.
+    if (hasArg(args, "inmeetdatum")) {
+      const monteur = (measurement.gemetenDoorUserId
+        ? await ctx.db.get(measurement.gemetenDoorUserId)
+        : null) as Doc<"users"> | null;
+      await assertInmeetBoeking(ctx, args.tenantId, {
+        datumMs: args.inmeetdatum,
+        monteur: monteur && monteur.tenantId === args.tenantId ? monteur : null,
+        omvang: measurement.omvang,
+        excludeProjectId: measurement.projectId as Id<"projects">,
+        force: args.force
+      });
+    }
 
     const patch: Record<string, unknown> = {
       gewijzigdOp: Date.now()

@@ -33,6 +33,14 @@ type MonteurAgenda = {
   bezoeken: Bezoek[];
 };
 
+type NietToegewezenBezoek = {
+  inmetingId: string;
+  projectId: string;
+  projectTitel: string;
+  klantNaam: string;
+  inmeetdatum: number | null;
+};
+
 type AgendaLid = {
   id: string;
   naam: string;
@@ -51,6 +59,7 @@ const weekFormatter = new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: 
 export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
   const [weekStart, setWeekStart] = useState(() => startVanWeek(Date.now()));
   const [monteurs, setMonteurs] = useState<MonteurAgenda[]>([]);
+  const [nietToegewezen, setNietToegewezen] = useState<NietToegewezenBezoek[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [beheerMonteur, setBeheerMonteur] = useState<MonteurAgenda | null>(null);
@@ -89,6 +98,7 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
         return;
       }
       setMonteurs((result?.monteurs ?? []) as MonteurAgenda[]);
+      setNietToegewezen((result?.nietToegewezen ?? []) as NietToegewezenBezoek[]);
     } catch (loadError) {
       console.error(loadError);
       if (requestId !== lastRequestId.current) {
@@ -277,6 +287,29 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
           </Card>
         ))
       )}
+
+      {nietToegewezen.length > 0 ? (
+        <Alert
+          variant="warning"
+          title={`${nietToegewezen.length} ingeplande inmeting${
+            nietToegewezen.length === 1 ? "" : "en"
+          } zonder monteur`}
+          description="Deze inmetingen hebben wél een datum maar nog geen toegewezen monteur. Ze staan in geen enkele agenda en tellen niet mee in de capaciteit — wijs een monteur toe via 'Inmeting inplannen' in het dossier."
+        >
+          <ul className="agenda-niet-toegewezen">
+            {nietToegewezen.map((b) => (
+              <li key={b.inmetingId}>
+                <a href={projectHref(b.projectId)}>
+                  <b>{b.klantNaam}</b> — {b.projectTitel}
+                </a>
+                {b.inmeetdatum ? (
+                  <span className="agenda-nt-datum"> · {dagFormatter.format(new Date(b.inmeetdatum))}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </Alert>
+      ) : null}
 
       {mag && (teamLeden.length > 0 || teamError) ? (
         <Card className="agenda-leden">

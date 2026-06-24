@@ -104,6 +104,19 @@
   margin-top: var(--space-2);
 }
 
+/* Inmetingen met datum maar zonder toegewezen monteur (waarschuwing) */
+.agenda-niet-toegewezen {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+.agenda-niet-toegewezen .agenda-nt-datum {
+  color: var(--color-text-muted);
+}
+
 /* Beheerpaneel (weekrooster + afwezigheid) */
 .beschikbaarheid-kop {
   margin: 0 0 var(--space-2);

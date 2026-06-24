@@ -148,3 +148,62 @@ test("een pure start (zonder datum/monteur) keurt een bestaande niet-inmeetdatum
   const proj = await t.run(async (ctx) => ctx.db.get(ids.projectA));
   expect(proj?.status).toBe("measurement_planned");
 });
+
+test("updateMeasurement deelt de guard: weigert een niet-inmeetdag (force omzeilt)", async () => {
+  stubAuth();
+  const t = convexTest(schema, modules);
+  const ids = await setup(t);
+  const now = Date.now();
+  const inmetingId = await t.run(async (ctx) =>
+    ctx.db.insert("measurements", {
+      tenantId: ids.tenantId, projectId: ids.projectA, klantId: ids.customerId,
+      status: "draft", inmeetdatum: DINSDAG, aangemaaktOp: now, gewijzigdOp: now
+    })
+  );
+  await expect(
+    t.mutation(api.projecten.measurements.updateMeasurement, {
+      tenantId: ids.tenantId, actor, inmetingId, inmeetdatum: MAANDAG
+    })
+  ).rejects.toThrow(/dinsdag|woensdag|donderdag/i);
+  await t.mutation(api.projecten.measurements.updateMeasurement, {
+    tenantId: ids.tenantId, actor, inmetingId, inmeetdatum: MAANDAG, force: true
+  });
+  const m = await t.run(async (ctx) => ctx.db.get(inmetingId));
+  expect(m?.inmeetdatum).toBe(MAANDAG);
+});
+
+test("updateProject deelt de guard: weigert een niet-inmeetdatum vanuit het dossier", async () => {
+  stubAuth();
+  const t = convexTest(schema, modules);
+  const ids = await setup(t);
+  await expect(
+    t.mutation(api.projecten.core.updateProject, {
+      tenantSlug: "henke-wonen", actor, projectId: String(ids.projectA), inmeetdatum: MAANDAG
+    })
+  ).rejects.toThrow(/dinsdag|woensdag|donderdag/i);
+  await t.mutation(api.projecten.core.updateProject, {
+    tenantSlug: "henke-wonen", actor, projectId: String(ids.projectA), inmeetdatum: DINSDAG
+  });
+  const p = await t.run(async (ctx) => ctx.db.get(ids.projectA));
+  expect(p?.inmeetdatum).toBe(DINSDAG);
+});
+
+test("agendaWeek toont een inmeting met datum maar zonder monteur als niet-toegewezen (S1)", async () => {
+  stubAuth();
+  const t = convexTest(schema, modules);
+  const ids = await setup(t);
+  const now = Date.now();
+  await t.run(async (ctx) =>
+    ctx.db.insert("measurements", {
+      tenantId: ids.tenantId, projectId: ids.projectA, klantId: ids.customerId,
+      status: "draft", inmeetdatum: DINSDAG, aangemaaktOp: now, gewijzigdOp: now
+    })
+  );
+  const weekStart = DINSDAG - 2 * 86400000; // zondag vóór de dinsdag → window bevat DINSDAG
+  const res = await t.query(api.portal.agendaWeek, { tenantSlug: "henke-wonen", actor, weekStart });
+  expect(res.nietToegewezen).toHaveLength(1);
+  expect(res.nietToegewezen[0].projectId).toBe(String(ids.projectA));
+  // En het verschijnt bij geen enkele monteur.
+  const bijMonteur = res.monteurs.some((m: { bezoeken: unknown[] }) => m.bezoeken.length > 0);
+  expect(bijMonteur).toBe(false);
+});
