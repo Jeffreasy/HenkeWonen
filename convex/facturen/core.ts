@@ -503,6 +503,9 @@ export const markInvoicePaid = mutation({
 
     // Bepaal nieuwe status op basis van betaald bedrag
     const isFullyPaid = args.betaaldBedrag >= invoice.totaalInclBtw;
+    // Cap het opgeslagen bedrag op het factuurtotaal: een overbetaling mag niet als
+    // negatief "openstaand" doorlekken naar de openstaand-rapportages / boekhouder-export.
+    const storedPaid = isFullyPaid ? invoice.totaalInclBtw : args.betaaldBedrag;
     const newStatus = isFullyPaid
       ? ("paid" as const)
       : args.betaaldBedrag > 0
@@ -510,7 +513,7 @@ export const markInvoicePaid = mutation({
       : invoice.status;
 
     await ctx.db.patch(invoiceId, {
-      betaaldBedrag: args.betaaldBedrag,
+      betaaldBedrag: storedPaid,
       betaaldOp: isFullyPaid ? paidAt : invoice.betaaldOp,
       status: newStatus,
       gewijzigdOp: now

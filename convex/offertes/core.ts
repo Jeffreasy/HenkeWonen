@@ -18,7 +18,8 @@ import {
   toProject,
   importedMeasurementLineTitle,
   importedMeasurementLineDescription,
-  calculateLineTotals
+  calculateLineTotals,
+  existingInvoiceForQuote
 } from "../portalUtils";
 
 const quoteStatus = v.union(
@@ -708,6 +709,18 @@ export const updateQuoteStatus = mutation({
 
     if (!project || project.tenantId !== tenant._id) {
       throw new ConvexError("Project not found");
+    }
+
+    // Een al-gefactureerde offerte mag niet terug naar 'concept' (draft): dat zou de
+    // offerte stil laten afwijken van de reeds aangemaakte factuur. Maak desnoods een
+    // nieuwe offerte of (via de factuur-flow) een creditfactuur.
+    if (args.status === "draft") {
+      const reedsGefactureerd = await existingInvoiceForQuote(ctx, tenant._id, quote._id);
+      if (reedsGefactureerd) {
+        throw new ConvexError(
+          "Deze offerte is al gefactureerd en kan niet meer naar concept worden teruggezet."
+        );
+      }
     }
 
     // Prijsreview-gate: een offerte mag niet naar 'verstuurd' of 'akkoord' zolang er
