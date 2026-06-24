@@ -8,6 +8,7 @@ import {
   roleValidator,
   workspaceModeValidator
 } from "../authz";
+import { weergaveNaam } from "./agenda";
 
 export const list = query({
   args: {
@@ -48,7 +49,7 @@ export const listTeamMembers = query({
     return users
       .map((user) => ({
         id: String(user._id),
-        naam: user.naam ?? user.email,
+        naam: weergaveNaam(user),
         email: user.email,
         role: user.role,
         toonInAgenda: user.toonInAgenda ?? null
