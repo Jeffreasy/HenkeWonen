@@ -110,6 +110,11 @@ blijkt dat een paar arbeidsregels die er op elke offerte op kunnen staan, **geen
 
 > **Vraag aan Wim/Simone:** wat zijn jullie tarieven voor de **vetgedrukte** vier? Dan voeg ik ze toe als
 > nieuwe `serviceCostRules` en is de arbeidszijde compleet.
+>
+> **Update (deep-dive 24 jun):** de volledige offerte-template-analyse vond **9** ontbrekende arbeid/montage-
+> regels (ook plissé/jaloezie/duette-montage, traprenovatie-met-inlegstrip, en primeren-los). Volledige lijst
+> + data-map + nieuwe vondsten (Lamelio-omzetstaffel, tapijt-leverkosten, calculatorRules-drift) in
+> `henkedata-deep-dive-2026-06-24.md`.
 
 **Materiaal vs. arbeid — niet verwarren.** De bronbestanden `Prijslijst Traprenovatie Floorlife` (traptreden-
 sets €27,45–99,50/trede), `Prijslijst Wandpanelen`, `Douchepanelen en tegels`, en de gordijnstof-lijsten
