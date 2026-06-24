@@ -546,6 +546,7 @@ export const agendaWeek = query({
         inmeetdatum: meting.inmeetdatum ?? null,
         gemetenDoor: meting.gemetenDoor ?? null,
         gemetenDoorUserId: meting.gemetenDoorUserId ? String(meting.gemetenDoorUserId) : null,
+        omvang: meting.omvang ?? null,
         status: meting.status
       };
     }

@@ -36,6 +36,23 @@ export function omvangUnits(omvang: Omvang): number {
   return omvang === "volledig" ? 2 : 1;
 }
 
+// Spiegel van de inmeetregels voor de UI-weergave; de autoriteit blijft server-side
+// (convex/beheer/agenda.ts). weekdag: 0 = maandag … 6 = zondag.
+export const INMEET_DAGEN = [1, 2, 3]; // di, wo, do
+export const INMEET_START_MINUUT = 16 * 60 + 30; // 16:30
+export const INMEET_EIND_MINUUT = 17 * 60 + 30; // 17:30
+export const INMEET_CAPACITEIT = 2;
+
+/** Is deze weekdag (0=ma … 6=zo) een inmeetdag (di/wo/do)? */
+export function isInmeetdag(weekdag: number): boolean {
+  return INMEET_DAGEN.includes(weekdag);
+}
+
+/** Gebruikte dagcapaciteit van een set bezoeken (volledig = 2, anders = 1). */
+export function capaciteitVanBezoeken(bezoeken: { omvang: string | null }[]): number {
+  return bezoeken.reduce((som, b) => som + (b.omvang === "volledig" ? 2 : 1), 0);
+}
+
 /** Spiegelt het resultaat van de Convex-query `inmeetBeschikbaarheid`. */
 export type InmeetBeschikbaarheid = {
   monteur: { id: string; naam: string };
@@ -106,6 +123,7 @@ export type Bezoek = {
   klantNaam: string;
   inmeetdatum: number | null;
   gemetenDoor: string | null;
+  omvang: string | null;
   status: string;
 };
 
