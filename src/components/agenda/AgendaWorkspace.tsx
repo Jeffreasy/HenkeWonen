@@ -14,6 +14,11 @@ import {
   type Werktijd,
   dagStatusVoorMonteur,
   formatMinuut,
+  isInmeetdag,
+  capaciteitVanBezoeken,
+  INMEET_CAPACITEIT,
+  INMEET_START_MINUUT,
+  INMEET_EIND_MINUUT,
   startVanWeek,
   weekDagen,
   DAG_MS
@@ -186,6 +191,7 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
   const weekLabel = `${weekFormatter.format(new Date(weekStart))} – ${weekFormatter.format(
     new Date(weekStart + 6 * DAG_MS)
   )}`;
+  const opDezeWeek = weekStart === startVanWeek(vandaag);
 
   return (
     <div className="grid">
@@ -208,7 +214,12 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
         >
           Vorige
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => setWeekStart(startVanWeek(Date.now()))}>
+        <Button
+          variant={opDezeWeek ? "secondary" : "ghost"}
+          size="sm"
+          aria-pressed={opDezeWeek}
+          onClick={() => setWeekStart(startVanWeek(Date.now()))}
+        >
           Deze week
         </Button>
         <Button
@@ -252,31 +263,36 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
             <div className="agenda-week">
               {dagen.map((dagMs, i) => {
                 const status = dagStatusVoorMonteur(dagMs, m.werktijden, m.afwezigheden, m.bezoeken);
-                const ingeroosterd = Boolean(status.werktijd);
+                const weekdag = i; // dagen loopt ma..zo, dus i == weekdag (0=ma)
+                const inmeetdag = isInmeetdag(weekdag);
+                const weekend = weekdag >= 5;
                 const isVandaag = dagMs === vandaag;
+                const heleDagAfwezig = status.afwezig.some((a) => a.heleDag);
+                const gebruikt = capaciteitVanBezoeken(status.bezoeken);
+                const klassen = [
+                  "agenda-dag",
+                  inmeetdag ? "is-inmeetdag" : "geen-inmeetdag",
+                  weekend ? "is-weekend" : "",
+                  isVandaag ? "is-vandaag" : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ");
                 return (
-                  <div
-                    className={`agenda-dag${ingeroosterd ? "" : " niet-ingeroosterd"}${
-                      isVandaag ? " is-vandaag" : ""
-                    }`}
-                    key={dagMs}
-                    aria-current={isVandaag ? "date" : undefined}
-                  >
+                  <div className={klassen} key={dagMs} aria-current={isVandaag ? "date" : undefined}>
                     <div className="agenda-dag-kop">
                       <span className="dag-naam">
                         {WEEKDAG_KORT[i]}
-                        {isVandaag ? <span className="dag-vandaag"> · vandaag</span> : null}
+                        {isVandaag ? <span className="dag-vandaag"> · nu</span> : null}
                       </span>
                       <span className="dag-datum">{dagFormatter.format(new Date(dagMs))}</span>
                     </div>
 
-                    {status.werktijd ? (
-                      <span className="agenda-werktijd">
-                        {formatMinuut(status.werktijd.startMinuut)}–
-                        {formatMinuut(status.werktijd.eindMinuut)}
+                    {inmeetdag ? (
+                      <span className="agenda-venster">
+                        {formatMinuut(INMEET_START_MINUUT)}–{formatMinuut(INMEET_EIND_MINUUT)}
                       </span>
                     ) : (
-                      <span className="agenda-leeg">Niet ingeroosterd</span>
+                      <span className="agenda-leeg">Geen inmeetdag</span>
                     )}
 
                     {status.afwezig.map((a) => (
@@ -293,12 +309,23 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
                         aria-label={`Bezoek ${b.klantNaam} — ${b.projectTitel}`}
                       >
                         <b>{b.klantNaam}</b>
-                        {b.projectTitel}
+                        <span className="agenda-bezoek-project">{b.projectTitel}</span>
+                        {b.omvang ? (
+                          <span className="agenda-bezoek-omvang">
+                            {b.omvang === "volledig" ? "Volledige woning" : "Klein klusje"}
+                          </span>
+                        ) : null}
                       </a>
                     ))}
 
-                    {ingeroosterd && status.afwezig.length === 0 && status.bezoeken.length === 0 ? (
-                      <Badge variant="success">Vrij</Badge>
+                    {inmeetdag && !heleDagAfwezig ? (
+                      gebruikt === 0 ? (
+                        <Badge variant="success">Vrij · 0/{INMEET_CAPACITEIT}</Badge>
+                      ) : gebruikt >= INMEET_CAPACITEIT ? (
+                        <Badge variant="neutral">Vol · {gebruikt}/{INMEET_CAPACITEIT}</Badge>
+                      ) : (
+                        <Badge variant="info">{gebruikt}/{INMEET_CAPACITEIT} geboekt</Badge>
+                      )
                     ) : null}
                   </div>
                 );
