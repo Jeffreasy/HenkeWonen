@@ -20,6 +20,7 @@ import { FieldPageTabs } from "./FieldPageTabs";
 import { FieldCardSection, type FieldSection } from "./FieldCardSection";
 import { FieldIntakeForm, type IntakeFormValues } from "./FieldIntakeForm";
 import { cardUrgency, type CardActionPreference, type CardUrgency } from "./FieldCard";
+import { FieldWeekStrip } from "./FieldWeekStrip";
 
 type FieldServiceWorkspaceProps = {
   session: AppSession;
@@ -502,6 +503,8 @@ export default function FieldServiceWorkspace({
           />
         </FormModal>
       ) : null}
+
+      {view === "today" ? <FieldWeekStrip session={session} /> : null}
 
       {isLoading ? (
         <div className="panel field-loading-state">
