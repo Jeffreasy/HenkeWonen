@@ -110,8 +110,9 @@ waarheid zijn) **óf** bouw een drift-check (`priceItem ≈ advies/deler`). Niet
 
 Prijs/btw/naam zijn in prod aantoonbaar opgelost (17 jun); EAN-duplicaten (1.871 groepen) bewust geparkeerd.
 Twee lage open puntjes:
-- **Headlam-dubbelimport (ongeverifieerd):** 2 byte-identieke gordijnstof-workbooks (0 EAN → buiten de
-  EAN-dedup-triage). Niet bevestigd dat prod de "Collectie Compleet" (~8.215 rijen) maar 1× bevat → **tellen**.
+- **Headlam-dubbelimport — ✅ OPGELOST (geteld 24 jun op de prod-export):** prod heeft **5.954 Headlam-
+  producten**, elke `leverancierCode` (GPC…) komt **exact 1×** voor (0 duplicaten). De 2 byte-identieke
+  bronbestanden zijn als **één schone import** beland — geen dubbelimport.
 - **Foute checksum-EAN `8717003467042`** (Floorlife Valento beige, rij 140) — functioneel ongevaarlijk (EAN
   is nooit klant-selector), maar als losse bron-fout niet opgeschoond → registreren in `catalogDataIssues`.
 - Borg dat de **Roots mixed-text/price** parsing-regel in de importpijplijn zit (anders hervervuilt een her-import).
