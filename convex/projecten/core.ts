@@ -680,7 +680,10 @@ export const startOrPlanMeasurement = mutation({
     // Plan-guard: dwing de inmeet-regels server-side af (tenzij bewust geforceerd), zodat de
     // agenda geen operationeel-onmogelijke staat krijgt — geen boeking op een niet-inmeetdag,
     // op een afwezige monteur, of boven de dagcapaciteit. inmeetBeschikbaarheid rekent dezelfde regels als hint.
-    if (!args.force && measurementDate != null) {
+    // Alleen handhaven wanneer de gebruiker actief een datum of monteur (opnieuw) zet; een pure
+    // start-/statusactie mag een al bestaande inmeetdatum niet retroactief afkeuren.
+    const zetDatumOfMonteur = hasArg(args, "inmeetdatum") || hasArg(args, "gemetenDoorUserId");
+    if (!args.force && zetDatumOfMonteur && measurementDate != null) {
       if (!isInmeetdag(measurementDate)) {
         throw new ConvexError("Inmeten kan alleen op dinsdag, woensdag of donderdag.");
       }

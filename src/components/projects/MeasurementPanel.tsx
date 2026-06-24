@@ -235,11 +235,12 @@ export default function MeasurementPanel({
 
       if (client) {
         try {
+          // Geen monteur toewijzen bij het starten: de inmeting krijgt pas een monteur
+          // (naam + stabiele userId) wanneer de inmeetafspraak via de plan-modal wordt ingepland.
           await client.mutation(api.portal.startOrPlanMeasurement, {
             tenantSlug: tenantId,
             actor: mutationActorFromSession(session),
-            projectId,
-            gemetenDoor: session.name ?? session.email
+            projectId
           });
           await loadMeasurement();
         } catch (autostartError) {
@@ -603,12 +604,13 @@ export default function MeasurementPanel({
     setError(null);
 
     try {
+      // Geen monteur toewijzen bij het starten (zie de plan-modal voor de monteur-toewijzing);
+      // createdByExternalUserId legt wél vast wie de inmeting startte.
       await client.mutation(api.projecten.measurements.createForProject, {
         tenantId: tenantConvexId as Id<"tenants">,
         actor: mutationActorFromSession(session),
         projectId: projectId as Id<"projects">,
         klantId: customerId as Id<"customers">,
-        gemetenDoor: session.name ?? session.email,
         createdByExternalUserId: session.userId
       });
       showToast({ title: "Inmeting gestart", tone: "success" });
