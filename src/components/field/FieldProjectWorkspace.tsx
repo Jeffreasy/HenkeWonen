@@ -1,9 +1,10 @@
-import { FileText, Printer, Ruler, Save } from "lucide-react";
+import { CalendarClock, FileText, Printer, Ruler, Save } from "lucide-react";
 import { ConvexError } from "convex/values";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
-import { canEditQuotes, type AppSession } from "../../lib/auth/session";
+import { canEditDossiers, canEditQuotes, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatDate } from "../../lib/dates";
 import { formatQuoteStatus } from "../../lib/i18n/statusLabels";
@@ -14,6 +15,8 @@ import { Button } from "../ui/forms/Button";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { SectionHeader } from "../ui/layout/SectionHeader";
 import MeasurementPanel from "../projects/MeasurementPanel";
+import { PlanMeasurementModal, type TeamMember } from "../projects/PlanMeasurementModal";
+import { fromDateInputValue, toDateInputValue } from "../projects/measurement/measurementUtils";
 import QuoteBuilder from "../quotes/QuoteBuilder";
 import type { QuoteLineFormValues } from "../quotes/QuoteLineEditor";
 import { quoteLineFormToApi } from "../quotes/quote/quoteTypes";
@@ -121,7 +124,11 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [isPlanningMeasurement, setIsPlanningMeasurement] = useState(false);
   const canEditQuote = canEditQuotes(session.role);
+  const canPlan = canEditDossiers(session.role);
 
   const loadWorkspace = useCallback(async () => {
     const client = createConvexHttpClient(session);
@@ -160,6 +167,72 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
   useEffect(() => {
     void loadWorkspace();
   }, [loadWorkspace]);
+
+  // Teamleden voor de monteur-keuze bij het (her)plannen van een inmeetbezoek.
+  useEffect(() => {
+    let cancelled = false;
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      return;
+    }
+    client
+      .query(api.portal.listTeamMembers, { tenantSlug: session.tenantId })
+      .then((members) => {
+        if (!cancelled) {
+          setTeamMembers((members ?? []) as TeamMember[]);
+        }
+      })
+      .catch((membersError) => {
+        console.error(membersError);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  async function planMeasurementVisit(data: {
+    date: string;
+    measuredBy: string;
+    measuredByUserId?: string;
+    omvang: "klein" | "volledig";
+  }) {
+    if (!workspace) {
+      return;
+    }
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      setError("Kan het inmeetbezoek nu niet inplannen.");
+      return;
+    }
+    const inmeetdatum = fromDateInputValue(data.date);
+    if (!inmeetdatum) {
+      showToast({ title: "Kies eerst een datum", tone: "error" });
+      return;
+    }
+    setIsPlanningMeasurement(true);
+    try {
+      await client.mutation(api.portal.startOrPlanMeasurement, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        projectId: workspace.project.id,
+        inmeetdatum,
+        // Altijd meesturen (ook leeg) zodat de backend "loskoppelen" kan onderscheiden.
+        gemetenDoor: data.measuredBy.trim(),
+        gemetenDoorUserId: data.measuredByUserId
+          ? (data.measuredByUserId as Id<"users">)
+          : undefined,
+        omvang: data.omvang
+      });
+      setIsPlanModalOpen(false);
+      await loadWorkspace();
+      showToast({ title: "Inmeetbezoek ingepland", tone: "success" });
+    } catch (planError) {
+      console.error(planError);
+      showToast({ title: "Inplannen mislukt", tone: "error" });
+    } finally {
+      setIsPlanningMeasurement(false);
+    }
+  }
 
   const selectedQuote = useMemo(() => {
     if (!workspace) {
@@ -427,7 +500,20 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
           compact
           title="Inmeten"
           description="Leg ruimtes en meetregels vast voor vloeren, ramen en andere werkzaamheden."
-          actions={<Ruler size={20} aria-hidden="true" />}
+          actions={
+            canPlan ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                leftIcon={<CalendarClock size={16} aria-hidden="true" />}
+                onClick={() => setIsPlanModalOpen(true)}
+              >
+                {workspace.visit.visitAt ? "Afspraak wijzigen" : "Inmeetbezoek inplannen"}
+              </Button>
+            ) : (
+              <Ruler size={20} aria-hidden="true" />
+            )
+          }
         />
         <MeasurementPanel
           mode="field"
@@ -508,6 +594,21 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
           />
         )}
       </section>
+
+      {canPlan ? (
+        <PlanMeasurementModal
+          open={isPlanModalOpen}
+          session={session}
+          teamMembers={teamMembers}
+          excludeProjectId={workspace.project.id}
+          defaultDate={workspace.visit.visitAt ? toDateInputValue(workspace.visit.visitAt) : ""}
+          defaultMeasuredBy={workspace.visit.gemetenDoor ?? session.name ?? ""}
+          defaultOmvang={workspace.visit.omvang ?? "klein"}
+          isSaving={isPlanningMeasurement}
+          onSubmit={(data) => void planMeasurementVisit(data)}
+          onClose={() => setIsPlanModalOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

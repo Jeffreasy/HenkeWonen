@@ -686,6 +686,8 @@ export type FieldProjectWorkspaceResult = {
     status: string;
     visitAt?: number;
     measurementStatus?: MeasurementStatus;
+    gemetenDoor?: string;
+    omvang?: "klein" | "volledig";
   };
 };
 

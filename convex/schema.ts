@@ -768,6 +768,13 @@ export default defineSchema({
     status: measurementStatus,
     inmeetdatum: v.optional(v.number()),
     gemetenDoor: v.optional(v.string()),
+    // Stabiele koppeling naar de monteur (users-tabel). gemetenDoor (naam) blijft
+    // staan als leesbaar label + fallback voor oude rijen; userId is leidend voor
+    // agenda/capaciteit zodat hernoemen of dubbele namen niets breken.
+    gemetenDoorUserId: v.optional(v.id("users")),
+    // Klusgrootte voor inmeet-capaciteit: "klein" (1-2 ramen / 1 ruimte) telt als
+    // 1 plek, "volledig" (hele woning) als 2 — per inmeetdag is er ruimte voor 2.
+    omvang: v.optional(v.union(v.literal("klein"), v.literal("volledig"))),
     notities: v.optional(v.string()),
     createdByExternalUserId: v.optional(v.string()),
     aangemaaktOp: v.number(),
@@ -1149,5 +1156,46 @@ export default defineSchema({
   })
     .index("by_project", ["tenantId", "projectId"])
     .index("by_customer", ["tenantId", "klantId"])
-    .index("by_type", ["tenantId", "type"])
+    .index("by_type", ["tenantId", "type"]),
+
+  // ── Agenda & beschikbaarheid (monteurs) ────────────────────────────────────
+  // Terugkerende werktijden per monteur (gebruiker), per weekdag.
+  // weekdag: 0 = maandag … 6 = zondag. Tijden in minuten sinds middernacht
+  // (bv. 480 = 08:00, 1020 = 17:00).
+  monteurWerktijden: defineTable({
+    tenantId: v.id("tenants"),
+    userId: v.id("users"),
+    weekdag: v.number(),
+    startMinuut: v.number(),
+    eindMinuut: v.number(),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
+  })
+    .index("by_tenant", ["tenantId"])
+    .index("by_monteur", ["tenantId", "userId"]),
+
+  // Afwezigheid/verlof/blokkade per monteur — onderbreekt de beschikbaarheid.
+  // vanafDatum/totDatum: Unix-ms (dag-granulariteit bij heleDag, totDatum inclusief).
+  // Bij een tijdvak (heleDag=false) gelden start-/eindMinuut binnen die dag(en).
+  monteurAfwezigheid: defineTable({
+    tenantId: v.id("tenants"),
+    userId: v.id("users"),
+    type: v.union(
+      v.literal("verlof"),
+      v.literal("ziek"),
+      v.literal("blokkade"),
+      v.literal("overig")
+    ),
+    vanafDatum: v.number(),
+    totDatum: v.number(),
+    heleDag: v.boolean(),
+    startMinuut: v.optional(v.number()),
+    eindMinuut: v.optional(v.number()),
+    reden: v.optional(v.string()),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
+  })
+    .index("by_tenant", ["tenantId"])
+    .index("by_monteur", ["tenantId", "userId"])
+    .index("by_periode", ["tenantId", "vanafDatum"])
 });

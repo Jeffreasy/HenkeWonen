@@ -19,9 +19,10 @@
  * │  12  timeline        Timeline + Workflow rail                 │
  * │  13  features-projects Projects, Dossier                     │
  * │  14  features-quotes Quotes, wallpaper calc, product compare  │
- * │  15  keyframes       Global @keyframes                        │
- * │  16  responsive      @media (max-width) breakpoints           │
- * │  17  print           @media print                             │
+ * │  15  features-agenda Agenda & monteur-beschikbaarheid         │
+ * │  16  keyframes       Global @keyframes                        │
+ * │  17  responsive      @media (max-width) breakpoints           │
+ * │  18  print           @media print                             │
  * └─────────────────────────────────────────────────────────────┘
  */
 
@@ -39,6 +40,7 @@
 @import "./layers/12-timeline.css";
 @import "./layers/13-features-projects.css";
 @import "./layers/14-features-quotes.css";
-@import "./layers/15-keyframes.css";
-@import "./layers/16-responsive.css";
-@import "./layers/17-print.css";
+@import "./layers/15-features-agenda.css";
+@import "./layers/16-keyframes.css";
+@import "./layers/17-responsive.css";
+@import "./layers/18-print.css";

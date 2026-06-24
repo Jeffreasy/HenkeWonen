@@ -716,12 +716,36 @@
   .mobile-card-actions .button {
     width: 100%;
   }
+
+  /* Agenda: het 7-koloms weekgrid wrapt naar meerdere rijen op tablet/telefoon */
+  .agenda-week {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
 }
 
 /* ---------------------------------------------------------------------------
    480px — Kleine smartphones (iPhone SE 375px, Galaxy A-serie 360px)
    --------------------------------------------------------------------------- */
 @media (max-width: 480px) {
+  /* Agenda: dagen onder elkaar; rooster stapelt netjes in de bottom-sheet */
+  .agenda-week {
+    grid-template-columns: 1fr;
+  }
+  .agenda-dag {
+    min-height: 0;
+  }
+  .beschikbaarheid-rooster {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-1) var(--space-2);
+  }
+  /* Dagnaam over de volle breedte, daaronder Van | Tot naast elkaar. */
+  .beschikbaarheid-rooster .rooster-dag-label {
+    grid-column: 1 / -1;
+    margin-top: var(--space-2);
+  }
+  .beschikbaarheid-rooster .kop {
+    display: none;
+  }
   .portal-main,
   .field-main {
     padding: 12px 12px 88px;

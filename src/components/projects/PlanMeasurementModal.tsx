@@ -1,11 +1,24 @@
-import { CalendarClock, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertTriangle, CalendarClock, CalendarOff, CheckCircle2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import {
+  AFWEZIGHEID_LABEL,
+  OMVANG_LABEL,
+  formatMinuut,
+  omvangUnits,
+  type InmeetBeschikbaarheid,
+  type Omvang
+} from "../../lib/agenda";
+import type { AppSession } from "../../lib/auth/session";
+import { createConvexHttpClient } from "../../lib/convex/client";
 import type { SubmitEventLike } from "../../lib/events";
 import { Button } from "../ui/forms/Button";
 import { Field } from "../ui/forms/Field";
 import { Input } from "../ui/forms/Input";
 import { Select } from "../ui/forms/Select";
 import { FormModal } from "../ui/overlays/FormModal";
+import { fromDateInputValue } from "./measurement/measurementUtils";
 
 export type TeamMember = {
   id: string;
@@ -16,46 +29,201 @@ export type TeamMember = {
 
 type PlanMeasurementModalProps = {
   open: boolean;
+  session: AppSession;
   teamMembers: TeamMember[];
   defaultDate: string;
   defaultMeasuredBy: string;
+  /** Bestaande klusgrootte van het dossier — zodat herplannen niet terugvalt naar "klein". */
+  defaultOmvang?: Omvang;
+  /** Het dossier dat nu gepland wordt — z'n eigen bezoek telt niet mee in de capaciteit. */
+  excludeProjectId?: string;
   isSaving: boolean;
-  onSubmit: (data: { date: string; measuredBy: string }) => void;
+  onSubmit: (data: {
+    date: string;
+    measuredBy: string;
+    measuredByUserId?: string;
+    omvang: Omvang;
+  }) => void;
   onClose: () => void;
 };
 
 export function PlanMeasurementModal({
   open,
+  session,
   teamMembers,
   defaultDate,
   defaultMeasuredBy,
+  defaultOmvang = "klein",
+  excludeProjectId,
   isSaving,
   onSubmit,
   onClose
 }: PlanMeasurementModalProps) {
   const [date, setDate] = useState(defaultDate);
   const [measuredBy, setMeasuredBy] = useState(defaultMeasuredBy);
+  // Expliciete monteurkeuze op stabiele user-id (namen zijn niet uniek). null = nog geen
+  // expliciete keuze → val terug op naam-match (self-correcting als het team async laadt).
+  const [measuredById, setMeasuredById] = useState<string | null>(null);
+  const [omvang, setOmvang] = useState<Omvang>(defaultOmvang);
+  const [hint, setHint] = useState<InmeetBeschikbaarheid | null>(null);
+  const [hintLoading, setHintLoading] = useState(false);
+  const wasOpenRef = useRef(false);
 
-  // Synchroniseer met de defaults zodra de modal opent (de winkelmedewerker
-  // opent 'm vanuit het dossier; we vullen datum + huidige gebruiker voor).
+  // Seed de defaults alléén op de open-transitie (false→true). Niet bij elke
+  // wijziging van defaultDate/defaultMeasuredBy/defaultOmvang — die kunnen async
+  // binnenkomen (teamleden/dossier laden ná het openen) en zouden anders de door
+  // de gebruiker gekozen datum/monteur/omvang overschrijven.
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpenRef.current) {
       setDate(defaultDate);
       setMeasuredBy(defaultMeasuredBy);
+      setMeasuredById(null);
+      setOmvang(defaultOmvang);
     }
-  }, [open, defaultDate, defaultMeasuredBy]);
+    wasOpenRef.current = open;
+  }, [open, defaultDate, defaultMeasuredBy, defaultOmvang]);
+
+  // Kijkers (viewer) doen geen inmetingen en worden ook in de agenda verborgen —
+  // bied ze hier dus niet als monteur aan, zodat toewijzing en weergave consistent zijn.
+  const monteurOpties = teamMembers.filter((member) => member.role !== "viewer");
+  // Selecteer op stabiele user-id. Een expliciete keuze (measuredById) is leidend en
+  // duplicaat-veilig; zonder expliciete keuze vallen we terug op naam-match zodat de
+  // standaardmonteur ook werkt als het team async ná het openen binnenkomt.
+  const LOSSE_NAAM = "__losse-naam__";
+  const expliciteMember = measuredById
+    ? (monteurOpties.find((member) => member.id === measuredById) ?? null)
+    : null;
+  const selectedMember =
+    expliciteMember ?? monteurOpties.find((member) => member.naam === measuredBy) ?? null;
+  const monteurId = selectedMember?.id ?? null;
+  // Behoud een bestaande (vrije-tekst) monteurnaam die niet bij een teamlid hoort,
+  // zodat we 'm niet stilletjes wegvagen.
+  const heeftLosseNaam = !selectedMember && measuredBy.trim() !== "";
+  const monteurSelectWaarde = selectedMember
+    ? selectedMember.id
+    : heeftLosseNaam
+      ? LOSSE_NAAM
+      : "";
+
+  function kiesMonteur(waarde: string) {
+    if (waarde === "") {
+      setMeasuredById(null);
+      setMeasuredBy("");
+      return;
+    }
+    if (waarde === LOSSE_NAAM) {
+      return;
+    }
+    const gekozen = monteurOpties.find((member) => member.id === waarde);
+    if (gekozen) {
+      setMeasuredById(gekozen.id);
+      setMeasuredBy(gekozen.naam);
+    }
+  }
+
+  // Live beschikbaarheid: is het een inmeetdag, is de monteur vrij en past de klus?
+  useEffect(() => {
+    if (!open || !date || !monteurId) {
+      setHint(null);
+      return;
+    }
+    const datumMs = fromDateInputValue(date);
+    if (!datumMs) {
+      setHint(null);
+      return;
+    }
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      setHint(null);
+      return;
+    }
+    let cancelled = false;
+    setHintLoading(true);
+    client
+      .query(api.portal.inmeetBeschikbaarheid, {
+        tenantSlug: session.tenantId,
+        userId: monteurId as Id<"users">,
+        datum: datumMs,
+        excludeProjectId: excludeProjectId ? (excludeProjectId as Id<"projects">) : undefined
+      })
+      .then((res) => {
+        if (!cancelled) {
+          setHint(res as InmeetBeschikbaarheid);
+        }
+      })
+      .catch((hintError) => {
+        console.error(hintError);
+        if (!cancelled) {
+          setHint(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setHintLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, date, monteurId, session, excludeProjectId]);
 
   function handleSubmit(event: SubmitEventLike) {
     event.preventDefault();
     if (!date) {
       return;
     }
-    onSubmit({ date, measuredBy });
+    onSubmit({ date, measuredBy, measuredByUserId: monteurId ?? undefined, omvang });
   }
 
-  // Behoud een bestaande (vrije-tekst) monteurnaam die niet in de teamlijst
-  // staat, zodat we 'm niet stilletjes wegvagen.
-  const knownNames = new Set(teamMembers.map((member) => member.naam));
+  function renderHint() {
+    if (!measuredBy || !date) {
+      return null;
+    }
+    if (hintLoading) {
+      return <p className="inmeet-hint laden">Beschikbaarheid laden…</p>;
+    }
+    if (!hint) {
+      return null;
+    }
+    const venster = `${formatMinuut(hint.venster.startMinuut)}–${formatMinuut(hint.venster.eindMinuut)}`;
+
+    if (!hint.isInmeetdag) {
+      return (
+        <p className="inmeet-hint waarschuwing">
+          <AlertTriangle size={15} aria-hidden="true" />
+          Geen inmeetdag. Inmeten kan op di/wo/do tussen {venster}.
+        </p>
+      );
+    }
+    if (hint.afwezig) {
+      const label = AFWEZIGHEID_LABEL[hint.afwezig.type] ?? hint.afwezig.type;
+      return (
+        <p className="inmeet-hint waarschuwing">
+          <CalendarOff size={15} aria-hidden="true" />
+          {hint.monteur.naam} is die dag afwezig ({label}
+          {hint.afwezig.reden ? `: ${hint.afwezig.reden}` : ""}).
+        </p>
+      );
+    }
+    const past = omvangUnits(omvang) <= hint.vrijeCapaciteit;
+    const ruimte =
+      hint.vrijeCapaciteit >= 2
+        ? "de dag is nog helemaal vrij"
+        : hint.vrijeCapaciteit === 1
+          ? "nog 1 plek vrij die dag"
+          : "de dag is vol";
+    return (
+      <p className={`inmeet-hint ${past ? "ok" : "waarschuwing"}`}>
+        {past ? (
+          <CheckCircle2 size={15} aria-hidden="true" />
+        ) : (
+          <AlertTriangle size={15} aria-hidden="true" />
+        )}
+        Inmeten {venster} · {ruimte}
+        {past ? "" : omvang === "volledig" ? " — een volledige woning past hier niet meer." : " — geen plek meer."}
+      </p>
+    );
+  }
 
   return (
     <FormModal
@@ -82,20 +250,33 @@ export function PlanMeasurementModal({
         >
           <Select
             id="plan-measurement-monteur"
-            value={measuredBy}
-            onChange={(event) => setMeasuredBy(event.target.value)}
+            value={monteurSelectWaarde}
+            onChange={(event) => kiesMonteur(event.target.value)}
           >
             <option value="">Nog niet toegewezen</option>
-            {measuredBy && !knownNames.has(measuredBy) ? (
-              <option value={measuredBy}>{measuredBy}</option>
-            ) : null}
-            {teamMembers.map((member) => (
-              <option key={member.id} value={member.naam}>
+            {heeftLosseNaam ? <option value={LOSSE_NAAM}>{measuredBy}</option> : null}
+            {monteurOpties.map((member) => (
+              <option key={member.id} value={member.id}>
                 {member.naam}
               </option>
             ))}
           </Select>
         </Field>
+        <Field
+          htmlFor="plan-measurement-omvang"
+          label="Omvang van de klus"
+          description="Klein klusje? Dan passen er twee op een dag. Een volledige woning vult de hele inmeetdag."
+        >
+          <Select
+            id="plan-measurement-omvang"
+            value={omvang}
+            onChange={(event) => setOmvang(event.target.value as Omvang)}
+          >
+            <option value="klein">{OMVANG_LABEL.klein}</option>
+            <option value="volledig">{OMVANG_LABEL.volledig}</option>
+          </Select>
+        </Field>
+        {renderHint()}
         <div className="toolbar">
           <Button
             isLoading={isSaving}

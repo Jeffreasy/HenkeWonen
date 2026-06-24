@@ -1,0 +1,174 @@
+/* Agenda & monteur-beschikbaarheid — layout + lichte accenten. Uitsluitend
+   design-tokens voor kleuren/spacing; structuur via Card/Badge/Button-primitives. */
+
+.agenda-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.agenda-toolbar .agenda-week-label {
+  font-weight: 600;
+  min-width: 16ch;
+}
+.agenda-toolbar .agenda-spacer {
+  flex: 1 1 auto;
+}
+
+/* Elke monteur is een Card (ui-card levert surface/border/padding). */
+.agenda-monteur .agenda-monteur-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.agenda-monteur-head h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.agenda-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.agenda-dag {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  background: var(--color-surface);
+}
+.agenda-dag-kop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+}
+.agenda-dag-kop .dag-naam {
+  font-weight: 600;
+}
+.agenda-dag-kop .dag-vandaag {
+  font-weight: 600;
+  color: var(--color-accent-strong);
+}
+.agenda-dag-kop .dag-datum {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+.agenda-dag.is-vandaag {
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+.agenda-dag.niet-ingeroosterd {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+.agenda-werktijd {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.agenda-bezoek {
+  display: block;
+  font-size: var(--text-sm);
+  line-height: var(--line-tight);
+  border-left: 3px solid var(--color-accent);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--color-accent-soft);
+  color: inherit;
+  text-decoration: none;
+  transition: filter 0.12s ease;
+}
+.agenda-bezoek b {
+  display: block;
+}
+.agenda-bezoek:hover {
+  filter: brightness(0.97);
+}
+.agenda-bezoek:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.agenda-leeg {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.agenda-alert-actie {
+  margin-top: var(--space-2);
+}
+
+/* Beheerpaneel (weekrooster + afwezigheid) */
+.beschikbaarheid-kop {
+  margin: 0 0 var(--space-2);
+}
+.beschikbaarheid-kop-ruim {
+  margin-top: var(--space-5);
+}
+.beschikbaarheid-actie {
+  margin-top: var(--space-3);
+}
+.beschikbaarheid-rooster {
+  display: grid;
+  grid-template-columns: 7rem 1fr 1fr;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+}
+.beschikbaarheid-rooster .kop {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.rooster-dag-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.afwezigheid-lijst {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.afwezigheid-rij {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* Beschikbaarheids-hint bij het inplannen van een inmeetbezoek */
+.inmeet-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  line-height: var(--line-normal);
+}
+.inmeet-hint svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+.inmeet-hint.ok {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+.inmeet-hint.waarschuwing {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+.inmeet-hint.laden {
+  color: var(--color-text-muted);
+}

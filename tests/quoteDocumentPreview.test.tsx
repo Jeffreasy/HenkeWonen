@@ -109,7 +109,7 @@ const model: QuoteDocumentModel = {
 describe("Quote Document Preview", () => {
   const html = renderToStaticMarkup(React.createElement(QuoteDocumentPreview, { model }));
   const globalCss = fs.readFileSync(path.join(process.cwd(), "src/styles/global.css"), "utf8");
-  const printCss = fs.readFileSync(path.join(process.cwd(), "src/styles/layers/17-print.css"), "utf8");
+  const printCss = fs.readFileSync(path.join(process.cwd(), "src/styles/layers/18-print.css"), "utf8");
   const combinedCss = globalCss + "\n" + printCss;
 
   it("should render the preview HTML document correctly", () => {

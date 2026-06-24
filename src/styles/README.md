@@ -19,9 +19,10 @@ Gelaagde CSS-architectuur voor het Henke Wonen portal. Alle stijlen zijn georgan
 12-timeline.css          Timeline en workflow rail
 13-features-projects.css Projecten en dossiers
 14-features-quotes.css   Offertes en calculators
-15-keyframes.css         Animatie-definities
-16-responsive.css        Responsive breakpoints
-17-print.css             Printstijlen
+15-features-agenda.css   Agenda en monteur-beschikbaarheid
+16-keyframes.css         Animatie-definities
+17-responsive.css        Responsive breakpoints
+18-print.css             Printstijlen
 ```
 
 > [!IMPORTANT]

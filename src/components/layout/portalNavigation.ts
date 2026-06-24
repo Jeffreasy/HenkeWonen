@@ -1,5 +1,6 @@
 import {
   BriefcaseBusiness,
+  CalendarDays,
   ClipboardCheck,
   FileText,
   Home,
@@ -69,6 +70,12 @@ export const portalNavGroups: PortalNavGroup[] = [
         label: "Buitendienst",
         icon: Ruler,
         matches: [{ path: "/portal/buitendienst" }]
+      },
+      {
+        href: "/portal/agenda",
+        label: "Agenda",
+        icon: CalendarDays,
+        matches: [{ path: "/portal/agenda" }]
       }
     ]
   },

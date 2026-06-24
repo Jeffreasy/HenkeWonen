@@ -133,6 +133,10 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
 
   it("should restrict hard database deletes to the whitelisted set of operations", () => {
     expect(deleteBlocks.map(({ file, name }) => `${file}:${name}`).sort()).toEqual([
+      // Agenda-beheer: tenant-gescoped + editor/admin-authz; setMonteurWerktijden
+      // vervangt het weekrooster (verwijder-dan-invoeg), removeAfwezigheid wist 1 rij.
+      "convex/beheer/agenda.ts:removeAfwezigheid",
+      "convex/beheer/agenda.ts:setMonteurWerktijden",
       "convex/catalog/import.ts:deleteProductsByCategoryChunk",
       "convex/catalog/import.ts:deleteProductsBySupplierChunk",
       "convex/catalog/import.ts:resetCatalogChunk",
@@ -143,6 +147,29 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
       "convex/projecten/core.ts:deleteProjectRoom",
       "convex/offertes/core.ts:deleteQuoteLine"
     ].sort());
+  });
+
+  it("should secure the agenda hard-deletes with tenant scope and editor/admin authz", () => {
+    // setMonteurWerktijden vervangt het weekrooster (delete-dan-insert): de te wissen
+    // rijen komen via de by_monteur-index met tenantId === tenant._id, en de monteur
+    // moet bij de tenant horen.
+    const setWerktijden = exportedMutationBlock("convex/beheer/agenda.ts", "setMonteurWerktijden");
+    expect(setWerktijden).toContain("actor: mutationActorValidator");
+    expect(setWerktijden).toContain("requireMutationRole");
+    expect(setWerktijden).toContain('"editor"');
+    expect(setWerktijden).toContain('"admin"');
+    expect(setWerktijden).toContain('q.eq("tenantId", tenant._id)');
+    expect(setWerktijden).toContain("requireMonteur(ctx, tenant._id");
+    expect(setWerktijden).toContain("ctx.db.delete(");
+
+    // removeAfwezigheid wist 1 rij, maar pas ná bevestiging dat die rij bij deze tenant hoort.
+    const removeAfw = exportedMutationBlock("convex/beheer/agenda.ts", "removeAfwezigheid");
+    expect(removeAfw).toContain("actor: mutationActorValidator");
+    expect(removeAfw).toContain("requireMutationRole");
+    expect(removeAfw).toContain('"editor"');
+    expect(removeAfw).toContain('"admin"');
+    expect(removeAfw).toContain("rij.tenantId !== tenant._id");
+    expect(removeAfw).toContain("ctx.db.delete(args.afwezigheidId)");
   });
 
   it("should secure deleteQuoteLine with proper tenant and draft checks", () => {
@@ -289,7 +316,7 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
 
   it("should keep mobile modals above quick actions and touch-scrollable", () => {
     const overlayStyles = read("src/styles/layers/07-overlays.css");
-    const responsiveStyles = read("src/styles/layers/16-responsive.css");
+    const responsiveStyles = read("src/styles/layers/17-responsive.css");
     const componentStyles = read("src/styles/layers/06-ui-components.css");
 
     expect(overlayStyles).toContain(".form-modal-backdrop");
@@ -309,7 +336,7 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     const customerDetail = read("src/components/customers/CustomerDetail.tsx");
     const customerInfoPanel = read("src/components/customers/CustomerInfoPanel.tsx");
     const featureStyles = read("src/styles/layers/13-features-projects.css");
-    const responsiveStyles = read("src/styles/layers/16-responsive.css");
+    const responsiveStyles = read("src/styles/layers/17-responsive.css");
 
     expect(customerDetail).toContain('size="md"');
     expect(customerDetail).toContain("omschrijving: values.description");

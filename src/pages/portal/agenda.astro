@@ -1,0 +1,30 @@
+---
+import PortalLayout from "../../components/layout/PortalLayout.astro";
+import FieldLayout from "../../components/layout/FieldLayout.astro";
+import AgendaWorkspace from "../../components/agenda/AgendaWorkspace";
+import { PageHeader } from "../../components/ui/layout/PageHeader";
+import { isFieldWorkspace } from "../../lib/auth/session";
+
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+
+// Buitendienst (Wim) krijgt de field-shell met FieldNavigation; winkel de portal-shell.
+const field = isFieldWorkspace(session);
+const Layout = field ? FieldLayout : PortalLayout;
+---
+
+<Layout title="Agenda" session={session}>
+  {
+    !field && (
+      <PageHeader
+        eyebrow="Planning"
+        title="Agenda & beschikbaarheid"
+        description="Zie per monteur de geplande inmeetbezoeken en wanneer er ruimte is voor een nieuwe afspraak."
+      />
+    )
+  }
+  <AgendaWorkspace client:load session={session} />
+</Layout>

@@ -1,6 +1,7 @@
 import { ClipboardList, Ruler } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
@@ -42,6 +43,8 @@ type ProjectDetailProps = {
 
 type ProjectDetailResult = {
   project: PortalProject;
+  inmeetOmvang?: "klein" | "volledig" | null;
+  inmeetMonteur?: string | null;
   customer: PortalCustomer | null;
   workflowEvents?: PortalWorkflowEvent[];
   projectTasks?: PortalProjectTask[];
@@ -283,7 +286,12 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     return `${date.getFullYear()}-${month}-${day}`;
   }
 
-  async function planMeasurementVisit(data: { date: string; measuredBy: string }) {
+  async function planMeasurementVisit(data: {
+    date: string;
+    measuredBy: string;
+    measuredByUserId?: string;
+    omvang: "klein" | "volledig";
+  }) {
     const client = createConvexHttpClient(session);
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
@@ -303,7 +311,12 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
         actor: mutationActorFromSession(session),
         projectId,
         inmeetdatum,
-        gemetenDoor: data.measuredBy.trim() || undefined
+        // Altijd meesturen (ook leeg) zodat de backend "loskoppelen" kan onderscheiden.
+        gemetenDoor: data.measuredBy.trim(),
+        gemetenDoorUserId: data.measuredByUserId
+          ? (data.measuredByUserId as Id<"users">)
+          : undefined,
+        omvang: data.omvang
       });
       setIsPlanModalOpen(false);
       await loadProject();
@@ -547,14 +560,20 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
 
       <PlanMeasurementModal
         open={isPlanModalOpen}
+        session={session}
         teamMembers={teamMembers}
+        excludeProjectId={projectId}
+        defaultOmvang={detail.inmeetOmvang ?? "klein"}
         defaultDate={
           project.inmeetdatum ? toDateInputValue(project.inmeetdatum) : defaultDateInputInDays(1)
         }
         defaultMeasuredBy={
+          // Bij herplannen: de reeds toegewezen monteur; anders de ingelogde gebruiker.
+          detail.inmeetMonteur ??
           teamMembers.find(
             (member) => member.email === session.email || member.naam === session.name
-          )?.naam ?? ""
+          )?.naam ??
+          ""
         }
         isSaving={isPlanningMeasurement}
         onSubmit={(data) => void planMeasurementVisit(data)}
