@@ -11,6 +11,7 @@ import { DashboardInvoiceStrip } from "./DashboardInvoiceStrip";
 import { DashboardWorkOverview, type DashboardWorkItem } from "./DashboardWorkOverview";
 import { DashboardQuoteFollowUps, type DashboardQuoteFollowUp } from "./DashboardQuoteFollowUps";
 import { DashboardRecentProjects } from "./DashboardRecentProjects";
+import { DashboardAgendaWidget, type DashboardAgenda } from "./DashboardAgendaWidget";
 
 type DashboardShellProps = {
   session: AppSession;
@@ -24,6 +25,7 @@ type DashboardData = {
   quoteFollowUps: DashboardQuoteFollowUp[];
   projects: PortalProject[];
   invoiceStats: { openAmount: number; overdueCount: number };
+  agenda: DashboardAgenda;
 };
 
 const emptyDashboard: DashboardData = {
@@ -33,7 +35,8 @@ const emptyDashboard: DashboardData = {
   workItems: [],
   quoteFollowUps: [],
   projects: [],
-  invoiceStats: { openAmount: 0, overdueCount: 0 }
+  invoiceStats: { openAmount: 0, overdueCount: 0 },
+  agenda: { weekStart: 0, dagen: [], nietToegewezenCount: 0 }
 };
 
 function normalizeDashboardData(result: Partial<DashboardData> | null | undefined): DashboardData {
@@ -51,6 +54,14 @@ function normalizeDashboardData(result: Partial<DashboardData> | null | undefine
     invoiceStats: {
       openAmount: typeof invoiceStats?.openAmount === "number" ? invoiceStats.openAmount : 0,
       overdueCount: typeof invoiceStats?.overdueCount === "number" ? invoiceStats.overdueCount : 0
+    },
+    agenda: {
+      weekStart: typeof result?.agenda?.weekStart === "number" ? result.agenda.weekStart : 0,
+      dagen: Array.isArray(result?.agenda?.dagen) ? result.agenda.dagen : [],
+      nietToegewezenCount:
+        typeof result?.agenda?.nietToegewezenCount === "number"
+          ? result.agenda.nietToegewezenCount
+          : 0
     }
   };
 }
@@ -131,6 +142,8 @@ export default function DashboardShell({ session }: DashboardShellProps) {
           quoteFollowUps={dashboard.quoteFollowUps}
         />
       </div>
+
+      <DashboardAgendaWidget isLoading={isLoading} agenda={dashboard.agenda} />
 
       <DashboardRecentProjects
         isLoading={isLoading}

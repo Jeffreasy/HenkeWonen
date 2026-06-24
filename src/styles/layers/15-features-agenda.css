@@ -148,6 +148,32 @@
   color: var(--color-text-muted);
 }
 
+/* Dashboard-widget: mini-weekstrip van de inmeetdagen (di/wo/do) */
+.agenda-widget-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.agenda-widget-dag {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.agenda-widget-dag-kop {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+@media (max-width: 540px) {
+  .agenda-widget-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Beheerpaneel (weekrooster + afwezigheid) */
 .beschikbaarheid-kop {
   margin: 0 0 var(--space-2);

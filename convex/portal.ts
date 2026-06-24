@@ -3,6 +3,15 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { readActorValidator, requireQueryRole } from "./authz";
 import { taskPriority, toProject, toQuoteSummary } from "./portalUtils";
+import {
+  DAG_MS,
+  INMEET_CAPACITEIT,
+  hoortBijMonteur,
+  isInmeetdag,
+  omvangUnits,
+  startVanWeekMs,
+  weekdagVanMs
+} from "./beheer/agenda";
 
 export const dashboard = query({
   args: {
@@ -187,6 +196,67 @@ export const dashboard = query({
         .map((project: Doc<"projects">) => toProject(ctx, tenant.slug, project))
     );
 
+    // ── Agenda: lichte week-aggregatie voor de dashboard-widget ──────────────
+    // Geen volledige agendaWeek-payload; alleen per inmeetdag (di/wo/do) de geboekte
+    // en vrije capaciteit over de zichtbare monteurs + het aantal niet-toegewezen
+    // inmetingen. inmeetdata bevat geen bedragen, dus niet field-gemaskeerd.
+    const nu = Date.now();
+    const agendaWeekStart = startVanWeekMs(nu);
+    const agendaWeekEnd = agendaWeekStart + 7 * DAG_MS;
+    const [weekMetingen, agendaUsers] = await Promise.all([
+      ctx.db
+        .query("measurements")
+        .withIndex("by_measurement_date", (q: any) =>
+          q
+            .eq("tenantId", tenant._id)
+            .gte("inmeetdatum", agendaWeekStart)
+            .lt("inmeetdatum", agendaWeekEnd)
+        )
+        .collect(),
+      ctx.db
+        .query("users")
+        .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+        .collect()
+    ]);
+    const agendaNietViewers = agendaUsers.filter((u: Doc<"users">) => u.role !== "viewer");
+    const agendaAangevinkt = agendaNietViewers.filter(
+      (u: Doc<"users">) => u.toonInAgenda === true
+    );
+    const zichtbareMonteurs =
+      agendaAangevinkt.length > 0 ? agendaAangevinkt : agendaNietViewers;
+    const maxCapaciteitPerDag = Math.max(1, zichtbareMonteurs.length) * INMEET_CAPACITEIT;
+
+    const geboektPerWeekdag = new Map<number, number>();
+    let agendaNietToegewezenCount = 0;
+    for (const m of weekMetingen) {
+      const herleidbaar = agendaNietViewers.some((u: Doc<"users">) =>
+        hoortBijMonteur(m, u._id, u.naam ?? u.email)
+      );
+      if (!herleidbaar) {
+        agendaNietToegewezenCount += 1;
+        continue;
+      }
+      const wd = weekdagVanMs(m.inmeetdatum as number);
+      geboektPerWeekdag.set(wd, (geboektPerWeekdag.get(wd) ?? 0) + omvangUnits(m.omvang));
+    }
+
+    const agendaDagen = [];
+    for (let i = 0; i < 7; i += 1) {
+      const d = new Date(agendaWeekStart);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + i);
+      // isInmeetdag (backend) verwacht een timestamp, niet een weekdag-index.
+      if (!isInmeetdag(d.getTime())) continue;
+      const geboekt = geboektPerWeekdag.get(i) ?? 0;
+      agendaDagen.push({
+        datumMs: d.getTime(),
+        weekdag: i,
+        geboekt,
+        maxCapaciteit: maxCapaciteitPerDag,
+        vrijeCapaciteit: Math.max(0, maxCapaciteitPerDag - geboekt)
+      });
+    }
+
     return {
       openQuoteCount: openQuotes.length,
       plannedWorkCount: plannedWorkProjects.length,
@@ -207,7 +277,12 @@ export const dashboard = query({
       invoiceStats:
         workspaceMode === "field"
           ? { openAmount: 0, overdueCount: 0 }
-          : { openAmount, overdueCount }
+          : { openAmount, overdueCount },
+      agenda: {
+        weekStart: agendaWeekStart,
+        dagen: agendaDagen,
+        nietToegewezenCount: agendaNietToegewezenCount
+      }
     };
   }
 });
