@@ -136,3 +136,15 @@ test("inmeetBeschikbaarheid: ochtend-afwezigheid (buiten 16:30-17:30) blokkeert 
   });
   expect(binnen.afwezig).not.toBeNull();
 });
+
+test("een pure start (zonder datum/monteur) keurt een bestaande niet-inmeetdatum niet retroactief af", async () => {
+  stubAuth();
+  const t = convexTest(schema, modules);
+  const ids = await setup(t);
+  // Project heeft al een inmeetdatum op een maandag (bv. legacy/handmatig).
+  await t.run(async (ctx) => ctx.db.patch(ids.projectA, { inmeetdatum: MAANDAG }));
+  // Een pure start zet geen datum/monteur en mag niet falen op de inmeetdag-guard.
+  await plan(t, { projectId: String(ids.projectA) });
+  const proj = await t.run(async (ctx) => ctx.db.get(ids.projectA));
+  expect(proj?.status).toBe("measurement_planned");
+});

@@ -259,11 +259,11 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     setError(null);
 
     try {
+      // Geen monteur toewijzen bij het starten: dat gebeurt via de plan-modal (naam + userId).
       await client.mutation(api.portal.startOrPlanMeasurement, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
-        projectId,
-        gemetenDoor: session.name ?? session.email
+        projectId
       });
       await loadProject();
       handleTabChange("inmeting");
