@@ -62,7 +62,6 @@ export const portalNavGroups: PortalNavGroup[] = [
         href: "/portal/catalogus",
         label: "Catalogus",
         icon: PackageSearch,
-        quickbar: true,
         matches: [{ path: "/portal/catalogus", exact: true }]
       },
       {
@@ -75,6 +74,7 @@ export const portalNavGroups: PortalNavGroup[] = [
         href: "/portal/agenda",
         label: "Agenda",
         icon: CalendarDays,
+        quickbar: true,
         matches: [{ path: "/portal/agenda" }]
       }
     ]

@@ -102,14 +102,14 @@ function fieldNavGroups(pathname: string, hash: string): FieldNavGroup[] {
           label: "Conceptoffertes",
           shortLabel: "Offertes",
           icon: FileText,
-          active: onQuote || (onProject && hash === "#conceptofferte"),
-          quickbar: true
+          active: onQuote || (onProject && hash === "#conceptofferte")
         },
         {
           href: fieldAgendaPath,
           label: "Agenda",
           icon: CalendarClock,
-          active: onAgenda
+          active: onAgenda,
+          quickbar: true
         }
       ]
     }
