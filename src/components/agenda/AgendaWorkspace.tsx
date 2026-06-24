@@ -1,7 +1,9 @@
 import { CalendarClock, ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { canManageAgenda, isFieldWorkspace, type AppSession } from "../../lib/auth/session";
+import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import {
   AFWEZIGHEID_LABEL,
@@ -30,6 +32,14 @@ type MonteurAgenda = {
   bezoeken: Bezoek[];
 };
 
+type AgendaLid = {
+  id: string;
+  naam: string;
+  email: string;
+  role: string;
+  toonInAgenda: boolean | null;
+};
+
 type AgendaWorkspaceProps = {
   session: AppSession;
 };
@@ -43,6 +53,7 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [beheerMonteur, setBeheerMonteur] = useState<MonteurAgenda | null>(null);
+  const [teamLeden, setTeamLeden] = useState<AgendaLid[]>([]);
   const mag = canManageAgenda(session.role);
   const veld = isFieldWorkspace(session);
   const lastRequestId = useRef(0);
@@ -92,6 +103,40 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadTeam = useCallback(async () => {
+    if (!mag) return;
+    const client = createConvexHttpClient(session);
+    if (!client) return;
+    try {
+      const res = await client.query(api.portal.listTeamMembers, { tenantSlug: session.tenantId });
+      setTeamLeden(((res ?? []) as AgendaLid[]).filter((u) => u.role !== "viewer"));
+    } catch (teamError) {
+      console.error(teamError);
+    }
+  }, [mag, session]);
+
+  useEffect(() => {
+    void loadTeam();
+  }, [loadTeam]);
+
+  async function toggleZichtbaar(userId: string, toon: boolean) {
+    const client = createConvexHttpClient(session);
+    if (!client) return;
+    setTeamLeden((prev) => prev.map((u) => (u.id === userId ? { ...u, toonInAgenda: toon } : u)));
+    try {
+      await client.mutation(api.portal.setAgendaZichtbaarheid, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        userId: userId as Id<"users">,
+        toonInAgenda: toon
+      });
+      await load(); // agenda herladen — de whitelist kan nu wijzigen
+    } catch (toggleError) {
+      console.error(toggleError);
+      await loadTeam(); // herstel de echte stand bij een fout
+    }
+  }
 
   const dagen = useMemo(() => weekDagen(weekStart), [weekStart]);
   const vandaag = useMemo(() => {
@@ -223,6 +268,32 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
           </Card>
         ))
       )}
+
+      {mag && teamLeden.length > 0 ? (
+        <Card className="agenda-leden">
+          <h3>Wie staat in de agenda</h3>
+          <p className="agenda-leden-hint">
+            Vink aan wie als monteur in de agenda verschijnt. Zodra je iemand aanvinkt, toont de
+            agenda alléén de aangevinkte personen — handig om bijvoorbeeld admin-/dev-accounts te
+            verbergen.
+          </p>
+          <ul className="agenda-leden-lijst">
+            {teamLeden.map((lid) => (
+              <li key={lid.id} className="agenda-lid">
+                <label className="agenda-lid-label">
+                  <input
+                    type="checkbox"
+                    checked={lid.toonInAgenda === true}
+                    onChange={(event) => void toggleZichtbaar(lid.id, event.target.checked)}
+                  />
+                  <span className="agenda-lid-naam">{lid.naam}</span>
+                  <span className="agenda-lid-email">{lid.email}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
 
       {mag && beheerMonteur ? (
         <BeschikbaarheidPanel

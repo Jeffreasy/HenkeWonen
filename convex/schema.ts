@@ -220,6 +220,10 @@ export default defineSchema({
     naam: v.optional(v.string()),
     role,
     workspaceMode: v.optional(workspaceMode),
+    // Of deze gebruiker als monteur in de week-agenda verschijnt. Zodra er minstens één
+    // gebruiker expliciet op true staat, toont de agenda alleen die (whitelist); zolang
+    // niemand is aangevinkt valt 'ie terug op alle niet-viewers (backward-compatible).
+    toonInAgenda: v.optional(v.boolean()),
     aangemaaktOp: v.number(),
     gewijzigdOp: v.number()
   })

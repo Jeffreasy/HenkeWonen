@@ -50,7 +50,8 @@ export const listTeamMembers = query({
         id: String(user._id),
         naam: user.naam ?? user.email,
         email: user.email,
-        role: user.role
+        role: user.role,
+        toonInAgenda: user.toonInAgenda ?? null
       }))
       .sort((left, right) => left.naam.localeCompare(right.naam, "nl"));
   }
