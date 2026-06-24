@@ -1,47 +1,94 @@
-# Calculator-bedrijfsregels — te bevestigen met Wim/Simone (2026-06-24)
+# Reken-/arbeidswaarden — te bevestigen met Wim/Simone (2026-06-24, herzien)
 
-> **Doel:** de 18 reken-aannames die nu als *placeholder* in de calculators staan, laten bevestigen of
-> corrigeren door de praktijk (Wim/Simone). Deze waarden voeden **de richtprijs én de inmeet-hoeveelheden**.
-> Bron: `convex/catalog/calculatorRulesSeed.ts` (de 18 regels met `vereistKlantInput: true`, vergrendeld
-> door `tests/calculatorRulesSeed.test.ts`). De overige 33 regels komen uit echte prijslijst-formules en
-> zijn géén aanname.
+> **Belangrijke correctie (na code-onderzoek):** de eerdere lezing "arbeid staat op €0 in de richtprijs" was
+> **onjuist**. De `calculatorRules`-tabel (met de 18 zg. placeholders, incl. `labor_surcharge=0`) wordt
+> **nergens geconsumeerd** — niet door de frontend, niet door enige prijsberekening. Het is inerte seed-data.
+> De waarden die de richtprijs en de inmeet-hoeveelheden **echt** aansturen, leven op drie andere plekken,
+> en die zijn grotendeels **al gevuld**. Dit document vervangt de calculatorRules-placeholder-lijst door de
+> waarden die er wél toe doen — een veel kleinere, concretere bevestiging.
 
-## ⚠️ Belangrijkste beslissing eerst: arbeid staat nu op €0
+## Waar de getallen echt vandaan komen
 
-**Alle 7 arbeids-/confectie-opslagen staan op 0.** Dat betekent dat de richtprijs nu **alleen materiaal**
-rekent — leg-, plak-, montage- en confectiekosten zitten er niet in. Voor een eerlijke richtprijs tijdens
-de pilot is dit het grootste blok om in te vullen (regels 2, 4, 6, 10, 12, 14, 18 hieronder).
+| Bron | Wat | Status | Geconsumeerd door |
+|---|---|---|---|
+| **`serviceCostRules`** | Arbeid/legkosten (€-tarieven) | ✅ gevuld (20 regels, op prod) | inmeet-flow (`MeasurementAssignPanel`/`roomLineDerivation`) + offertes |
+| **`wasteProfiles`** | Snijverlies-% per groep | ✅ gevuld (8 profielen, op prod) | `convex/projecten/measurements.ts` |
+| **Calc-code-defaults** | Gordijn-zoom/zijzoom + egaline-verbruik | ⚠️ hardcoded placeholders | `curtainCalculator.ts` / `screedCalculator.ts` |
+| ~~`calculatorRules`~~ | ~~marge-delers + 18 placeholders~~ | ❌ **inert — nergens gelezen** | (niets) |
 
-> Spelregel die overeind blijft: de inmeting/richtprijs is *indicatief*; de **offerte** blijft de plek waar
-> de prijs definitief wordt gezet. Maar de **hoeveelheden** (snijverlies, verbruik, gordijngeometrie) tellen
-> wél echt mee, dus die aannames hebben directe impact.
+---
 
-## De 18 te bevestigen waarden
+## A. Arbeid/legkosten — `serviceCostRules` (verifiëren, niet invullen)
 
-| # | Regel (productgroep · soort) | Wat het bepaalt | Huidige aanname | Te bevestigen waarde |
-|---|------------------------------|-----------------|-----------------|----------------------|
-| 1 | PVC-vloer · snijverlies | Extra m² materiaal bovenop netto vloeroppervlak | 7% | Welk % snijverlies bij PVC? Afhankelijk van legpatroon? |
-| 2 | PVC-vloer · arbeidsopslag | Legkosten bovenop materiaalprijs | **0 (geen arbeid)** | Legkosten PVC: bedrag/m² of %? |
-| 3 | Vinyl · snijverlies | Extra m² op rolbreedte | 7% | Welk % snijverlies bij vinyl op rol? |
-| 4 | Vinyl · arbeidsopslag | Legkosten bovenop materiaalprijs | **0 (geen arbeid)** | Legkosten vinyl: bedrag/m² of %? |
-| 5 | Tapijt · snijverlies | Extra m² op rolbreedte (incl. looprichting) | 10% | Klopt 10% voor tapijt? |
-| 6 | Tapijt · arbeidsopslag | Legkosten bovenop materiaalprijs | **0 (geen arbeid)** | Legkosten tapijt: bedrag/m² of %? |
-| 7 | Schoonloopmat · snijverlies | Extra m² bij maatwerk-coupage | 5% | Klopt 5% voor matten op maat? |
-| 8 | Egaliseren · verbruik | Kg egaline per m² per mm laagdikte | 1,5 kg/m²/mm | Verbruik per m² per mm — merkafhankelijk? |
-| 9 | Egaliseren · zakgewicht | Kg per zak → aantal zakken | 25 kg/zak | Hoeveel kg per ingekochte zak egaline? |
-| 10 | Egaliseren · arbeidsopslag | Arbeidskosten egaliseren | **0 (geen arbeid)** | Kosten egaliseren: bedrag/m² of %? |
-| 11 | Behang · snijverlies | Extra banen incl. patroon-uitlijning | 15% | Klopt 15%? Afhankelijk van rapporthoogte? |
-| 12 | Behang · arbeidsopslag | Plak-/behangarbeid | **0 (geen arbeid)** | Plakkosten behang: per rol/m² of %? |
-| 13 | Wandpanelen · snijverlies | Extra panelen/m² incl. zaagverlies | 5% | Klopt 5% zaagverlies? |
-| 14 | Wandpanelen · arbeidsopslag | Montage-arbeid | **0 (geen arbeid)** | Montagekosten: per m²/paneel of %? |
-| 15 | Gordijnen · plooifactor | Stofbreedte = railbreedte × factor | 2× | Standaard plooifactor? Per plooisoort anders? |
-| 16 | Gordijnen · zoom boven+onder | Extra stoflengte voor zomen | 30 cm totaal | Hoeveel cm zoom boven + onder samen? |
-| 17 | Gordijnen · zijzoom | Extra stofbreedte per baan | 6 cm per baan | Hoeveel cm zijzoom (per baan)? |
-| 18 | Gordijnen · confectie | Maakkosten per gordijn/baan/meter | **0 (geen confectie)** | Confectiekosten: per gordijn/baan/m rail? |
+Deze tarieven zijn al in het systeem en gaan mee in de inmeting/offerte. **Vraag aan Wim/Simone: kloppen
+deze bedragen nog?** (ex. btw, 21%)
 
-## Na bevestiging
+| Regel | Type | Tarief |
+|---|---|---|
+| Dichte trap tapijt | vast | € 400 |
+| Open trap tapijt | vast | € 500 |
+| Ondertapijt | vast | € 250 |
+| PVC trap rechte trap | vast | € 1.595 |
+| PVC trap kwart draai | vast | € 1.695 |
+| PVC trap halve draai | vast | € 1.795 |
+| Extra toeslag open trap | vast | € 100 |
+| Vinyl trap | vast | € 450 |
+| Strippen | vast | € 150 |
+| Legkosten rechte plank | per m² | € 17,50 |
+| Legkosten visgraat | per m² | € 22,50 |
+| Legkosten visgraat met bies | per m² | € 35,00 |
+| Egaliseren | per m² | € 15,95 |
+| Egaliseren plavuizen | per m² | € 19,50 |
+| Vloerverwarming dichtzetten | per m² | € 12,95 |
+| PVC plakondervloer | per m² | € 22,95 |
+| Private Label Henke Wonen | per m² | € 28,95 |
+| Behangen patroon | per rol | € 65 |
+| Behangen uni | per rol | € 55 |
 
-Lever de bevestigde getallen aan; dan is het een kleine, mechanische update: de waarden in
-`convex/catalog/calculatorRulesSeed.ts` aanpassen (en de test-verwachtingen waar nodig), `seedCalculatorRules`
-opnieuw draaien op dev → daarna prod (zelfde idempotente seed als 24 jun, `inserted:0/updated:51`).
-Géén schema- of codewijziging nodig — alleen data.
+> Ontbreekt er een arbeidssoort (bv. gordijnen ophangen/confectie, wandpanelen montage)? Die voeg je toe
+> als nieuwe `serviceCostRule` — dat is de juiste plek, niet de calculator.
+
+## B. Snijverlies — `wasteProfiles` (verifiëren)
+
+Deze %'s sturen de benodigde-materiaal-berekening. **Vraag: kloppen deze?**
+
+| Productgroep | Snijverlies |
+|---|---|
+| PVC rechte plank | 3% |
+| PVC visgraat | 5% |
+| Tapijt | 10% |
+| Vinyl | 10% |
+| Behang | 10% |
+| Wandpanelen | 8% |
+| Plinten | 5% |
+
+## C. Gordijn-/egaline-defaults — de énige echte code-placeholders (4 waarden)
+
+Deze staan hardcoded in de calc-code en zijn de enige die een (kleine) **codewijziging** vergen na bevestiging:
+
+| Waarde | Nu | Te bevestigen |
+|---|---|---|
+| Gordijn zoom (boven+onder) | 0,30 m | Klopt 30 cm totaal? |
+| Gordijn zijzoom (per baan) | 0,06 m | Klopt 6 cm per baan? |
+| Egaline verbruik | 1,5 kg/m²/mm | Verbruik per m² per mm? |
+| Egaline zakinhoud | 25 kg | Kg per ingekochte zak? |
+
+(De gordijn-**plooifactor** wordt per gordijn ingevoerd door de inmeter — geen globale default nodig, tenzij
+jullie een standaard willen.)
+
+---
+
+## D. Architectuur-beslissing: wat met `calculatorRules`?
+
+De tabel is volledig **dood** (51 regels, nergens gelezen) en op punten zelfs **inconsistent** met de live
+`wasteProfiles` (calculatorRules zegt PVC 7%/behang 15%; wasteProfiles — die wél telt — zegt PVC 3%/behang 10%).
+Keuze (niet pilot-blokkerend):
+- **Aanbevolen:** laten staan tot na de pilot, dan **droppen** (of bewust wiren als jullie de richtprijs
+  later marge-delers/opslagen uit één tabel willen laten halen). Tot die tijd misleidt 'ie alleen in audits.
+- De test `tests/calculatorRulesSeed.test.ts` die "18 placeholders" vergrendelt, vervalt dan mee.
+
+## Samenvatting voor de pilot
+
+Geen €0-arbeid-probleem. Te doen: Wim/Simone **A** (19 serviceCostRules-tarieven) + **B** (7 snijverlies-%'s)
+**verifiëren** (waarden bestaan al), en **C** (4 gordijn-/egaline-defaults) bevestigen. Dat is de hele
+business-bevestiging — veel kleiner dan de oorspronkelijke "18 placeholders".
