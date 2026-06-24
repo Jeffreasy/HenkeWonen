@@ -9,6 +9,7 @@ import {
   requireQueryRoleForTenantId
 } from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
+import { berekenInmeetBeschikbaarheid, isInmeetdag, omvangUnits } from "../beheer/agenda";
 import {
   toProject,
   toCustomer,
@@ -634,7 +635,9 @@ export const startOrPlanMeasurement = mutation({
     inmeetdatum: v.optional(v.number()),
     gemetenDoor: v.optional(v.string()),
     gemetenDoorUserId: v.optional(v.id("users")),
-    omvang: v.optional(v.union(v.literal("klein"), v.literal("volledig")))
+    omvang: v.optional(v.union(v.literal("klein"), v.literal("volledig"))),
+    // Bewust de inmeet-regels overrulen (niet-inmeetdag / afwezige monteur / volle dag).
+    force: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
     const { tenant, externalUserId } = await requireMutationRole(
@@ -645,9 +648,10 @@ export const startOrPlanMeasurement = mutation({
     );
 
     // Verifieer dat een meegegeven monteur tot deze tenant hoort (tenant-isolatie).
+    let monteurDoc: Doc<"users"> | null = null;
     if (args.gemetenDoorUserId) {
-      const monteur = await ctx.db.get(args.gemetenDoorUserId);
-      if (!monteur || monteur.tenantId !== tenant._id) {
+      monteurDoc = await ctx.db.get(args.gemetenDoorUserId);
+      if (!monteurDoc || monteurDoc.tenantId !== tenant._id) {
         throw new ConvexError("Monteur niet gevonden.");
       }
     }
@@ -672,6 +676,32 @@ export const startOrPlanMeasurement = mutation({
     const measurementDate = hasArg(args, "inmeetdatum")
       ? args.inmeetdatum
       : project.inmeetdatum ?? existingMeasurement?.inmeetdatum;
+
+    // Plan-guard: dwing de inmeet-regels server-side af (tenzij bewust geforceerd), zodat de
+    // agenda geen operationeel-onmogelijke staat krijgt — geen boeking op een niet-inmeetdag,
+    // op een afwezige monteur, of boven de dagcapaciteit. inmeetBeschikbaarheid rekent dezelfde regels als hint.
+    if (!args.force && measurementDate != null) {
+      if (!isInmeetdag(measurementDate)) {
+        throw new ConvexError("Inmeten kan alleen op dinsdag, woensdag of donderdag.");
+      }
+      if (monteurDoc) {
+        const besch = await berekenInmeetBeschikbaarheid(
+          ctx,
+          tenant._id,
+          monteurDoc,
+          measurementDate,
+          project._id
+        );
+        if (besch.afwezig) {
+          throw new ConvexError("De gekozen monteur is die dag afwezig. Kies een andere datum of monteur.");
+        }
+        const nodig = omvangUnits(args.omvang ?? existingMeasurement?.omvang);
+        if (besch.gebruikteCapaciteit + nodig > besch.maxCapaciteit) {
+          throw new ConvexError("De inmeetdag van deze monteur is vol. Kies een andere datum of monteur.");
+        }
+      }
+    }
+
     let measurementId = existingMeasurement?._id;
     let measurementCreated = false;
 
