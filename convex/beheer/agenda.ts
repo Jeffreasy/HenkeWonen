@@ -20,8 +20,13 @@ function weekdagVanMs(ms: number): number {
 }
 
 /** Capaciteit die een klus inneemt: volledige woning = 2, anders (incl. onbekend) = 1. */
-function omvangUnits(omvang?: string | null): number {
+export function omvangUnits(omvang?: string | null): number {
   return omvang === "volledig" ? 2 : 1;
+}
+
+/** Inmeten kan alleen op een inmeetdag (di/wo/do). */
+export function isInmeetdag(datumMs: number): boolean {
+  return INMEET_DAGEN.includes(weekdagVanMs(datumMs));
 }
 
 /**
@@ -72,6 +77,76 @@ async function requireMonteur(ctx: any, tenantId: Id<"tenants">, userId: Id<"use
 }
 
 // ── Werktijden ───────────────────────────────────────────────────────────────
+
+/**
+ * Berekent de inmeet-beschikbaarheid van één monteur op een dag: is het een inmeetdag,
+ * blokkeert een afwezigheid het inmeetvenster (hele dag, óf een tijdvak dat 16:30-17:30
+ * overlapt), en hoeveel dagcapaciteit is al gebruikt. Voedt zowel de plan-hint (query
+ * inmeetBeschikbaarheid) als de plan-guard (startOrPlanMeasurement) zodat beide identiek
+ * rekenen. `excludeProjectId` laat het bezoek van het dossier dat je nu plant buiten de telling.
+ */
+export async function berekenInmeetBeschikbaarheid(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  monteur: Doc<"users">,
+  datumMs: number,
+  excludeProjectId?: Id<"projects">
+) {
+  const naam = monteur.naam ?? monteur.email;
+  // De inmeetdatum is rond het middaguur verankerd (fromDateInputValue), dus
+  // [datum-12u, datum+12u) dekt precies de kalenderdag.
+  const dagStart = datumMs - DAG_MS / 2;
+  const dagEind = datumMs + DAG_MS / 2;
+
+  const afwezigRows = await ctx.db
+    .query("monteurAfwezigheid")
+    .withIndex("by_monteur", (q: any) => q.eq("tenantId", tenantId).eq("userId", monteur._id))
+    .collect();
+  // Blokkeert het inmeetvenster (16:30-17:30) alleen bij hele-dag-afwezigheid óf een
+  // tijdvak dat het venster overlapt — consistent met dagStatusVoorMonteur in de UI.
+  const blokkerend = afwezigRows.find(
+    (a: Doc<"monteurAfwezigheid">) =>
+      a.vanafDatum < dagEind &&
+      a.totDatum >= dagStart &&
+      (a.heleDag ||
+        (a.startMinuut != null &&
+          a.eindMinuut != null &&
+          a.startMinuut < INMEET_EIND_MINUUT &&
+          a.eindMinuut > INMEET_START_MINUUT))
+  );
+  const afwezig = blokkerend
+    ? { type: blokkerend.type, reden: blokkerend.reden ?? null }
+    : null;
+
+  const metingen = await ctx.db
+    .query("measurements")
+    .withIndex("by_measurement_date", (q: any) =>
+      q.eq("tenantId", tenantId).gte("inmeetdatum", dagStart).lt("inmeetdatum", dagEind)
+    )
+    .collect();
+  const eigen: Doc<"measurements">[] = metingen.filter(
+    (m: Doc<"measurements">) =>
+      hoortBijMonteur(m, monteur._id, naam) &&
+      (!excludeProjectId || m.projectId !== excludeProjectId)
+  );
+  const gebruikteCapaciteit = eigen.reduce(
+    (sum: number, m: Doc<"measurements">) => sum + omvangUnits(m.omvang),
+    0
+  );
+
+  return {
+    naam,
+    weekdag: weekdagVanMs(datumMs),
+    isInmeetdag: isInmeetdag(datumMs),
+    dagStart,
+    dagEind,
+    afwezig,
+    eigen,
+    gebruikteCapaciteit,
+    maxCapaciteit: INMEET_CAPACITEIT,
+    vrijeCapaciteit: Math.max(0, INMEET_CAPACITEIT - gebruikteCapaciteit)
+  };
+}
 
 export const getMonteurWerktijden = query({
   args: {
@@ -463,44 +538,16 @@ export const inmeetBeschikbaarheid = query({
       "admin"
     ]);
     const monteur = await requireMonteur(ctx, tenant._id, args.userId);
-    const naam = monteur.naam ?? monteur.email;
-
-    const weekdag = weekdagVanMs(args.datum);
-    const isInmeetdag = INMEET_DAGEN.includes(weekdag);
-
-    // De inmeetdatum is rond het middaguur verankerd (zie fromDateInputValue),
-    // dus [datum-12u, datum+12u) dekt precies de kalenderdag.
-    const dagStart = args.datum - DAG_MS / 2;
-    const dagEind = args.datum + DAG_MS / 2;
-
-    const afwezigRows = await ctx.db
-      .query("monteurAfwezigheid")
-      .withIndex("by_monteur", (q: any) => q.eq("tenantId", tenant._id).eq("userId", args.userId))
-      .collect();
-    const afwezigRij = afwezigRows.find(
-      (a: Doc<"monteurAfwezigheid">) => a.vanafDatum < dagEind && a.totDatum >= dagStart
-    );
-    const afwezig = afwezigRij
-      ? { type: afwezigRij.type, reden: afwezigRij.reden ?? null }
-      : null;
-
-    const metingen = await ctx.db
-      .query("measurements")
-      .withIndex("by_measurement_date", (q: any) =>
-        q.eq("tenantId", tenant._id).gte("inmeetdatum", dagStart).lt("inmeetdatum", dagEind)
-      )
-      .collect();
-
-    const eigen = metingen.filter(
-      (m: Doc<"measurements">) =>
-        hoortBijMonteur(m, monteur._id, naam) &&
-        (!args.excludeProjectId || m.projectId !== args.excludeProjectId)
+    const besch = await berekenInmeetBeschikbaarheid(
+      ctx,
+      tenant._id,
+      monteur,
+      args.datum,
+      args.excludeProjectId
     );
 
-    let gebruikteCapaciteit = 0;
     const bezoeken = [];
-    for (const m of eigen) {
-      gebruikteCapaciteit += omvangUnits(m.omvang);
+    for (const m of besch.eigen) {
       const project = await ctx.db.get(m.projectId);
       const klant = await ctx.db.get(m.klantId);
       bezoeken.push({
@@ -515,14 +562,14 @@ export const inmeetBeschikbaarheid = query({
     }
 
     return {
-      monteur: { id: String(monteur._id), naam },
-      weekdag,
-      isInmeetdag,
+      monteur: { id: String(monteur._id), naam: besch.naam },
+      weekdag: besch.weekdag,
+      isInmeetdag: besch.isInmeetdag,
       venster: { startMinuut: INMEET_START_MINUUT, eindMinuut: INMEET_EIND_MINUUT },
-      maxCapaciteit: INMEET_CAPACITEIT,
-      gebruikteCapaciteit,
-      vrijeCapaciteit: Math.max(0, INMEET_CAPACITEIT - gebruikteCapaciteit),
-      afwezig,
+      maxCapaciteit: besch.maxCapaciteit,
+      gebruikteCapaciteit: besch.gebruikteCapaciteit,
+      vrijeCapaciteit: besch.vrijeCapaciteit,
+      afwezig: besch.afwezig,
       bezoeken
     };
   }
