@@ -71,8 +71,11 @@ export function calculateWallpaperRolls(
   }
 
   const baseRollsNeeded = Math.max(1, Math.ceil(banenNeeded / banenPerRol));
-  const rollsWithWaste = Math.ceil(baseRollsNeeded * (1 + wastePercent / 100));
-  const rollsNeeded = Math.max(1, rollsWithWaste);
+  // Snijverlies toepassen op het (continue) aantal banen vóór de rol-afronding —
+  // NIET op het al-afgeronde aantal rollen (dat verdubbelde de bestelling bij kleine
+  // klussen). Consistent met de overige calculators (verlies op de hoeveelheid, één ceil).
+  const banenMetVerlies = banenNeeded * (1 + wastePercent / 100);
+  const rollsNeeded = Math.max(baseRollsNeeded, Math.ceil(banenMetVerlies / banenPerRol));
 
   return {
     banenNeeded,

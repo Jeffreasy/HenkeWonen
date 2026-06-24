@@ -1,21 +1,17 @@
 import { CalendarClock, Pencil, Plus, Ruler, Save, Trash2 } from "lucide-react";
-import { CALC_TAB_ICONS, CalculatorTabs, type CalcTab, type CalcTabId } from "./CalculatorTabs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers } from "../../lib/auth/session";
-import {
-  calculateBroadloom,
-  calculateCurtainFabric,
-  calculateFlooring,
-  calculatePlinths,
-  calculateScreed,
-  calculateStairs,
-  calculateWallPanels,
-  calculateWallpaperRolls
-} from "../../lib/calculators";
 import { createConvexHttpClient } from "../../lib/convex/client";
+import {
+  calculatorForLine,
+  deriveLineForRoom,
+  paramsFromInvoer,
+  type RoomDimensions
+} from "../../lib/quotes/roomLineDerivation";
+import { isUnitCompatible } from "../../../convex/catalog/pricingRules";
 import type { SubmitEventLike } from "../../lib/events";
 import { calculateIncVat, formatEuro, roundMoney } from "../../lib/money";
 import { showToast } from "../../lib/toast";
@@ -25,21 +21,18 @@ import {
 } from "../../lib/measurementIntent";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import {
-  formatLineType,
   formatMeasurementProductGroup,
   formatMeasurementStatus,
   formatQuotePreparationStatus,
   formatUnit
 } from "../../lib/i18n/statusLabels";
 import type {
-  MeasurementCalculationType,
-  MeasurementProductGroup,
   MeasurementStatus,
   PortalProduct,
-  QuoteLineType,
   QuotePreparationStatus
 } from "../../lib/portalTypes";
 import CatalogProductPicker from "../catalog/CatalogProductPicker";
+import MeasurementAssignPanel from "./measurement/MeasurementAssignPanel";
 import { Alert } from "../ui/feedback/Alert";
 import { Button } from "../ui/forms/Button";
 import { Card } from "../ui/data-display/Card";
@@ -59,15 +52,11 @@ import { Textarea } from "../ui/forms/Textarea";
 import type {
   FieldMeasureTool,
   IndicativePriceResult,
-  MatrixIndicativePriceResult,
-  MatrixOptions,
   MeasurementData,
   MeasurementLineDoc,
   MeasurementRoomDoc,
-  MeasurementPanelProps,
-  WasteProfileDoc
+  MeasurementPanelProps
 } from "./measurement/measurementTypes";
-import { PRODUCT_GROUP_OPTIONS, QUOTE_LINE_TYPE_OPTIONS } from "./measurement/measurementTypes";
 import {
   dateText,
   decimalText,
@@ -77,21 +66,20 @@ import {
   toDateInputValue
 } from "./measurement/measurementUtils";
 
-
 const FIELD_ROOM_PRESETS: Array<{ label: string; name: string }> = [
-  { label: "Hal",        name: "Hal" },
-  { label: "Overloop",   name: "Overloop" },
-  { label: "Woonkamer",  name: "Woonkamer" },
-  { label: "Keuken",     name: "Keuken" },
-  { label: "Bijkeuken",  name: "Bijkeuken" },
-  { label: "Berging",    name: "Berging" },
-  { label: "Garage",     name: "Garage" },
-  { label: "Wc",         name: "Wc" },
-  { label: "Sk BG",      name: "Sk BG" },
-  { label: "Sk1",        name: "Sk1" },
-  { label: "Sk2",        name: "Sk2" },
-  { label: "Sk3",        name: "Sk3" },
-  { label: "Sk4",        name: "Sk4" },
+  { label: "Hal", name: "Hal" },
+  { label: "Overloop", name: "Overloop" },
+  { label: "Woonkamer", name: "Woonkamer" },
+  { label: "Keuken", name: "Keuken" },
+  { label: "Bijkeuken", name: "Bijkeuken" },
+  { label: "Berging", name: "Berging" },
+  { label: "Garage", name: "Garage" },
+  { label: "Wc", name: "Wc" },
+  { label: "Sk BG", name: "Sk BG" },
+  { label: "Sk1", name: "Sk1" },
+  { label: "Sk2", name: "Sk2" },
+  { label: "Sk3", name: "Sk3" },
+  { label: "Sk4", name: "Sk4" }
 ];
 
 export default function MeasurementPanel({
@@ -109,7 +97,9 @@ export default function MeasurementPanel({
   const [error, setError] = useState<string | null>(null);
   const canEditMeasurement = canEditDossiers(session.role);
   const isFieldMode = mode === "field";
-  const [activeFieldTool, setActiveFieldTool] = useState<FieldMeasureTool>("flooring");
+  // Ruimtes die in het toewijs-paneel geselecteerd staan (controlled, zodat een
+  // ruimtekaart met "+ toevoegen" er één kan voorselecteren).
+  const [assignRoomIds, setAssignRoomIds] = useState<string[]>([]);
   // Samenvattingskaart: dicht in kantoormodus (het dossier-cockpit toont status/datums
   // al), open in de buitendienst waar er geen cockpit boven staat.
   const [summaryOpen, setSummaryOpen] = useState(mode === "field");
@@ -127,6 +117,10 @@ export default function MeasurementPanel({
   const [roomHeightM, setRoomHeightM] = useState("");
   const [roomAreaM2, setRoomAreaM2] = useState("");
   const [roomPerimeterM, setRoomPerimeterM] = useState("");
+  // Oppervlakte/omtrek lopen automatisch mee met lengte × breedte, tenzij de
+  // gebruiker ze handmatig aanpast of een bestaande projectruimte kiest.
+  const [roomAreaAutoFilled, setRoomAreaAutoFilled] = useState(true);
+  const [roomPerimeterAutoFilled, setRoomPerimeterAutoFilled] = useState(true);
   const [roomNotes, setRoomNotes] = useState("");
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [roomCorrectionDraft, setRoomCorrectionDraft] = useState({
@@ -142,84 +136,6 @@ export default function MeasurementPanel({
   const [pendingRoomDelete, setPendingRoomDelete] = useState<MeasurementRoomDoc | null>(null);
   const [roomDeleteError, setRoomDeleteError] = useState<string | null>(null);
 
-  const [floorRoomId, setFloorRoomId] = useState("");
-  const [floorLengthM, setFloorLengthM] = useState("");
-  const [floorWidthM, setFloorWidthM] = useState("");
-  const [floorWastePercent, setFloorWastePercent] = useState("7");
-  const [floorPatternType, setFloorPatternType] = useState("straight");
-  const [floorNotes, setFloorNotes] = useState("");
-  const [floorPatternAutoFilled, setFloorPatternAutoFilled] = useState(false);
-
-  const [broadloomRoomId, setBroadloomRoomId] = useState("");
-  const [broadloomWidthM, setBroadloomWidthM] = useState("");
-  const [broadloomLengthM, setBroadloomLengthM] = useState("");
-  const [broadloomRollWidthM, setBroadloomRollWidthM] = useState("4");
-  const [broadloomWastePercent, setBroadloomWastePercent] = useState("7");
-  const [broadloomNotes, setBroadloomNotes] = useState("");
-
-  const [screedRoomId, setScreedRoomId] = useState("");
-  const [screedAreaM2, setScreedAreaM2] = useState("");
-  const [screedLayerThicknessMm, setScreedLayerThicknessMm] = useState("3");
-  const [screedNotes, setScreedNotes] = useState("");
-
-  const [plinthRoomId, setPlinthRoomId] = useState("");
-  const [plinthPerimeterM, setPlinthPerimeterM] = useState("");
-  const [plinthDoorOpeningM, setPlinthDoorOpeningM] = useState("0");
-  const [plinthWastePercent, setPlinthWastePercent] = useState("5");
-  const [plinthNotes, setPlinthNotes] = useState("");
-
-  const [wallpaperRoomId, setWallpaperRoomId] = useState("");
-  const [wallpaperWidthM, setWallpaperWidthM] = useState("");
-  const [wallpaperHeightM, setWallpaperHeightM] = useState("");
-  const [rollWidthCm, setRollWidthCm] = useState("53");
-  const [rollLengthM, setRollLengthM] = useState("10.05");
-  const [patternRepeatCm, setPatternRepeatCm] = useState("0");
-  const [wallpaperWastePercent, setWallpaperWastePercent] = useState("10");
-  const [wallpaperNotes, setWallpaperNotes] = useState("");
-
-  const [wallPanelRoomId, setWallPanelRoomId] = useState("");
-  const [wallWidthM, setWallWidthM] = useState("");
-  const [wallHeightM, setWallHeightM] = useState("");
-  const [panelWidthM, setPanelWidthM] = useState("");
-  const [panelHeightM, setPanelHeightM] = useState("");
-  const [wallPanelWastePercent, setWallPanelWastePercent] = useState("8");
-  const [wallPanelNotes, setWallPanelNotes] = useState("");
-
-  const [curtainRoomId, setCurtainRoomId] = useState("");
-  const [curtainRailWidthM, setCurtainRailWidthM] = useState("");
-  const [curtainHeightM, setCurtainHeightM] = useState("");
-  const [curtainFabricWidthM, setCurtainFabricWidthM] = useState("1.4");
-  const [curtainFullness, setCurtainFullness] = useState("2");
-  const [curtainMakeUp, setCurtainMakeUp] = useState("banen");
-  const [curtainRapportM, setCurtainRapportM] = useState("0");
-  const [curtainNotes, setCurtainNotes] = useState("");
-
-  const [stairRoomId, setStairRoomId] = useState("");
-  const [stairType, setStairType] = useState("closed");
-  const [treadCount, setTreadCount] = useState("");
-  const [riserCount, setRiserCount] = useState("0");
-  const [stripLengthM, setStripLengthM] = useState("");
-  const [stairNotes, setStairNotes] = useState("");
-
-  // Raambekleding (matrix): geen catalogusproduct, maar prijsgroep + type + breedte×hoogte → richtprijs.
-  const [wcRoomId, setWcRoomId] = useState("");
-  const [wcType, setWcType] = useState(""); // bronBlad, bv. "16 mm" / "Duo Rolgordijn"
-  const [wcPriceGroup, setWcPriceGroup] = useState("");
-  const [wcWidthCm, setWcWidthCm] = useState("");
-  const [wcHeightCm, setWcHeightCm] = useState("");
-  const [wcQuantity, setWcQuantity] = useState("1");
-  const [wcNotes, setWcNotes] = useState("");
-  const [wcOptions, setWcOptions] = useState<MatrixOptions | null>(null);
-  const [wcPrice, setWcPrice] = useState<MatrixIndicativePriceResult | null>(null);
-  const [wcPriceLoading, setWcPriceLoading] = useState(false);
-
-  const [manualRoomId, setManualRoomId] = useState("");
-  const [manualProductGroup, setManualProductGroup] = useState<MeasurementProductGroup>("other");
-  const [manualQuantity, setManualQuantity] = useState("");
-  const [manualUnit, setManualUnit] = useState("piece");
-  const [manualQuoteLineType, setManualQuoteLineType] = useState<QuoteLineType>("manual");
-  const [manualWastePercent, setManualWastePercent] = useState("");
-  const [manualNotes, setManualNotes] = useState("");
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [lineCorrectionDraft, setLineCorrectionDraft] = useState({
     roomId: "",
@@ -239,10 +155,6 @@ export default function MeasurementPanel({
   const [pendingLineDelete, setPendingLineDelete] = useState<MeasurementLineDoc | null>(null);
   const priceRequestSeq = useRef<Partial<Record<FieldMeasureTool | "edit", number>>>({});
 
-  // Richtprijs: per rekenhulp-tab een gekozen product + indicatieve prijs.
-  const [tabProducts, setTabProducts] = useState<Partial<Record<FieldMeasureTool, PortalProduct | null>>>({});
-  const [tabPrices, setTabPrices] = useState<Partial<Record<FieldMeasureTool, IndicativePriceResult | null>>>({});
-  const [tabPriceLoading, setTabPriceLoading] = useState<Partial<Record<FieldMeasureTool, boolean>>>({});
   const [showPricesIncVat, setShowPricesIncVat] = useState(() => {
     if (typeof window === "undefined") {
       return true;
@@ -257,9 +169,9 @@ export default function MeasurementPanel({
   const measurement = data?.measurement ?? null;
   const rooms = data?.rooms ?? [];
   const lines = data?.lines ?? [];
-  const wasteProfiles = data?.wasteProfiles ?? [];
-  const readyLineCount = lines.filter((line) => line.quotePreparationStatus === "ready_for_quote")
-    .length;
+  const readyLineCount = lines.filter(
+    (line) => line.quotePreparationStatus === "ready_for_quote"
+  ).length;
 
   const loadMeasurement = useCallback(async () => {
     const client = createConvexHttpClient(session);
@@ -291,7 +203,7 @@ export default function MeasurementPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, tenantId]);
+  }, [projectId, tenantId, session]);
 
   useEffect(() => {
     void loadMeasurement();
@@ -332,7 +244,9 @@ export default function MeasurementPanel({
           await loadMeasurement();
         } catch (autostartError) {
           console.error(autostartError);
-          setError("Inmeting kon niet automatisch worden gestart. Start handmatig met 'Inmeting starten'.");
+          setError(
+            "Inmeting kon niet automatisch worden gestart. Start handmatig met 'Inmeting starten'."
+          );
         }
       }
 
@@ -358,67 +272,6 @@ export default function MeasurementPanel({
     setMeasurementNotes(measurement.notities ?? "");
   }, [measurement]);
 
-  // Koppel legpatroon aan snijverlies via wasteProfiles (best-effort op naam)
-  useEffect(() => {
-    if (wasteProfiles.length === 0) return;
-
-    const PATTERN_PROFILE_NAMES: Partial<Record<string, string>> = {
-      straight:    "PVC rechte plank",
-      herringbone: "PVC visgraat"
-      // "tile" en "custom": geen automatische koppeling
-    };
-
-    const targetName = PATTERN_PROFILE_NAMES[floorPatternType];
-
-    if (!targetName) {
-      setFloorPatternAutoFilled(false);
-      return;
-    }
-
-    const match = wasteProfiles.find(
-      (p) => p.productGroep === "flooring" && p.naam === targetName
-    );
-
-    if (match) {
-      setFloorWastePercent(String(match.standaardSnijverliesPct));
-      setFloorPatternAutoFilled(true);
-    } else {
-      setFloorPatternAutoFilled(false);
-    }
-  }, [floorPatternType, wasteProfiles]);
-
-  const roomNameById = useMemo(() => {
-    const names = new Map<string, string>();
-    rooms.forEach((room) => names.set(room._id, room.naam));
-    return names;
-  }, [rooms]);
-
-  const getProfilesForGroup = useCallback(
-    (group: MeasurementProductGroup) => {
-      return wasteProfiles.filter((profile) => profile.productGroep === group);
-    },
-    [wasteProfiles]
-  );
-
-  const setWasteFromProfile = useCallback(
-    (
-      profileId: string,
-      setter: (value: string) => void,
-      productGroupFilter?: MeasurementProductGroup
-    ) => {
-      const profile = wasteProfiles.find(
-        (item) =>
-          item._id === profileId &&
-          (!productGroupFilter || item.productGroep === productGroupFilter)
-      );
-
-      if (profile) {
-        setter(String(profile.standaardSnijverliesPct));
-      }
-    },
-    [wasteProfiles]
-  );
-
   const selectedRoomArea = useMemo(() => {
     const width = parseDecimal(roomWidthM);
     const length = parseDecimal(roomLengthM);
@@ -433,109 +286,23 @@ export default function MeasurementPanel({
     return width && length ? 2 * (width + length) : undefined;
   }, [roomLengthM, roomWidthM]);
 
-  const floorResult = useMemo(
-    () =>
-      calculateFlooring({
-        lengthM: parseDecimal(floorLengthM) ?? 0,
-        widthM: parseDecimal(floorWidthM) ?? 0,
-        wastePercent: parseDecimal(floorWastePercent) ?? 0,
-        patternType: floorPatternType as "straight" | "herringbone" | "tile" | "custom"
-      }),
-    [floorLengthM, floorPatternType, floorWastePercent, floorWidthM]
-  );
+  // Vul oppervlakte automatisch (lengte × breedte) zolang de gebruiker het veld niet
+  // zelf heeft aangepast en geen bestaande ruimte met opgeslagen oppervlakte koos.
+  useEffect(() => {
+    if (!roomAreaAutoFilled) return;
+    setRoomAreaM2(
+      selectedRoomArea !== undefined ? String(Math.round(selectedRoomArea * 100) / 100) : ""
+    );
+  }, [roomAreaAutoFilled, selectedRoomArea]);
 
-  const broadloomResult = useMemo(
-    () =>
-      calculateBroadloom({
-        roomWidthM: parseDecimal(broadloomWidthM) ?? 0,
-        roomLengthM: parseDecimal(broadloomLengthM) ?? 0,
-        rollWidthM: parseDecimal(broadloomRollWidthM) ?? 0,
-        wastePercent: parseDecimal(broadloomWastePercent) ?? 0
-      }),
-    [broadloomWidthM, broadloomLengthM, broadloomRollWidthM, broadloomWastePercent]
-  );
-
-  const screedResult = useMemo(
-    () =>
-      calculateScreed({
-        areaM2: parseDecimal(screedAreaM2) ?? 0,
-        layerThicknessMm: parseDecimal(screedLayerThicknessMm) ?? 0
-      }),
-    [screedAreaM2, screedLayerThicknessMm]
-  );
-
-  const plinthResult = useMemo(
-    () =>
-      calculatePlinths({
-        perimeterM: parseDecimal(plinthPerimeterM) ?? 0,
-        doorOpeningM: parseDecimal(plinthDoorOpeningM) ?? 0,
-        wastePercent: parseDecimal(plinthWastePercent) ?? 0
-      }),
-    [plinthDoorOpeningM, plinthPerimeterM, plinthWastePercent]
-  );
-
-  const wallpaperResult = useMemo(
-    () =>
-      calculateWallpaperRolls({
-        wallWidthM: parseDecimal(wallpaperWidthM) ?? 0,
-        wallHeightM: parseDecimal(wallpaperHeightM) ?? 0,
-        rollWidthCm: parseDecimal(rollWidthCm),
-        rollLengthM: parseDecimal(rollLengthM),
-        patternRepeatCm: parseDecimal(patternRepeatCm),
-        wastePercent: parseDecimal(wallpaperWastePercent)
-      }),
-    [
-      patternRepeatCm,
-      rollLengthM,
-      rollWidthCm,
-      wallpaperHeightM,
-      wallpaperWastePercent,
-      wallpaperWidthM
-    ]
-  );
-
-  const wallPanelResult = useMemo(
-    () =>
-      calculateWallPanels({
-        wallWidthM: parseDecimal(wallWidthM) ?? 0,
-        wallHeightM: parseDecimal(wallHeightM) ?? 0,
-        panelWidthM: parseDecimal(panelWidthM) ?? 0,
-        panelHeightM: parseDecimal(panelHeightM) ?? 0,
-        wastePercent: parseDecimal(wallPanelWastePercent) ?? 0
-      }),
-    [panelHeightM, panelWidthM, wallHeightM, wallPanelWastePercent, wallWidthM]
-  );
-
-  const curtainResult = useMemo(
-    () =>
-      calculateCurtainFabric({
-        railWidthM: parseDecimal(curtainRailWidthM) ?? 0,
-        curtainHeightM: parseDecimal(curtainHeightM) ?? 0,
-        fabricWidthM: parseDecimal(curtainFabricWidthM) ?? 0,
-        fullness: parseDecimal(curtainFullness) ?? 0,
-        makeUp: curtainMakeUp as "banen" | "kamerhoog",
-        rapportM: parseDecimal(curtainRapportM) ?? 0
-      }),
-    [
-      curtainRailWidthM,
-      curtainHeightM,
-      curtainFabricWidthM,
-      curtainFullness,
-      curtainMakeUp,
-      curtainRapportM
-    ]
-  );
-
-  const stairResult = useMemo(
-    () =>
-      calculateStairs({
-        stairType: stairType as "straight" | "quarter_turn" | "half_turn" | "open" | "closed",
-        treadCount: parseDecimal(treadCount) ?? 0,
-        riserCount: parseDecimal(riserCount) ?? 0,
-        stripLengthM: parseDecimal(stripLengthM)
-      }),
-    [riserCount, stairType, stripLengthM, treadCount]
-  );
+  useEffect(() => {
+    if (!roomPerimeterAutoFilled) return;
+    setRoomPerimeterM(
+      selectedRoomPerimeter !== undefined
+        ? String(Math.round(selectedRoomPerimeter * 100) / 100)
+        : ""
+    );
+  }, [roomPerimeterAutoFilled, selectedRoomPerimeter]);
 
   useEffect(() => {
     try {
@@ -547,35 +314,6 @@ export default function MeasurementPanel({
       // localStorage kan ontbreken (privémodus) — weergavevoorkeur is niet kritiek.
     }
   }, [showPricesIncVat]);
-
-  /** Meeteenheid die per rekenhulp-tab naar de prijs-lookup gaat. */
-  const measurementUnitForTool = useCallback(
-    (tool: FieldMeasureTool) => {
-      switch (tool) {
-        case "flooring":
-          return "m2";
-        case "broadloom":
-          return "meter";
-        case "screed":
-          return "m2";
-        case "plinths":
-          return "meter";
-        case "wallpaper":
-          return "roll";
-        case "wall_panels":
-          return "piece";
-        case "curtains":
-          return "meter";
-        case "window_covering":
-          return "piece";
-        case "stairs":
-          return "stairs";
-        case "manual":
-          return manualUnit;
-      }
-    },
-    [manualUnit]
-  );
 
   const fetchIndicativePrice = useCallback(
     async (productId: string, measurementUnit: string) => {
@@ -594,275 +332,25 @@ export default function MeasurementPanel({
     [session, tenantId]
   );
 
-  const selectTabProduct = useCallback(
-    async (tool: FieldMeasureTool, product: PortalProduct | null) => {
-      // Volgorde-guard: bij snel wisselen mag een trage respons van product A
-      // nooit onder product B worden vastgelegd.
-      const requestSeq = (priceRequestSeq.current[tool] ?? 0) + 1;
-      priceRequestSeq.current[tool] = requestSeq;
-
-      setTabProducts((current) => ({ ...current, [tool]: product }));
-      setTabPrices((current) => ({ ...current, [tool]: null }));
-
-      if (!product) {
-        setTabPriceLoading((current) => ({ ...current, [tool]: false }));
-        return;
-      }
-
-      setTabPriceLoading((current) => ({ ...current, [tool]: true }));
-
-      try {
-        const result = await fetchIndicativePrice(product.id, measurementUnitForTool(tool));
-
-        if (priceRequestSeq.current[tool] !== requestSeq) {
-          return;
-        }
-
-        setTabPrices((current) => ({ ...current, [tool]: result }));
-      } catch (priceError) {
-        console.error(priceError);
-
-        if (priceRequestSeq.current[tool] !== requestSeq) {
-          return;
-        }
-
-        setTabPrices((current) => ({ ...current, [tool]: null }));
-      } finally {
-        if (priceRequestSeq.current[tool] === requestSeq) {
-          setTabPriceLoading((current) => ({ ...current, [tool]: false }));
-        }
-      }
-    },
-    [fetchIndicativePrice, measurementUnitForTool]
-  );
-
-  // Vrije regel: eenheid of productgroep kan ná de productkeuze wijzigen —
-  // dan moet de richtprijs opnieuw worden opgezocht met de actuele eenheid.
-  // Gedebounced: het eenheid-veld is vrije tekst en mag niet per toetsaanslag
-  // een query afvuren.
-  useEffect(() => {
-    const product = tabProducts.manual;
-
-    if (!product) {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      void selectTabProduct("manual", product);
-    }, 400);
-
-    return () => clearTimeout(timer);
-    // Alleen heruitvoeren bij eenheid-/groepswijziging, niet bij elke productwissel.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manualUnit, manualProductGroup]);
-
-  // ── Raambekleding-matrix (productloze richtprijs) ───────────────────────────
-  const fetchMatrixOptions = useCallback(async () => {
-    const client = createConvexHttpClient(session);
-
-    if (!client) {
-      return null;
-    }
-
-    return (await client.query(api.catalog.pricing.listMatrixOptions, {
-      tenantSlug: tenantId,
-      productToolSleutel: "raambekleding"
-    })) as MatrixOptions;
-  }, [session, tenantId]);
-
-  const fetchMatrixPrice = useCallback(
-    async (bronBlad: string, prijsgroep: string, breedteCm: number, hoogteCm: number) => {
-      const client = createConvexHttpClient(session);
-
-      if (!client) {
-        return null;
-      }
-
-      return (await client.query(api.catalog.pricing.getMatrixIndicativePrice, {
-        tenantSlug: tenantId,
-        productToolSleutel: "raambekleding",
-        prijsgroep,
-        bronBlad,
-        breedteCm,
-        hoogteCm
-      })) as MatrixIndicativePriceResult;
-    },
-    [session, tenantId]
-  );
-
-  // Laad de beschikbare matrices (type + prijsgroep) één keer voor de dropdowns.
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const result = await fetchMatrixOptions();
-
-        if (!cancelled) {
-          setWcOptions(result);
-        }
-      } catch (optionsError) {
-        console.error(optionsError);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchMatrixOptions]);
-
-  // Live matrix-richtprijs: gedebounced + volgorde-guard (zelfde patroon als selectTabProduct).
-  useEffect(() => {
-    const breedteCm = parseDecimal(wcWidthCm);
-    const hoogteCm = parseDecimal(wcHeightCm);
-
-    if (!wcType || !wcPriceGroup || !breedteCm || !hoogteCm) {
-      setWcPrice(null);
-      setWcPriceLoading(false);
-      return;
-    }
-
-    const requestSeq = (priceRequestSeq.current.window_covering ?? 0) + 1;
-    priceRequestSeq.current.window_covering = requestSeq;
-    setWcPriceLoading(true);
-
-    const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          const result = await fetchMatrixPrice(wcType, wcPriceGroup, breedteCm, hoogteCm);
-
-          if (priceRequestSeq.current.window_covering !== requestSeq) {
-            return;
-          }
-
-          setWcPrice(result);
-        } catch (priceError) {
-          console.error(priceError);
-
-          if (priceRequestSeq.current.window_covering !== requestSeq) {
-            return;
-          }
-
-          setWcPrice(null);
-        } finally {
-          if (priceRequestSeq.current.window_covering === requestSeq) {
-            setWcPriceLoading(false);
-          }
-        }
-      })();
-    }, 400);
-
-    return () => clearTimeout(timer);
-  }, [wcType, wcPriceGroup, wcWidthCm, wcHeightCm, fetchMatrixPrice]);
-
   /** Prijsresultaat van een tab, maar alleen als het bij het gekozen product hoort. */
-  function matchedTabPrice(tool: FieldMeasureTool) {
-    const product = tabProducts[tool];
-    const priceResult = tabPrices[tool];
-
-    if (!product || !priceResult || priceResult.productId !== product.id) {
-      return null;
-    }
-
-    return priceResult;
+  // Toon een richtprijs-snapshot alleen als de prijseenheid bij de regel-eenheid past.
+  // Productprijzen zijn dat per constructie (incompatibele worden bij wijziging gewist); een
+  // handmatig naar een andere eenheid gezette dienst-regel zou anders een misleidend bedrag
+  // tonen. Matrix-prijzen en snapshots zonder eenheid worden vertrouwd.
+  function indicativePriceTrusted(line: MeasurementLineDoc): boolean {
+    return (
+      line.indicatievePrijsSoort === "matrix" ||
+      line.indicatievePrijsEenheid === undefined ||
+      isUnitCompatible(line.eenheid, line.indicatievePrijsEenheid)
+    );
   }
 
-  /** Snapshot-velden voor addMeasurementLine op basis van de tab-keuze. */
-  function indicativeSnapshotForTool(tool: FieldMeasureTool) {
-    const product = tabProducts[tool];
-
-    if (!product) {
-      return {};
-    }
-
-    const priceResult = matchedTabPrice(tool);
-    const indicative = priceResult?.indicative ?? null;
-
-    return {
-      productId: product.id as Id<"products">,
-      productName: priceResult?.productName ?? product.weergaveNaam ?? product.naam,
-      ...(indicative
-        ? {
-            indicativeUnitPriceExVat: indicative.unitPriceExVat,
-            indicativeVatRate: indicative.vatRate,
-            indicativePriceUnit: indicative.priceUnit,
-            indicativePriceType: indicative.priceType,
-            indicativeCapturedAt: Date.now()
-          }
-        : {})
-    };
-  }
-
-  /** SummaryList-regels met productkeuze + richtprijs voor in het live resultaatpaneel. */
-  function indicativeSummaryItems(tool: FieldMeasureTool, quantity: number | undefined) {
-    const product = tabProducts[tool];
-
-    if (!product) {
-      return [];
-    }
-
-    const priceResult = matchedTabPrice(tool);
-    const items: Array<{ label: string; value: string }> = [
-      { label: "Product", value: priceResult?.productName ?? product.weergaveNaam ?? product.naam }
-    ];
-
-    if (tabPriceLoading[tool]) {
-      items.push({ label: "Richtprijs", value: "Laden..." });
-      return items;
-    }
-
-    const indicative = priceResult?.indicative ?? null;
-
-    if (!indicative) {
-      items.push({ label: "Richtprijs", value: "Nog geen richtprijs voor dit product" });
-      return items;
-    }
-
-    const unitAmount = showPricesIncVat ? indicative.unitPriceIncVat : indicative.unitPriceExVat;
-    const vatLabel = showPricesIncVat ? "incl. btw" : "excl. btw";
-    const safeQuantity = quantity && quantity > 0 ? quantity : 0;
-
-    items.push({
-      label: `Richtprijs ${vatLabel}`,
-      value:
-        safeQuantity > 0
-          ? `${formatEuro(roundMoney(safeQuantity * unitAmount))} (${formatEuro(unitAmount)} per ${formatUnit(indicative.priceUnit ?? "custom")})`
-          : `${formatEuro(unitAmount)} per ${formatUnit(indicative.priceUnit ?? "custom")}`
-    });
-
-    return items;
-  }
-
-  /**
-   * Lege-staat-regel voor het live resultaatpaneel: zolang er nog geen kerninvoer is
-   * (of de invoer ongeldig is) tonen we een uitnodiging i.p.v. een rij nullen.
-   */
-  const CALC_EMPTY_STATE_ITEM = { label: "Nog geen advies", value: "Vul de maten in" };
-
-  const FLOOR_PATTERN_LABELS: Record<string, string> = {
-    straight: "Rechte plank",
-    herringbone: "Visgraat",
-    tile: "Tegelpatroon",
-    custom: "Maatwerk"
-  };
-
-  function formatFloorPatternLabel(pattern: string): string {
-    return FLOOR_PATTERN_LABELS[pattern] ?? pattern;
-  }
-
-  function calcEmptyStateItems(
-    hasInput: boolean,
-    validationError: string | undefined
-  ): Array<{ label: string; value: string }> | null {
-    if (!hasInput || validationError) {
-      return [CALC_EMPTY_STATE_ITEM];
-    }
-    return null;
-  }
-
-  /** Richtprijs-totaal van een opgeslagen meetregel op basis van het snapshot. */
   function lineIndicativeTotal(line: MeasurementLineDoc) {
-    if (line.indicatieveEenheidsprijsExBtw === undefined || line.indicatiefBtwTarief === undefined) {
+    if (
+      line.indicatieveEenheidsprijsExBtw === undefined ||
+      line.indicatiefBtwTarief === undefined ||
+      !indicativePriceTrusted(line)
+    ) {
       return null;
     }
 
@@ -873,90 +361,216 @@ export default function MeasurementPanel({
     return formatEuro(roundMoney(line.aantal * unitAmount));
   }
 
+  /** Numerieke richtprijs van een regel (voor per-ruimte subtotalen). */
+  function lineIndicativeAmount(line: MeasurementLineDoc): number | null {
+    if (
+      line.indicatieveEenheidsprijsExBtw === undefined ||
+      line.indicatiefBtwTarief === undefined ||
+      !indicativePriceTrusted(line)
+    ) {
+      return null;
+    }
+    const unitAmount = showPricesIncVat
+      ? calculateIncVat(line.indicatieveEenheidsprijsExBtw, line.indicatiefBtwTarief)
+      : line.indicatieveEenheidsprijsExBtw;
+    return roundMoney(line.aantal * unitAmount);
+  }
+
+  /** Zachte hint: een ruimte met een vloer maar zonder legkost/plint. */
+  function missingHint(roomLines: MeasurementLineDoc[]): string | null {
+    const hasFloor = roomLines.some(
+      (line) => line.productGroep === "flooring" && line.offerteRegelType === "product"
+    );
+    if (!hasFloor) return null;
+    const tips: string[] = [];
+    const hasService = roomLines.some(
+      (line) => line.offerteRegelType === "service" || line.offerteRegelType === "labor"
+    );
+    if (!hasService) tips.push("legkosten/egaliseren");
+    if (!roomLines.some((line) => line.productGroep === "plinths")) tips.push("plint");
+    return tips.length > 0 ? `Tip: ${tips.join(" + ")} ontbreekt nog.` : null;
+  }
+
+  /** Selecteer één ruimte in het toewijs-paneel en scroll ernaartoe. */
+  function focusAssignForRoom(roomId: string) {
+    setAssignRoomIds([roomId]);
+    if (typeof document !== "undefined") {
+      document
+        .getElementById("assign-panel-section")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  function renderRoomBlock(room: MeasurementRoomDoc | null, roomLines: MeasurementLineDoc[]) {
+    const amounts = roomLines
+      .map((line) => lineIndicativeAmount(line))
+      .filter((value): value is number => value !== null);
+    const subtotal = amounts.reduce((sum, value) => sum + value, 0);
+    const hint = room ? missingHint(roomLines) : null;
+    const dims = room
+      ? [
+          room.oppervlakteM2 ? `${formatNumber(room.oppervlakteM2)} m²` : null,
+          room.omtrekM ? `omtrek ${formatNumber(room.omtrekM)} m` : null
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : "";
+
+    return (
+      <div
+        key={room?._id ?? "no-room"}
+        style={{
+          border: "0.5px solid var(--color-border-secondary)",
+          borderRadius: "var(--border-radius-lg)",
+          padding: "12px 16px"
+        }}
+      >
+        <div
+          className="toolbar"
+          style={{ justifyContent: "space-between", alignItems: "baseline" }}
+        >
+          <strong>{room ? room.naam : "Zonder ruimte"}</strong>
+          <span className="muted" style={{ fontSize: "var(--text-xs)" }}>
+            {dims}
+          </span>
+        </div>
+        {roomLines.length === 0 ? (
+          <p className="muted" style={{ margin: "8px 0" }}>
+            Nog geen producten of diensten.
+          </p>
+        ) : (
+          <div className="grid" style={{ gap: 6, marginTop: 8 }}>
+            {roomLines.map((line) => {
+              const total = lineIndicativeTotal(line);
+              return (
+                <div
+                  key={line._id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    alignItems: "center",
+                    borderTop: "0.5px solid var(--color-border-tertiary)",
+                    paddingTop: 6
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div>
+                      {line.productNaam ?? formatMeasurementProductGroup(line.productGroep)}
+                    </div>
+                    <div
+                      className="muted toolbar"
+                      style={{ fontSize: "var(--text-xs)", gap: 6, alignItems: "center" }}
+                    >
+                      <span>
+                        {formatNumber(line.aantal)} {formatUnit(line.eenheid)}
+                        {total ? ` · ${total}` : ""}
+                      </span>
+                      <StatusBadge
+                        status={line.quotePreparationStatus}
+                        label={formatQuotePreparationStatus(line.quotePreparationStatus)}
+                      />
+                      {line.handmatigAangepast ? (
+                        <span style={{ color: "var(--color-text-warning)" }}>· handmatig</span>
+                      ) : null}
+                    </div>
+                  </div>
+                  {canEditMeasurement && line.quotePreparationStatus !== "converted" ? (
+                    <div className="toolbar" style={{ gap: 4, flexShrink: 0 }}>
+                      {line.quotePreparationStatus === "draft" ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={isSaving}
+                          onClick={() => void markLineReady(line._id)}
+                        >
+                          Naar offerte
+                        </Button>
+                      ) : null}
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => startEditLine(line)}
+                        aria-label="Regel bewerken"
+                      >
+                        <Pencil size={15} aria-hidden="true" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => setPendingLineDelete(line)}
+                        aria-label="Regel verwijderen"
+                      >
+                        <Trash2 size={15} aria-hidden="true" />
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {hint ? (
+          <p className="muted" style={{ margin: "8px 0 0", fontSize: "var(--text-xs)" }}>
+            {hint}
+          </p>
+        ) : null}
+        <div
+          className="toolbar"
+          style={{ justifyContent: "space-between", marginTop: 8, alignItems: "baseline" }}
+        >
+          {room && canEditMeasurement ? (
+            <Button size="sm" variant="secondary" onClick={() => focusAssignForRoom(room._id)}>
+              <Plus size={15} aria-hidden="true" /> Toevoegen aan deze ruimte
+            </Button>
+          ) : (
+            <span />
+          )}
+          {amounts.length > 0 ? (
+            <span style={{ fontSize: "var(--text-sm)" }}>
+              Subtotaal <strong>{formatEuro(subtotal)}</strong>{" "}
+              <span className="muted">
+                ({showPricesIncVat ? "incl." : "excl."} btw, indicatief)
+              </span>
+            </span>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  /** Per-ruimte-overzicht: regels gegroepeerd per ruimte, met subtotaal en "wat mist". */
+  function renderRoomGroupedLines() {
+    const byRoom = new Map<string, MeasurementLineDoc[]>();
+    const noRoom: MeasurementLineDoc[] = [];
+    for (const line of lines) {
+      if (line.ruimteId) {
+        const arr = byRoom.get(line.ruimteId) ?? [];
+        arr.push(line);
+        byRoom.set(line.ruimteId, arr);
+      } else {
+        noRoom.push(line);
+      }
+    }
+
+    if (rooms.length === 0 && noRoom.length === 0) {
+      return (
+        <EmptyState
+          title="Nog geen ruimtes"
+          description="Voeg eerst een ruimte met maten toe; koppel daarna producten en diensten."
+        />
+      );
+    }
+
+    return (
+      <div className="grid" style={{ gap: 12 }}>
+        {rooms.map((room) => renderRoomBlock(room, byRoom.get(room._id) ?? []))}
+        {noRoom.length > 0 ? renderRoomBlock(null, noRoom) : null}
+      </div>
+    );
+  }
+
   /** SummaryList-regels voor de live matrix-richtprijs (raambekleding). */
-  function windowCoveringSummaryItems() {
-    const items: Array<{ label: string; value: string }> = [];
-    const indicative = wcPrice?.indicative ?? null;
-
-    if (indicative) {
-      items.push({
-        label: "Maatklasse (naar boven afgerond)",
-        value: `${indicative.matchedWidthCm} × ${indicative.matchedHeightCm} cm`
-      });
-    }
-
-    if (wcPriceLoading) {
-      items.push({ label: "Richtprijs", value: "Laden..." });
-      return items;
-    }
-
-    if (wcPrice?.outOfRange || wcPrice?.reason === "out_of_range") {
-      items.push({ label: "Richtprijs", value: "Buiten matrixbereik — offerte op maat" });
-      return items;
-    }
-
-    if (!indicative) {
-      const reason = wcPrice?.reason;
-      const message =
-        reason === "matrix_not_found"
-          ? "Geen prijslijst voor deze combinatie"
-          : reason === "vat_unknown"
-            ? "Btw-stand onbekend — bepaal de prijs in de offerte"
-            : reason === "invalid_dimensions"
-              ? "Vul een geldige maat in cm in"
-              : "Nog niet beschikbaar";
-      items.push({ label: "Richtprijs", value: message });
-      return items;
-    }
-
-    const quantity = parseDecimal(wcQuantity) ?? 1;
-    const unitAmount = showPricesIncVat ? indicative.unitPriceIncVat : indicative.unitPriceExVat;
-    const vatLabel = showPricesIncVat ? "incl. btw" : "excl. btw";
-
-    items.push({
-      label: `Richtprijs ${vatLabel}`,
-      value: `${formatEuro(roundMoney(quantity * unitAmount))} (${formatEuro(unitAmount)} per stuk)`
-    });
-
-    return items;
-  }
-
-  /** Blokkeer opslaan van een matrix-regel tot er een geldige richtprijs is. */
-  function windowCoveringValidationError(): string | undefined {
-    if (!wcType || !wcPriceGroup) {
-      return "Kies type en prijsgroep.";
-    }
-    const breedteCm = parseDecimal(wcWidthCm);
-    const hoogteCm = parseDecimal(wcHeightCm);
-    if (breedteCm === undefined || hoogteCm === undefined) {
-      return "Vul breedte en hoogte in.";
-    }
-    if (breedteCm <= 0 || hoogteCm <= 0) {
-      return "Breedte en hoogte moeten groter dan 0 zijn (raammaat in cm).";
-    }
-    const quantity = parseDecimal(wcQuantity);
-    if (!quantity || quantity <= 0) {
-      return "Vul een geldig aantal in.";
-    }
-    if (wcPriceLoading) {
-      return "Richtprijs wordt nog geladen.";
-    }
-    if (wcPrice?.outOfRange) {
-      return "Buiten matrixbereik — gebruik een vrije regel voor offerte op maat.";
-    }
-    if (!wcPrice?.indicative) {
-      const reason = wcPrice?.reason;
-      if (reason === "matrix_not_found") {
-        return "Geen prijslijst voor deze combinatie van type en prijsgroep.";
-      }
-      if (reason === "vat_unknown") {
-        return "Btw-stand onbekend — geen richtprijs; bepaal de prijs in de offerte.";
-      }
-      return "Geen richtprijs beschikbaar voor deze keuze.";
-    }
-    return undefined;
-  }
-
   function requireClientAndMeasurement() {
     const client = createConvexHttpClient(session);
 
@@ -1089,6 +703,8 @@ export default function MeasurementPanel({
       setRoomHeightM("");
       setRoomAreaM2("");
       setRoomPerimeterM("");
+      setRoomAreaAutoFilled(true);
+      setRoomPerimeterAutoFilled(true);
       setRoomNotes("");
       showToast({ title: "Ruimte toegevoegd aan de inmeting", tone: "success" });
       await loadMeasurement();
@@ -1121,92 +737,6 @@ export default function MeasurementPanel({
       await loadMeasurement();
     } catch {
       setError("Ruimte kon niet worden toegevoegd.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function addLine(
-    event: SubmitEventLike,
-    line: {
-      roomId?: string;
-      productGroup: MeasurementProductGroup;
-      calculationType: MeasurementCalculationType;
-      input: Record<string, unknown>;
-      result: Record<string, unknown>;
-      wastePercent?: number;
-      quantity: number;
-      unit: string;
-      notes?: string;
-      quoteLineType: QuoteLineType;
-      tool?: FieldMeasureTool;
-      productId?: Id<"products">;
-      productName?: string;
-      indicativeUnitPriceExVat?: number;
-      indicativeVatRate?: number;
-      indicativePriceUnit?: string;
-      indicativePriceType?: string;
-      indicativeCapturedAt?: number;
-      validationError?: string;
-      successMessage: string;
-    }
-  ) {
-    event.preventDefault();
-
-    if (!canEditMeasurement) {
-      setError("Je hebt geen rechten om de inmeting te wijzigen.");
-      return;
-    }
-
-    const context = requireClientAndMeasurement();
-
-    if (!context) {
-      return;
-    }
-
-    if (line.validationError || line.quantity <= 0) {
-      setError("Controleer de invoer voordat je de inmeetregel opslaat.");
-      return;
-    }
-
-    // Niet opslaan terwijl de richtprijs van het gekozen product nog laadt:
-    // anders belandt de regel zonder prijssnapshot in de inmeting.
-    if (line.tool && tabProducts[line.tool] && tabPriceLoading[line.tool]) {
-      setError("De richtprijs wordt nog geladen. Probeer het over een moment opnieuw.");
-      return;
-    }
-
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      await context.client.mutation(api.projecten.measurements.addMeasurementLine, {
-        tenantId: context.tenantId,
-        actor: mutationActorFromSession(session),
-        inmetingId: context.measurementId,
-        ruimteId: line.roomId ? (line.roomId as Id<"measurementRooms">) : undefined,
-        productGroep: line.productGroup,
-        berekeningType: line.calculationType,
-        invoer: line.input,
-        resultaat: line.result,
-        snijverliesPct: line.wastePercent,
-        aantal: line.quantity,
-        eenheid: line.unit,
-        notities: line.notes,
-        offerteRegelType: line.quoteLineType,
-        productId: line.productId,
-        productNaam: line.productName,
-        indicatieveEenheidsprijsExBtw: line.indicativeUnitPriceExVat,
-        indicatiefBtwTarief: line.indicativeVatRate,
-        indicatievePrijsEenheid: line.indicativePriceUnit,
-        indicatievePrijsSoort: line.indicativePriceType,
-        indicatiefVastgelegdOp: line.indicativeCapturedAt
-      });
-      showToast({ title: line.successMessage, tone: "success" });
-      await loadMeasurement();
-    } catch (saveError) {
-      console.error(saveError);
-      setError("Inmeetregel kon niet worden opgeslagen.");
     } finally {
       setIsSaving(false);
     }
@@ -1288,7 +818,80 @@ export default function MeasurementPanel({
         omtrekM: parseDecimal(roomCorrectionDraft.perimeterM),
         notities: roomCorrectionDraft.notes.trim() || undefined
       });
-      showToast({ title: "Meetruimte bijgewerkt", tone: "success" });
+
+      // Maten gewijzigd → de afgeleide (niet-handmatige) regels van deze ruimte herrekenen,
+      // zodat de hoeveelheden meelopen. Handmatig aangepaste regels blijven staan (controleren).
+      const newDims: RoomDimensions = {
+        breedteM: parseDecimal(roomCorrectionDraft.widthM),
+        lengteM: parseDecimal(roomCorrectionDraft.lengthM),
+        hoogteM: parseDecimal(roomCorrectionDraft.heightM),
+        oppervlakteM2: parseDecimal(roomCorrectionDraft.areaM2),
+        omtrekM: parseDecimal(roomCorrectionDraft.perimeterM)
+      };
+      let recomputed = 0;
+      let manualSkipped = 0;
+      let recomputeFailed = 0;
+      for (const line of lines) {
+        if (line.ruimteId !== editingRoomId || line.quotePreparationStatus === "converted") {
+          continue;
+        }
+        if (line.handmatigAangepast) {
+          manualSkipped += 1;
+          continue;
+        }
+        const calc = calculatorForLine(line);
+        if (!calc) {
+          continue;
+        }
+        const derived = deriveLineForRoom(calc, newDims, paramsFromInvoer(line.invoer));
+        if (derived.validationError) {
+          continue;
+        }
+        // Per regel afvangen: één mislukte herberekening mag de rest niet stilletjes afbreken.
+        try {
+          await context.client.mutation(api.projecten.measurements.updateMeasurementLine, {
+            tenantId: context.tenantId,
+            actor: mutationActorFromSession(session),
+            lineId: line._id as Id<"measurementLines">,
+            ruimteId: editingRoomId as Id<"measurementRooms">,
+            productGroep: line.productGroep,
+            berekeningType: line.berekeningType,
+            invoer: derived.invoer,
+            resultaat: derived.resultaat,
+            snijverliesPct: derived.snijverliesPct,
+            aantal: derived.aantal,
+            eenheid: line.eenheid,
+            notities: line.notities,
+            offerteRegelType: line.offerteRegelType,
+            handmatigAangepast: false,
+            productId: line.productId ? (line.productId as Id<"products">) : undefined,
+            productNaam: line.productNaam,
+            indicatieveEenheidsprijsExBtw: line.indicatieveEenheidsprijsExBtw,
+            indicatiefBtwTarief: line.indicatiefBtwTarief,
+            indicatievePrijsEenheid: line.indicatievePrijsEenheid,
+            indicatievePrijsSoort: line.indicatievePrijsSoort,
+            indicatiefVastgelegdOp: line.indicatiefVastgelegdOp
+          });
+          recomputed += 1;
+        } catch (recomputeError) {
+          console.error(recomputeError);
+          recomputeFailed += 1;
+        }
+      }
+
+      const extra = [
+        manualSkipped > 0 ? `${manualSkipped} handmatige regel(s) — controleer` : null,
+        recomputeFailed > 0 ? `${recomputeFailed} regel(s) niet herberekend — controleer` : null
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      showToast({
+        title:
+          recomputed > 0
+            ? `Ruimte bijgewerkt · ${recomputed} regel(s) herberekend${extra ? ` · ${extra}` : ""}`
+            : `Meetruimte bijgewerkt${extra ? ` · ${extra}` : ""}`,
+        tone: recomputeFailed > 0 ? "warning" : "success"
+      });
       setEditingRoomId(null);
       await loadMeasurement();
     } catch (saveError) {
@@ -1365,7 +968,7 @@ export default function MeasurementPanel({
     setLineCorrectionDraft((current) => ({
       ...current,
       productId: product?.id ?? "",
-      productName: product ? product.weergaveNaam ?? product.naam : "",
+      productName: product ? (product.weergaveNaam ?? product.naam) : "",
       indicativeUnitPriceExVat: undefined,
       indicativeVatRate: undefined,
       indicativePriceUnit: undefined,
@@ -1457,8 +1060,7 @@ export default function MeasurementPanel({
       } else {
         productArgs = {
           productId: lineCorrectionDraft.productId as Id<"products">,
-          productName:
-            freshPrice?.productName ?? (lineCorrectionDraft.productName || undefined),
+          productName: freshPrice?.productName ?? (lineCorrectionDraft.productName || undefined),
           ...(indicative
             ? {
                 indicativeUnitPriceExVat: indicative.unitPriceExVat,
@@ -1477,7 +1079,9 @@ export default function MeasurementPanel({
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
         lineId: line._id as Id<"measurementLines">,
-        ruimteId: lineCorrectionDraft.roomId ? (lineCorrectionDraft.roomId as Id<"measurementRooms">) : undefined,
+        ruimteId: lineCorrectionDraft.roomId
+          ? (lineCorrectionDraft.roomId as Id<"measurementRooms">)
+          : undefined,
         productGroep: line.productGroep,
         berekeningType: line.berekeningType,
         invoer: line.invoer,
@@ -1492,6 +1096,8 @@ export default function MeasurementPanel({
         notities: lineCorrectionDraft.notes.trim() || undefined,
         offerteRegelType: line.offerteRegelType,
         quotePreparationStatus: lineCorrectionDraft.quotePreparationStatus,
+        // Handmatige correctie: deze regel niet meer automatisch herrekenen bij maatwijziging.
+        handmatigAangepast: true,
         ...productArgs
       });
       showToast({ title: "Meetregel bijgewerkt", tone: "success" });
@@ -1543,6 +1149,9 @@ export default function MeasurementPanel({
     const sourceRoom = projectRooms.find((room) => room.id === projectRoomValue);
 
     if (!sourceRoom) {
+      // "Nieuwe ruimte" gekozen: laat oppervlakte/omtrek weer automatisch meelopen.
+      setRoomAreaAutoFilled(true);
+      setRoomPerimeterAutoFilled(true);
       return;
     }
 
@@ -1550,277 +1159,92 @@ export default function MeasurementPanel({
     setRoomFloor(sourceRoom.verdieping ?? "");
     setRoomWidthM(decimalText(sourceRoom.breedteCm ? sourceRoom.breedteCm / 100 : undefined));
     setRoomLengthM(decimalText(sourceRoom.lengteCm ? sourceRoom.lengteCm / 100 : undefined));
+    // Bestaande ruimte: gebruik de opgeslagen oppervlakte/omtrek, niet automatisch herrekenen.
+    setRoomAreaAutoFilled(false);
+    setRoomPerimeterAutoFilled(false);
     setRoomAreaM2(decimalText(sourceRoom.oppervlakteM2));
     setRoomPerimeterM(decimalText(sourceRoom.omtrekMeter));
     setRoomNotes(sourceRoom.notities ?? "");
   }
 
-  function applyMeasurementRoomToFloor(roomId: string) {
-    setFloorRoomId(roomId);
-    const room = rooms.find((item) => item._id === roomId);
-
-    if (room) {
-      setFloorLengthM(decimalText(room.lengteM));
-      setFloorWidthM(decimalText(room.breedteM));
-    }
-  }
-
-  function applyMeasurementRoomToBroadloom(roomId: string) {
-    setBroadloomRoomId(roomId);
-    const room = rooms.find((item) => item._id === roomId);
-
-    if (room) {
-      setBroadloomLengthM(decimalText(room.lengteM));
-      setBroadloomWidthM(decimalText(room.breedteM));
-    }
-  }
-
-  function applyMeasurementRoomToCurtains(roomId: string) {
-    setCurtainRoomId(roomId);
-    const room = rooms.find((item) => item._id === roomId);
-
-    if (room) {
-      setCurtainRailWidthM(decimalText(room.breedteM));
-      setCurtainHeightM(decimalText(room.hoogteM));
-    }
-  }
-
-  function applyMeasurementRoomToScreed(roomId: string) {
-    setScreedRoomId(roomId);
-    const room = rooms.find((item) => item._id === roomId);
-
-    if (room) {
-      setScreedAreaM2(decimalText(room.oppervlakteM2));
-    }
-  }
-
-  function applyMeasurementRoomToPlinth(roomId: string) {
-    setPlinthRoomId(roomId);
-    const room = rooms.find((item) => item._id === roomId);
-
-    if (room) {
-      setPlinthPerimeterM(decimalText(room.omtrekM));
-    }
-  }
-
-  function applyMeasurementRoomToWallpaper(roomId: string) {
-    setWallpaperRoomId(roomId);
-    const room = rooms.find((item) => item._id === roomId);
-
-    if (room) {
-      setWallpaperWidthM(decimalText(room.breedteM));
-      setWallpaperHeightM(decimalText(room.hoogteM));
-    }
-  }
-
-  function applyMeasurementRoomToWallPanel(roomId: string) {
-    setWallPanelRoomId(roomId);
-    const room = rooms.find((item) => item._id === roomId);
-
-    if (room) {
-      setWallWidthM(decimalText(room.breedteM));
-      setWallHeightM(decimalText(room.hoogteM));
-    }
-  }
-
-  const roomColumns = useMemo<Array<DataTableColumn<MeasurementRoomDoc>>>(
-    () => {
-      const actionColumn: DataTableColumn<MeasurementRoomDoc> = {
-        key: "actions",
-        header: "Acties",
-        width: "180px",
-        render: (room) =>
-          canEditMeasurement ? (
-            <div className="toolbar">
-              <Button size="sm" variant="secondary" onClick={() => startEditRoom(room)}>
-                <Pencil size={16} aria-hidden="true" />
-                Bewerken
-              </Button>
-              <Button size="sm" variant="danger" onClick={() => setPendingRoomDelete(room)}>
-                <Trash2 size={16} aria-hidden="true" />
-                Verwijderen
-              </Button>
-            </div>
-          ) : (
-            "-"
-          )
-      };
-      const baseColumns: Array<DataTableColumn<MeasurementRoomDoc>> = [
-        {
-          key: "name",
-          header: "Ruimte",
-          priority: "primary",
-          render: (room) => <strong>{room.naam}</strong>
-        },
-        {
-          key: "floor",
-          header: "Verdieping",
-          hideOnMobile: true,
-          render: (room) => room.verdieping ?? "-"
-        }
-      ];
-
-      if (isFieldMode) {
-        return [
-          ...baseColumns,
-          {
-            key: "notes",
-            header: "Notitie",
-            hideOnMobile: true,
-            render: (room) => room.notities ?? "-"
-          },
-          actionColumn
-        ];
-      }
-
-      return [
-        ...baseColumns,
-        {
-          key: "width",
-          header: "Breedte",
-          align: "right",
-          render: (room) => formatNumber(room.breedteM, " m")
-        },
-        {
-          key: "length",
-          header: "Lengte",
-          align: "right",
-          render: (room) => formatNumber(room.lengteM, " m")
-        },
-        {
-          key: "height",
-          header: "Hoogte",
-          align: "right",
-          hideOnMobile: true,
-          render: (room) => formatNumber(room.hoogteM, " m")
-        },
-        {
-          key: "area",
-          header: "Oppervlakte",
-          align: "right",
-          render: (room) => formatNumber(room.oppervlakteM2, " m²")
-        },
-        {
-          key: "perimeter",
-          header: "Omtrek",
-          align: "right",
-          render: (room) => formatNumber(room.omtrekM, " m")
-        },
-        {
-          key: "notes",
-          header: "Notitie",
-          hideOnMobile: true,
-          render: (room) => room.notities ?? "-"
-        },
-        actionColumn
-      ];
-    },
-    [canEditMeasurement, isFieldMode]
-  );
-
-  const lineColumns = useMemo<Array<DataTableColumn<MeasurementLineDoc>>>(
-    () => [
-      {
-        key: "group",
-        header: "Productgroep",
-        priority: "primary",
-        render: (line) => <strong>{formatMeasurementProductGroup(line.productGroep)}</strong>
-      },
-      {
-        key: "room",
-        header: "Ruimte",
-        render: (line) =>
-          line.ruimteId ? roomNameById.get(line.ruimteId) ?? "-" : isFieldMode ? "Algemeen" : "-"
-      },
-      {
-        key: "quantity",
-        header: "Hoeveelheid",
-        align: "right",
-        render: (line) => (
-          <span style={{ whiteSpace: "nowrap" }}>
-            {formatNumber(line.aantal)} {formatUnit(line.eenheid)}
-          </span>
+  const roomColumns = useMemo<Array<DataTableColumn<MeasurementRoomDoc>>>(() => {
+    const actionColumn: DataTableColumn<MeasurementRoomDoc> = {
+      key: "actions",
+      header: "Acties",
+      width: "180px",
+      render: (room) =>
+        canEditMeasurement ? (
+          <div className="toolbar">
+            <Button size="sm" variant="secondary" onClick={() => startEditRoom(room)}>
+              <Pencil size={16} aria-hidden="true" />
+              Bewerken
+            </Button>
+            <Button size="sm" variant="danger" onClick={() => setPendingRoomDelete(room)}>
+              <Trash2 size={16} aria-hidden="true" />
+              Verwijderen
+            </Button>
+          </div>
+        ) : (
+          "-"
         )
+    };
+    const baseColumns: Array<DataTableColumn<MeasurementRoomDoc>> = [
+      {
+        key: "name",
+        header: "Ruimte",
+        priority: "primary",
+        render: (room) => <strong>{room.naam}</strong>
       },
       {
-        key: "waste",
-        header: "Snijverlies",
+        key: "floor",
+        header: "Verdieping",
+        hideOnMobile: true,
+        render: (room) => room.verdieping ?? "-"
+      }
+    ];
+
+    return [
+      ...baseColumns,
+      {
+        key: "width",
+        header: "Breedte",
+        align: "right",
+        render: (room) => formatNumber(room.breedteM, " m")
+      },
+      {
+        key: "length",
+        header: "Lengte",
+        align: "right",
+        render: (room) => formatNumber(room.lengteM, " m")
+      },
+      {
+        key: "height",
+        header: "Hoogte",
         align: "right",
         hideOnMobile: true,
-        render: (line) => (line.snijverliesPct !== undefined ? `${line.snijverliesPct}%` : "-")
+        render: (room) => formatNumber(room.hoogteM, " m")
       },
       {
-        key: "indicative",
-        header: "Richtprijs",
+        key: "area",
+        header: "Oppervlakte",
         align: "right",
-        render: (line) => {
-          if (!line.productNaam) {
-            return "-";
-          }
-
-          return (
-            <div style={{ textAlign: "right" }}>
-              <strong style={{ whiteSpace: "nowrap" }}>
-                {lineIndicativeTotal(line) ?? "Nog geen prijs"}
-              </strong>
-              <div className="muted" style={{ fontSize: "var(--text-xs)" }}>
-                {line.productNaam}
-              </div>
-            </div>
-          );
-        }
+        render: (room) => formatNumber(room.oppervlakteM2, " m²")
       },
       {
-        key: "status",
-        header: "Status",
-        render: (line) => (
-          <StatusBadge
-            status={line.quotePreparationStatus}
-            label={formatQuotePreparationStatus(line.quotePreparationStatus)}
-          />
-        )
+        key: "perimeter",
+        header: "Omtrek",
+        align: "right",
+        render: (room) => formatNumber(room.omtrekM, " m")
       },
       {
         key: "notes",
         header: "Notitie",
         hideOnMobile: true,
-        render: (line) => line.notities ?? "-"
+        render: (room) => room.notities ?? "-"
       },
-      {
-        key: "action",
-        header: "Actie",
-        render: (line) => {
-          if (!canEditMeasurement || line.quotePreparationStatus === "converted") {
-            return "-";
-          }
-
-          return (
-            <div className="toolbar">
-              {line.quotePreparationStatus === "draft" ? (
-                <Button
-                  disabled={isSaving}
-                  onClick={() => void markLineReady(line._id)}
-                  size="sm"
-                  variant="secondary"
-                >
-                  Naar offerte
-                </Button>
-              ) : null}
-              <Button size="sm" variant="secondary" onClick={() => startEditLine(line)}>
-                <Pencil size={16} aria-hidden="true" />
-                Bewerken
-              </Button>
-              <Button size="sm" variant="danger" onClick={() => setPendingLineDelete(line)}>
-                <Trash2 size={16} aria-hidden="true" />
-                Verwijderen
-              </Button>
-            </div>
-          );
-        }
-      }
-    ],
-    [canEditMeasurement, isFieldMode, isSaving, roomNameById, showPricesIncVat]
-  );
+      actionColumn
+    ];
+  }, [canEditMeasurement]);
 
   if (isLoading) {
     return <LoadingState title="Inmeting laden" description="Inmeting ophalen." />;
@@ -1831,7 +1255,11 @@ export default function MeasurementPanel({
   }
 
   return (
-    <section className={isFieldMode ? "measurement-panel measurement-panel-field" : "panel measurement-panel"}>
+    <section
+      className={
+        isFieldMode ? "measurement-panel measurement-panel-field" : "panel measurement-panel"
+      }
+    >
       <ConfirmDialog
         open={Boolean(pendingRoomDelete)}
         title="Meetruimte verwijderen?"
@@ -1844,7 +1272,10 @@ export default function MeasurementPanel({
         cancelLabel={roomDeleteError ? undefined : "Annuleren"}
         tone={roomDeleteError ? "warning" : "danger"}
         isBusy={isSaving}
-        onCancel={() => { setPendingRoomDelete(null); setRoomDeleteError(null); }}
+        onCancel={() => {
+          setPendingRoomDelete(null);
+          setRoomDeleteError(null);
+        }}
         onConfirm={() => {
           if (roomDeleteError) {
             setPendingRoomDelete(null);
@@ -1938,7 +1369,11 @@ export default function MeasurementPanel({
                 <SummaryList
                   items={[
                     { id: "date", label: "Inmeetdatum", value: dateText(measurement.inmeetdatum) },
-                    { id: "person", label: "Ingemeten door", value: measurement.gemetenDoor ?? "-" },
+                    {
+                      id: "person",
+                      label: "Ingemeten door",
+                      value: measurement.gemetenDoor ?? "-"
+                    },
                     { id: "updated", label: "Bijgewerkt", value: dateText(measurement.gewijzigdOp) }
                   ]}
                 />
@@ -2022,14 +1457,18 @@ export default function MeasurementPanel({
                       <button
                         key={preset.name}
                         type="button"
-                        className={alreadyAdded ? "field-room-preset-btn added" : "field-room-preset-btn"}
+                        className={
+                          alreadyAdded ? "field-room-preset-btn added" : "field-room-preset-btn"
+                        }
                         disabled={isSaving}
                         onClick={() =>
-                          isFieldMode
-                            ? void addRoomByPreset(preset.name)
-                            : setRoomName(preset.name)
+                          isFieldMode ? void addRoomByPreset(preset.name) : setRoomName(preset.name)
                         }
-                        aria-label={alreadyAdded ? `${preset.label} — al toegevoegd` : `${preset.label} toevoegen`}
+                        aria-label={
+                          alreadyAdded
+                            ? `${preset.label} — al toegevoegd`
+                            : `${preset.label} toevoegen`
+                        }
                       >
                         {preset.label}
                         {alreadyAdded ? " ✓" : ""}
@@ -2050,7 +1489,7 @@ export default function MeasurementPanel({
                     value={projectRoomId}
                     onChange={(event) => applyProjectRoom(event.target.value)}
                   >
-                    <option value="">{isFieldMode ? "Nieuwe ruimte" : "Geen basisruimte"}</option>
+                    <option value="">Nieuwe ruimte</option>
                     {projectRooms.map((room) => (
                       <option key={room.id} value={room.id}>
                         {room.naam}
@@ -2073,66 +1512,62 @@ export default function MeasurementPanel({
                     onChange={(event) => setRoomFloor(event.target.value)}
                   />
                 </Field>
-                {!isFieldMode ? (
-                  <>
-                    <Field htmlFor="measurement-room-width" label="Breedte in meter">
-                      <Input
-                        id="measurement-room-width"
-                        inputMode="decimal"
-                        value={roomWidthM}
-                        onChange={(event) => setRoomWidthM(event.target.value)}
-                      />
-                    </Field>
-                    <Field htmlFor="measurement-room-length" label="Lengte in meter">
-                      <Input
-                        id="measurement-room-length"
-                        inputMode="decimal"
-                        value={roomLengthM}
-                        onChange={(event) => setRoomLengthM(event.target.value)}
-                      />
-                    </Field>
-                    <Field htmlFor="measurement-room-height" label="Hoogte in meter">
-                      <Input
-                        id="measurement-room-height"
-                        inputMode="decimal"
-                        value={roomHeightM}
-                        onChange={(event) => setRoomHeightM(event.target.value)}
-                      />
-                    </Field>
-                    <Field
-                      htmlFor="measurement-room-area"
-                      label="Oppervlakte"
-                      description={
-                        selectedRoomArea
-                          ? `Voorstel: ${formatNumber(selectedRoomArea, " m²")}`
-                          : undefined
-                      }
-                    >
-                      <Input
-                        id="measurement-room-area"
-                        inputMode="decimal"
-                        value={roomAreaM2}
-                        onChange={(event) => setRoomAreaM2(event.target.value)}
-                      />
-                    </Field>
-                    <Field
-                      htmlFor="measurement-room-perimeter"
-                      label="Omtrek"
-                      description={
-                        selectedRoomPerimeter
-                          ? `Voorstel: ${formatNumber(selectedRoomPerimeter, " m")}`
-                          : undefined
-                      }
-                    >
-                      <Input
-                        id="measurement-room-perimeter"
-                        inputMode="decimal"
-                        value={roomPerimeterM}
-                        onChange={(event) => setRoomPerimeterM(event.target.value)}
-                      />
-                    </Field>
-                  </>
-                ) : null}
+                <Field htmlFor="measurement-room-width" label="Breedte in meter">
+                  <Input
+                    id="measurement-room-width"
+                    inputMode="decimal"
+                    value={roomWidthM}
+                    onChange={(event) => setRoomWidthM(event.target.value)}
+                  />
+                </Field>
+                <Field htmlFor="measurement-room-length" label="Lengte in meter">
+                  <Input
+                    id="measurement-room-length"
+                    inputMode="decimal"
+                    value={roomLengthM}
+                    onChange={(event) => setRoomLengthM(event.target.value)}
+                  />
+                </Field>
+                <Field htmlFor="measurement-room-height" label="Hoogte in meter">
+                  <Input
+                    id="measurement-room-height"
+                    inputMode="decimal"
+                    value={roomHeightM}
+                    onChange={(event) => setRoomHeightM(event.target.value)}
+                  />
+                </Field>
+                <Field
+                  htmlFor="measurement-room-area"
+                  label="Oppervlakte m²"
+                  description={roomAreaAutoFilled ? "Automatisch: lengte × breedte" : undefined}
+                >
+                  <Input
+                    id="measurement-room-area"
+                    inputMode="decimal"
+                    value={roomAreaM2}
+                    onChange={(event) => {
+                      setRoomAreaM2(event.target.value);
+                      setRoomAreaAutoFilled(false);
+                    }}
+                  />
+                </Field>
+                <Field
+                  htmlFor="measurement-room-perimeter"
+                  label="Omtrek m"
+                  description={
+                    roomPerimeterAutoFilled ? "Automatisch: 2 × (lengte + breedte)" : undefined
+                  }
+                >
+                  <Input
+                    id="measurement-room-perimeter"
+                    inputMode="decimal"
+                    value={roomPerimeterM}
+                    onChange={(event) => {
+                      setRoomPerimeterM(event.target.value);
+                      setRoomPerimeterAutoFilled(false);
+                    }}
+                  />
+                </Field>
               </div>
               <Field htmlFor="measurement-room-notes" label="Notitie">
                 <Textarea
@@ -2177,12 +1612,10 @@ export default function MeasurementPanel({
                         <strong>{room.naam}</strong>
                         <small className="muted">{room.verdieping ?? "Geen verdieping"}</small>
                       </div>
-                      {!isFieldMode ? (
-                        <strong>{formatNumber(room.oppervlakteM2, " m²")}</strong>
-                      ) : null}
+                      <strong>{formatNumber(room.oppervlakteM2, " m²")}</strong>
                     </div>
                     <div className="mobile-card-meta">
-                      {!isFieldMode ? <span>{formatNumber(room.omtrekM, " m")} omtrek</span> : null}
+                      <span>{formatNumber(room.omtrekM, " m")} omtrek</span>
                       <span>{room.notities ?? "Geen notitie"}</span>
                     </div>
                     {canEditMeasurement ? (
@@ -2227,7 +1660,12 @@ export default function MeasurementPanel({
                     <Input
                       id="measurement-room-edit-name"
                       value={roomCorrectionDraft.name}
-                      onChange={(event) => setRoomCorrectionDraft((current) => ({ ...current, name: event.target.value }))}
+                      onChange={(event) =>
+                        setRoomCorrectionDraft((current) => ({
+                          ...current,
+                          name: event.target.value
+                        }))
+                      }
                       required
                     />
                   </Field>
@@ -2235,7 +1673,12 @@ export default function MeasurementPanel({
                     <Input
                       id="measurement-room-edit-floor"
                       value={roomCorrectionDraft.floor}
-                      onChange={(event) => setRoomCorrectionDraft((current) => ({ ...current, floor: event.target.value }))}
+                      onChange={(event) =>
+                        setRoomCorrectionDraft((current) => ({
+                          ...current,
+                          floor: event.target.value
+                        }))
+                      }
                     />
                   </Field>
                   <Field htmlFor="measurement-room-edit-area" label="Oppervlakte">
@@ -2243,7 +1686,12 @@ export default function MeasurementPanel({
                       id="measurement-room-edit-area"
                       inputMode="decimal"
                       value={roomCorrectionDraft.areaM2}
-                      onChange={(event) => setRoomCorrectionDraft((current) => ({ ...current, areaM2: event.target.value }))}
+                      onChange={(event) =>
+                        setRoomCorrectionDraft((current) => ({
+                          ...current,
+                          areaM2: event.target.value
+                        }))
+                      }
                     />
                   </Field>
                 </div>
@@ -2253,7 +1701,12 @@ export default function MeasurementPanel({
                       id="measurement-room-edit-width"
                       inputMode="decimal"
                       value={roomCorrectionDraft.widthM}
-                      onChange={(event) => setRoomCorrectionDraft((current) => ({ ...current, widthM: event.target.value }))}
+                      onChange={(event) =>
+                        setRoomCorrectionDraft((current) => ({
+                          ...current,
+                          widthM: event.target.value
+                        }))
+                      }
                     />
                   </Field>
                   <Field htmlFor="measurement-room-edit-length" label="Lengte in meter">
@@ -2261,7 +1714,12 @@ export default function MeasurementPanel({
                       id="measurement-room-edit-length"
                       inputMode="decimal"
                       value={roomCorrectionDraft.lengthM}
-                      onChange={(event) => setRoomCorrectionDraft((current) => ({ ...current, lengthM: event.target.value }))}
+                      onChange={(event) =>
+                        setRoomCorrectionDraft((current) => ({
+                          ...current,
+                          lengthM: event.target.value
+                        }))
+                      }
                     />
                   </Field>
                   <Field htmlFor="measurement-room-edit-perimeter" label="Omtrek">
@@ -2269,7 +1727,12 @@ export default function MeasurementPanel({
                       id="measurement-room-edit-perimeter"
                       inputMode="decimal"
                       value={roomCorrectionDraft.perimeterM}
-                      onChange={(event) => setRoomCorrectionDraft((current) => ({ ...current, perimeterM: event.target.value }))}
+                      onChange={(event) =>
+                        setRoomCorrectionDraft((current) => ({
+                          ...current,
+                          perimeterM: event.target.value
+                        }))
+                      }
                     />
                   </Field>
                 </div>
@@ -2278,14 +1741,28 @@ export default function MeasurementPanel({
                     id="measurement-room-edit-notes"
                     rows={3}
                     value={roomCorrectionDraft.notes}
-                    onChange={(event) => setRoomCorrectionDraft((current) => ({ ...current, notes: event.target.value }))}
+                    onChange={(event) =>
+                      setRoomCorrectionDraft((current) => ({
+                        ...current,
+                        notes: event.target.value
+                      }))
+                    }
                   />
                 </Field>
                 <div className="toolbar">
-                  <Button isLoading={isSaving} leftIcon={<Save size={16} aria-hidden="true" />} type="submit" variant="primary">
+                  <Button
+                    isLoading={isSaving}
+                    leftIcon={<Save size={16} aria-hidden="true" />}
+                    type="submit"
+                    variant="primary"
+                  >
                     Meetruimte opslaan
                   </Button>
-                  <Button disabled={isSaving} variant="secondary" onClick={() => setEditingRoomId(null)}>
+                  <Button
+                    disabled={isSaving}
+                    variant="secondary"
+                    onClick={() => setEditingRoomId(null)}
+                  >
                     Annuleren
                   </Button>
                 </div>
@@ -2293,890 +1770,32 @@ export default function MeasurementPanel({
             ) : null}
           </Card>
 
-          {!isFieldMode ? renderMeasurementLinesCard() : null}
-
-          {canEditMeasurement ? (
-            <section className="panel">
+          {canEditMeasurement && measurement && tenantConvexId ? (
+            <section className="panel" id="assign-panel-section">
               <SectionHeader
                 compact
-                title={isFieldMode ? "Stap 2 — Wat meet je?" : "Rekenhulpen"}
-                description={
-                  isFieldMode
-                    ? "Kies de soort meting en vul de maten in. Het resultaat wordt live berekend."
-                    : "Gebruik een rekenhulp om een indicatieve hoeveelheid vast te leggen."
-                }
+                title="Producten & diensten toewijzen aan ruimtes"
+                description="Kies een product of dienst en pas het in één keer toe op één of meer ruimtes. De hoeveelheid volgt automatisch uit de ruimtematen."
               />
-              <CalculatorTabs
-                activeTab={activeFieldTool}
-                onTabChange={(id: CalcTabId) => setActiveFieldTool(id)}
-                tabs={buildCalcTabs()}
+              <MeasurementAssignPanel
+                session={session}
+                tenantSlug={tenantId}
+                tenantConvexId={tenantConvexId}
+                measurementId={measurement._id}
+                rooms={rooms}
+                canEdit={canEditMeasurement}
+                selectedRoomIds={assignRoomIds}
+                onSelectedRoomIdsChange={setAssignRoomIds}
+                onAdded={loadMeasurement}
               />
             </section>
           ) : null}
-          {isFieldMode ? renderMeasurementLinesCard() : null}
 
+          {renderMeasurementLinesCard()}
         </div>
       )}
     </section>
   );
-
-  function buildCalcTabs(): CalcTab[] {
-    return [
-      {
-        id: "flooring",
-        label: isFieldMode ? "Vloer meten" : "Vloer",
-        icon: CALC_TAB_ICONS.flooring,
-        resultKey: floorResult.quoteQuantityM2 ?? 0,
-        hasInput: Boolean(floorLengthM || floorWidthM),
-        validationError: floorLengthM || floorWidthM ? floorResult.validationError : undefined,
-        isSaving,
-        onSubmit: (event) =>
-          void addLine(event, {
-            roomId: floorRoomId || undefined,
-            productGroup: "flooring",
-            calculationType: "area",
-            input: { lengthM: parseDecimal(floorLengthM), widthM: parseDecimal(floorWidthM), wastePercent: parseDecimal(floorWastePercent), patternType: floorPatternType },
-            result: floorResult,
-            wastePercent: parseDecimal(floorWastePercent),
-            quantity: floorResult.quoteQuantityM2,
-            unit: "m2",
-            notes: floorNotes.trim() || undefined,
-            quoteLineType: "product",
-            tool: "flooring",
-            ...indicativeSnapshotForTool("flooring"),
-            validationError: floorResult.validationError,
-            successMessage: "Vloerinmeting opgeslagen."
-          }),
-        result: (
-          <SummaryList items={
-            calcEmptyStateItems(
-              Boolean(floorLengthM || floorWidthM),
-              floorLengthM || floorWidthM ? floorResult.validationError : undefined
-            ) ?? [
-              { label: "Netto oppervlakte", value: formatNumber(floorResult.areaM2, " m²") },
-              { label: "Snijverlies", value: formatNumber(floorResult.wasteM2, " m²") },
-              { label: "Offertehoeveelheid", value: formatNumber(floorResult.quoteQuantityM2, " m²") },
-              { label: "Legpatroon", value: formatFloorPatternLabel(floorPatternType) },
-              ...indicativeSummaryItems("flooring", floorResult.quoteQuantityM2)
-            ]
-          } />
-        ),
-        fields: (
-          <>
-            {renderRoomSelect("floor-room", "Ruimte", floorRoomId, applyMeasurementRoomToFloor)}
-            <Field htmlFor="floor-length" label="Lengte in meter">
-              <Input id="floor-length" inputMode="decimal" min={0} value={floorLengthM} onChange={(e) => setFloorLengthM(e.target.value)} />
-            </Field>
-            <Field htmlFor="floor-width" label="Breedte in meter">
-              <Input id="floor-width" inputMode="decimal" min={0} value={floorWidthM} onChange={(e) => setFloorWidthM(e.target.value)} />
-            </Field>
-            <Field
-              htmlFor="floor-pattern"
-              label="Legpatroon (alleen registratie)"
-              helpText="Beïnvloedt de berekening niet — vul het snijverlies hieronder zelf aan."
-            >
-              <Select id="floor-pattern" value={floorPatternType} onChange={(e) => setFloorPatternType(e.target.value)}>
-                <option value="straight">Rechte plank</option>
-                <option value="herringbone">Visgraat</option>
-                <option value="tile">Tegelpatroon</option>
-                <option value="custom">Maatwerk</option>
-              </Select>
-            </Field>
-            {renderWasteProfileSelect("floor-waste-profile", "Snijverlies-profiel", getProfilesForGroup("flooring"), (profileId) => setWasteFromProfile(profileId, setFloorWastePercent, "flooring"), "Kies een profiel om het percentage hieronder te vullen — of vul het zelf in.")}
-            <Field htmlFor="floor-waste" label="Snijverlies %">
-              <Input
-                id="floor-waste"
-                inputMode="decimal"
-                min={0}
-                value={floorWastePercent}
-                onChange={(e) => {
-                  setFloorWastePercent(e.target.value);
-                  setFloorPatternAutoFilled(false);
-                }}
-              />
-              {floorPatternAutoFilled ? (
-                <p className="muted" style={{ margin: "4px 0 0", fontSize: "var(--text-xs)" }}>
-                  Automatisch ingesteld op basis van legpatroon.
-                </p>
-              ) : null}
-            </Field>
-            <Field htmlFor="floor-notes" label="Notitie">
-              <Input id="floor-notes" value={floorNotes} onChange={(e) => setFloorNotes(e.target.value)} />
-            </Field>
-            {renderProductPicker("flooring", "flooring")}
-          </>
-        )
-      },
-      {
-        id: "broadloom",
-        label: isFieldMode ? "Rolgoed meten" : "Rolgoed (tapijt/vinyl)",
-        icon: CALC_TAB_ICONS.broadloom,
-        resultKey: broadloomResult.quoteQuantityM ?? 0,
-        hasInput: Boolean(broadloomWidthM || broadloomLengthM),
-        validationError:
-          broadloomWidthM || broadloomLengthM ? broadloomResult.validationError : undefined,
-        isSaving,
-        onSubmit: (event) =>
-          void addLine(event, {
-            roomId: broadloomRoomId || undefined,
-            productGroup: "flooring",
-            calculationType: "area",
-            input: {
-              roomWidthM: parseDecimal(broadloomWidthM),
-              roomLengthM: parseDecimal(broadloomLengthM),
-              rollWidthM: parseDecimal(broadloomRollWidthM),
-              wastePercent: parseDecimal(broadloomWastePercent)
-            },
-            result: broadloomResult,
-            wastePercent: parseDecimal(broadloomWastePercent),
-            quantity: broadloomResult.quoteQuantityM,
-            unit: "meter",
-            notes: broadloomNotes.trim() || undefined,
-            quoteLineType: "product",
-            tool: "broadloom",
-            ...indicativeSnapshotForTool("broadloom"),
-            validationError: broadloomResult.validationError,
-            successMessage: "Rolgoed-inmeting opgeslagen."
-          }),
-        result: (
-          <SummaryList
-            items={
-              calcEmptyStateItems(
-                Boolean(broadloomWidthM || broadloomLengthM),
-                broadloomWidthM || broadloomLengthM ? broadloomResult.validationError : undefined
-              ) ?? [
-                { label: "Netto oppervlakte", value: formatNumber(broadloomResult.areaM2, " m²") },
-                { label: "Banen", value: formatNumber(broadloomResult.strips) },
-                {
-                  label: "Lopende meters (incl. snijverlies)",
-                  value: formatNumber(broadloomResult.runningMeterM, " m")
-                },
-                {
-                  label: "Offertehoeveelheid",
-                  value: formatNumber(broadloomResult.quoteQuantityM, " m")
-                },
-                ...indicativeSummaryItems("broadloom", broadloomResult.quoteQuantityM)
-              ]
-            }
-          />
-        ),
-        fields: (
-          <>
-            {renderRoomSelect("broadloom-room", "Ruimte", broadloomRoomId, applyMeasurementRoomToBroadloom)}
-            <Field htmlFor="broadloom-width" label="Kamerbreedte in meter">
-              <Input id="broadloom-width" inputMode="decimal" min={0} value={broadloomWidthM} onChange={(e) => setBroadloomWidthM(e.target.value)} />
-            </Field>
-            <Field htmlFor="broadloom-length" label="Kamerlengte in meter">
-              <Input id="broadloom-length" inputMode="decimal" min={0} value={broadloomLengthM} onChange={(e) => setBroadloomLengthM(e.target.value)} />
-            </Field>
-            <Field
-              htmlFor="broadloom-roll-width"
-              label="Rolbreedte in meter"
-              helpText="De zuinigste legrichting (banen langs lengte of breedte) wordt automatisch gekozen."
-            >
-              <Input id="broadloom-roll-width" inputMode="decimal" min={0} value={broadloomRollWidthM} onChange={(e) => setBroadloomRollWidthM(e.target.value)} />
-            </Field>
-            {renderWasteProfileSelect("broadloom-waste-profile", "Snijverlies-profiel", getProfilesForGroup("flooring"), (profileId) => setWasteFromProfile(profileId, setBroadloomWastePercent, "flooring"), "Kies een profiel om het percentage hieronder te vullen — of vul het zelf in.")}
-            <Field htmlFor="broadloom-waste" label="Snijverlies %">
-              <Input id="broadloom-waste" inputMode="decimal" min={0} value={broadloomWastePercent} onChange={(e) => setBroadloomWastePercent(e.target.value)} />
-            </Field>
-            <Field htmlFor="broadloom-notes" label="Notitie">
-              <Input id="broadloom-notes" value={broadloomNotes} onChange={(e) => setBroadloomNotes(e.target.value)} />
-            </Field>
-            {renderProductPicker("broadloom", "flooring")}
-          </>
-        )
-      },
-      {
-        id: "screed",
-        label: isFieldMode ? "Egaliseren meten" : "Egaliseren",
-        icon: CALC_TAB_ICONS.screed,
-        resultKey: screedResult.packsNeeded ?? 0,
-        hasInput: Boolean(screedAreaM2),
-        validationError: screedAreaM2 ? screedResult.validationError : undefined,
-        isSaving,
-        onSubmit: (event) =>
-          void addLine(event, {
-            roomId: screedRoomId || undefined,
-            productGroup: "other",
-            calculationType: "area",
-            input: {
-              areaM2: parseDecimal(screedAreaM2),
-              layerThicknessMm: parseDecimal(screedLayerThicknessMm)
-            },
-            result: screedResult,
-            wastePercent: undefined,
-            quantity: parseDecimal(screedAreaM2) ?? 0,
-            unit: "m2",
-            notes: screedNotes.trim() || undefined,
-            quoteLineType: "service",
-            tool: "screed",
-            ...indicativeSnapshotForTool("screed"),
-            validationError: screedResult.validationError,
-            successMessage: "Egaliseren-inmeting opgeslagen."
-          }),
-        result: (
-          <SummaryList
-            items={
-              calcEmptyStateItems(
-                Boolean(screedAreaM2),
-                screedAreaM2 ? screedResult.validationError : undefined
-              ) ?? [
-                { label: "Oppervlakte", value: formatNumber(parseDecimal(screedAreaM2) ?? 0, " m²") },
-                {
-                  label: "Benodigd egalisatiemiddel",
-                  value: formatNumber(screedResult.kgNeeded, " kg")
-                },
-                { label: "Zakken (richt)", value: formatNumber(screedResult.packsNeeded) },
-                ...indicativeSummaryItems("screed", parseDecimal(screedAreaM2) ?? 0)
-              ]
-            }
-          />
-        ),
-        fields: (
-          <>
-            {renderRoomSelect("screed-room", "Ruimte", screedRoomId, applyMeasurementRoomToScreed)}
-            <Field htmlFor="screed-area" label="Oppervlakte in m²">
-              <Input id="screed-area" inputMode="decimal" min={0} value={screedAreaM2} onChange={(e) => setScreedAreaM2(e.target.value)} />
-            </Field>
-            <Field
-              htmlFor="screed-thickness"
-              label="Laagdikte in mm"
-              helpText="Verbruik en zakinhoud volgen de standaard bedrijfsregel."
-            >
-              <Input id="screed-thickness" inputMode="decimal" min={0} value={screedLayerThicknessMm} onChange={(e) => setScreedLayerThicknessMm(e.target.value)} />
-            </Field>
-            <Field htmlFor="screed-notes" label="Notitie">
-              <Input id="screed-notes" value={screedNotes} onChange={(e) => setScreedNotes(e.target.value)} />
-            </Field>
-            {renderProductPicker("screed", "other")}
-          </>
-        )
-      },
-      {
-        id: "plinths",
-        label: isFieldMode ? "Plinten meten" : "Plinten",
-        icon: CALC_TAB_ICONS.plinths,
-        resultKey: plinthResult.quoteQuantityMeter ?? 0,
-        hasInput: Boolean(plinthPerimeterM),
-        validationError: plinthPerimeterM ? plinthResult.validationError : undefined,
-        isSaving,
-        onSubmit: (event) =>
-          void addLine(event, {
-            roomId: plinthRoomId || undefined,
-            productGroup: "plinths",
-            calculationType: "perimeter",
-            input: { perimeterM: parseDecimal(plinthPerimeterM), doorOpeningM: parseDecimal(plinthDoorOpeningM), wastePercent: parseDecimal(plinthWastePercent) },
-            result: plinthResult,
-            wastePercent: parseDecimal(plinthWastePercent),
-            quantity: plinthResult.quoteQuantityMeter,
-            unit: "meter",
-            notes: plinthNotes.trim() || undefined,
-            quoteLineType: "material",
-            tool: "plinths",
-            ...indicativeSnapshotForTool("plinths"),
-            validationError: plinthResult.validationError,
-            successMessage: "Plintinmeting opgeslagen."
-          }),
-        result: (
-          <SummaryList items={
-            calcEmptyStateItems(
-              Boolean(plinthPerimeterM),
-              plinthPerimeterM ? plinthResult.validationError : undefined
-            ) ?? [
-              { label: "Netto lengte (m¹)", value: formatNumber(plinthResult.netMeter, " m¹") },
-              { label: "Snijverlies", value: formatNumber(plinthResult.wasteMeter, " m¹") },
-              { label: "Offertehoeveelheid", value: formatNumber(plinthResult.quoteQuantityMeter, " m¹") },
-              ...indicativeSummaryItems("plinths", plinthResult.quoteQuantityMeter)
-            ]
-          } />
-        ),
-        fields: (
-          <>
-            {renderRoomSelect("plinth-room", "Ruimte", plinthRoomId, applyMeasurementRoomToPlinth)}
-            <Field
-              htmlFor="plinth-perimeter"
-              label="Omtrek in meter"
-              helpText="Totale wandomtrek, inclusief deuropeningen"
-            >
-              <Input id="plinth-perimeter" inputMode="decimal" min={0} value={plinthPerimeterM} onChange={(e) => setPlinthPerimeterM(e.target.value)} />
-            </Field>
-            <Field
-              htmlFor="plinth-door"
-              label="Deuropeningen in meter"
-              helpText="Totale breedte van deuropeningen die je aftrekt"
-            >
-              <Input id="plinth-door" inputMode="decimal" min={0} value={plinthDoorOpeningM} onChange={(e) => setPlinthDoorOpeningM(e.target.value)} />
-            </Field>
-            {renderWasteProfileSelect("plinth-waste-profile", "Snijverlies-profiel", getProfilesForGroup("plinths"), (profileId) => setWasteFromProfile(profileId, setPlinthWastePercent, "plinths"), "Kies een profiel om het percentage hieronder te vullen — of vul het zelf in.")}
-            <Field htmlFor="plinth-waste" label="Snijverlies %">
-              <Input id="plinth-waste" inputMode="decimal" min={0} value={plinthWastePercent} onChange={(e) => setPlinthWastePercent(e.target.value)} />
-            </Field>
-            <Field htmlFor="plinth-notes" label="Notitie">
-              <Input id="plinth-notes" value={plinthNotes} onChange={(e) => setPlinthNotes(e.target.value)} />
-            </Field>
-            {renderProductPicker("plinths", "plinths")}
-          </>
-        )
-      },
-      {
-        id: "wallpaper",
-        label: isFieldMode ? "Behang meten" : "Behang",
-        icon: CALC_TAB_ICONS.wallpaper,
-        resultKey: wallpaperResult.rollsNeeded ?? 0,
-        hasInput: Boolean(wallpaperWidthM || wallpaperHeightM),
-        validationError: wallpaperWidthM || wallpaperHeightM ? wallpaperResult.validationError : undefined,
-        isSaving,
-        onSubmit: (event) =>
-          void addLine(event, {
-            roomId: wallpaperRoomId || undefined,
-            productGroup: "wallpaper",
-            calculationType: "rolls",
-            input: { wallWidthM: parseDecimal(wallpaperWidthM), wallHeightM: parseDecimal(wallpaperHeightM), rollWidthCm: parseDecimal(rollWidthCm), rollLengthM: parseDecimal(rollLengthM), patternRepeatCm: parseDecimal(patternRepeatCm), wastePercent: parseDecimal(wallpaperWastePercent) },
-            result: wallpaperResult as unknown as Record<string, unknown>,
-            wastePercent: parseDecimal(wallpaperWastePercent),
-            quantity: wallpaperResult.rollsNeeded,
-            unit: "roll",
-            notes: wallpaperNotes.trim() || undefined,
-            quoteLineType: "product",
-            tool: "wallpaper",
-            ...indicativeSnapshotForTool("wallpaper"),
-            validationError: wallpaperResult.validationError,
-            successMessage: "Behanginmeting opgeslagen."
-          }),
-        result: (
-          <SummaryList items={
-            calcEmptyStateItems(
-              Boolean(wallpaperWidthM || wallpaperHeightM),
-              wallpaperWidthM || wallpaperHeightM ? wallpaperResult.validationError : undefined
-            ) ?? [
-              { label: "Banen nodig", value: wallpaperResult.banenNeeded },
-              { label: "Banen per rol", value: wallpaperResult.banenPerRol },
-              { label: "Offertehoeveelheid", value: `${wallpaperResult.rollsNeeded} rollen` },
-              ...indicativeSummaryItems("wallpaper", wallpaperResult.rollsNeeded)
-            ]
-          } />
-        ),
-        fields: (
-          <>
-            {renderRoomSelect("wallpaper-room", "Ruimte", wallpaperRoomId, applyMeasurementRoomToWallpaper)}
-            <Field htmlFor="wallpaper-width" label="Wandbreedte in meter">
-              <Input id="wallpaper-width" inputMode="decimal" min={0} value={wallpaperWidthM} onChange={(e) => setWallpaperWidthM(e.target.value)} />
-            </Field>
-            <Field htmlFor="wallpaper-height" label="Wandhoogte in meter">
-              <Input id="wallpaper-height" inputMode="decimal" min={0} value={wallpaperHeightM} onChange={(e) => setWallpaperHeightM(e.target.value)} />
-            </Field>
-            <Field htmlFor="roll-width" label="Rolbreedte cm">
-              <Input id="roll-width" inputMode="decimal" min={0} value={rollWidthCm} onChange={(e) => setRollWidthCm(e.target.value)} />
-            </Field>
-            <Field htmlFor="roll-length" label="Rollengte m">
-              <Input id="roll-length" inputMode="decimal" min={0} value={rollLengthM} onChange={(e) => setRollLengthM(e.target.value)} />
-            </Field>
-            <Field
-              htmlFor="pattern-repeat"
-              label="Patroonrapport cm"
-              helpText="Verticaal rapport van het dessin in cm. 0 = effen behang."
-            >
-              <Input id="pattern-repeat" inputMode="decimal" min={0} value={patternRepeatCm} onChange={(e) => setPatternRepeatCm(e.target.value)} />
-            </Field>
-            {renderWasteProfileSelect("wallpaper-waste-profile", "Snijverlies-profiel", getProfilesForGroup("wallpaper"), (profileId) => setWasteFromProfile(profileId, setWallpaperWastePercent, "wallpaper"), "Kies een profiel om het percentage hieronder te vullen — of vul het zelf in.")}
-            <Field htmlFor="wallpaper-waste" label="Snijverlies %">
-              <Input id="wallpaper-waste" inputMode="decimal" min={0} value={wallpaperWastePercent} onChange={(e) => setWallpaperWastePercent(e.target.value)} />
-            </Field>
-            <Field htmlFor="wallpaper-notes" label="Notitie">
-              <Input id="wallpaper-notes" value={wallpaperNotes} onChange={(e) => setWallpaperNotes(e.target.value)} />
-            </Field>
-            {renderProductPicker("wallpaper", "wallpaper")}
-          </>
-        )
-      },
-      {
-        id: "wall_panels",
-        label: isFieldMode ? "Wandpanelen" : "Wandpanelen",
-        icon: CALC_TAB_ICONS.wall_panels,
-        resultKey: wallPanelResult.quoteQuantityPieces ?? 0,
-        hasInput: Boolean(wallWidthM || wallHeightM || panelWidthM || panelHeightM),
-        validationError: wallWidthM || wallHeightM || panelWidthM || panelHeightM ? wallPanelResult.validationError : undefined,
-        isSaving,
-        onSubmit: (event) =>
-          void addLine(event, {
-            roomId: wallPanelRoomId || undefined,
-            productGroup: "wall_panels",
-            calculationType: "panels",
-            input: { wallWidthM: parseDecimal(wallWidthM), wallHeightM: parseDecimal(wallHeightM), panelWidthM: parseDecimal(panelWidthM), panelHeightM: parseDecimal(panelHeightM), wastePercent: parseDecimal(wallPanelWastePercent) },
-            result: wallPanelResult,
-            wastePercent: parseDecimal(wallPanelWastePercent),
-            quantity: wallPanelResult.quoteQuantityPieces,
-            unit: "piece",
-            notes: wallPanelNotes.trim() || undefined,
-            quoteLineType: "product",
-            tool: "wall_panels",
-            ...indicativeSnapshotForTool("wall_panels"),
-            validationError: wallPanelResult.validationError,
-            successMessage: "Wandpaneleninmeting opgeslagen."
-          }),
-        result: (
-          <SummaryList items={
-            calcEmptyStateItems(
-              Boolean(wallWidthM || wallHeightM || panelWidthM || panelHeightM),
-              wallWidthM || wallHeightM || panelWidthM || panelHeightM ? wallPanelResult.validationError : undefined
-            ) ?? [
-              { label: "Wandoppervlakte", value: formatNumber(wallPanelResult.wallAreaM2, " m²") },
-              { label: "Indeling", value: `${wallPanelResult.columns} stroken × ${wallPanelResult.rows} rijen` },
-              { label: "Panelen nodig", value: wallPanelResult.panelsNeeded },
-              { label: "Offertehoeveelheid", value: `${wallPanelResult.quoteQuantityPieces} stuks` },
-              ...indicativeSummaryItems("wall_panels", wallPanelResult.quoteQuantityPieces)
-            ]
-          } />
-        ),
-        fields: (
-          <>
-            {renderRoomSelect("wall-panel-room", "Ruimte", wallPanelRoomId, applyMeasurementRoomToWallPanel)}
-            <Field htmlFor="wall-panel-wall-width" label="Wandbreedte in meter">
-              <Input id="wall-panel-wall-width" inputMode="decimal" min={0} value={wallWidthM} onChange={(e) => setWallWidthM(e.target.value)} />
-            </Field>
-            <Field htmlFor="wall-panel-wall-height" label="Wandhoogte in meter">
-              <Input id="wall-panel-wall-height" inputMode="decimal" min={0} value={wallHeightM} onChange={(e) => setWallHeightM(e.target.value)} />
-            </Field>
-            <Field htmlFor="panel-width" label="Paneelbreedte in meter">
-              <Input id="panel-width" inputMode="decimal" min={0} value={panelWidthM} onChange={(e) => setPanelWidthM(e.target.value)} />
-            </Field>
-            <Field htmlFor="panel-height" label="Paneelhoogte in meter">
-              <Input id="panel-height" inputMode="decimal" min={0} value={panelHeightM} onChange={(e) => setPanelHeightM(e.target.value)} />
-            </Field>
-            {renderWasteProfileSelect("wall-panel-waste-profile", "Snijverlies-profiel", getProfilesForGroup("wall_panels"), (profileId) => setWasteFromProfile(profileId, setWallPanelWastePercent, "wall_panels"), "Kies een profiel om het percentage hieronder te vullen — of vul het zelf in.")}
-            <Field htmlFor="wall-panel-waste" label="Snijverlies %">
-              <Input id="wall-panel-waste" inputMode="decimal" min={0} value={wallPanelWastePercent} onChange={(e) => setWallPanelWastePercent(e.target.value)} />
-            </Field>
-            <Field htmlFor="wall-panel-notes" label="Notitie">
-              <Input id="wall-panel-notes" value={wallPanelNotes} onChange={(e) => setWallPanelNotes(e.target.value)} />
-            </Field>
-            {renderProductPicker("wall_panels", "wall_panels")}
-          </>
-        )
-      },
-      {
-        id: "stairs",
-        label: isFieldMode ? "Trap meten" : "Trap",
-        icon: CALC_TAB_ICONS.stairs,
-        resultKey: stairResult.quoteQuantity ?? 0,
-        hasInput: Boolean(treadCount),
-        validationError: treadCount ? stairResult.validationError : undefined,
-        isSaving,
-        onSubmit: (event) =>
-          void addLine(event, {
-            roomId: stairRoomId || undefined,
-            productGroup: "stairs",
-            calculationType: "stairs",
-            input: { stairType, treadCount: parseDecimal(treadCount), riserCount: parseDecimal(riserCount), stripLengthM: parseDecimal(stripLengthM) },
-            result: stairResult as unknown as Record<string, unknown>,
-            quantity: stairResult.quoteQuantity,
-            unit: "stairs",
-            notes: stairNotes.trim() || undefined,
-            quoteLineType: "service",
-            tool: "stairs",
-            ...indicativeSnapshotForTool("stairs"),
-            validationError: stairResult.validationError,
-            successMessage: "Trapinmeting opgeslagen."
-          }),
-        result: (
-          <SummaryList items={
-            calcEmptyStateItems(
-              Boolean(treadCount),
-              treadCount ? stairResult.validationError : undefined
-            ) ?? [
-              { label: "Treden", value: stairResult.treadCount },
-              { label: "Stootborden", value: stairResult.riserCount },
-              { label: "Striplengte", value: stripLengthM ? formatNumber(parseDecimal(stripLengthM), " m¹") : "-" },
-              { label: "Offertehoeveelheid", value: `${stairResult.quoteQuantity} trap` },
-              ...indicativeSummaryItems("stairs", stairResult.quoteQuantity)
-            ]
-          } />
-        ),
-        fields: (
-          <>
-            {renderRoomSelect("stair-room", "Ruimte", stairRoomId, setStairRoomId)}
-            <Field htmlFor="stair-type" label="Traptype">
-              <Select id="stair-type" value={stairType} onChange={(e) => setStairType(e.target.value)}>
-                <option value="straight">Rechte trap</option>
-                <option value="quarter_turn">Kwart draai</option>
-                <option value="half_turn">Halve draai</option>
-                <option value="open">Open trap</option>
-                <option value="closed">Dichte trap</option>
-              </Select>
-            </Field>
-            <Field
-              htmlFor="tread-count"
-              label="Aantal treden"
-              helpText="Kenmerken (informatief) — de trap rekent per stuk af."
-            >
-              <Input id="tread-count" inputMode="numeric" min={0} value={treadCount} onChange={(e) => setTreadCount(e.target.value)} />
-            </Field>
-            <Field htmlFor="riser-count" label="Aantal stootborden">
-              <Input id="riser-count" inputMode="numeric" min={0} value={riserCount} onChange={(e) => setRiserCount(e.target.value)} />
-            </Field>
-            <Field
-              htmlFor="strip-length"
-              label="Striplengte in meter"
-              helpText="Informatief — telt niet mee in de prijs per trap."
-            >
-              <Input id="strip-length" inputMode="decimal" min={0} value={stripLengthM} onChange={(e) => setStripLengthM(e.target.value)} />
-            </Field>
-            <Field htmlFor="stair-notes" label="Notitie">
-              <Input id="stair-notes" value={stairNotes} onChange={(e) => setStairNotes(e.target.value)} />
-            </Field>
-            {renderProductPicker("stairs", "stairs")}
-          </>
-        )
-      },
-      {
-        id: "curtains",
-        label: isFieldMode ? "Gordijnstof meten" : "Gordijnstof",
-        icon: CALC_TAB_ICONS.curtains,
-        resultKey: curtainResult.quoteQuantityM ?? 0,
-        hasInput: Boolean(curtainRailWidthM || curtainHeightM),
-        validationError:
-          curtainRailWidthM || curtainHeightM ? curtainResult.validationError : undefined,
-        isSaving,
-        onSubmit: (event) =>
-          void addLine(event, {
-            roomId: curtainRoomId || undefined,
-            productGroup: "curtains",
-            calculationType: "manual",
-            input: {
-              railWidthM: parseDecimal(curtainRailWidthM),
-              curtainHeightM: parseDecimal(curtainHeightM),
-              fabricWidthM: parseDecimal(curtainFabricWidthM),
-              fullness: parseDecimal(curtainFullness),
-              makeUp: curtainMakeUp,
-              rapportM: parseDecimal(curtainRapportM)
-            },
-            result: curtainResult,
-            wastePercent: undefined,
-            quantity: curtainResult.quoteQuantityM,
-            unit: "meter",
-            notes: curtainNotes.trim() || undefined,
-            quoteLineType: "product",
-            tool: "curtains",
-            ...indicativeSnapshotForTool("curtains"),
-            validationError: curtainResult.validationError,
-            successMessage: "Gordijnstof-inmeting opgeslagen."
-          }),
-        result: (
-          <SummaryList
-            items={
-              calcEmptyStateItems(
-                Boolean(curtainRailWidthM || curtainHeightM),
-                curtainRailWidthM || curtainHeightM ? curtainResult.validationError : undefined
-              ) ?? [
-                {
-                  label: "Benodigde gordijnbreedte",
-                  value: formatNumber(curtainResult.requiredWidthM, " m")
-                },
-                {
-                  label: "Banen",
-                  value:
-                    curtainResult.banen === null
-                      ? "Kamerhoog (gekanteld)"
-                      : formatNumber(curtainResult.banen)
-                },
-                ...(curtainResult.dropM !== null
-                  ? [
-                      {
-                        label: "Baanlengte (incl. zoom/rapport)",
-                        value: formatNumber(curtainResult.dropM, " m")
-                      }
-                    ]
-                  : []),
-                { label: "Stofmeters", value: formatNumber(curtainResult.fabricMetersM, " m") },
-                {
-                  label: "Offertehoeveelheid",
-                  value: formatNumber(curtainResult.quoteQuantityM, " m")
-                },
-                ...indicativeSummaryItems("curtains", curtainResult.quoteQuantityM)
-              ]
-            }
-          />
-        ),
-        fields: (
-          <>
-            {renderRoomSelect("curtains-room", "Ruimte", curtainRoomId, applyMeasurementRoomToCurtains)}
-            <Field htmlFor="curtains-rail-width" label="Railbreedte in meter">
-              <Input id="curtains-rail-width" inputMode="decimal" min={0} value={curtainRailWidthM} onChange={(e) => setCurtainRailWidthM(e.target.value)} />
-            </Field>
-            <Field htmlFor="curtains-height" label="Gordijnhoogte in meter">
-              <Input id="curtains-height" inputMode="decimal" min={0} value={curtainHeightM} onChange={(e) => setCurtainHeightM(e.target.value)} />
-            </Field>
-            <Field htmlFor="curtains-fabric-width" label="Stofbreedte in meter">
-              <Input id="curtains-fabric-width" inputMode="decimal" min={0} value={curtainFabricWidthM} onChange={(e) => setCurtainFabricWidthM(e.target.value)} />
-            </Field>
-            <Field htmlFor="curtains-fullness" label="Plooifactor" helpText="Bijv. 2,0 voor dubbele plooi.">
-              <Input id="curtains-fullness" inputMode="decimal" min={0} value={curtainFullness} onChange={(e) => setCurtainFullness(e.target.value)} />
-            </Field>
-            <Field htmlFor="curtains-makeup" label="Confectie">
-              <Select id="curtains-makeup" value={curtainMakeUp} onChange={(e) => setCurtainMakeUp(e.target.value)}>
-                <option value="banen">Banen (op hoogte)</option>
-                <option value="kamerhoog">Kamerhoog (gekanteld)</option>
-              </Select>
-            </Field>
-            <Field htmlFor="curtains-rapport" label="Patroonrapport in meter" helpText="0 = geen rapport.">
-              <Input id="curtains-rapport" inputMode="decimal" min={0} value={curtainRapportM} onChange={(e) => setCurtainRapportM(e.target.value)} />
-            </Field>
-            <Field htmlFor="curtains-notes" label="Notitie">
-              <Input id="curtains-notes" value={curtainNotes} onChange={(e) => setCurtainNotes(e.target.value)} />
-            </Field>
-            {renderProductPicker("curtains", "curtains")}
-          </>
-        )
-      },
-      {
-        id: "window_covering",
-        label: isFieldMode ? "Raambekleding meten" : "Raambekleding",
-        icon: CALC_TAB_ICONS.window_covering,
-        resultKey: `${wcType}-${wcPriceGroup}-${wcWidthCm}-${wcHeightCm}-${wcQuantity}`,
-        hasInput: Boolean(wcType || wcWidthCm || wcHeightCm),
-        validationError:
-          wcType || wcWidthCm || wcHeightCm ? windowCoveringValidationError() : undefined,
-        isSaving,
-        onSubmit: (event) => {
-          const breedteCm = parseDecimal(wcWidthCm);
-          const hoogteCm = parseDecimal(wcHeightCm);
-          const quantity = parseDecimal(wcQuantity) ?? 1;
-          const indicative = wcPrice?.indicative ?? null;
-          const label = `Raambekleding ${[wcType, wcPriceGroup].filter(Boolean).join(" – ")}`;
-
-          void addLine(event, {
-            roomId: wcRoomId || undefined,
-            productGroup: "curtains",
-            calculationType: "matrix",
-            input: {
-              source: "raambekleding-matrix",
-              productToolSleutel: "raambekleding",
-              bronBlad: wcType,
-              prijsgroep: wcPriceGroup,
-              breedteCm,
-              hoogteCm,
-              matchedWidthCm: indicative?.matchedWidthCm,
-              matchedHeightCm: indicative?.matchedHeightCm,
-              quantity
-            },
-            result: {
-              unitPriceExVat: indicative?.unitPriceExVat,
-              matchedWidthCm: indicative?.matchedWidthCm,
-              matchedHeightCm: indicative?.matchedHeightCm,
-              quantity,
-              outOfRange: wcPrice?.outOfRange ?? false,
-              isIndicative: true
-            },
-            quantity,
-            unit: "piece",
-            notes: wcNotes.trim() || undefined,
-            quoteLineType: "product",
-            ...(indicative
-              ? {
-                  productName: `${label} – ${indicative.matchedWidthCm}×${indicative.matchedHeightCm} cm`,
-                  indicativeUnitPriceExVat: indicative.unitPriceExVat,
-                  indicativeVatRate: indicative.vatRate,
-                  indicativePriceUnit: "piece",
-                  indicativePriceType: "matrix",
-                  indicativeCapturedAt: Date.now()
-                }
-              : {}),
-            validationError: windowCoveringValidationError(),
-            successMessage: "Raambekleding-inmeting opgeslagen."
-          });
-        },
-        result: (
-          <SummaryList
-            items={
-              // Lege staat zolang er nog geen kernmaten zijn; zodra breedte én hoogte
-              // ingevuld zijn tonen we de samenvatting (incl. informatieve meldingen als
-              // "Buiten matrixbereik" of "Nog niet beschikbaar").
-              calcEmptyStateItems(Boolean(wcWidthCm && wcHeightCm), undefined) ?? [
-                { label: "Type", value: wcType || "-" },
-                { label: "Prijsgroep", value: wcPriceGroup || "-" },
-                {
-                  label: "Maat (B×H)",
-                  value: wcWidthCm && wcHeightCm ? `${wcWidthCm} × ${wcHeightCm} cm` : "-"
-                },
-                { label: "Aantal", value: wcQuantity || "1" },
-                ...windowCoveringSummaryItems()
-              ]
-            }
-          />
-        ),
-        fields: (
-          <>
-            {renderRoomSelect("wc-room", "Ruimte", wcRoomId, setWcRoomId)}
-            <Field htmlFor="wc-type" label="Type raambekleding">
-              <Select
-                id="wc-type"
-                value={wcType}
-                onChange={(e) => {
-                  setWcType(e.target.value);
-                  setWcPriceGroup("");
-                }}
-              >
-                <option value="">Kies type</option>
-                {(wcOptions?.types ?? []).map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field htmlFor="wc-group" label="Prijsgroep">
-              <Select
-                id="wc-group"
-                value={wcPriceGroup}
-                onChange={(e) => setWcPriceGroup(e.target.value)}
-                disabled={!wcType}
-              >
-                <option value="">Kies prijsgroep</option>
-                {(wcOptions?.combinations ?? [])
-                  .filter((combo) => combo.bronBlad === wcType)
-                  .map((combo) => combo.prijsgroep)
-                  .filter((group, index, all) => all.indexOf(group) === index)
-                  .map((group) => (
-                    <option key={group} value={group}>
-                      {group}
-                    </option>
-                  ))}
-              </Select>
-            </Field>
-            <Field
-              htmlFor="wc-width"
-              label="Breedte in cm"
-              helpText="Raammaat in cm (bijv. 120), niet in mm"
-            >
-              <Input
-                id="wc-width"
-                inputMode="decimal"
-                min={0}
-                placeholder="bijv. 120"
-                value={wcWidthCm}
-                onChange={(e) => setWcWidthCm(e.target.value)}
-              />
-            </Field>
-            <Field
-              htmlFor="wc-height"
-              label="Hoogte in cm"
-              helpText="Raammaat in cm (bijv. 120), niet in mm"
-            >
-              <Input
-                id="wc-height"
-                inputMode="decimal"
-                min={0}
-                placeholder="bijv. 120"
-                value={wcHeightCm}
-                onChange={(e) => setWcHeightCm(e.target.value)}
-              />
-            </Field>
-            <Field htmlFor="wc-qty" label="Aantal">
-              <Input
-                id="wc-qty"
-                inputMode="numeric"
-                min={1}
-                step={1}
-                value={wcQuantity}
-                onChange={(e) => setWcQuantity(e.target.value)}
-              />
-            </Field>
-            <Field htmlFor="wc-notes" label="Notitie">
-              <Input id="wc-notes" value={wcNotes} onChange={(e) => setWcNotes(e.target.value)} />
-            </Field>
-          </>
-        )
-      },
-      {
-        id: "manual",
-        label: isFieldMode ? "Vrije regel" : "Vrij",
-        icon: CALC_TAB_ICONS.manual,
-        resultKey: `${manualQuantity}-${manualUnit}`,
-        hasInput: Boolean(manualQuantity),
-        validationError: manualQuantity && !parseDecimal(manualQuantity) ? "Hoeveelheid verplicht." : undefined,
-        isSaving,
-        onSubmit: (event) =>
-          void addLine(event, {
-            roomId: manualRoomId || undefined,
-            productGroup: manualProductGroup,
-            calculationType: "manual",
-            input: { quantity: parseDecimal(manualQuantity), unit: manualUnit, wastePercent: parseDecimal(manualWastePercent) },
-            result: { quantity: parseDecimal(manualQuantity), unit: manualUnit, isIndicative: true },
-            wastePercent: parseDecimal(manualWastePercent),
-            quantity: parseDecimal(manualQuantity) ?? 0,
-            unit: manualUnit,
-            notes: manualNotes.trim() || undefined,
-            quoteLineType: manualQuoteLineType,
-            tool: "manual",
-            ...indicativeSnapshotForTool("manual"),
-            validationError: parseDecimal(manualQuantity) ? undefined : "quantity is required.",
-            successMessage: "Vrije inmeetregel opgeslagen."
-          }),
-        result: (
-          <SummaryList items={
-            calcEmptyStateItems(
-              Boolean(manualQuantity),
-              manualQuantity && !parseDecimal(manualQuantity) ? "Hoeveelheid verplicht." : undefined
-            ) ?? [
-              { label: "Productgroep", value: formatMeasurementProductGroup(manualProductGroup) },
-              { label: "Soort post", value: formatLineType(manualQuoteLineType) },
-              { label: "Hoeveelheid", value: `${manualQuantity || "-"} ${formatUnit(manualUnit)}` },
-              ...indicativeSummaryItems("manual", parseDecimal(manualQuantity) ?? 0)
-            ]
-          } />
-        ),
-        fields: (
-          <>
-            {renderRoomSelect("manual-room", "Ruimte", manualRoomId, setManualRoomId)}
-            <Field
-              htmlFor="manual-group"
-              label="Productgroep"
-              helpText="Bepaalt onder welke groep de regel in de offerte valt."
-            >
-              <Select id="manual-group" value={manualProductGroup} onChange={(e) => setManualProductGroup(e.target.value as MeasurementProductGroup)}>
-                {PRODUCT_GROUP_OPTIONS.map((group) => <option key={group} value={group}>{formatMeasurementProductGroup(group)}</option>)}
-              </Select>
-            </Field>
-            <Field htmlFor="manual-quantity" label="Hoeveelheid">
-              <Input id="manual-quantity" inputMode="decimal" min={0} value={manualQuantity} onChange={(e) => setManualQuantity(e.target.value)} />
-            </Field>
-            <Field htmlFor="manual-unit" label="Eenheid">
-              <Select id="manual-unit" value={manualUnit} onChange={(e) => setManualUnit(e.target.value)}>
-                <option value="m2">m²</option>
-                <option value="m1">m¹</option>
-                <option value="meter">meter</option>
-                <option value="piece">stuk</option>
-                <option value="roll">rol</option>
-                <option value="stairs">trap</option>
-                <option value="custom">maatwerk</option>
-              </Select>
-            </Field>
-            <Field
-              htmlFor="manual-line-type"
-              label="Soort offertepost"
-              helpText="Bepaalt hoe de regel in de offerte wordt behandeld (product, dienst, arbeid…)."
-            >
-              <Select id="manual-line-type" value={manualQuoteLineType} onChange={(e) => setManualQuoteLineType(e.target.value as QuoteLineType)}>
-                {QUOTE_LINE_TYPE_OPTIONS.map((lineType) => <option key={lineType} value={lineType}>{formatLineType(lineType)}</option>)}
-              </Select>
-            </Field>
-            <Field
-              htmlFor="manual-waste"
-              label="Snijverlies % (telt niet mee)"
-              helpText="Een vrije hoeveelheid voer je zelf in."
-            >
-              <Input id="manual-waste" inputMode="decimal" min={0} value={manualWastePercent} onChange={(e) => setManualWastePercent(e.target.value)} />
-            </Field>
-            <Field htmlFor="manual-notes" label="Notitie">
-              <Input id="manual-notes" value={manualNotes} onChange={(e) => setManualNotes(e.target.value)} />
-            </Field>
-            {renderProductPicker("manual", manualProductGroup)}
-          </>
-        )
-      }
-    ];
-  }
 
   function renderMeasurementLinesCard() {
     return (
@@ -3200,72 +1819,7 @@ export default function MeasurementPanel({
             </Button>
           }
         />
-        <DataTable
-          ariaLabel={isFieldMode ? "Opgeslagen meetregels" : "Inmeetregels"}
-          columns={lineColumns}
-          density="compact"
-          emptyDescription={
-            isFieldMode
-              ? "Kies hierboven een meetactie om de eerste hoeveelheid op te slaan."
-              : "Gebruik hieronder een rekenhulp om de eerste inmeetregel op te slaan."
-          }
-          emptyTitle={isFieldMode ? "Nog geen meetregels opgeslagen" : "Nog geen inmeetregels"}
-          getRowKey={(line) => line._id}
-          mobileMode="cards"
-          renderMobileCard={(line) => (
-            <div>
-              <div className="toolbar" style={{ justifyContent: "space-between" }}>
-                <strong>{formatMeasurementProductGroup(line.productGroep)}</strong>
-                <StatusBadge
-                  status={line.quotePreparationStatus}
-                  label={formatQuotePreparationStatus(line.quotePreparationStatus)}
-                />
-              </div>
-              <p className="muted">
-                {line.ruimteId
-                  ? roomNameById.get(line.ruimteId) ?? "-"
-                  : isFieldMode
-                    ? "Algemeen"
-                    : "Geen ruimte"}{" "}
-                · {formatNumber(line.aantal)} {formatUnit(line.eenheid)}
-              </p>
-              {line.productNaam ? (
-                <p>
-                  {line.productNaam}
-                  {" · "}
-                  <strong>{lineIndicativeTotal(line) ?? "Nog geen richtprijs"}</strong>
-                  {lineIndicativeTotal(line) ? (
-                    <span className="muted"> ({showPricesIncVat ? "incl." : "excl."} btw, indicatief)</span>
-                  ) : null}
-                </p>
-              ) : null}
-              <p className="muted">{line.notities ?? "Geen notitie"}</p>
-              {canEditMeasurement && line.quotePreparationStatus !== "converted" ? (
-                <div className="mobile-card-actions">
-                  {line.quotePreparationStatus === "draft" ? (
-                    <Button
-                      disabled={isSaving}
-                      onClick={() => void markLineReady(line._id)}
-                      size="sm"
-                      variant="secondary"
-                    >
-                      Naar offerte zetten
-                    </Button>
-                  ) : null}
-                  <Button size="sm" variant="secondary" onClick={() => startEditLine(line)}>
-                    <Pencil size={16} aria-hidden="true" />
-                    Bewerken
-                  </Button>
-                  <Button size="sm" variant="danger" onClick={() => setPendingLineDelete(line)}>
-                    <Trash2 size={16} aria-hidden="true" />
-                    Verwijderen
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          )}
-          rows={lines}
-        />
+        {renderRoomGroupedLines()}
         {editingLineId ? (
           <form
             className="form-grid edit-work-panel"
@@ -3283,7 +1837,12 @@ export default function MeasurementPanel({
                 <Select
                   id="measurement-line-edit-room"
                   value={lineCorrectionDraft.roomId}
-                  onChange={(event) => setLineCorrectionDraft((current) => ({ ...current, roomId: event.target.value }))}
+                  onChange={(event) =>
+                    setLineCorrectionDraft((current) => ({
+                      ...current,
+                      roomId: event.target.value
+                    }))
+                  }
                 >
                   <option value="">Algemene meting</option>
                   {rooms.map((room) => (
@@ -3298,7 +1857,12 @@ export default function MeasurementPanel({
                   id="measurement-line-edit-quantity"
                   inputMode="decimal"
                   value={lineCorrectionDraft.quantity}
-                  onChange={(event) => setLineCorrectionDraft((current) => ({ ...current, quantity: event.target.value }))}
+                  onChange={(event) =>
+                    setLineCorrectionDraft((current) => ({
+                      ...current,
+                      quantity: event.target.value
+                    }))
+                  }
                   required
                 />
               </Field>
@@ -3306,7 +1870,9 @@ export default function MeasurementPanel({
                 <Input
                   id="measurement-line-edit-unit"
                   value={lineCorrectionDraft.unit}
-                  onChange={(event) => setLineCorrectionDraft((current) => ({ ...current, unit: event.target.value }))}
+                  onChange={(event) =>
+                    setLineCorrectionDraft((current) => ({ ...current, unit: event.target.value }))
+                  }
                 />
               </Field>
             </div>
@@ -3316,7 +1882,12 @@ export default function MeasurementPanel({
                   id="measurement-line-edit-waste"
                   inputMode="decimal"
                   value={lineCorrectionDraft.wastePercent}
-                  onChange={(event) => setLineCorrectionDraft((current) => ({ ...current, wastePercent: event.target.value }))}
+                  onChange={(event) =>
+                    setLineCorrectionDraft((current) => ({
+                      ...current,
+                      wastePercent: event.target.value
+                    }))
+                  }
                 />
               </Field>
               <Field htmlFor="measurement-line-edit-status" label="Status">
@@ -3359,7 +1930,11 @@ export default function MeasurementPanel({
               }
               actions={
                 lineCorrectionDraft.productId ? (
-                  <Button size="sm" variant="ghost" onClick={() => void selectEditLineProduct(null)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void selectEditLineProduct(null)}
+                  >
                     Productkeuze wissen
                   </Button>
                 ) : undefined
@@ -3390,80 +1965,31 @@ export default function MeasurementPanel({
                 id="measurement-line-edit-notes"
                 rows={3}
                 value={lineCorrectionDraft.notes}
-                onChange={(event) => setLineCorrectionDraft((current) => ({ ...current, notes: event.target.value }))}
+                onChange={(event) =>
+                  setLineCorrectionDraft((current) => ({ ...current, notes: event.target.value }))
+                }
               />
             </Field>
             <div className="toolbar">
-              <Button isLoading={isSaving} leftIcon={<Save size={16} aria-hidden="true" />} type="submit" variant="primary">
+              <Button
+                isLoading={isSaving}
+                leftIcon={<Save size={16} aria-hidden="true" />}
+                type="submit"
+                variant="primary"
+              >
                 Meetregel opslaan
               </Button>
-              <Button disabled={isSaving} variant="secondary" onClick={() => setEditingLineId(null)}>
+              <Button
+                disabled={isSaving}
+                variant="secondary"
+                onClick={() => setEditingLineId(null)}
+              >
                 Annuleren
               </Button>
             </div>
           </form>
         ) : null}
       </Card>
-    );
-  }
-
-  function renderRoomSelect(
-    id: string,
-    label: string,
-    value: string,
-    onChange: (value: string) => void
-  ) {
-    return (
-      <Field htmlFor={id} label={label}>
-        <Select id={id} value={value} onChange={(event) => onChange(event.target.value)}>
-          <option value="">{isFieldMode ? "Algemene meting" : "Geen specifieke ruimte"}</option>
-          {rooms.map((room) => (
-            <option key={room._id} value={room._id}>
-              {room.naam}
-            </option>
-          ))}
-        </Select>
-      </Field>
-    );
-  }
-
-  function renderProductPicker(tool: FieldMeasureTool, productGroup: MeasurementProductGroup) {
-    if (!canEditMeasurement) {
-      return null;
-    }
-
-    return (
-      <CatalogProductPicker
-        session={session}
-        idPrefix={`measure-${tool}`}
-        productGroupHint={productGroup === "other" ? null : productGroup}
-        selectedProductId={tabProducts[tool]?.id ?? ""}
-        onSelect={(product) => void selectTabProduct(tool, product)}
-        label="Richtprijs: kies een product (optioneel)"
-        description="De richtprijs verschijnt direct in de live berekening."
-        emptyOptionLabel="Geen product gekozen"
-      />
-    );
-  }
-
-  function renderWasteProfileSelect(
-    id: string,
-    label: string,
-    profiles: WasteProfileDoc[],
-    onChange: (value: string) => void,
-    helpText?: string
-  ) {
-    return (
-      <Field htmlFor={id} label={label} helpText={helpText}>
-        <Select id={id} defaultValue="" onChange={(event) => onChange(event.target.value)}>
-          <option value="">Handmatig percentage</option>
-          {profiles.map((profile) => (
-            <option key={profile._id} value={profile._id}>
-              {profile.naam} ({profile.standaardSnijverliesPct}%)
-            </option>
-          ))}
-        </Select>
-      </Field>
     );
   }
 }

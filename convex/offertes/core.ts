@@ -316,6 +316,22 @@ async function validateQuoteLineProduct(
   return product._id;
 }
 
+/**
+ * Verwijdert de `requiresManualPriceReview`-vlag uit regel-metadata. Een bewuste
+ * updateQuoteLine geldt als de vereiste prijsreview, zodat de regel daarna door de
+ * status-gate mag. De rest van de metadata (bv. isIndicative) blijft staan.
+ */
+function clearedPriceReviewMetadata(metadata: unknown): unknown {
+  if (!metadata || typeof metadata !== "object") {
+    return metadata;
+  }
+  if (!("requiresManualPriceReview" in (metadata as Record<string, unknown>))) {
+    return metadata;
+  }
+  const { requiresManualPriceReview: _drop, ...rest } = metadata as Record<string, unknown>;
+  return rest;
+}
+
 async function addProjectEvent(
   ctx: any,
   tenantId: Id<"tenants">,
@@ -540,9 +556,20 @@ export const updateQuoteLine = mutation({
       }
     }
 
-    const productId = args.regelType === "product"
-      ? await validateQuoteLineProduct(ctx, tenant._id, args.productId)
-      : undefined;
+    // Valideer het product alleen wanneer het daadwerkelijk WIJZIGT. Een ongewijzigd
+    // product mag een latere deactivatie/pilot-verberging niet blokkeren — anders kan
+    // een monteur de prijs of het aantal van een bestaande regel niet meer corrigeren.
+    const productUnchanged =
+      args.regelType === "product" &&
+      !!args.productId &&
+      !!line.productId &&
+      args.productId === String(line.productId);
+    const productId =
+      args.regelType !== "product"
+        ? undefined
+        : productUnchanged
+          ? line.productId
+          : await validateQuoteLineProduct(ctx, tenant._id, args.productId);
 
     const totals = calculateLineTotals(
       args.regelType,
@@ -567,7 +594,8 @@ export const updateQuoteLine = mutation({
       regelBtwTotaal: totals.lineVatTotal,
       regelTotaalInclBtw: totals.lineTotalIncVat,
       sortOrder: args.sortOrder ?? line.sortOrder,
-      metadata: args.metadata,
+      // Een bewuste regel-bewerking telt als prijsreview: wis de review-vlag.
+      metadata: clearedPriceReviewMetadata(args.metadata),
       gewijzigdOp: Date.now()
     });
     await recalculateQuote(ctx, tenant._id, line.quoteId);
@@ -645,15 +673,40 @@ export const updateQuoteStatus = mutation({
         .withIndex("by_quote", (q: any) => q.eq("tenantId", tenant._id).eq("quoteId", quote._id))
         .collect();
       const chargeableTypes = ["product", "material", "labor", "service", "manual"];
-      const hasUnpricedLine = lines.some(
-        (line: Doc<"quoteLines">) =>
-          chargeableTypes.includes(line.regelType) &&
-          line.aantal > 0 &&
-          line.eenheidsprijsExBtw === 0
+      const chargeableLines = lines.filter((line: Doc<"quoteLines">) =>
+        chargeableTypes.includes(line.regelType)
+      );
+      const hasUnpricedLine = chargeableLines.some(
+        (line: Doc<"quoteLines">) => line.aantal > 0 && line.eenheidsprijsExBtw === 0
       );
       if (hasUnpricedLine) {
         throw new ConvexError(
           "De offerte bevat nog regels zonder prijs (€0). Controleer en prijs deze regels voordat je de offerte verstuurt of op akkoord zet."
+        );
+      }
+
+      // Indicatieve richtprijzen (uit de inmeting geïmporteerd) moeten eerst handmatig
+      // gecontroleerd zijn — anders glipt een ongecontroleerde richtprijs door naar factuur.
+      const hasUnreviewedIndicative = chargeableLines.some(
+        (line: Doc<"quoteLines">) =>
+          line.aantal > 0 &&
+          (line.metadata as { requiresManualPriceReview?: boolean } | undefined)
+            ?.requiresManualPriceReview === true
+      );
+      if (hasUnreviewedIndicative) {
+        throw new ConvexError(
+          "De offerte bevat nog niet-gecontroleerde richtprijzen. Open en bevestig deze regels (de prijs is indicatief) voordat je de offerte verstuurt of op akkoord zet."
+        );
+      }
+
+      // Een offerte zonder enige geprijsde regel (leeg of alleen tekst/korting) mag niet
+      // als 'verstuurd'/'akkoord' worden gemarkeerd.
+      const hasValueLine = chargeableLines.some(
+        (line: Doc<"quoteLines">) => line.aantal > 0 && line.eenheidsprijsExBtw > 0
+      );
+      if (!hasValueLine) {
+        throw new ConvexError(
+          "De offerte heeft nog geen geprijsde regels. Voeg minstens één regel met een prijs toe voordat je 'm verstuurt of op akkoord zet."
         );
       }
     }

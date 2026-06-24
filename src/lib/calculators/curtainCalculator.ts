@@ -70,6 +70,15 @@ export function calculateCurtainFabric(
   const requiredWidthM = roundToTwoDecimals(input.railWidthM * input.fullness);
 
   if (input.makeUp === "kamerhoog") {
+    // Stof gekanteld (rolbreedte = gordijnhoogte): de stofbreedte moet de gordijnhoogte
+    // + zoom dekken, anders is kamerhoge confectie fysiek onmogelijk.
+    const benodigdeStofbreedteM = input.curtainHeightM + hemM;
+    if (input.fabricWidthM < benodigdeStofbreedteM) {
+      return invalidCurtainResult(
+        "kamerhoog",
+        `Stof te smal voor kamerhoge confectie: de stofbreedte (${roundToTwoDecimals(input.fabricWidthM)} m) moet minstens de gordijnhoogte + zoom (${roundToTwoDecimals(benodigdeStofbreedteM)} m) dekken.`
+      );
+    }
     // Stof gekanteld (breedte = gordijnhoogte): lopende meters = benodigde breedte.
     const fabricMetersM = roundToTwoDecimals(input.railWidthM * input.fullness);
     return {

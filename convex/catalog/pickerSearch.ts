@@ -160,7 +160,7 @@ export const searchPickerProducts = query({
       }
 
       const supplierName = product.leverancierId
-        ? supplierById.get(String(product.leverancierId))?.naam ?? ""
+        ? (supplierById.get(String(product.leverancierId))?.naam ?? "")
         : "";
 
       if (search && !matchesHaystack(product, categoryName, supplierName, search)) {
@@ -183,24 +183,27 @@ export const searchPickerProducts = query({
         consider(product);
       }
 
-      // 2. Aanvullend per toegestane categorie scannen zodat ook kleur-,
-      //    artikelnummer- en leveranciersmatches gevonden worden.
-      if (allowedCategoryIds) {
-        for (const categoryId of allowedCategoryIds) {
-          if (candidates.size >= limit * 3) {
-            break;
-          }
+      // 2. Aanvullend per categorie scannen zodat ook kleur-, artikelnummer- en
+      //    leveranciersmatches gevonden worden (die staan niet in de naam-index).
+      //    Zonder productgroep-hint — bv. de ruimte-centrische toewijs-picker die elk
+      //    product toelaat — scannen we ALLE categorieën; anders zou zoeken op
+      //    merk/kleur/leverancier (bv. "Floorlife", "Moduleo") niets vinden.
+      const searchScanCategoryIds =
+        allowedCategoryIds ?? categories.map((category) => category._id);
+      for (const categoryId of searchScanCategoryIds) {
+        if (candidates.size >= limit * 3) {
+          break;
+        }
 
-          const page = await ctx.db
-            .query("products")
-            .withIndex("by_category_status", (q) =>
-              q.eq("tenantId", tenant._id).eq("categorieId", categoryId).eq("status", "active")
-            )
-            .take(CATEGORY_SCAN_TAKE);
+        const page = await ctx.db
+          .query("products")
+          .withIndex("by_category_status", (q) =>
+            q.eq("tenantId", tenant._id).eq("categorieId", categoryId).eq("status", "active")
+          )
+          .take(CATEGORY_SCAN_TAKE);
 
-          for (const product of page) {
-            consider(product);
-          }
+        for (const product of page) {
+          consider(product);
         }
       }
     } else if (allowedCategoryIds) {
@@ -266,7 +269,7 @@ export const searchPickerProducts = query({
         );
         const categoryName = categoryById.get(String(product.categorieId))?.naam ?? "Overig";
         const supplierName = product.leverancierId
-          ? supplierById.get(String(product.leverancierId))?.naam ?? "Onbekend"
+          ? (supplierById.get(String(product.leverancierId))?.naam ?? "Onbekend")
           : "Onbekend";
 
         return {

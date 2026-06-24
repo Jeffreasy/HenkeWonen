@@ -4,6 +4,7 @@ import {
   calculateWallpaperRolls,
   type WallpaperCalculationResult
 } from "../../lib/calculators/wallpaperCalculator";
+import { parseDecimal } from "../projects/measurement/measurementUtils";
 import { Alert } from "../ui/feedback/Alert";
 import { Button } from "../ui/forms/Button";
 import { Field } from "../ui/forms/Field";
@@ -14,10 +15,6 @@ import { SummaryList } from "../ui/data-display/SummaryList";
 type WallpaperCalculatorProps = {
   onUseResult?: (result: WallpaperCalculationResult) => void;
 };
-
-function parseDecimal(value: string): number {
-  return Number(value.replace(",", "."));
-}
 
 export default function WallpaperCalculator({ onUseResult }: WallpaperCalculatorProps) {
   const [wallWidthM, setWallWidthM] = useState("");
@@ -30,8 +27,10 @@ export default function WallpaperCalculator({ onUseResult }: WallpaperCalculator
   const result = useMemo(
     () =>
       calculateWallpaperRolls({
-        wallWidthM: parseDecimal(wallWidthM),
-        wallHeightM: parseDecimal(wallHeightM),
+        // Verplichte velden: leeg → 0 (geeft nette validatie). Optionele velden: leeg →
+        // undefined zodat de calculator-defaults (rolbreedte/-lengte) gepakt worden.
+        wallWidthM: parseDecimal(wallWidthM) ?? 0,
+        wallHeightM: parseDecimal(wallHeightM) ?? 0,
         rollWidthCm: parseDecimal(rollWidthCm),
         rollLengthM: parseDecimal(rollLengthM),
         patternRepeatCm: parseDecimal(patternRepeatCm),
