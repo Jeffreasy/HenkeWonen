@@ -149,6 +149,29 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     ].sort());
   });
 
+  it("should secure the agenda hard-deletes with tenant scope and editor/admin authz", () => {
+    // setMonteurWerktijden vervangt het weekrooster (delete-dan-insert): de te wissen
+    // rijen komen via de by_monteur-index met tenantId === tenant._id, en de monteur
+    // moet bij de tenant horen.
+    const setWerktijden = exportedMutationBlock("convex/beheer/agenda.ts", "setMonteurWerktijden");
+    expect(setWerktijden).toContain("actor: mutationActorValidator");
+    expect(setWerktijden).toContain("requireMutationRole");
+    expect(setWerktijden).toContain('"editor"');
+    expect(setWerktijden).toContain('"admin"');
+    expect(setWerktijden).toContain('q.eq("tenantId", tenant._id)');
+    expect(setWerktijden).toContain("requireMonteur(ctx, tenant._id");
+    expect(setWerktijden).toContain("ctx.db.delete(");
+
+    // removeAfwezigheid wist 1 rij, maar pas ná bevestiging dat die rij bij deze tenant hoort.
+    const removeAfw = exportedMutationBlock("convex/beheer/agenda.ts", "removeAfwezigheid");
+    expect(removeAfw).toContain("actor: mutationActorValidator");
+    expect(removeAfw).toContain("requireMutationRole");
+    expect(removeAfw).toContain('"editor"');
+    expect(removeAfw).toContain('"admin"');
+    expect(removeAfw).toContain("rij.tenantId !== tenant._id");
+    expect(removeAfw).toContain("ctx.db.delete(args.afwezigheidId)");
+  });
+
   it("should secure deleteQuoteLine with proper tenant and draft checks", () => {
     const deleteQuoteLine = exportedMutationBlock("convex/offertes/core.ts", "deleteQuoteLine");
     expect(deleteQuoteLine).toContain("line.tenantId !== tenant._id");

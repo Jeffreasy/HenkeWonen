@@ -61,6 +61,9 @@ export function PlanMeasurementModal({
 }: PlanMeasurementModalProps) {
   const [date, setDate] = useState(defaultDate);
   const [measuredBy, setMeasuredBy] = useState(defaultMeasuredBy);
+  // Expliciete monteurkeuze op stabiele user-id (namen zijn niet uniek). null = nog geen
+  // expliciete keuze → val terug op naam-match (self-correcting als het team async laadt).
+  const [measuredById, setMeasuredById] = useState<string | null>(null);
   const [omvang, setOmvang] = useState<Omvang>(defaultOmvang);
   const [hint, setHint] = useState<InmeetBeschikbaarheid | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
@@ -74,6 +77,7 @@ export function PlanMeasurementModal({
     if (open && !wasOpenRef.current) {
       setDate(defaultDate);
       setMeasuredBy(defaultMeasuredBy);
+      setMeasuredById(null);
       setOmvang(defaultOmvang);
     }
     wasOpenRef.current = open;
@@ -82,10 +86,40 @@ export function PlanMeasurementModal({
   // Kijkers (viewer) doen geen inmetingen en worden ook in de agenda verborgen —
   // bied ze hier dus niet als monteur aan, zodat toewijzing en weergave consistent zijn.
   const monteurOpties = teamMembers.filter((member) => member.role !== "viewer");
-  // Behoud een bestaande (vrije-tekst) monteurnaam die niet in de teamlijst
-  // staat, zodat we 'm niet stilletjes wegvagen.
-  const knownNames = new Set(monteurOpties.map((member) => member.naam));
-  const monteurId = monteurOpties.find((member) => member.naam === measuredBy)?.id ?? null;
+  // Selecteer op stabiele user-id. Een expliciete keuze (measuredById) is leidend en
+  // duplicaat-veilig; zonder expliciete keuze vallen we terug op naam-match zodat de
+  // standaardmonteur ook werkt als het team async ná het openen binnenkomt.
+  const LOSSE_NAAM = "__losse-naam__";
+  const expliciteMember = measuredById
+    ? (monteurOpties.find((member) => member.id === measuredById) ?? null)
+    : null;
+  const selectedMember =
+    expliciteMember ?? monteurOpties.find((member) => member.naam === measuredBy) ?? null;
+  const monteurId = selectedMember?.id ?? null;
+  // Behoud een bestaande (vrije-tekst) monteurnaam die niet bij een teamlid hoort,
+  // zodat we 'm niet stilletjes wegvagen.
+  const heeftLosseNaam = !selectedMember && measuredBy.trim() !== "";
+  const monteurSelectWaarde = selectedMember
+    ? selectedMember.id
+    : heeftLosseNaam
+      ? LOSSE_NAAM
+      : "";
+
+  function kiesMonteur(waarde: string) {
+    if (waarde === "") {
+      setMeasuredById(null);
+      setMeasuredBy("");
+      return;
+    }
+    if (waarde === LOSSE_NAAM) {
+      return;
+    }
+    const gekozen = monteurOpties.find((member) => member.id === waarde);
+    if (gekozen) {
+      setMeasuredById(gekozen.id);
+      setMeasuredBy(gekozen.naam);
+    }
+  }
 
   // Live beschikbaarheid: is het een inmeetdag, is de monteur vrij en past de klus?
   useEffect(() => {
@@ -216,15 +250,13 @@ export function PlanMeasurementModal({
         >
           <Select
             id="plan-measurement-monteur"
-            value={measuredBy}
-            onChange={(event) => setMeasuredBy(event.target.value)}
+            value={monteurSelectWaarde}
+            onChange={(event) => kiesMonteur(event.target.value)}
           >
             <option value="">Nog niet toegewezen</option>
-            {measuredBy && !knownNames.has(measuredBy) ? (
-              <option value={measuredBy}>{measuredBy}</option>
-            ) : null}
+            {heeftLosseNaam ? <option value={LOSSE_NAAM}>{measuredBy}</option> : null}
             {monteurOpties.map((member) => (
-              <option key={member.id} value={member.naam}>
+              <option key={member.id} value={member.id}>
                 {member.naam}
               </option>
             ))}
