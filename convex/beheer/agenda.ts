@@ -148,6 +148,45 @@ export async function berekenInmeetBeschikbaarheid(
   };
 }
 
+/**
+ * Server-side guard voor het boeken/wijzigen van een inmeetafspraak. Weigert (tenzij `force`):
+ * een niet-inmeetdag, een afwezige monteur, of overschrijding van de dagcapaciteit. Wordt vanuit
+ * ELK pad dat measurement.inmeetdatum muteert aangeroepen (startOrPlanMeasurement, updateMeasurement,
+ * updateProject), zodat er één afgedwongen planningsregel-bron is en geen pad de regels kan omzeilen.
+ */
+export async function assertInmeetBoeking(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  opts: {
+    datumMs?: number | null;
+    monteur?: Doc<"users"> | null;
+    omvang?: string | null;
+    excludeProjectId?: Id<"projects">;
+    force?: boolean;
+  }
+) {
+  if (opts.force || opts.datumMs == null) return;
+  if (!isInmeetdag(opts.datumMs)) {
+    throw new ConvexError("Inmeten kan alleen op dinsdag, woensdag of donderdag.");
+  }
+  if (opts.monteur) {
+    const besch = await berekenInmeetBeschikbaarheid(
+      ctx,
+      tenantId,
+      opts.monteur,
+      opts.datumMs,
+      opts.excludeProjectId
+    );
+    if (besch.afwezig) {
+      throw new ConvexError("De gekozen monteur is die dag afwezig. Kies een andere datum of monteur.");
+    }
+    const nodig = omvangUnits(opts.omvang);
+    if (besch.gebruikteCapaciteit + nodig > besch.maxCapaciteit) {
+      throw new ConvexError("De inmeetdag van deze monteur is vol. Kies een andere datum of monteur.");
+    }
+  }
+}
+
 export const getMonteurWerktijden = query({
   args: {
     tenantSlug: v.string(),
@@ -397,6 +436,11 @@ export const agendaWeek = query({
     const weekStart = args.weekStart;
     const weekEnd = weekStart + 7 * DAG_MS;
 
+    // Teambrede kantoorweergave (geen specifieke monteur, niet alleen-eigen) toont ook de
+    // niet-toegewezen inmetingen; daarvoor is de volledige niet-viewer-set nodig (S1).
+    const toonNietToegewezen = !args.userId && !args.alleenEigen;
+    let alleNietViewers: Doc<"users">[] = [];
+
     let monteurs: Doc<"users">[];
     if (args.userId) {
       monteurs = [await requireMonteur(ctx, tenant._id, args.userId)];
@@ -410,7 +454,7 @@ export const agendaWeek = query({
       ).find((u: Doc<"users">) => u.tenantId === tenant._id);
       monteurs = eigen ? [eigen] : [];
     } else {
-      const nietViewers = (
+      alleNietViewers = (
         await ctx.db
           .query("users")
           .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
@@ -418,8 +462,8 @@ export const agendaWeek = query({
       ).filter((u: Doc<"users">) => u.role !== "viewer"); // kijkers doen geen inmetingen
       // Whitelist zodra er minstens één gebruiker expliciet op `toonInAgenda: true` staat;
       // anders (nog niet geconfigureerd) alle niet-viewers, zodat de agenda nooit leeg is.
-      const aangevinkt = nietViewers.filter((u: Doc<"users">) => u.toonInAgenda === true);
-      monteurs = aangevinkt.length > 0 ? aangevinkt : nietViewers;
+      const aangevinkt = alleNietViewers.filter((u: Doc<"users">) => u.toonInAgenda === true);
+      monteurs = aangevinkt.length > 0 ? aangevinkt : alleNietViewers;
     }
 
     // Geboekte inmeetbezoeken in de week (tenant-gescopet via de datum-index),
@@ -513,7 +557,20 @@ export const agendaWeek = query({
       });
     }
 
-    return { weekStart, weekEnd, monteurs: result };
+    // S1: inmetingen met een datum binnen de week maar zonder herleidbare monteur staan in
+    // geen enkele monteur-agenda en tellen niet mee in de capaciteit. Toon ze apart (alleen in
+    // de teambrede kantoorweergave) zodat ze niet stil verdwijnen.
+    const nietToegewezen = [];
+    if (toonNietToegewezen) {
+      for (const m of metingen) {
+        const herleidbaar = alleNietViewers.some((u: Doc<"users">) =>
+          hoortBijMonteur(m, u._id, u.naam ?? u.email)
+        );
+        if (!herleidbaar) nietToegewezen.push(await bezoekDetail(m));
+      }
+    }
+
+    return { weekStart, weekEnd, monteurs: result, nietToegewezen };
   }
 });
 
