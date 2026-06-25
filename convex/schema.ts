@@ -1136,7 +1136,9 @@ export default defineSchema({
     .index("by_customer", ["tenantId", "klantId"])
     .index("by_invoice_number", ["tenantId", "factuurnummer"])
     .index("by_status", ["tenantId", "status"])
-    .index("by_due_date", ["tenantId", "vervaldatum"]),
+    .index("by_due_date", ["tenantId", "vervaldatum"])
+    // Geïndexeerde dedup/lookup van de factuur per offerte (existingInvoiceForQuote).
+    .index("by_quote", ["tenantId", "quoteId"]),
 
   timelineEvents: defineTable({
     tenantId: v.id("tenants"),

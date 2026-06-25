@@ -668,14 +668,15 @@ export const updateQuoteStatus = mutation({
       throw new ConvexError("Project not found");
     }
 
-    // Een al-gefactureerde offerte mag niet terug naar 'concept' (draft): dat zou de
-    // offerte stil laten afwijken van de reeds aangemaakte factuur. Maak desnoods een
-    // nieuwe offerte of (via de factuur-flow) een creditfactuur.
-    if (args.status === "draft") {
+    // Een al-gefactureerde offerte is bevroren op 'akkoord': hij mag niet uit akkoord worden
+    // gehaald (terug naar concept, of op afgewezen/geannuleerd/verlopen) — anders wijkt de
+    // offerte stil af van de reeds aangemaakte factuur (die de offerteregels live toont). Maak
+    // zo nodig een creditfactuur via de factuur-flow.
+    if (args.status !== "accepted") {
       const reedsGefactureerd = await existingInvoiceForQuote(ctx, tenant._id, quote._id);
       if (reedsGefactureerd) {
         throw new ConvexError(
-          "Deze offerte is al gefactureerd en kan niet meer naar concept worden teruggezet."
+          "Deze offerte is al gefactureerd en kan niet meer worden gewijzigd. Maak zo nodig een creditfactuur via de factuur-flow."
         );
       }
     }

@@ -668,10 +668,11 @@ export async function existingInvoiceForQuote(
   tenantId: Id<"tenants">,
   quoteId: Id<"quotes">
 ) {
+  // Geïndexeerde lookup (by_quote) i.p.v. een tenant-brede scan + filter: efficiënt én
+  // een harde, race-veilige duplicaatgate voor de factuur van een offerte.
   return await ctx.db
     .query("invoices")
-    .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
-    .filter((q: any) => q.eq(q.field("quoteId"), quoteId))
+    .withIndex("by_quote", (q: any) => q.eq("tenantId", tenantId).eq("quoteId", quoteId))
     .first();
 }
 

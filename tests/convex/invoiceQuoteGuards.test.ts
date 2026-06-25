@@ -81,3 +81,34 @@ test("updateQuoteStatus weigert een al-gefactureerde offerte terug naar concept"
     })
   ).rejects.toThrow(/gefactureerd/i);
 });
+
+test("updateQuoteStatus weigert een al-gefactureerde offerte uit 'akkoord' te halen (afgewezen)", async () => {
+  stubAuth();
+  const t = convexTest(schema, modules);
+  const ids = await base(t);
+  const now = Date.now();
+  const quoteId = await t.run(async (ctx) => {
+    const qid = await ctx.db.insert("quotes", {
+      tenantId: ids.tenantId, projectId: ids.projectId, klantId: ids.customerId,
+      offertenummer: "OFF-2026-3", titel: "Offerte", status: "accepted",
+      subtotaalExBtw: 826.45, btwTotaal: 173.55, totaalInclBtw: 1000, aangemaaktOp: now, gewijzigdOp: now
+    });
+    await ctx.db.insert("invoices", {
+      tenantId: ids.tenantId, projectId: ids.projectId, klantId: ids.customerId, quoteId: qid,
+      factuurnummer: "FAC-2026-003", status: "sent", factuurdatum: now, vervaldatum: now + 14 * 86400000,
+      subtotaalExBtw: 826.45, btwTotaal: 173.55, totaalInclBtw: 1000, betaaldBedrag: 0,
+      aangemaaktOp: now, gewijzigdOp: now
+    });
+    return qid;
+  });
+
+  await expect(
+    t.mutation(api.portal.updateQuoteStatus, {
+      tenantSlug: "henke-wonen", actor, quoteId: String(quoteId), status: "rejected"
+    })
+  ).rejects.toThrow(/gefactureerd/i);
+
+  // De offerte blijft op 'akkoord' staan (niet stil afgewezen).
+  const q = await t.run(async (ctx) => ctx.db.get(quoteId as Id<"quotes">));
+  expect(q?.status).toBe("accepted");
+});
