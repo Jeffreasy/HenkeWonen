@@ -1,5 +1,4 @@
 import { AlertTriangle, CheckCircle2, FileText, Printer } from "lucide-react";
-import type { MouseEvent } from "react";
 import type { QuoteDocumentModel } from "../../lib/quotes/quoteDocumentModel";
 import {
   formatCurrencyEUR,
@@ -7,6 +6,7 @@ import {
   formatQuantity,
   formatVatRate
 } from "../../lib/quotes/quoteDocumentFormatting";
+import { printDocumentFromButton } from "../../lib/documents/printDocument";
 import { formatStatusLabel } from "../../lib/i18n/statusLabels";
 import { Alert } from "../ui/feedback/Alert";
 import { Badge } from "../ui/data-display/Badge";
@@ -15,8 +15,6 @@ import { Button } from "../ui/forms/Button";
 type QuoteDocumentPreviewProps = {
   model: QuoteDocumentModel;
 };
-
-const PRINT_ROOT_ID = "quote-print-root";
 
 function TextLines({ lines }: { lines: string[] }) {
   if (lines.length === 0) {
@@ -40,48 +38,6 @@ function DescriptionText({ description }: { description: string }) {
       ))}
     </span>
   );
-}
-
-function removePrintRoot() {
-  window.document.getElementById(PRINT_ROOT_ID)?.remove();
-  window.document.body.classList.remove("quote-print-active");
-}
-
-function printConceptQuote(event: MouseEvent<HTMLButtonElement>) {
-  if (typeof window !== "undefined") {
-    const source = event.currentTarget.closest(".quote-document-preview");
-
-    if (!source) {
-      return;
-    }
-
-    removePrintRoot();
-
-    const printRoot = window.document.createElement("div");
-    const printablePreview = source.cloneNode(true) as HTMLElement;
-    const previousTitle = window.document.title;
-    const printTitle = source.getAttribute("data-print-title") ?? previousTitle;
-
-    printRoot.id = PRINT_ROOT_ID;
-    printRoot.className = "quote-print-root";
-    printablePreview
-      .querySelectorAll(".no-print, .quote-document-actions")
-      .forEach((element) => element.remove());
-    printRoot.appendChild(printablePreview);
-
-    window.document.body.appendChild(printRoot);
-    window.document.body.classList.add("quote-print-active");
-    window.document.title = printTitle;
-    window.addEventListener(
-      "afterprint",
-      () => {
-        window.document.title = previousTitle;
-        removePrintRoot();
-      },
-      { once: true }
-    );
-    window.requestAnimationFrame(() => window.print());
-  }
 }
 
 export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProps) {
@@ -125,7 +81,7 @@ export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProp
         <div className="quote-document-actions no-print">
           <Button
             leftIcon={<Printer size={17} aria-hidden="true" />}
-            onClick={printConceptQuote}
+            onClick={printDocumentFromButton}
             variant="primary"
           >
             Klantversie printen
