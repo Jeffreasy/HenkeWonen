@@ -28,6 +28,7 @@ import {
   CustomerDossierAttachmentsPanel,
   type DossierAttachmentDraft
 } from "./CustomerDossierAttachmentsPanel";
+import { CustomerIntakePanel, type CustomerScopeOption } from "./CustomerIntakePanel";
 
 type CustomerDetailProps = {
   session: AppSession;
@@ -264,6 +265,31 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     }
   }
 
+  async function handleStartProject(scope: CustomerScopeOption) {
+    const client = createConvexHttpClient(session);
+
+    if (!client) {
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      return;
+    }
+
+    try {
+      const projectId = await client.mutation(api.portal.createProject, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        klantId: customerId,
+        titel: scope.projectTitle,
+        omschrijving: scope.projectDescription,
+        createdByExternalUserId: session.userId
+      });
+
+      showToast({ title: "Aanvraag gestart", description: scope.label, tone: "success" });
+      window.location.assign(`/portal/projecten/${String(projectId)}#project-measurement`);
+    } catch {
+      showToast({ title: "Aanvraag kon niet worden gestart", tone: "error" });
+    }
+  }
+
   if (isLoading) {
     return <CustomerDetailSkeleton />;
   }
@@ -343,6 +369,8 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         />
         <LoanedItemsList loanedItems={loanedItems} />
       </div>
+
+      {canAddContact ? <CustomerIntakePanel onStartProject={handleStartProject} /> : null}
 
       <CustomerDossierAttachmentsPanel
         attachments={attachments}
