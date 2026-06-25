@@ -675,6 +675,127 @@ export async function existingInvoiceForQuote(
     .first();
 }
 
+/**
+ * Bevrijdt alle uit een offerte geïmporteerde inmeetregels: terug op 'ready_for_quote' +
+ * conversie-refs gewist, zodat de buitendienst-inmeting opnieuw naar een (andere) offerte kan
+ * worden geïmporteerd. Aanroepen zodra een offerte definitief niet meer leidend is (afgewezen/
+ * geannuleerd/verlopen/auto-geannuleerd) — anders blijven de meetregels permanent 'converted' en
+ * verdwijnen ze uit de import-picker. Idempotent: filtert op geconverteerdeOfferteId + 'converted'.
+ */
+export async function restoreMeasurementLinesForQuote(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  projectId: Id<"projects">,
+  quoteId: Id<"quotes">
+): Promise<void> {
+  const now = Date.now();
+  const measurements = await ctx.db
+    .query("measurements")
+    .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
+    .collect();
+
+  for (const measurement of measurements) {
+    const mLines = await ctx.db
+      .query("measurementLines")
+      .withIndex("by_measurement", (q: any) =>
+        q.eq("tenantId", tenantId).eq("inmetingId", measurement._id)
+      )
+      .collect();
+
+    let touched = false;
+    for (const ml of mLines) {
+      if (ml.geconverteerdeOfferteId === quoteId && ml.quotePreparationStatus === "converted") {
+        await ctx.db.patch(ml._id, {
+          quotePreparationStatus: "ready_for_quote",
+          geconverteerdeOfferteId: undefined,
+          geconverteerdeOfferteregelId: undefined,
+          gewijzigdOp: now
+        });
+        touched = true;
+      }
+    }
+    if (touched) {
+      await ctx.db.patch(measurement._id, { gewijzigdOp: now });
+    }
+  }
+}
+
+/**
+ * Gate vóór 'verstuurd'/'akkoord': (1) geen prijsdragende regel op €0, (2) geen niet-gecontroleerde
+ * richtprijs (metadata.requiresManualPriceReview), (3) minstens één geprijsde regel >€0. GEDEELD door
+ * updateQuoteStatus én processProjectAction zodat BEIDE accept-paden dezelfde controle dragen — een
+ * offerte met ongecontroleerde of €0-prijzen kan zo via geen enkel pad stil naar factuur glippen.
+ */
+export async function assertQuoteAcceptable(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  quoteId: Id<"quotes">
+): Promise<void> {
+  const lines = await ctx.db
+    .query("quoteLines")
+    .withIndex("by_quote", (q: any) => q.eq("tenantId", tenantId).eq("quoteId", quoteId))
+    .collect();
+  const chargeableTypes = ["product", "material", "labor", "service", "manual"];
+  const chargeableLines = lines.filter((line: Doc<"quoteLines">) =>
+    chargeableTypes.includes(line.regelType)
+  );
+
+  const hasUnpricedLine = chargeableLines.some(
+    (line: Doc<"quoteLines">) => line.aantal > 0 && line.eenheidsprijsExBtw === 0
+  );
+  if (hasUnpricedLine) {
+    throw new ConvexError(
+      "De offerte bevat nog regels zonder prijs (€0). Controleer en prijs deze regels voordat je de offerte verstuurt of op akkoord zet."
+    );
+  }
+
+  const hasUnreviewedIndicative = chargeableLines.some(
+    (line: Doc<"quoteLines">) =>
+      line.aantal > 0 &&
+      (line.metadata as { requiresManualPriceReview?: boolean } | undefined)
+        ?.requiresManualPriceReview === true
+  );
+  if (hasUnreviewedIndicative) {
+    throw new ConvexError(
+      "De offerte bevat nog niet-gecontroleerde richtprijzen. Open en bevestig deze regels (de prijs is indicatief) voordat je de offerte verstuurt of op akkoord zet."
+    );
+  }
+
+  const hasValueLine = chargeableLines.some(
+    (line: Doc<"quoteLines">) => line.aantal > 0 && line.eenheidsprijsExBtw > 0
+  );
+  if (!hasValueLine) {
+    throw new ConvexError(
+      "De offerte heeft nog geen geprijsde regels. Voeg minstens één regel met een prijs toe voordat je 'm verstuurt of op akkoord zet."
+    );
+  }
+}
+
+/**
+ * Annuleert de overige open (draft/sent) offertes van een project en bevrijdt hun inmeetregels,
+ * zodra één offerte akkoord is. GEDEELD door beide accept-paden zodat er nooit twee 'levende'
+ * offertes op één geaccepteerd dossier blijven en geen siblings permanent 'converted' staan.
+ */
+export async function cancelOtherOpenQuotesAndRestore(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  projectId: Id<"projects">,
+  keepQuoteId: Id<"quotes">,
+  now: number
+): Promise<void> {
+  const otherQuotes = await ctx.db
+    .query("quotes")
+    .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
+    .collect();
+
+  for (const other of otherQuotes) {
+    if (other._id !== keepQuoteId && (other.status === "draft" || other.status === "sent")) {
+      await ctx.db.patch(other._id, { status: "cancelled", gewijzigdOp: now });
+      await restoreMeasurementLinesForQuote(ctx, tenantId, projectId, other._id);
+    }
+  }
+}
+
 export async function latestMeasurementForProject(
   ctx: any,
   tenantId: Id<"tenants">,
