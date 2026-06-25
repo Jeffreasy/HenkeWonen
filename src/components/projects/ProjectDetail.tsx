@@ -14,7 +14,6 @@ import type {
   PortalProject,
   PortalProjectTask,
   PortalQuote,
-  PortalRoom,
   PortalWorkflowEvent
 } from "../../lib/portalTypes";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
@@ -31,7 +30,6 @@ import MeasurementPanel from "./MeasurementPanel";
 import { ProjectOverviewPanel } from "./ProjectOverviewPanel";
 import { ProjectEditForm } from "./ProjectEditForm";
 import { PlanMeasurementModal, type TeamMember } from "./PlanMeasurementModal";
-import { ProjectRoomsPanel } from "./ProjectRoomsPanel";
 import { ProjectTasksPanel } from "./ProjectTasksPanel";
 import { ProjectTimelinePanel } from "./ProjectTimelinePanel";
 import SupplierOrdersPanel from "./SupplierOrdersPanel";
@@ -79,7 +77,8 @@ const projectActionCopy: Record<
   },
   supplier_order_created: {
     label: "Bestellen",
-    description: "Je zet dit dossier op bestellen en legt vast dat de leveranciersbestelling is aangemaakt.",
+    description:
+      "Je zet dit dossier op bestellen en legt vast dat de leveranciersbestelling is aangemaakt.",
     confirmLabel: "Bestelling verwerken"
   },
   invoice_created: {
@@ -114,7 +113,6 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingProject, setEditingProject] = useState(false);
-  const [pendingRoomDelete, setPendingRoomDelete] = useState<PortalRoom | null>(null);
   const [pendingProjectAction, setPendingProjectAction] = useState<ProjectAction | null>(null);
   const [invoiceDueDate, setInvoiceDueDate] = useState("");
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
@@ -220,23 +218,6 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       setInvoiceDueDate(defaultDateInputInDays(invoicePaymentTermDays(detail?.customer)));
     }
     setPendingProjectAction(action);
-  }
-
-  async function handleAddRoom(name: string, areaM2?: number, perimeterMeter?: number) {
-    const client = createConvexHttpClient(session);
-    if (!client || !detail?.project) {
-      return;
-    }
-
-    await client.mutation(api.portal.addProjectRoom, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      projectId,
-      naam: name,
-      oppervlakteM2: areaM2,
-      omtrekMeter: perimeterMeter
-    });
-    await loadProject();
   }
 
   function focusMeasurementPanel() {
@@ -358,59 +339,6 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     await loadProject();
   }
 
-  async function handleSaveRoom(
-    roomId: string,
-    data: {
-      name: string;
-      floor?: string;
-      areaM2?: number;
-      perimeterMeter?: number;
-      notes?: string;
-    }
-  ) {
-    const client = createConvexHttpClient(session);
-    if (!client) {
-      return;
-    }
-
-    await client.mutation(api.portal.updateProjectRoom, {
-      tenantSlug: session.tenantId,
-      actor: mutationActorFromSession(session),
-      ruimteId: roomId,
-      naam: data.name,
-      verdieping: data.floor,
-      oppervlakteM2: data.areaM2,
-      omtrekMeter: data.perimeterMeter,
-      notities: data.notes
-    });
-    await loadProject();
-  }
-
-  async function deleteRoom() {
-    if (!pendingRoomDelete) {
-      return;
-    }
-
-    const client = createConvexHttpClient(session);
-    if (!client) {
-      return;
-    }
-
-    try {
-      await client.mutation(api.portal.deleteProjectRoom, {
-        tenantSlug: session.tenantId,
-        actor: mutationActorFromSession(session),
-        ruimteId: pendingRoomDelete.id
-      });
-      setPendingRoomDelete(null);
-      await loadProject();
-    } catch (deleteError) {
-      console.error(deleteError);
-      setError("Ruimte kan niet worden verwijderd als deze al is gebruikt in inmeting of offerte.");
-      setPendingRoomDelete(null);
-    }
-  }
-
   function fromDateInputValue(value: string): number | undefined {
     if (!value) {
       return undefined;
@@ -430,8 +358,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
         actor: mutationActorFromSession(session),
         projectId,
         action,
-        invoiceDueAt:
-          action === "invoice_created" ? fromDateInputValue(invoiceDueDate) : undefined
+        invoiceDueAt: action === "invoice_created" ? fromDateInputValue(invoiceDueDate) : undefined
       });
       setPendingProjectAction(null);
       await loadProject();
@@ -482,34 +409,21 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   }
 
   if (!detail?.project) {
-    return <EmptyState title="Project niet gevonden" description="Controleer de link of ga terug naar projecten." />;
+    return (
+      <EmptyState
+        title="Project niet gevonden"
+        description="Controleer de link of ga terug naar projecten."
+      />
+    );
   }
 
-  const {
-    project,
-    customer,
-    workflowEvents = [],
-    projectTasks = []
-  } = detail;
+  const { project, customer, workflowEvents = [], projectTasks = [] } = detail;
   const pendingProjectActionDetails = pendingProjectAction
     ? projectActionCopy[pendingProjectAction]
     : null;
-  // Fase-afhankelijke ruimtes: vóór de inmeting (status "lead") beheer je dossier-
-  // ruimtes in dit losse paneel; zodra de inmeting loopt nemen de inmeetruimtes het
-  // over (die syncen automatisch terug naar het dossier), dus tonen we het dan niet meer.
-  const measurementStarted = project.status !== "lead";
 
   return (
     <div className="grid">
-      <ConfirmDialog
-        open={Boolean(pendingRoomDelete)}
-        title="Ruimte verwijderen?"
-        description="Dit kan alleen als de ruimte nog niet is gebruikt in een inmeting of offerte."
-        confirmLabel="Ruimte verwijderen"
-        tone="danger"
-        onCancel={() => setPendingRoomDelete(null)}
-        onConfirm={() => void deleteRoom()}
-      />
       <ConfirmDialog
         open={Boolean(pendingProjectAction)}
         title={
@@ -600,16 +514,6 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
             icon: <Ruler size={15} aria-hidden="true" />,
             content: (
               <>
-                {!measurementStarted ? (
-                  <ProjectRoomsPanel
-                    rooms={project.rooms}
-                    canEdit={canEditProject}
-                    onAddRoom={handleAddRoom}
-                    onSaveRoom={handleSaveRoom}
-                    onDeleteRoom={setPendingRoomDelete}
-                  />
-                ) : null}
-
                 <div id="project-measurement">
                   <MeasurementPanel
                     customerId={project.klantId}
@@ -666,7 +570,10 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
                           label: "Status",
                           value: <InvoiceStatusBadge status={detail.invoice.status} />
                         },
-                        { label: "Totaal incl. btw", value: <strong>{formatEuro(detail.invoice.totalIncVat)}</strong> },
+                        {
+                          label: "Totaal incl. btw",
+                          value: <strong>{formatEuro(detail.invoice.totalIncVat)}</strong>
+                        },
                         { label: "Vervaldatum", value: formatDate(detail.invoice.dueDate) },
                         {
                           label: "Betaald",

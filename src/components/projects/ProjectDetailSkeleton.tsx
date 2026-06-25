@@ -4,7 +4,6 @@ import { SkeletonGroup } from "../ui/feedback/SkeletonGroup";
 /**
  * Mirrors the ProjectDetail layout:
  * - ProjectOverviewPanel + ProjectWorkflowRail (two-col)
- * - ProjectRoomsPanel
  * - Tasks + Timeline (two-col)
  * - MeasurementPanel (inline)
  */
