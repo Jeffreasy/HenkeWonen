@@ -147,6 +147,25 @@
 .agenda-niet-toegewezen .agenda-nt-datum {
   color: var(--color-text-muted);
 }
+.agenda-niet-toegewezen li a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: inherit;
+  text-decoration: none;
+}
+.agenda-niet-toegewezen .agenda-nt-actie {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--color-accent-strong);
+}
+.agenda-niet-toegewezen li a:hover .agenda-nt-actie {
+  text-decoration: underline;
+}
 
 /* Dashboard-widget: mini-weekstrip van de inmeetdagen (di/wo/do) */
 .agenda-widget-strip {
