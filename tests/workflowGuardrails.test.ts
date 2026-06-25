@@ -145,7 +145,11 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
       "convex/projecten/measurements.ts:deleteMeasurementLine",
       "convex/projecten/measurements.ts:deleteMeasurementRoom",
       "convex/projecten/core.ts:deleteProjectRoom",
-      "convex/offertes/core.ts:deleteQuoteLine"
+      "convex/offertes/core.ts:deleteQuoteLine",
+      // Inkoop: bij regenereren worden alleen de DRAFT-bestellingen + hun regels van
+      // dezelfde offerte gewist (tenant-gescoped via by_project + quoteId-filter);
+      // reeds geplaatste (niet-draft) orders blijven staan.
+      "convex/inkoop/core.ts:generateSupplierOrdersFromQuote"
     ].sort());
   });
 
