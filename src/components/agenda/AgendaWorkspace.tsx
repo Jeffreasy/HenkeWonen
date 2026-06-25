@@ -236,6 +236,40 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
         <span className="agenda-spacer" />
       </div>
 
+      {nietToegewezen.length > 0 ? (
+        <Alert
+          variant="warning"
+          title={`${nietToegewezen.length} ingeplande inmeting${
+            nietToegewezen.length === 1 ? "" : "en"
+          } zonder monteur`}
+          description="Deze inmetingen hebben wél een datum maar geen toegewezen monteur — ze staan in geen agenda en tellen niet mee in de capaciteit. Open het dossier om een monteur toe te wijzen."
+        >
+          <ul className="agenda-niet-toegewezen">
+            {[...nietToegewezen]
+              .sort((a, b) => (a.inmeetdatum ?? 0) - (b.inmeetdatum ?? 0))
+              .map((b) => (
+                <li key={b.inmetingId}>
+                  <a href={projectHref(b.projectId)}>
+                    <span className="agenda-nt-info">
+                      <b>{b.klantNaam}</b> — {b.projectTitel}
+                      {b.inmeetdatum ? (
+                        <span className="agenda-nt-datum">
+                          {" "}
+                          · {dagFormatter.format(new Date(b.inmeetdatum))}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="agenda-nt-actie">
+                      Wijs monteur toe
+                      <ChevronRight size={14} aria-hidden="true" />
+                    </span>
+                  </a>
+                </li>
+              ))}
+          </ul>
+        </Alert>
+      ) : null}
+
       {isLoading ? (
         <LoadingState title="Agenda laden" />
       ) : monteurs.length === 0 ? (
@@ -334,29 +368,6 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
           </Card>
         ))
       )}
-
-      {nietToegewezen.length > 0 ? (
-        <Alert
-          variant="warning"
-          title={`${nietToegewezen.length} ingeplande inmeting${
-            nietToegewezen.length === 1 ? "" : "en"
-          } zonder monteur`}
-          description="Deze inmetingen hebben wél een datum maar nog geen toegewezen monteur. Ze staan in geen enkele agenda en tellen niet mee in de capaciteit — wijs een monteur toe via 'Inmeting inplannen' in het dossier."
-        >
-          <ul className="agenda-niet-toegewezen">
-            {nietToegewezen.map((b) => (
-              <li key={b.inmetingId}>
-                <a href={projectHref(b.projectId)}>
-                  <b>{b.klantNaam}</b> — {b.projectTitel}
-                </a>
-                {b.inmeetdatum ? (
-                  <span className="agenda-nt-datum"> · {dagFormatter.format(new Date(b.inmeetdatum))}</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </Alert>
-      ) : null}
 
       {mag && (teamLeden.length > 0 || teamError) ? (
         <Card className="agenda-leden">
