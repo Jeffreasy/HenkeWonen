@@ -875,17 +875,34 @@ export default function MeasurementPanel({
         description={
           isFieldMode
             ? "Werk van klantgegevens naar ruimtes, meetregels en een conceptofferte."
-            : "Leg ruimtes, maten en indicatieve hoeveelheden vast voor latere offertevoorbereiding."
+            : "Leg ruimtes, maten en hoeveelheden vast voor de offerte."
+        }
+        actions={
+          measurement ? (
+            <div
+              className="measurement-stat-strip"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "2px 14px",
+                alignItems: "baseline",
+                fontSize: "var(--text-sm)"
+              }}
+            >
+              <StatusBadge
+                status={measurement.status}
+                label={formatMeasurementStatus(measurement.status)}
+              />
+              <span>
+                <strong>{rooms.length}</strong> <span className="muted">ruimtes</span>
+              </span>
+              <span>
+                <strong>{readyLineCount}</strong> <span className="muted">klaar voor offerte</span>
+              </span>
+            </div>
+          ) : undefined
         }
       />
-
-      {!isFieldMode ? (
-        <Alert
-          variant="info"
-          title="Richtprijzen zijn indicatief"
-          description="Kies bij het inmeten optioneel een product om direct een richtprijs te zien. De definitieve prijs en btw bepaal je in de offerte."
-        />
-      ) : null}
 
       {error ? <Alert variant="danger" description={error} style={{ marginTop: 12 }} /> : null}
 
@@ -908,30 +925,6 @@ export default function MeasurementPanel({
         />
       ) : (
         <div className="grid">
-          <section
-            className="panel measurement-stat-strip"
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "6px 20px",
-              alignItems: "baseline",
-              padding: "10px 14px",
-              fontSize: "var(--text-sm)"
-            }}
-          >
-            <span>
-              <strong>{formatMeasurementStatus(measurement.status)}</strong>{" "}
-              <span className="muted">status</span>
-            </span>
-            <span>
-              <strong>{rooms.length}</strong> <span className="muted">ruimtes gemeten</span>
-            </span>
-            <span>
-              <strong>{readyLineCount}</strong>{" "}
-              <span className="muted">klaar voor offerte ({lines.length} regels)</span>
-            </span>
-          </section>
-
           <Card style={{ order: 9 }}>
             <details
               className="measurement-summary"
