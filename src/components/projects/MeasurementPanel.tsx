@@ -1009,7 +1009,7 @@ export default function MeasurementPanel({
                     ? "Stap 1 - Producten & diensten kiezen"
                     : "Stap 1 - Producten & diensten toewijzen aan ruimtes"
                 }
-                description="Kies een product of dienst en pas het in één keer toe op één of meer ruimtes. De hoeveelheid volgt automatisch uit de ruimtematen."
+                description="Kies een product of dienst en pas het toe op de ruimtes — de hoeveelheid volgt uit de maten."
               />
               <MeasurementAssignPanel
                 session={session}
@@ -1038,11 +1038,7 @@ export default function MeasurementPanel({
         <SectionHeader
           compact
           title={isFieldMode ? "Stap 2 - Opgeslagen meetregels" : "Stap 2 - Inmeetregels"}
-          description={
-            isFieldMode
-              ? `Dit zijn de hoeveelheden die klaarstaan voor de conceptofferte. Richtprijzen zijn indicatief en ${showPricesIncVat ? "incl." : "excl."} btw.`
-              : `Zet inmeetregels klaar zodat je ze in een offerte kunt overnemen. Richtprijzen zijn indicatief en ${showPricesIncVat ? "incl." : "excl."} btw; de definitieve prijs bepaal je in de offerte.`
-          }
+          description={`Hoeveelheden voor de conceptofferte. Richtprijzen indicatief (${showPricesIncVat ? "incl." : "excl."} btw).`}
           actions={
             <Button
               size="sm"
