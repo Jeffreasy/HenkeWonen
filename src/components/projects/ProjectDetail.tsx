@@ -126,9 +126,8 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     if (typeof window === "undefined") {
       return "inmeting";
     }
-    return new URLSearchParams(window.location.search).get("tab") === "opvolging"
-      ? "opvolging"
-      : "inmeting";
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    return requested === "opvolging" || requested === "bestellingen" ? requested : "inmeting";
   });
   const canEditProject = canEditDossiers(session.role);
 

@@ -1151,6 +1151,7 @@ export default defineSchema({
     aangemaaktOp: v.number(),
     gewijzigdOp: v.number()
   })
+    .index("by_tenant", ["tenantId"])
     .index("by_order", ["tenantId", "bestellingId"])
     .index("by_quote_line", ["tenantId", "quoteLineId"]),
 

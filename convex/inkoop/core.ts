@@ -13,15 +13,6 @@ import {
   toSupplierOrderLine
 } from "../portalUtils";
 
-const supplierOrderStatus = v.union(
-  v.literal("draft"),
-  v.literal("ordered"),
-  v.literal("confirmed"),
-  v.literal("partially_received"),
-  v.literal("received"),
-  v.literal("cancelled")
-);
-
 const NO_SUPPLIER_KEY = "__none__";
 
 function roundCents(value: number): number {
@@ -279,7 +270,9 @@ export const listSupplierOrders = query({
         let leverancierNaam: string | undefined;
         if (order.leverancierId) {
           const supplier = await ctx.db.get(order.leverancierId);
-          leverancierNaam = supplier?.naam;
+          // Tenant-hercontrole na de cross-tabel-get: gebruik de naam alleen bij dezelfde tenant.
+          leverancierNaam =
+            supplier && supplier.tenantId === tenant._id ? supplier.naam : undefined;
         }
         return toSupplierOrder(tenant.slug, order, {
           leverancierNaam,
@@ -336,17 +329,20 @@ export const supplierOrderDetail = query({
     } | null = null;
     if (order.leverancierId) {
       const supplier = await ctx.db.get(order.leverancierId);
-      leverancier = supplier
-        ? {
-            naam: supplier.naam,
-            contactpersoon: supplier.contactpersoon,
-            email: supplier.email,
-            telefoon: supplier.telefoon
-          }
-        : null;
+      // Tenant-hercontrole: geen leveranciercontacten van een andere tenant lekken.
+      leverancier =
+        supplier && supplier.tenantId === tenant._id
+          ? {
+              naam: supplier.naam,
+              contactpersoon: supplier.contactpersoon,
+              email: supplier.email,
+              telefoon: supplier.telefoon
+            }
+          : null;
     }
 
     const project = await ctx.db.get(order.projectId);
+    const projectSameTenant = project && project.tenantId === tenant._id ? project : null;
 
     return {
       order: toSupplierOrder(tenant.slug, order, {
@@ -356,7 +352,9 @@ export const supplierOrderDetail = query({
       }),
       lines: lines.map(toSupplierOrderLine),
       leverancier,
-      project: project ? { id: String(project._id), titel: project.titel } : null
+      project: projectSameTenant
+        ? { id: String(projectSameTenant._id), titel: projectSameTenant.titel }
+        : null
     };
   }
 });
@@ -366,7 +364,14 @@ export const updateSupplierOrderStatus = mutation({
     tenantSlug: v.string(),
     actor: mutationActorValidator,
     bestellingId: v.string(),
-    status: supplierOrderStatus,
+    // Bewust beperkt: draft (genereren) en cancelled (cancelSupplierOrder, dat ook
+    // de regelstatussen bijwerkt) lopen via eigen paden, niet via deze route.
+    status: v.union(
+      v.literal("ordered"),
+      v.literal("confirmed"),
+      v.literal("partially_received"),
+      v.literal("received")
+    ),
     verwachteLeverdatumOp: v.optional(v.number())
   },
   handler: async (ctx, args) => {

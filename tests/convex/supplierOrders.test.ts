@@ -233,6 +233,43 @@ test("een reeds geplaatste (ordered) bestelling blijft bij regenereren behouden"
   expect(aAfter?.status).toBe("ordered"); // niet vervangen
 });
 
+test("supplierOrderDetail geeft order, regels, leverancier en project terug", async () => {
+  const t = convexTest(schema, modules);
+  const { projectId } = await seed(t);
+  await t.mutation(api.portal.generateSupplierOrdersFromQuote, { tenantSlug: "henke-wonen", actor, projectId });
+  const orders = await t.query(api.portal.listSupplierOrders, { tenantSlug: "henke-wonen", actor, projectId });
+  const a = orders.find((o) => o.leverancierNaam === "Leverancier A")!;
+
+  const detail = await t.query(api.portal.supplierOrderDetail, {
+    tenantSlug: "henke-wonen",
+    actor,
+    bestellingId: a.id
+  });
+
+  expect(detail).not.toBeNull();
+  expect(detail!.lines).toHaveLength(2);
+  expect(detail!.leverancier?.naam).toBe("Leverancier A");
+  expect(detail!.project?.titel).toBe("Testproject");
+});
+
+test("cancelSupplierOrder zet de order én de regels op cancelled", async () => {
+  const t = convexTest(schema, modules);
+  const { projectId } = await seed(t);
+  await t.mutation(api.portal.generateSupplierOrdersFromQuote, { tenantSlug: "henke-wonen", actor, projectId });
+  const orders = await t.query(api.portal.listSupplierOrders, { tenantSlug: "henke-wonen", actor, projectId });
+  const a = orders.find((o) => o.leverancierNaam === "Leverancier A")!;
+
+  await t.mutation(api.portal.cancelSupplierOrder, { tenantSlug: "henke-wonen", actor, bestellingId: a.id });
+
+  const detail = await t.query(api.portal.supplierOrderDetail, {
+    tenantSlug: "henke-wonen",
+    actor,
+    bestellingId: a.id
+  });
+  expect(detail!.order.status).toBe("cancelled");
+  expect(detail!.lines.every((line) => line.status === "cancelled")).toBe(true);
+});
+
 test("generate zonder geaccepteerde offerte gooit een fout", async () => {
   const t = convexTest(schema, modules);
   const { projectId } = await seed(t);

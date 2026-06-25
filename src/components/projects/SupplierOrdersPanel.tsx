@@ -13,6 +13,7 @@ import type {
 } from "../../lib/portalTypes";
 import { Badge, type BadgeVariant } from "../ui/data-display/Badge";
 import { Button } from "../ui/forms/Button";
+import { Alert } from "../ui/feedback/Alert";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { SectionHeader } from "../ui/layout/SectionHeader";
 import SupplierOrderDocument from "./SupplierOrderDocument";
@@ -42,6 +43,7 @@ const statusMeta: Record<SupplierOrderStatus, { label: string; variant: BadgeVar
 export default function SupplierOrdersPanel({ session, projectId, canEdit }: SupplierOrdersPanelProps) {
   const [orders, setOrders] = useState<PortalSupplierOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, OrderDetail | "loading">>({});
@@ -49,10 +51,12 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
   const loadOrders = useCallback(async () => {
     const client = createConvexHttpClient(session);
     if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
       return;
     }
     setIsLoading(true);
+    setError(null);
     try {
       const result = await client.query(api.portal.listSupplierOrders, {
         tenantSlug: session.tenantId,
@@ -61,7 +65,7 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
       setOrders(result as PortalSupplierOrder[]);
     } catch (loadError) {
       console.error(loadError);
-      showToast({ title: "Bestellingen konden niet worden geladen", tone: "error" });
+      setError("Bestellingen konden niet worden geladen.");
     } finally {
       setIsLoading(false);
     }
@@ -110,31 +114,46 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
     }
   }
 
-  async function handleStatus(order: PortalSupplierOrder, status: SupplierOrderStatus) {
+  async function handleAdvance(order: PortalSupplierOrder, status: "ordered" | "received") {
     const client = createConvexHttpClient(session);
     if (!client) {
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
       return;
     }
     setBusyId(order.id);
     try {
-      if (status === "cancelled") {
-        await client.mutation(api.portal.cancelSupplierOrder, {
-          tenantSlug: session.tenantId,
-          actor: mutationActorFromSession(session),
-          bestellingId: order.id
-        });
-      } else {
-        await client.mutation(api.portal.updateSupplierOrderStatus, {
-          tenantSlug: session.tenantId,
-          actor: mutationActorFromSession(session),
-          bestellingId: order.id,
-          status
-        });
-      }
+      await client.mutation(api.portal.updateSupplierOrderStatus, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        bestellingId: order.id,
+        status
+      });
       await loadOrders();
     } catch (statusError) {
       console.error(statusError);
       showToast({ title: "Status kon niet worden bijgewerkt", tone: "error" });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleCancel(order: PortalSupplierOrder) {
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      return;
+    }
+    setBusyId(order.id);
+    try {
+      await client.mutation(api.portal.cancelSupplierOrder, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        bestellingId: order.id
+      });
+      await loadOrders();
+    } catch (cancelError) {
+      console.error(cancelError);
+      showToast({ title: "Annuleren mislukt", tone: "error" });
     } finally {
       setBusyId(null);
     }
@@ -161,6 +180,14 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
       })) as OrderDetail | null;
       if (detail) {
         setExpanded((current) => ({ ...current, [order.id]: detail }));
+      } else {
+        // Geen detail (verwijderd/niet gevonden): laadstatus opruimen i.p.v. blijven hangen.
+        showToast({ title: "Bestelbon niet gevonden", tone: "error" });
+        setExpanded((current) => {
+          const next = { ...current };
+          delete next[order.id];
+          return next;
+        });
       }
     } catch (detailError) {
       console.error(detailError);
@@ -193,6 +220,10 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
           ) : null
         }
       />
+
+      {error ? (
+        <Alert variant="danger" title="Bestellingen niet geladen" description={error} />
+      ) : null}
 
       {isLoading ? (
         <p className="muted">Bestellingen laden…</p>
@@ -245,7 +276,7 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
                     {canEdit && order.status === "draft" ? (
                       <Button
                         leftIcon={<Truck size={15} aria-hidden="true" />}
-                        onClick={() => void handleStatus(order, "ordered")}
+                        onClick={() => void handleAdvance(order, "ordered")}
                         isLoading={busyId === order.id}
                         size="sm"
                         variant="primary"
@@ -256,7 +287,7 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
                     {canEdit && canReceive ? (
                       <Button
                         leftIcon={<Check size={15} aria-hidden="true" />}
-                        onClick={() => void handleStatus(order, "received")}
+                        onClick={() => void handleAdvance(order, "received")}
                         isLoading={busyId === order.id}
                         size="sm"
                         variant="secondary"
@@ -267,7 +298,7 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
                     {canEdit && canCancel ? (
                       <Button
                         leftIcon={<Ban size={15} aria-hidden="true" />}
-                        onClick={() => void handleStatus(order, "cancelled")}
+                        onClick={() => void handleCancel(order)}
                         isLoading={busyId === order.id}
                         size="sm"
                         variant="ghost"

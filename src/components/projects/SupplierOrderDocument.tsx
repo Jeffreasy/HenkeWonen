@@ -1,10 +1,8 @@
 import { Printer } from "lucide-react";
 import { henkeCompanyProfile } from "../../lib/quotes/henkeCompanyProfile";
-import {
-  formatCurrencyEUR,
-  formatDateNL,
-  formatQuantity
-} from "../../lib/quotes/quoteDocumentFormatting";
+import { formatQuantity } from "../../lib/quotes/quoteDocumentFormatting";
+import { formatEuro } from "../../lib/money";
+import { formatDate } from "../../lib/dates";
 import { printDocumentFromButton } from "../../lib/documents/printDocument";
 import type {
   PortalSupplierOrder,
@@ -101,7 +99,7 @@ export default function SupplierOrderDocument({ detail }: SupplierOrderDocumentP
               ) : null}
               <div>
                 <dt>Datum</dt>
-                <dd>{formatDateNL(order.besteldOp ?? order.aangemaaktOp)}</dd>
+                <dd>{formatDate(order.besteldOp ?? order.aangemaaktOp)}</dd>
               </div>
               {project ? (
                 <div>
@@ -112,7 +110,7 @@ export default function SupplierOrderDocument({ detail }: SupplierOrderDocumentP
               {order.verwachteLeverdatumOp ? (
                 <div>
                   <dt>Gewenste levering</dt>
-                  <dd>{formatDateNL(order.verwachteLeverdatumOp)}</dd>
+                  <dd>{formatDate(order.verwachteLeverdatumOp)}</dd>
                 </div>
               ) : null}
             </dl>
@@ -141,12 +139,12 @@ export default function SupplierOrderDocument({ detail }: SupplierOrderDocumentP
                     <td>{line.leverancierCode || line.artikelnummer || "—"}</td>
                     <td>
                       {line.inkoopPrijsExBtw !== undefined
-                        ? formatCurrencyEUR(line.inkoopPrijsExBtw)
+                        ? formatEuro(line.inkoopPrijsExBtw)
                         : "—"}
                     </td>
                     <td>
                       {line.regelTotaalExBtw !== undefined
-                        ? formatCurrencyEUR(line.regelTotaalExBtw)
+                        ? formatEuro(line.regelTotaalExBtw)
                         : "—"}
                     </td>
                   </tr>
@@ -159,7 +157,7 @@ export default function SupplierOrderDocument({ detail }: SupplierOrderDocumentP
         <section className="quote-document-totals print-keep-together" aria-label="Besteltotaal">
           <div className="quote-document-total-row">
             <span>Totaal inkoop excl. btw</span>
-            <strong>{formatCurrencyEUR(order.totaalInkoopExBtw)}</strong>
+            <strong>{formatEuro(order.totaalInkoopExBtw)}</strong>
           </div>
           {order.notities ? <p>{order.notities}</p> : null}
         </section>
