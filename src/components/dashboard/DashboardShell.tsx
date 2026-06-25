@@ -1,9 +1,16 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ConvexError } from "convex/values";
 import { api } from "../../../convex/_generated/api";
-import { canManage } from "../../lib/auth/session";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { canEditDossiers, canManage } from "../../lib/auth/session";
 import type { AppSession } from "../../lib/auth/session";
+import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { createConvexHttpClient } from "../../lib/convex/client";
-import type { PortalProject } from "../../lib/portalTypes";
+import { showToast } from "../../lib/toast";
+import type { Omvang } from "../../lib/agenda";
+import type { PortalCustomer, PortalProject } from "../../lib/portalTypes";
+import { fromDateInputValue, toDateInputValue } from "../projects/measurement/measurementUtils";
+import { PlanMeasurementModal, type TeamMember } from "../projects/PlanMeasurementModal";
 import ProductionReadiness from "../imports/ProductionReadiness";
 import { Alert } from "../ui/feedback/Alert";
 import { DashboardFocusCards } from "./DashboardFocusCards";
@@ -12,6 +19,7 @@ import { DashboardWorkOverview, type DashboardWorkItem } from "./DashboardWorkOv
 import { DashboardQuoteFollowUps, type DashboardQuoteFollowUp } from "./DashboardQuoteFollowUps";
 import { DashboardRecentProjects } from "./DashboardRecentProjects";
 import { DashboardAgendaWidget, type DashboardAgenda } from "./DashboardAgendaWidget";
+import { KlantStapModal, type KlantKeuze } from "./KlantStapModal";
 
 type DashboardShellProps = {
   session: AppSession;
@@ -70,49 +78,140 @@ export default function DashboardShell({ session }: DashboardShellProps) {
   const [dashboard, setDashboard] = useState<DashboardData>(emptyDashboard);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [customers, setCustomers] = useState<PortalCustomer[]>([]);
+  const [wizardStap, setWizardStap] = useState<"closed" | "klant" | "plan">("closed");
+  const [wizardDate, setWizardDate] = useState("");
+  const [wizardKlant, setWizardKlant] = useState<KlantKeuze | null>(null);
+  const [isPlanning, setIsPlanning] = useState(false);
   const showAdminReadiness = canManage(session.role);
+  const canPlan = canEditDossiers(session.role);
 
-  useEffect(() => {
-    let isActive = true;
+  const loadDashboard = useCallback(async () => {
     const client = createConvexHttpClient(session);
-
     if (!client) {
       setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
       setIsLoading(false);
       return;
     }
-    const convexClient = client;
-
-    async function loadDashboard() {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const result = (await convexClient.query(api.portal.dashboard, {
-          tenantSlug: session.tenantId
-        })) as Partial<DashboardData> | null;
-
-        if (isActive) {
-          setDashboard(normalizeDashboardData(result));
-        }
-      } catch (loadError) {
-        console.error(loadError);
-        if (isActive) {
-          setError("Werkoverzicht kon niet worden geladen.");
-        }
-      } finally {
-        if (isActive) {
-          setIsLoading(false);
-        }
-      }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = (await client.query(api.portal.dashboard, {
+        tenantSlug: session.tenantId
+      })) as Partial<DashboardData> | null;
+      setDashboard(normalizeDashboardData(result));
+    } catch (loadError) {
+      console.error(loadError);
+      setError("Werkoverzicht kon niet worden geladen.");
+    } finally {
+      setIsLoading(false);
     }
+  }, [session]);
 
+  useEffect(() => {
     void loadDashboard();
+  }, [loadDashboard]);
 
+  // Laad de bronnen voor de inplan-wizard (monteurs + klanten) alleen als de gebruiker
+  // mag plannen; de widget blijft anders read-only.
+  useEffect(() => {
+    if (!canPlan) return;
+    const client = createConvexHttpClient(session);
+    if (!client) return;
+    let actief = true;
+    void (async () => {
+      try {
+        const [team, klanten] = await Promise.all([
+          client.query(api.portal.listTeamMembers, { tenantSlug: session.tenantId }),
+          client.query(api.portal.listCustomers, { tenantSlug: session.tenantId })
+        ]);
+        if (!actief) return;
+        setTeamMembers(((team ?? []) as TeamMember[]).filter((m) => m.role !== "viewer"));
+        setCustomers((klanten ?? []) as PortalCustomer[]);
+      } catch (wizardError) {
+        console.error(wizardError);
+      }
+    })();
     return () => {
-      isActive = false;
+      actief = false;
     };
-  }, [session.tenantId]);
+  }, [canPlan, session]);
+
+  function openWizard(datumMs?: number) {
+    setWizardKlant(null);
+    setWizardDate(datumMs ? toDateInputValue(datumMs) : "");
+    setWizardStap("klant");
+  }
+
+  function sluitWizard() {
+    setWizardStap("closed");
+    setWizardKlant(null);
+  }
+
+  // Finale stap: keten createCustomer? → createProject → startOrPlanMeasurement. Er wordt
+  // pas hier iets aangemaakt; de server-guard (assertInmeetBoeking) blijft leidend.
+  async function planInmeting(data: {
+    date: string;
+    measuredBy: string;
+    measuredByUserId?: string;
+    omvang: Omvang;
+  }) {
+    if (!wizardKlant) return;
+    const client = createConvexHttpClient(session);
+    if (!client) return;
+    const actor = mutationActorFromSession(session);
+    const inmeetdatum = fromDateInputValue(data.date);
+    setIsPlanning(true);
+    try {
+      let klantId: string;
+      const klantNaam = wizardKlant.naam;
+      if (wizardKlant.soort === "bestaand") {
+        klantId = wizardKlant.customerId;
+      } else {
+        klantId = String(
+          await client.mutation(api.portal.createCustomer, {
+            tenantSlug: session.tenantId,
+            actor,
+            type: wizardKlant.type,
+            weergaveNaam: wizardKlant.naam,
+            email: wizardKlant.email,
+            telefoon: wizardKlant.telefoon
+          })
+        );
+      }
+      const projectId = String(
+        await client.mutation(api.portal.createProject, {
+          tenantSlug: session.tenantId,
+          actor,
+          klantId,
+          titel: `${klantNaam} — inmeten`,
+          createdByExternalUserId: session.userId
+        })
+      );
+      await client.mutation(api.portal.startOrPlanMeasurement, {
+        tenantSlug: session.tenantId,
+        actor,
+        projectId,
+        inmeetdatum,
+        gemetenDoor: data.measuredBy,
+        gemetenDoorUserId: data.measuredByUserId ? (data.measuredByUserId as Id<"users">) : undefined,
+        omvang: data.omvang
+      });
+      showToast({ title: "Inmeting ingepland", description: klantNaam, tone: "success" });
+      sluitWizard();
+      await loadDashboard();
+    } catch (planError) {
+      console.error(planError);
+      const melding =
+        planError instanceof ConvexError && typeof planError.data === "string"
+          ? planError.data
+          : "Inplannen mislukt. Controleer de datum en monteur.";
+      showToast({ title: "Inplannen mislukt", description: melding, tone: "error" });
+    } finally {
+      setIsPlanning(false);
+    }
+  }
 
   return (
     <div className="grid">
@@ -143,7 +242,12 @@ export default function DashboardShell({ session }: DashboardShellProps) {
         />
       </div>
 
-      <DashboardAgendaWidget isLoading={isLoading} agenda={dashboard.agenda} />
+      <DashboardAgendaWidget
+        isLoading={isLoading}
+        agenda={dashboard.agenda}
+        canPlan={canPlan}
+        onPlan={openWizard}
+      />
 
       <DashboardRecentProjects
         isLoading={isLoading}
@@ -151,6 +255,30 @@ export default function DashboardShell({ session }: DashboardShellProps) {
       />
 
       {showAdminReadiness ? <ProductionReadiness session={session} hideWhenReady /> : null}
+
+      {canPlan ? (
+        <>
+          <KlantStapModal
+            open={wizardStap === "klant"}
+            customers={customers}
+            onNext={(keuze) => {
+              setWizardKlant(keuze);
+              setWizardStap("plan");
+            }}
+            onClose={sluitWizard}
+          />
+          <PlanMeasurementModal
+            open={wizardStap === "plan"}
+            session={session}
+            teamMembers={teamMembers}
+            defaultDate={wizardDate}
+            defaultMeasuredBy=""
+            isSaving={isPlanning}
+            onSubmit={planInmeting}
+            onClose={sluitWizard}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

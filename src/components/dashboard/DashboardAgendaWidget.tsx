@@ -1,4 +1,4 @@
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import { Badge } from "../ui/data-display/Badge";
 import { Alert } from "../ui/feedback/Alert";
 import { EmptyState } from "../ui/feedback/EmptyState";
@@ -21,6 +21,10 @@ export type DashboardAgenda = {
 type DashboardAgendaWidgetProps = {
   isLoading: boolean;
   agenda: DashboardAgenda;
+  /** Opent de inplan-wizard; krijgt optioneel de aangeklikte inmeetdag voorgevuld. */
+  onPlan?: (datumMs?: number) => void;
+  /** Of de gebruiker mag inplannen (rol-guard); zonder dit blijft de widget read-only. */
+  canPlan?: boolean;
 };
 
 const WEEKDAG_KORT = ["ma", "di", "wo", "do", "vr", "za", "zo"];
@@ -34,7 +38,13 @@ function CapaciteitBadge({ dag }: { dag: DashboardAgendaDag }) {
   return <Badge variant={dag.geboekt === 0 ? "success" : "info"}>{tekst}</Badge>;
 }
 
-export function DashboardAgendaWidget({ isLoading, agenda }: DashboardAgendaWidgetProps) {
+export function DashboardAgendaWidget({
+  isLoading,
+  agenda,
+  onPlan,
+  canPlan = false
+}: DashboardAgendaWidgetProps) {
+  const magInplannen = canPlan && Boolean(onPlan);
   return (
     <section className="panel" id="agenda-week">
       <div className="dashboard-section-header">
@@ -43,9 +53,20 @@ export function DashboardAgendaWidget({ isLoading, agenda }: DashboardAgendaWidg
           <h2>Inmeetweek</h2>
           <p className="muted">Vrije inmeetplekken op dinsdag, woensdag en donderdag (16:30–17:30).</p>
         </div>
-        <a className="ui-button ui-button-secondary ui-button-sm" href="/portal/agenda">
-          Open agenda
-        </a>
+        <div className="dashboard-agenda-acties">
+          {magInplannen ? (
+            <button
+              type="button"
+              className="ui-button ui-button-primary ui-button-sm"
+              onClick={() => onPlan?.()}
+            >
+              <Plus size={15} aria-hidden="true" /> Inmeting inplannen
+            </button>
+          ) : null}
+          <a className="ui-button ui-button-secondary ui-button-sm" href="/portal/agenda">
+            Open agenda
+          </a>
+        </div>
       </div>
 
       {!isLoading && agenda.nietToegewezenCount > 0 ? (
@@ -83,9 +104,24 @@ export function DashboardAgendaWidget({ isLoading, agenda }: DashboardAgendaWidg
         <div className="agenda-widget-strip">
           {agenda.dagen.map((dag) => (
             <div className="agenda-widget-dag" key={dag.datumMs}>
-              <span className="agenda-widget-dag-kop">
-                {WEEKDAG_KORT[dag.weekdag]} {dagFormatter.format(new Date(dag.datumMs))}
-              </span>
+              <div className="agenda-widget-dag-rij">
+                <span className="agenda-widget-dag-kop">
+                  {WEEKDAG_KORT[dag.weekdag]} {dagFormatter.format(new Date(dag.datumMs))}
+                </span>
+                {magInplannen ? (
+                  <button
+                    type="button"
+                    className="agenda-widget-plus"
+                    disabled={dag.vrijeCapaciteit === 0}
+                    aria-label={`Inmeting inplannen op ${WEEKDAG_KORT[dag.weekdag]} ${dagFormatter.format(
+                      new Date(dag.datumMs)
+                    )}`}
+                    onClick={() => onPlan?.(dag.datumMs)}
+                  >
+                    <Plus size={15} aria-hidden="true" />
+                  </button>
+                ) : null}
+              </div>
               <CapaciteitBadge dag={dag} />
             </div>
           ))}
