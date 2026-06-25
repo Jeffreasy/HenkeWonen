@@ -1019,7 +1019,7 @@ export default function MeasurementPanel({
                 title={
                   isFieldMode
                     ? "Stap 1 - Producten & diensten kiezen"
-                    : "Producten & diensten toewijzen aan ruimtes"
+                    : "Stap 1 - Producten & diensten toewijzen aan ruimtes"
                 }
                 description="Kies een product of dienst en pas het in één keer toe op één of meer ruimtes. De hoeveelheid volgt automatisch uit de ruimtematen."
               />
@@ -1049,7 +1049,7 @@ export default function MeasurementPanel({
       <Card>
         <SectionHeader
           compact
-          title={isFieldMode ? "Stap 2 - Opgeslagen meetregels" : "Inmeetregels"}
+          title={isFieldMode ? "Stap 2 - Opgeslagen meetregels" : "Stap 2 - Inmeetregels"}
           description={
             isFieldMode
               ? `Dit zijn de hoeveelheden die klaarstaan voor de conceptofferte. Richtprijzen zijn indicatief en ${showPricesIncVat ? "incl." : "excl."} btw.`
