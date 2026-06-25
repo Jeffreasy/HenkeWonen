@@ -48,6 +48,7 @@ import { Button } from "../../ui/forms/Button";
 import { Field } from "../../ui/forms/Field";
 import { Input } from "../../ui/forms/Input";
 import { Select } from "../../ui/forms/Select";
+import { ConfirmDialog } from "../../ui/overlays/ConfirmDialog";
 import type {
   IndicativePriceResult,
   MatrixIndicativePriceResult,
@@ -294,6 +295,7 @@ export default function MeasurementAssignPanel({
   // Inline ruimte toevoegen/bewerken (vervangt de aparte "Waar meet je?"-stap).
   const [roomFormOpen, setRoomFormOpen] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [confirmDeleteRoomId, setConfirmDeleteRoomId] = useState<string | null>(null);
   const [rNaam, setRNaam] = useState("");
   const [rBreedte, setRBreedte] = useState("");
   const [rLengte, setRLengte] = useState("");
@@ -631,9 +633,30 @@ export default function MeasurementAssignPanel({
       return;
     }
 
-    const breedteM = parseNum(rBreedte);
-    const lengteM = parseNum(rLengte);
-    const hoogteM = parseNum(rHoogte);
+    // Lege maten blijven leeg (undefined); weiger negatieve of niet-numerieke invoer
+    // zodat een ruimte met alleen een naam geen schijn-0m × 0m krijgt.
+    const parseDim = (value: string, label: string): number | undefined => {
+      if (!value.trim()) return undefined;
+      const parsed = parseNum(value);
+      if (parsed === undefined || parsed < 0) {
+        throw new Error(`${label} is geen geldige maat.`);
+      }
+      return parsed;
+    };
+
+    let breedteM: number | undefined;
+    let lengteM: number | undefined;
+    let hoogteM: number | undefined;
+    try {
+      breedteM = parseDim(rBreedte, "Breedte");
+      lengteM = parseDim(rLengte, "Lengte");
+      hoogteM = parseDim(rHoogte, "Hoogte");
+    } catch (validationError) {
+      setError(
+        validationError instanceof Error ? validationError.message : "Vul geldige ruimtematen in."
+      );
+      return;
+    }
     const hasBoth = breedteM !== undefined && lengteM !== undefined;
     const oppervlakteM2 = hasBoth ? Math.round(breedteM! * lengteM! * 100) / 100 : undefined;
     const omtrekM = hasBoth ? Math.round(2 * (breedteM! + lengteM!) * 100) / 100 : undefined;
@@ -1406,7 +1429,7 @@ export default function MeasurementAssignPanel({
         </div>
         {rooms.length === 0 && !roomFormOpen ? (
           <p className="muted" style={{ margin: "6px 0 0", fontSize: "var(--text-sm)" }}>
-            Nog geen ruimtes — voeg er een toe met "Nieuwe ruimte".
+            Nog geen ruimtes — voeg er een toe met &quot;Nieuwe ruimte&quot;.
           </p>
         ) : null}
       </Field>
@@ -1496,7 +1519,7 @@ export default function MeasurementAssignPanel({
                 type="button"
                 variant="danger"
                 isLoading={isRoomSaving}
-                onClick={() => void deleteRoom(editingRoomId)}
+                onClick={() => setConfirmDeleteRoomId(editingRoomId)}
                 style={{ marginLeft: "auto" }}
               >
                 <Trash2 size={15} aria-hidden="true" /> Verwijderen
@@ -1505,6 +1528,21 @@ export default function MeasurementAssignPanel({
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteRoomId)}
+        title="Ruimte verwijderen?"
+        description={`"${rNaam.trim() || "Deze ruimte"}" wordt verwijderd. Dit kan alleen als er nog geen meetregels aan gekoppeld zijn.`}
+        confirmLabel="Ruimte verwijderen"
+        tone="danger"
+        isBusy={isRoomSaving}
+        onCancel={() => setConfirmDeleteRoomId(null)}
+        onConfirm={() => {
+          const id = confirmDeleteRoomId;
+          setConfirmDeleteRoomId(null);
+          if (id) void deleteRoom(id);
+        }}
+      />
 
       {!isService && suggestions.length > 0 ? (
         <Field htmlFor="assign-bundles" label="Vaak samen — voeg meteen toe">
