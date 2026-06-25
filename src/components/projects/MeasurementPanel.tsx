@@ -872,11 +872,6 @@ export default function MeasurementPanel({
       <SectionHeader
         compact
         title={isFieldMode ? "Meten bij de klant" : "Inmeting"}
-        description={
-          isFieldMode
-            ? "Werk van klantgegevens naar ruimtes, meetregels en een conceptofferte."
-            : "Leg ruimtes, maten en hoeveelheden vast voor de offerte."
-        }
         actions={
           measurement ? (
             <div
@@ -1004,11 +999,7 @@ export default function MeasurementPanel({
             <section className="panel" id="assign-panel-section">
               <SectionHeader
                 compact
-                title={
-                  isFieldMode
-                    ? "Stap 1 - Producten & diensten kiezen"
-                    : "Stap 1 - Producten & diensten toewijzen aan ruimtes"
-                }
+                title="Stap 1 - Producten & diensten"
                 description="Kies een product of dienst en pas het toe op de ruimtes — de hoeveelheid volgt uit de maten."
               />
               <MeasurementAssignPanel
@@ -1037,7 +1028,7 @@ export default function MeasurementPanel({
       <Card>
         <SectionHeader
           compact
-          title={isFieldMode ? "Stap 2 - Opgeslagen meetregels" : "Stap 2 - Inmeetregels"}
+          title="Stap 2 - Inmeetregels"
           description={`Hoeveelheden voor de conceptofferte. Richtprijzen indicatief (${showPricesIncVat ? "incl." : "excl."} btw).`}
           actions={
             <Button
