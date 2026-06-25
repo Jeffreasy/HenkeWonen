@@ -1,16 +1,10 @@
 import { CalendarClock, Pencil, Plus, Ruler, Save, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
-import {
-  calculatorForLine,
-  deriveLineForRoom,
-  paramsFromInvoer,
-  type RoomDimensions
-} from "../../lib/quotes/roomLineDerivation";
 import { isUnitCompatible } from "../../../convex/catalog/pricingRules";
 import type { SubmitEventLike } from "../../lib/events";
 import { calculateIncVat, formatEuro, roundMoney } from "../../lib/money";
@@ -37,7 +31,6 @@ import { Alert } from "../ui/feedback/Alert";
 import { Button } from "../ui/forms/Button";
 import { Card } from "../ui/data-display/Card";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
-import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { ErrorState } from "../ui/feedback/ErrorState";
 import { Field } from "../ui/forms/Field";
@@ -86,7 +79,6 @@ export default function MeasurementPanel({
   tenantId,
   projectId,
   customerId,
-  projectRooms,
   session,
   mode = "full"
 }: MeasurementPanelProps) {
@@ -108,33 +100,6 @@ export default function MeasurementPanel({
   const [measurementDate, setMeasurementDate] = useState("");
   const [measuredBy, setMeasuredBy] = useState("");
   const [measurementNotes, setMeasurementNotes] = useState("");
-
-  const [projectRoomId, setProjectRoomId] = useState("");
-  const [roomName, setRoomName] = useState("");
-  const [roomFloor, setRoomFloor] = useState("");
-  const [roomWidthM, setRoomWidthM] = useState("");
-  const [roomLengthM, setRoomLengthM] = useState("");
-  const [roomHeightM, setRoomHeightM] = useState("");
-  const [roomAreaM2, setRoomAreaM2] = useState("");
-  const [roomPerimeterM, setRoomPerimeterM] = useState("");
-  // Oppervlakte/omtrek lopen automatisch mee met lengte × breedte, tenzij de
-  // gebruiker ze handmatig aanpast of een bestaande projectruimte kiest.
-  const [roomAreaAutoFilled, setRoomAreaAutoFilled] = useState(true);
-  const [roomPerimeterAutoFilled, setRoomPerimeterAutoFilled] = useState(true);
-  const [roomNotes, setRoomNotes] = useState("");
-  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
-  const [roomCorrectionDraft, setRoomCorrectionDraft] = useState({
-    name: "",
-    floor: "",
-    widthM: "",
-    lengthM: "",
-    heightM: "",
-    areaM2: "",
-    perimeterM: "",
-    notes: ""
-  });
-  const [pendingRoomDelete, setPendingRoomDelete] = useState<MeasurementRoomDoc | null>(null);
-  const [roomDeleteError, setRoomDeleteError] = useState<string | null>(null);
 
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [lineCorrectionDraft, setLineCorrectionDraft] = useState({
@@ -162,7 +127,6 @@ export default function MeasurementPanel({
 
     return window.localStorage.getItem("henke-richtprijs-btw-weergave") !== "exclusief";
   });
-  const roomEditFormRef = useRef<HTMLFormElement>(null);
   const lineEditFormRef = useRef<HTMLFormElement>(null);
   const hasAutoStartedRef = useRef(false);
 
@@ -259,7 +223,6 @@ export default function MeasurementPanel({
     })();
   }, [data, measurement, canEditMeasurement, loadMeasurement, projectId, session, tenantId]);
 
-  useAutoFocusPanel(Boolean(editingRoomId), roomEditFormRef);
   useAutoFocusPanel(Boolean(editingLineId), lineEditFormRef);
 
   useEffect(() => {
@@ -272,38 +235,6 @@ export default function MeasurementPanel({
     setMeasuredBy(measurement.gemetenDoor ?? "");
     setMeasurementNotes(measurement.notities ?? "");
   }, [measurement]);
-
-  const selectedRoomArea = useMemo(() => {
-    const width = parseDecimal(roomWidthM);
-    const length = parseDecimal(roomLengthM);
-
-    return width && length ? width * length : undefined;
-  }, [roomLengthM, roomWidthM]);
-
-  const selectedRoomPerimeter = useMemo(() => {
-    const width = parseDecimal(roomWidthM);
-    const length = parseDecimal(roomLengthM);
-
-    return width && length ? 2 * (width + length) : undefined;
-  }, [roomLengthM, roomWidthM]);
-
-  // Vul oppervlakte automatisch (lengte × breedte) zolang de gebruiker het veld niet
-  // zelf heeft aangepast en geen bestaande ruimte met opgeslagen oppervlakte koos.
-  useEffect(() => {
-    if (!roomAreaAutoFilled) return;
-    setRoomAreaM2(
-      selectedRoomArea !== undefined ? String(Math.round(selectedRoomArea * 100) / 100) : ""
-    );
-  }, [roomAreaAutoFilled, selectedRoomArea]);
-
-  useEffect(() => {
-    if (!roomPerimeterAutoFilled) return;
-    setRoomPerimeterM(
-      selectedRoomPerimeter !== undefined
-        ? String(Math.round(selectedRoomPerimeter * 100) / 100)
-        : ""
-    );
-  }, [roomPerimeterAutoFilled, selectedRoomPerimeter]);
 
   useEffect(() => {
     try {
@@ -421,8 +352,9 @@ export default function MeasurementPanel({
       <div
         key={room?._id ?? "no-room"}
         style={{
-          border: "0.5px solid var(--color-border-secondary)",
-          borderRadius: "var(--border-radius-lg)",
+          border: "1px solid var(--line)",
+          borderRadius: "var(--radius-lg)",
+          background: "var(--surface-raised)",
           padding: "12px 16px"
         }}
       >
@@ -440,7 +372,14 @@ export default function MeasurementPanel({
             Nog geen producten of diensten.
           </p>
         ) : (
-          <div className="grid" style={{ gap: 6, marginTop: 8 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+              gap: 8,
+              marginTop: 8
+            }}
+          >
             {roomLines.map((line) => {
               const total = lineIndicativeTotal(line);
               return (
@@ -448,36 +387,47 @@ export default function MeasurementPanel({
                   key={line._id}
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
-                    gap: 8,
-                    alignItems: "center",
-                    borderTop: "0.5px solid var(--color-border-tertiary)",
-                    paddingTop: 6
+                    flexDirection: "column",
+                    gap: 6,
+                    minWidth: 0,
+                    border: "1px solid var(--line)",
+                    borderRadius: "var(--radius-md)",
+                    background: "var(--surface-muted)",
+                    padding: "10px 12px"
                   }}
                 >
-                  <div style={{ minWidth: 0 }}>
-                    <div>
-                      {line.productNaam ?? formatMeasurementProductGroup(line.productGroep)}
-                    </div>
-                    <div
-                      className="muted toolbar"
-                      style={{ fontSize: "var(--text-xs)", gap: 6, alignItems: "center" }}
-                    >
-                      <span>
-                        {formatNumber(line.aantal)} {formatUnit(line.eenheid)}
-                        {total ? ` · ${total}` : ""}
+                  <div style={{ fontWeight: 650, overflowWrap: "anywhere" }}>
+                    {line.productNaam ?? formatMeasurementProductGroup(line.productGroep)}
+                  </div>
+                  <div className="muted" style={{ fontSize: "var(--text-xs)" }}>
+                    {formatNumber(line.aantal)} {formatUnit(line.eenheid)}
+                    {total ? ` · ${total}` : ""}
+                  </div>
+                  <div
+                    className="toolbar"
+                    style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}
+                  >
+                    <StatusBadge
+                      status={line.quotePreparationStatus}
+                      label={formatQuotePreparationStatus(line.quotePreparationStatus)}
+                    />
+                    {line.handmatigAangepast ? (
+                      <span
+                        style={{
+                          color: "var(--warning)",
+                          fontSize: "var(--text-xs)",
+                          fontWeight: 700
+                        }}
+                      >
+                        handmatig
                       </span>
-                      <StatusBadge
-                        status={line.quotePreparationStatus}
-                        label={formatQuotePreparationStatus(line.quotePreparationStatus)}
-                      />
-                      {line.handmatigAangepast ? (
-                        <span style={{ color: "var(--color-text-warning)" }}>· handmatig</span>
-                      ) : null}
-                    </div>
+                    ) : null}
                   </div>
                   {canEditMeasurement && line.quotePreparationStatus !== "converted" ? (
-                    <div className="toolbar" style={{ gap: 4, flexShrink: 0 }}>
+                    <div
+                      className="toolbar"
+                      style={{ gap: 4, flexWrap: "wrap", marginTop: "auto", paddingTop: 2 }}
+                    >
                       {line.quotePreparationStatus === "draft" ? (
                         <Button
                           size="sm"
@@ -660,90 +610,6 @@ export default function MeasurementPanel({
     }
   }
 
-  async function addRoom(event: SubmitEventLike) {
-    event.preventDefault();
-
-    if (!canEditMeasurement) {
-      setError("Je hebt geen rechten om de inmeting te wijzigen.");
-      return;
-    }
-
-    const context = requireClientAndMeasurement();
-
-    if (!context || !roomName.trim()) {
-      return;
-    }
-
-    const widthM = parseDecimal(roomWidthM);
-    const lengthM = parseDecimal(roomLengthM);
-    const areaM2 = parseDecimal(roomAreaM2) ?? selectedRoomArea;
-    const perimeterM = parseDecimal(roomPerimeterM) ?? selectedRoomPerimeter;
-
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      await context.client.mutation(api.projecten.measurements.addMeasurementRoom, {
-        tenantId: context.tenantId,
-        actor: mutationActorFromSession(session),
-        inmetingId: context.measurementId,
-        projectRuimteId: projectRoomId ? (projectRoomId as Id<"projectRooms">) : undefined,
-        naam: roomName.trim(),
-        verdieping: roomFloor.trim() || undefined,
-        breedteM: widthM,
-        lengteM: lengthM,
-        hoogteM: parseDecimal(roomHeightM),
-        oppervlakteM2: areaM2,
-        omtrekM: perimeterM,
-        notities: roomNotes.trim() || undefined
-      });
-      setProjectRoomId("");
-      setRoomName("");
-      setRoomFloor("");
-      setRoomWidthM("");
-      setRoomLengthM("");
-      setRoomHeightM("");
-      setRoomAreaM2("");
-      setRoomPerimeterM("");
-      setRoomAreaAutoFilled(true);
-      setRoomPerimeterAutoFilled(true);
-      setRoomNotes("");
-      showToast({ title: "Ruimte toegevoegd aan de inmeting", tone: "success" });
-      await loadMeasurement();
-    } catch (saveError) {
-      console.error(saveError);
-      setError("De ruimte kon niet aan de inmeting worden toegevoegd.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function addRoomByPreset(presetName: string) {
-    if (!canEditMeasurement) return;
-
-    const context = requireClientAndMeasurement();
-
-    if (!context) return;
-
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      await context.client.mutation(api.projecten.measurements.addMeasurementRoom, {
-        tenantId: context.tenantId,
-        actor: mutationActorFromSession(session),
-        inmetingId: context.measurementId,
-        naam: presetName
-      });
-      showToast({ title: `${presetName} toegevoegd`, tone: "success" });
-      await loadMeasurement();
-    } catch {
-      setError("Ruimte kon niet worden toegevoegd.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
   async function markLineReady(lineId: string) {
     if (!canEditMeasurement) {
       setError("Je hebt geen rechten om de inmeting te wijzigen.");
@@ -771,169 +637,6 @@ export default function MeasurementPanel({
     } catch (saveError) {
       console.error(saveError);
       setError("Inmeetregel kon niet worden klaargezet.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  function startEditRoom(room: MeasurementRoomDoc) {
-    setEditingRoomId(room._id);
-    setRoomCorrectionDraft({
-      name: room.naam,
-      floor: room.verdieping ?? "",
-      widthM: decimalText(room.breedteM),
-      lengthM: decimalText(room.lengteM),
-      heightM: decimalText(room.hoogteM),
-      areaM2: decimalText(room.oppervlakteM2),
-      perimeterM: decimalText(room.omtrekM),
-      notes: room.notities ?? ""
-    });
-  }
-
-  async function saveRoomCorrection(event: SubmitEventLike) {
-    event.preventDefault();
-
-    if (!editingRoomId || !roomCorrectionDraft.name.trim()) {
-      return;
-    }
-
-    const context = requireClientAndMeasurement();
-
-    if (!context) {
-      return;
-    }
-
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      await context.client.mutation(api.projecten.measurements.updateMeasurementRoom, {
-        tenantId: context.tenantId,
-        actor: mutationActorFromSession(session),
-        ruimteId: editingRoomId as Id<"measurementRooms">,
-        naam: roomCorrectionDraft.name.trim(),
-        verdieping: roomCorrectionDraft.floor.trim() || undefined,
-        breedteM: parseDecimal(roomCorrectionDraft.widthM),
-        lengteM: parseDecimal(roomCorrectionDraft.lengthM),
-        hoogteM: parseDecimal(roomCorrectionDraft.heightM),
-        oppervlakteM2: parseDecimal(roomCorrectionDraft.areaM2),
-        omtrekM: parseDecimal(roomCorrectionDraft.perimeterM),
-        notities: roomCorrectionDraft.notes.trim() || undefined
-      });
-
-      // Maten gewijzigd → de afgeleide (niet-handmatige) regels van deze ruimte herrekenen,
-      // zodat de hoeveelheden meelopen. Handmatig aangepaste regels blijven staan (controleren).
-      const newDims: RoomDimensions = {
-        breedteM: parseDecimal(roomCorrectionDraft.widthM),
-        lengteM: parseDecimal(roomCorrectionDraft.lengthM),
-        hoogteM: parseDecimal(roomCorrectionDraft.heightM),
-        oppervlakteM2: parseDecimal(roomCorrectionDraft.areaM2),
-        omtrekM: parseDecimal(roomCorrectionDraft.perimeterM)
-      };
-      let recomputed = 0;
-      let manualSkipped = 0;
-      let recomputeFailed = 0;
-      for (const line of lines) {
-        if (line.ruimteId !== editingRoomId || line.quotePreparationStatus === "converted") {
-          continue;
-        }
-        if (line.handmatigAangepast) {
-          manualSkipped += 1;
-          continue;
-        }
-        const calc = calculatorForLine(line);
-        if (!calc) {
-          continue;
-        }
-        const derived = deriveLineForRoom(calc, newDims, paramsFromInvoer(line.invoer));
-        if (derived.validationError) {
-          continue;
-        }
-        // Per regel afvangen: één mislukte herberekening mag de rest niet stilletjes afbreken.
-        try {
-          await context.client.mutation(api.projecten.measurements.updateMeasurementLine, {
-            tenantId: context.tenantId,
-            actor: mutationActorFromSession(session),
-            lineId: line._id as Id<"measurementLines">,
-            ruimteId: editingRoomId as Id<"measurementRooms">,
-            productGroep: line.productGroep,
-            berekeningType: line.berekeningType,
-            invoer: derived.invoer,
-            resultaat: derived.resultaat,
-            snijverliesPct: derived.snijverliesPct,
-            aantal: derived.aantal,
-            eenheid: line.eenheid,
-            notities: line.notities,
-            offerteRegelType: line.offerteRegelType,
-            handmatigAangepast: false,
-            productId: line.productId ? (line.productId as Id<"products">) : undefined,
-            productNaam: line.productNaam,
-            indicatieveEenheidsprijsExBtw: line.indicatieveEenheidsprijsExBtw,
-            indicatiefBtwTarief: line.indicatiefBtwTarief,
-            indicatievePrijsEenheid: line.indicatievePrijsEenheid,
-            indicatievePrijsSoort: line.indicatievePrijsSoort,
-            indicatiefVastgelegdOp: line.indicatiefVastgelegdOp
-          });
-          recomputed += 1;
-        } catch (recomputeError) {
-          console.error(recomputeError);
-          recomputeFailed += 1;
-        }
-      }
-
-      const extra = [
-        manualSkipped > 0 ? `${manualSkipped} handmatige regel(s) — controleer` : null,
-        recomputeFailed > 0 ? `${recomputeFailed} regel(s) niet herberekend — controleer` : null
-      ]
-        .filter(Boolean)
-        .join(" · ");
-      showToast({
-        title:
-          recomputed > 0
-            ? `Ruimte bijgewerkt · ${recomputed} regel(s) herberekend${extra ? ` · ${extra}` : ""}`
-            : `Meetruimte bijgewerkt${extra ? ` · ${extra}` : ""}`,
-        tone: recomputeFailed > 0 ? "warning" : "success"
-      });
-      setEditingRoomId(null);
-      await loadMeasurement();
-    } catch (saveError) {
-      console.error(saveError);
-      setError("Meetruimte kon niet worden bijgewerkt.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function deleteRoomCorrection() {
-    if (!pendingRoomDelete) {
-      return;
-    }
-
-    const context = requireClientAndMeasurement();
-
-    if (!context) {
-      return;
-    }
-
-    setIsSaving(true);
-    setRoomDeleteError(null);
-
-    try {
-      await context.client.mutation(api.projecten.measurements.deleteMeasurementRoom, {
-        tenantId: context.tenantId,
-        actor: mutationActorFromSession(session),
-        ruimteId: pendingRoomDelete._id as Id<"measurementRooms">
-      });
-      showToast({ title: "Meetruimte verwijderd", tone: "warning" });
-      setPendingRoomDelete(null);
-      setRoomDeleteError(null);
-      await loadMeasurement();
-    } catch (deleteError) {
-      console.error(deleteError);
-      // Fout tonen IN de dialoog — niet sluiten, zodat de gebruiker de melding ziet
-      setRoomDeleteError(
-        "Deze ruimte heeft nog meetregels gekoppeld. Verwijder eerst alle meetregels van deze ruimte."
-      );
     } finally {
       setIsSaving(false);
     }
@@ -1145,109 +848,6 @@ export default function MeasurementPanel({
     }
   }
 
-  function applyProjectRoom(projectRoomValue: string) {
-    setProjectRoomId(projectRoomValue);
-
-    const sourceRoom = projectRooms.find((room) => room.id === projectRoomValue);
-
-    if (!sourceRoom) {
-      // "Nieuwe ruimte" gekozen: laat oppervlakte/omtrek weer automatisch meelopen.
-      setRoomAreaAutoFilled(true);
-      setRoomPerimeterAutoFilled(true);
-      return;
-    }
-
-    setRoomName(sourceRoom.naam);
-    setRoomFloor(sourceRoom.verdieping ?? "");
-    setRoomWidthM(decimalText(sourceRoom.breedteCm ? sourceRoom.breedteCm / 100 : undefined));
-    setRoomLengthM(decimalText(sourceRoom.lengteCm ? sourceRoom.lengteCm / 100 : undefined));
-    // Bestaande ruimte: gebruik de opgeslagen oppervlakte/omtrek, niet automatisch herrekenen.
-    setRoomAreaAutoFilled(false);
-    setRoomPerimeterAutoFilled(false);
-    setRoomAreaM2(decimalText(sourceRoom.oppervlakteM2));
-    setRoomPerimeterM(decimalText(sourceRoom.omtrekMeter));
-    setRoomNotes(sourceRoom.notities ?? "");
-  }
-
-  const roomColumns = useMemo<Array<DataTableColumn<MeasurementRoomDoc>>>(() => {
-    const actionColumn: DataTableColumn<MeasurementRoomDoc> = {
-      key: "actions",
-      header: "Acties",
-      width: "180px",
-      render: (room) =>
-        canEditMeasurement ? (
-          <div className="toolbar">
-            <Button size="sm" variant="secondary" onClick={() => startEditRoom(room)}>
-              <Pencil size={16} aria-hidden="true" />
-              Bewerken
-            </Button>
-            <Button size="sm" variant="danger" onClick={() => setPendingRoomDelete(room)}>
-              <Trash2 size={16} aria-hidden="true" />
-              Verwijderen
-            </Button>
-          </div>
-        ) : (
-          "-"
-        )
-    };
-    const baseColumns: Array<DataTableColumn<MeasurementRoomDoc>> = [
-      {
-        key: "name",
-        header: "Ruimte",
-        priority: "primary",
-        render: (room) => <strong>{room.naam}</strong>
-      },
-      {
-        key: "floor",
-        header: "Verdieping",
-        hideOnMobile: true,
-        render: (room) => room.verdieping ?? "-"
-      }
-    ];
-
-    return [
-      ...baseColumns,
-      {
-        key: "width",
-        header: "Breedte",
-        align: "right",
-        render: (room) => formatNumber(room.breedteM, " m")
-      },
-      {
-        key: "length",
-        header: "Lengte",
-        align: "right",
-        render: (room) => formatNumber(room.lengteM, " m")
-      },
-      {
-        key: "height",
-        header: "Hoogte",
-        align: "right",
-        hideOnMobile: true,
-        render: (room) => formatNumber(room.hoogteM, " m")
-      },
-      {
-        key: "area",
-        header: "Oppervlakte",
-        align: "right",
-        render: (room) => formatNumber(room.oppervlakteM2, " m²")
-      },
-      {
-        key: "perimeter",
-        header: "Omtrek",
-        align: "right",
-        render: (room) => formatNumber(room.omtrekM, " m")
-      },
-      {
-        key: "notes",
-        header: "Notitie",
-        hideOnMobile: true,
-        render: (room) => room.notities ?? "-"
-      },
-      actionColumn
-    ];
-  }, [canEditMeasurement]);
-
   if (isLoading) {
     return <LoadingState title="Inmeting laden" description="Inmeting ophalen." />;
   }
@@ -1262,31 +862,6 @@ export default function MeasurementPanel({
         isFieldMode ? "measurement-panel measurement-panel-field" : "panel measurement-panel"
       }
     >
-      <ConfirmDialog
-        open={Boolean(pendingRoomDelete)}
-        title="Meetruimte verwijderen?"
-        description={
-          roomDeleteError
-            ? roomDeleteError
-            : "Dit kan alleen als er nog geen meetregels aan deze ruimte gekoppeld zijn."
-        }
-        confirmLabel={roomDeleteError ? "Sluiten" : "Meetruimte verwijderen"}
-        cancelLabel={roomDeleteError ? undefined : "Annuleren"}
-        tone={roomDeleteError ? "warning" : "danger"}
-        isBusy={isSaving}
-        onCancel={() => {
-          setPendingRoomDelete(null);
-          setRoomDeleteError(null);
-        }}
-        onConfirm={() => {
-          if (roomDeleteError) {
-            setPendingRoomDelete(null);
-            setRoomDeleteError(null);
-          } else {
-            void deleteRoomCorrection();
-          }
-        }}
-      />
       <ConfirmDialog
         open={Boolean(pendingLineDelete)}
         title="Meetregel verwijderen?"
@@ -1351,7 +926,7 @@ export default function MeasurementPanel({
             />
           </section>
 
-          <Card>
+          <Card style={{ order: 9 }}>
             <details
               className="measurement-summary"
               open={summaryOpen}
@@ -1437,346 +1012,15 @@ export default function MeasurementPanel({
             </details>
           </Card>
 
-          <Card>
-            <SectionHeader
-              compact
-              title={isFieldMode ? "Stap 1 - Waar meet je?" : "Ruimtes inmeten"}
-              description={
-                isFieldMode
-                  ? "Een ruimte is de plek in de woning. Daarna kies je welke hoeveelheid je wilt vastleggen."
-                  : "Een meetruimte is de vastgelegde maatvoering binnen deze inmeting."
-              }
-            />
-            {canEditMeasurement ? (
-              <div className="field-room-presets">
-                <p className="field-room-presets-label">
-                  {isFieldMode ? "Snel toevoegen" : "Naam invullen via preset"}
-                </p>
-                <div className="field-room-presets-grid">
-                  {FIELD_ROOM_PRESETS.map((preset) => {
-                    const alreadyAdded = rooms.some((r) => r.naam === preset.name);
-                    return (
-                      <button
-                        key={preset.name}
-                        type="button"
-                        className={
-                          alreadyAdded ? "field-room-preset-btn added" : "field-room-preset-btn"
-                        }
-                        disabled={isSaving}
-                        onClick={() =>
-                          isFieldMode ? void addRoomByPreset(preset.name) : setRoomName(preset.name)
-                        }
-                        aria-label={
-                          alreadyAdded
-                            ? `${preset.label} — al toegevoegd`
-                            : `${preset.label} toevoegen`
-                        }
-                      >
-                        {preset.label}
-                        {alreadyAdded ? " ✓" : ""}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-            <form onSubmit={addRoom}>
-              <div className="responsive-form-row">
-                <Field
-                  htmlFor="project-room-source"
-                  label={isFieldMode ? "Ruimte uit dossier" : "Bestaande projectruimte"}
-                >
-                  <Select
-                    id="project-room-source"
-                    value={projectRoomId}
-                    onChange={(event) => applyProjectRoom(event.target.value)}
-                  >
-                    <option value="">Nieuwe ruimte</option>
-                    {projectRooms.map((room) => (
-                      <option key={room.id} value={room.id}>
-                        {room.naam}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field htmlFor="measurement-room-name" label="Ruimte" required>
-                  <Input
-                    id="measurement-room-name"
-                    required
-                    value={roomName}
-                    onChange={(event) => setRoomName(event.target.value)}
-                  />
-                </Field>
-                <Field htmlFor="measurement-room-floor" label="Verdieping">
-                  <Input
-                    id="measurement-room-floor"
-                    value={roomFloor}
-                    onChange={(event) => setRoomFloor(event.target.value)}
-                  />
-                </Field>
-                <Field htmlFor="measurement-room-width" label="Breedte in meter">
-                  <Input
-                    id="measurement-room-width"
-                    inputMode="decimal"
-                    value={roomWidthM}
-                    onChange={(event) => setRoomWidthM(event.target.value)}
-                  />
-                </Field>
-                <Field htmlFor="measurement-room-length" label="Lengte in meter">
-                  <Input
-                    id="measurement-room-length"
-                    inputMode="decimal"
-                    value={roomLengthM}
-                    onChange={(event) => setRoomLengthM(event.target.value)}
-                  />
-                </Field>
-                <Field htmlFor="measurement-room-height" label="Hoogte in meter">
-                  <Input
-                    id="measurement-room-height"
-                    inputMode="decimal"
-                    value={roomHeightM}
-                    onChange={(event) => setRoomHeightM(event.target.value)}
-                  />
-                </Field>
-                <Field
-                  htmlFor="measurement-room-area"
-                  label="Oppervlakte m²"
-                  description={roomAreaAutoFilled ? "Automatisch: lengte × breedte" : undefined}
-                >
-                  <Input
-                    id="measurement-room-area"
-                    inputMode="decimal"
-                    value={roomAreaM2}
-                    onChange={(event) => {
-                      setRoomAreaM2(event.target.value);
-                      setRoomAreaAutoFilled(false);
-                    }}
-                  />
-                </Field>
-                <Field
-                  htmlFor="measurement-room-perimeter"
-                  label="Omtrek m"
-                  description={
-                    roomPerimeterAutoFilled ? "Automatisch: 2 × (lengte + breedte)" : undefined
-                  }
-                >
-                  <Input
-                    id="measurement-room-perimeter"
-                    inputMode="decimal"
-                    value={roomPerimeterM}
-                    onChange={(event) => {
-                      setRoomPerimeterM(event.target.value);
-                      setRoomPerimeterAutoFilled(false);
-                    }}
-                  />
-                </Field>
-              </div>
-              <Field htmlFor="measurement-room-notes" label="Notitie">
-                <Textarea
-                  id="measurement-room-notes"
-                  rows={2}
-                  value={roomNotes}
-                  onChange={(event) => setRoomNotes(event.target.value)}
-                />
-              </Field>
-              <div className="toolbar" style={{ marginTop: 12 }}>
-                {canEditMeasurement ? (
-                  <Button
-                    isLoading={isSaving}
-                    leftIcon={<Plus size={16} aria-hidden="true" />}
-                    type="submit"
-                    variant="primary"
-                  >
-                    {isFieldMode ? "Ruimte opslaan" : "Ruimte toevoegen"}
-                  </Button>
-                ) : null}
-              </div>
-            </form>
-            <div style={{ marginTop: 16 }}>
-              <DataTable
-                ariaLabel="Ruimtes inmeten"
-                columns={roomColumns}
-                density="compact"
-                emptyDescription={
-                  isFieldMode
-                    ? "Sla een ruimte op als je meetregels aan een plek wilt koppelen. Je kunt ook direct doorgaan zonder ruimte."
-                    : "Voeg een meetruimte toe of gebruik een bestaande projectruimte als basis."
-                }
-                emptyTitle={
-                  isFieldMode ? "Nog geen ruimte opgeslagen" : "Nog geen ruimtes ingemeten"
-                }
-                getRowKey={(room) => room._id}
-                mobileMode="cards"
-                renderMobileCard={(room) => (
-                  <div className="mobile-card-section">
-                    <div className="mobile-card-header">
-                      <div className="mobile-card-title">
-                        <strong>{room.naam}</strong>
-                        <small className="muted">{room.verdieping ?? "Geen verdieping"}</small>
-                      </div>
-                      <strong>{formatNumber(room.oppervlakteM2, " m²")}</strong>
-                    </div>
-                    <div className="mobile-card-meta">
-                      <span>{formatNumber(room.omtrekM, " m")} omtrek</span>
-                      <span>{room.notities ?? "Geen notitie"}</span>
-                    </div>
-                    {canEditMeasurement ? (
-                      <div className="mobile-card-actions">
-                        <Button
-                          leftIcon={<Pencil size={16} aria-hidden="true" />}
-                          onClick={() => startEditRoom(room)}
-                          size="sm"
-                          variant="secondary"
-                        >
-                          Bewerken
-                        </Button>
-                        <Button
-                          leftIcon={<Trash2 size={16} aria-hidden="true" />}
-                          onClick={() => setPendingRoomDelete(room)}
-                          size="sm"
-                          variant="danger"
-                        >
-                          Verwijderen
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
-                )}
-                rows={rooms}
-              />
-            </div>
-            {editingRoomId ? (
-              <form
-                className="form-grid edit-work-panel"
-                onSubmit={saveRoomCorrection}
-                ref={roomEditFormRef}
-                style={{ marginTop: 16 }}
-              >
-                <SectionHeader
-                  compact
-                  title={`Meetruimte bewerken: ${roomCorrectionDraft.name}`}
-                  description="Je past nu deze opgeslagen ruimte aan zonder een dubbele ruimte aan te maken."
-                />
-                <div className="grid three-column">
-                  <Field htmlFor="measurement-room-edit-name" label="Ruimte" required>
-                    <Input
-                      id="measurement-room-edit-name"
-                      value={roomCorrectionDraft.name}
-                      onChange={(event) =>
-                        setRoomCorrectionDraft((current) => ({
-                          ...current,
-                          name: event.target.value
-                        }))
-                      }
-                      required
-                    />
-                  </Field>
-                  <Field htmlFor="measurement-room-edit-floor" label="Verdieping">
-                    <Input
-                      id="measurement-room-edit-floor"
-                      value={roomCorrectionDraft.floor}
-                      onChange={(event) =>
-                        setRoomCorrectionDraft((current) => ({
-                          ...current,
-                          floor: event.target.value
-                        }))
-                      }
-                    />
-                  </Field>
-                  <Field htmlFor="measurement-room-edit-area" label="Oppervlakte">
-                    <Input
-                      id="measurement-room-edit-area"
-                      inputMode="decimal"
-                      value={roomCorrectionDraft.areaM2}
-                      onChange={(event) =>
-                        setRoomCorrectionDraft((current) => ({
-                          ...current,
-                          areaM2: event.target.value
-                        }))
-                      }
-                    />
-                  </Field>
-                </div>
-                <div className="grid three-column">
-                  <Field htmlFor="measurement-room-edit-width" label="Breedte in meter">
-                    <Input
-                      id="measurement-room-edit-width"
-                      inputMode="decimal"
-                      value={roomCorrectionDraft.widthM}
-                      onChange={(event) =>
-                        setRoomCorrectionDraft((current) => ({
-                          ...current,
-                          widthM: event.target.value
-                        }))
-                      }
-                    />
-                  </Field>
-                  <Field htmlFor="measurement-room-edit-length" label="Lengte in meter">
-                    <Input
-                      id="measurement-room-edit-length"
-                      inputMode="decimal"
-                      value={roomCorrectionDraft.lengthM}
-                      onChange={(event) =>
-                        setRoomCorrectionDraft((current) => ({
-                          ...current,
-                          lengthM: event.target.value
-                        }))
-                      }
-                    />
-                  </Field>
-                  <Field htmlFor="measurement-room-edit-perimeter" label="Omtrek">
-                    <Input
-                      id="measurement-room-edit-perimeter"
-                      inputMode="decimal"
-                      value={roomCorrectionDraft.perimeterM}
-                      onChange={(event) =>
-                        setRoomCorrectionDraft((current) => ({
-                          ...current,
-                          perimeterM: event.target.value
-                        }))
-                      }
-                    />
-                  </Field>
-                </div>
-                <Field htmlFor="measurement-room-edit-notes" label="Notitie">
-                  <Textarea
-                    id="measurement-room-edit-notes"
-                    rows={3}
-                    value={roomCorrectionDraft.notes}
-                    onChange={(event) =>
-                      setRoomCorrectionDraft((current) => ({
-                        ...current,
-                        notes: event.target.value
-                      }))
-                    }
-                  />
-                </Field>
-                <div className="toolbar">
-                  <Button
-                    isLoading={isSaving}
-                    leftIcon={<Save size={16} aria-hidden="true" />}
-                    type="submit"
-                    variant="primary"
-                  >
-                    Meetruimte opslaan
-                  </Button>
-                  <Button
-                    disabled={isSaving}
-                    variant="secondary"
-                    onClick={() => setEditingRoomId(null)}
-                  >
-                    Annuleren
-                  </Button>
-                </div>
-              </form>
-            ) : null}
-          </Card>
-
           {canEditMeasurement && measurement && tenantConvexId ? (
             <section className="panel" id="assign-panel-section">
               <SectionHeader
                 compact
-                title="Producten & diensten toewijzen aan ruimtes"
+                title={
+                  isFieldMode
+                    ? "Stap 1 - Producten & diensten kiezen"
+                    : "Stap 1 - Producten & diensten toewijzen aan ruimtes"
+                }
                 description="Kies een product of dienst en pas het in één keer toe op één of meer ruimtes. De hoeveelheid volgt automatisch uit de ruimtematen."
               />
               <MeasurementAssignPanel
@@ -1789,6 +1033,7 @@ export default function MeasurementPanel({
                 selectedRoomIds={assignRoomIds}
                 onSelectedRoomIdsChange={setAssignRoomIds}
                 onAdded={loadMeasurement}
+                roomPresets={FIELD_ROOM_PRESETS}
               />
             </section>
           ) : null}
@@ -1804,7 +1049,7 @@ export default function MeasurementPanel({
       <Card>
         <SectionHeader
           compact
-          title={isFieldMode ? "Stap 3 - Opgeslagen meetregels" : "Inmeetregels"}
+          title={isFieldMode ? "Stap 2 - Opgeslagen meetregels" : "Stap 2 - Inmeetregels"}
           description={
             isFieldMode
               ? `Dit zijn de hoeveelheden die klaarstaan voor de conceptofferte. Richtprijzen zijn indicatief en ${showPricesIncVat ? "incl." : "excl."} btw.`
