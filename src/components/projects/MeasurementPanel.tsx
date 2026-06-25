@@ -38,9 +38,7 @@ import { Input } from "../ui/forms/Input";
 import { LoadingState } from "../ui/feedback/LoadingState";
 import { SectionHeader } from "../ui/layout/SectionHeader";
 import { Select } from "../ui/forms/Select";
-import { StatCard } from "../ui/data-display/StatCard";
 import { StatusBadge } from "../ui/data-display/StatusBadge";
-import { SummaryList } from "../ui/data-display/SummaryList";
 import { Textarea } from "../ui/forms/Textarea";
 import type {
   FieldMeasureTool,
@@ -51,7 +49,6 @@ import type {
   MeasurementPanelProps
 } from "./measurement/measurementTypes";
 import {
-  dateText,
   decimalText,
   formatNumber,
   fromDateInputValue,
@@ -911,19 +908,28 @@ export default function MeasurementPanel({
         />
       ) : (
         <div className="grid">
-          <section className={isFieldMode ? "grid field-measurement-summary" : "grid three-column"}>
-            <StatCard
-              label="Status"
-              value={formatMeasurementStatus(measurement.status)}
-              tone={measurement.status === "reviewed" ? "success" : "warning"}
-            />
-            <StatCard label="Ruimtes gemeten" value={rooms.length} tone="info" />
-            <StatCard
-              label="Klaar voor offerte"
-              value={readyLineCount}
-              description={`${lines.length} inmeetregels totaal`}
-              tone={readyLineCount > 0 ? "success" : "neutral"}
-            />
+          <section
+            className="panel measurement-stat-strip"
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "6px 20px",
+              alignItems: "baseline",
+              padding: "10px 14px",
+              fontSize: "var(--text-sm)"
+            }}
+          >
+            <span>
+              <strong>{formatMeasurementStatus(measurement.status)}</strong>{" "}
+              <span className="muted">status</span>
+            </span>
+            <span>
+              <strong>{rooms.length}</strong> <span className="muted">ruimtes gemeten</span>
+            </span>
+            <span>
+              <strong>{readyLineCount}</strong>{" "}
+              <span className="muted">klaar voor offerte ({lines.length} regels)</span>
+            </span>
           </section>
 
           <Card style={{ order: 9 }}>
@@ -943,18 +949,7 @@ export default function MeasurementPanel({
                 <p className="muted measurement-summary-desc">
                   Deze gegevens horen bij het projectdossier en wijzigen geen offerte.
                 </p>
-                <SummaryList
-                  items={[
-                    { id: "date", label: "Inmeetdatum", value: dateText(measurement.inmeetdatum) },
-                    {
-                      id: "person",
-                      label: "Ingemeten door",
-                      value: measurement.gemetenDoor ?? "-"
-                    },
-                    { id: "updated", label: "Bijgewerkt", value: dateText(measurement.gewijzigdOp) }
-                  ]}
-                />
-                <div className="responsive-form-row" style={{ marginTop: 16 }}>
+                <div className="responsive-form-row" style={{ marginTop: 12 }}>
                   <Field htmlFor="measurement-status" label="Status">
                     <Select
                       id="measurement-status"
