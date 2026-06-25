@@ -231,8 +231,7 @@ export default defineSchema({
     gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
-    .index("by_external_user", ["externalUserId"])
-    .index("by_email", ["email"]),
+    .index("by_external_user", ["externalUserId"]),
 
   customers: defineTable({
     tenantId: v.id("tenants"),
@@ -301,8 +300,7 @@ export default defineSchema({
     gewijzigdOp: v.number()
   })
     .index("by_tenant", ["tenantId"])
-    .index("by_slug", ["tenantId", "slug"])
-    .index("by_parent", ["tenantId", "bovenliggendeCategorieId"]),
+    .index("by_slug", ["tenantId", "slug"]),
 
   suppliers: defineTable({
     tenantId: v.id("tenants"),
@@ -363,7 +361,6 @@ export default defineSchema({
   })
     .index("by_tenant", ["tenantId"])
     .index("by_supplier", ["tenantId", "leverancierId"])
-    .index("by_brand", ["tenantId", "merkId"])
     .index("by_category", ["tenantId", "categorieId"]),
 
   products: defineTable({
@@ -459,8 +456,6 @@ export default defineSchema({
     .index("by_category_status", ["tenantId", "categorieId", "status"])
     .index("by_supplier", ["tenantId", "leverancierId"])
     .index("by_supplier_status", ["tenantId", "leverancierId", "status"])
-    .index("by_brand", ["tenantId", "merkId"])
-    .index("by_collection", ["tenantId", "collectieId"])
     .index("by_status", ["tenantId", "status"])
     .index("by_import_key", ["tenantId", "importSleutel"])
     .index("by_article_number", ["tenantId", "leverancierId", "artikelnummer"])
@@ -522,10 +517,7 @@ export default defineSchema({
   })
     .index("by_tenant", ["tenantId"])
     .index("by_product", ["tenantId", "productId"])
-    .index("by_price_list", ["tenantId", "prijslijstId"])
-    .index("by_source_key", ["tenantId", "bronSleutel"])
-    .index("by_source_file_column", ["tenantId", "bronBestandsnaam", "bronKolomIndex"])
-    .index("by_price_type", ["tenantId", "prijsSoort"]),
+    .index("by_source_key", ["tenantId", "bronSleutel"]),
 
   productImportBatches: defineTable({
     tenantId: v.id("tenants"),
@@ -631,7 +623,6 @@ export default defineSchema({
     gewijzigdOp: v.number()
   })
     .index("by_batch", ["tenantId", "batchId"])
-    .index("by_row_kind", ["tenantId", "batchId", "rijSoort"])
     .index("by_status", ["tenantId", "batchId", "status"]),
 
   serviceCostRules: defineTable({
@@ -749,8 +740,7 @@ export default defineSchema({
   })
     .index("by_tenant", ["tenantId"])
     .index("by_customer", ["tenantId", "klantId"])
-    .index("by_status", ["tenantId", "status"])
-    .index("by_execution_date", ["tenantId", "uitvoerdatum"]),
+    .index("by_status", ["tenantId", "status"]),
 
   projectRooms: defineTable({
     tenantId: v.id("tenants"),
@@ -846,7 +836,6 @@ export default defineSchema({
   })
     .index("by_measurement", ["tenantId", "inmetingId"])
     .index("by_room", ["tenantId", "ruimteId"])
-    .index("by_quote_status", ["tenantId", "quotePreparationStatus"])
     .index("by_product_group", ["tenantId", "productGroep"]),
 
   wasteProfiles: defineTable({
@@ -894,7 +883,6 @@ export default defineSchema({
     .index("by_tenant", ["tenantId"])
     .index("by_project", ["tenantId", "projectId"])
     .index("by_customer", ["tenantId", "klantId"])
-    .index("by_quote_number", ["tenantId", "offertenummer"])
     .index("by_status", ["tenantId", "status"]),
 
   quoteLines: defineTable({
