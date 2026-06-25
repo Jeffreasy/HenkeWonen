@@ -521,7 +521,6 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
           tenantId={session.tenantId}
           projectId={workspace.project.id}
           customerId={workspace.customer?.id ?? workspace.project.klantId}
-          projectRooms={workspace.project.rooms}
         />
       </section>
 
