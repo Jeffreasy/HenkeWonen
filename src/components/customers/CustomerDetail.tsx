@@ -236,7 +236,8 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
 
       await loadDetail();
       showToast({ title: "Dossierstuk toegevoegd", tone: "success" });
-    } catch {
+    } catch (createError) {
+      console.error(createError);
       showToast({ title: "Dossierstuk kon niet worden toegevoegd", tone: "error" });
     }
   }
@@ -257,7 +258,8 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       });
       await loadDetail();
       showToast({ title: "Dossierstuk gearchiveerd", tone: "success" });
-    } catch {
+    } catch (archiveError) {
+      console.error(archiveError);
       showToast({ title: "Dossierstuk kon niet worden gearchiveerd", tone: "error" });
     }
   }

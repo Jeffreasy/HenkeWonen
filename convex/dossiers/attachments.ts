@@ -1,5 +1,5 @@
 import { mutation } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { mutationActorValidator, requireMutationRole } from "../authz";
 import { dossierAttachmentKind } from "../portalUtils";
@@ -49,7 +49,7 @@ export const createDossierAttachment = mutation({
     const customer = await ctx.db.get(args.klantId as Id<"customers">);
 
     if (!customer || customer.tenantId !== tenant._id) {
-      throw new Error("Klant niet gevonden.");
+      throw new ConvexError("Klant niet gevonden.");
     }
 
     let projectId: Id<"projects"> | undefined;
@@ -58,7 +58,7 @@ export const createDossierAttachment = mutation({
       const project = await ctx.db.get(args.projectId as Id<"projects">);
 
       if (!project || project.tenantId !== tenant._id || project.klantId !== customer._id) {
-        throw new Error("Project niet gevonden bij deze klant.");
+        throw new ConvexError("Project niet gevonden bij deze klant.");
       }
 
       projectId = project._id;
@@ -102,7 +102,7 @@ export const archiveDossierAttachment = mutation({
     const attachment = await ctx.db.get(args.attachmentId as Id<"dossierAttachments">);
 
     if (!attachment || attachment.tenantId !== tenant._id) {
-      throw new Error("Dossierstuk niet gevonden.");
+      throw new ConvexError("Dossierstuk niet gevonden.");
     }
 
     await ctx.db.patch(attachment._id, { status: "archived", gewijzigdOp: Date.now() });
