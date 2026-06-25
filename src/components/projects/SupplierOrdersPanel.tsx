@@ -114,6 +114,18 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
     }
   }
 
+  function collapseDocument(orderId: string) {
+    // Verwijder de uitgeklapte bestelbon zodat geen stale order-/datummetadata blijft staan.
+    setExpanded((current) => {
+      if (!current[orderId]) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[orderId];
+      return next;
+    });
+  }
+
   async function handleAdvance(order: PortalSupplierOrder, status: "ordered" | "received") {
     const client = createConvexHttpClient(session);
     if (!client) {
@@ -128,6 +140,7 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
         bestellingId: order.id,
         status
       });
+      collapseDocument(order.id);
       await loadOrders();
     } catch (statusError) {
       console.error(statusError);
@@ -150,6 +163,7 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
         actor: mutationActorFromSession(session),
         bestellingId: order.id
       });
+      collapseDocument(order.id);
       await loadOrders();
     } catch (cancelError) {
       console.error(cancelError);

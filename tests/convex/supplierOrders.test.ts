@@ -270,6 +270,32 @@ test("cancelSupplierOrder zet de order én de regels op cancelled", async () => 
   expect(detail!.lines.every((line) => line.status === "cancelled")).toBe(true);
 });
 
+test("cancelSupplierOrder laat reeds ontvangen regels ongemoeid", async () => {
+  const t = convexTest(schema, modules);
+  const { projectId } = await seed(t);
+  await t.mutation(api.portal.generateSupplierOrdersFromQuote, { tenantSlug: "henke-wonen", actor, projectId });
+  const orders = await t.query(api.portal.listSupplierOrders, { tenantSlug: "henke-wonen", actor, projectId });
+  const a = orders.find((o) => o.leverancierNaam === "Leverancier A")!;
+
+  // Zet één regel handmatig op 'received' (geen MVP-mutatie hiervoor; rechtstreeks in de db).
+  await t.run(async (ctx) => {
+    const all = await ctx.db.query("supplierOrderLines").collect();
+    const own = all.filter((line: any) => String(line.bestellingId) === a.id);
+    await ctx.db.patch(own[0]._id, { status: "received", gewijzigdOp: own[0].gewijzigdOp });
+  });
+
+  await t.mutation(api.portal.cancelSupplierOrder, { tenantSlug: "henke-wonen", actor, bestellingId: a.id });
+
+  const detail = await t.query(api.portal.supplierOrderDetail, {
+    tenantSlug: "henke-wonen",
+    actor,
+    bestellingId: a.id
+  });
+  expect(detail!.order.status).toBe("cancelled");
+  expect(detail!.lines.some((line) => line.status === "received")).toBe(true);
+  expect(detail!.lines.some((line) => line.status === "cancelled")).toBe(true);
+});
+
 test("generate zonder geaccepteerde offerte gooit een fout", async () => {
   const t = convexTest(schema, modules);
   const { projectId } = await seed(t);
