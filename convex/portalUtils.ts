@@ -4,6 +4,7 @@ import type {
   PortalRoom,
   PortalProject,
   PortalCustomerContact,
+  PortalDossierAttachment,
   PortalWorkflowEvent,
   PortalProjectTask,
   PortalQuoteLine,
@@ -29,6 +30,16 @@ export const customerContactType = v.union(
   v.literal("visit"),
   v.literal("loaned_item"),
   v.literal("agreement")
+);
+
+/** Soort dossierstuk — taalonafhankelijke identifiers (gespiegeld in schema.ts) */
+export const dossierAttachmentKind = v.union(
+  v.literal("floor_plan"),
+  v.literal("photo"),
+  v.literal("legacy_excel_quote"),
+  v.literal("physical_dossier"),
+  v.literal("scan"),
+  v.literal("other")
 );
 
 export const projectStatus = v.union(
@@ -349,6 +360,32 @@ export function toContact(tenantSlug: string, contact: Doc<"customerContacts">):
     zichtbaarVoorKlant: contact.zichtbaarVoorKlant,
     aangemaaktOp: contact.aangemaaktOp,
     gewijzigdOp: contact.gewijzigdOp
+  };
+}
+
+export async function toDossierAttachment(
+  ctx: any,
+  tenantSlug: string,
+  attachment: Doc<"dossierAttachments">
+): Promise<PortalDossierAttachment> {
+  const fileUrl = attachment.storageId ? await ctx.storage.getUrl(attachment.storageId) : null;
+
+  return {
+    id: String(attachment._id),
+    tenantId: tenantSlug,
+    klantId: String(attachment.klantId),
+    projectId: attachment.projectId ? String(attachment.projectId) : undefined,
+    kind: attachment.kind,
+    titel: attachment.titel,
+    omschrijving: attachment.omschrijving,
+    bestandsnaam: attachment.bestandsnaam,
+    bestandstype: attachment.bestandstype,
+    bestandsgrootteBytes: attachment.bestandsgrootteBytes,
+    fileUrl: fileUrl ?? undefined,
+    status: attachment.status,
+    createdByExternalUserId: attachment.createdByExternalUserId,
+    aangemaaktOp: attachment.aangemaaktOp,
+    gewijzigdOp: attachment.gewijzigdOp
   };
 }
 
