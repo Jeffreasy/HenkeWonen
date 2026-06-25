@@ -16,6 +16,8 @@ import { SectionHeader } from "../ui/layout/SectionHeader";
 import { SummaryList } from "../ui/data-display/SummaryList";
 import { InvoiceStatusBadge } from "./InvoiceStatusBadge";
 import { InvoiceDetailSkeleton } from "./InvoiceDetailSkeleton";
+import InvoiceDocumentPreview from "./InvoiceDocumentPreview";
+import { buildInvoiceDocumentModel } from "../../lib/invoices/invoiceDocumentModel";
 
 type InvoiceDetailProps = {
   session: AppSession;
@@ -203,6 +205,7 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
   };
 
   const currentActionCopy = pendingAction ? confirmCopy[pendingAction.type] : null;
+  const invoiceDocumentModel = buildInvoiceDocumentModel({ detail });
 
   return (
     <div className="grid">
@@ -514,6 +517,16 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
             Deze factuur heeft geen gekoppelde offerte, dus er is geen regelspecificatie beschikbaar.
           </p>
         )}
+      </section>
+
+      {/* Klantversie — printbaar factuurdocument (zelfde print-patroon als de offerte) */}
+      <section className="panel">
+        <SectionHeader
+          compact
+          title="Klantversie"
+          description="Bekijk de factuur zoals de klant hem ontvangt. Printen gebeurt vanuit deze preview."
+        />
+        <InvoiceDocumentPreview model={invoiceDocumentModel} />
       </section>
 
       <p className="muted" style={{ fontSize: "var(--text-sm)", margin: 0 }}>
