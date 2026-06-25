@@ -285,7 +285,8 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
 
       showToast({ title: "Aanvraag gestart", description: scope.label, tone: "success" });
       window.location.assign(`/portal/projecten/${String(projectId)}#project-measurement`);
-    } catch {
+    } catch (startError) {
+      console.error(startError);
       showToast({ title: "Aanvraag kon niet worden gestart", tone: "error" });
     }
   }
