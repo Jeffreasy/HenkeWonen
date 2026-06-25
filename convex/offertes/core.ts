@@ -19,7 +19,10 @@ import {
   importedMeasurementLineTitle,
   importedMeasurementLineDescription,
   calculateLineTotals,
-  existingInvoiceForQuote
+  existingInvoiceForQuote,
+  restoreMeasurementLinesForQuote,
+  assertQuoteAcceptable,
+  cancelOtherOpenQuotesAndRestore
 } from "../portalUtils";
 
 const quoteStatus = v.union(
@@ -639,52 +642,6 @@ export const updateQuoteTerms = mutation({
   }
 });
 
-/**
- * Bevrijdt alle uit een offerte geïmporteerde inmeetregels: zet ze terug op
- * 'ready_for_quote' en wist de conversie-refs, zodat de buitendienst-inmeting
- * opnieuw naar een (andere) offerte kan worden geïmporteerd. Aanroepen zodra een
- * offerte definitief niet meer leidend is (afgewezen/geannuleerd/auto-geannuleerd) —
- * anders blijven de meetregels permanent op 'converted' staan en verdwijnen ze uit
- * de import-picker, waardoor het inmeetwerk onbruikbaar wordt voor een nieuwe offerte.
- */
-async function restoreMeasurementLinesForQuote(
-  ctx: any,
-  tenantId: Id<"tenants">,
-  projectId: Id<"projects">,
-  quoteId: Id<"quotes">
-): Promise<void> {
-  const now = Date.now();
-  const measurements = await ctx.db
-    .query("measurements")
-    .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
-    .collect();
-
-  for (const measurement of measurements) {
-    const mLines = await ctx.db
-      .query("measurementLines")
-      .withIndex("by_measurement", (q: any) =>
-        q.eq("tenantId", tenantId).eq("inmetingId", measurement._id)
-      )
-      .collect();
-
-    let touched = false;
-    for (const ml of mLines) {
-      if (ml.geconverteerdeOfferteId === quoteId && ml.quotePreparationStatus === "converted") {
-        await ctx.db.patch(ml._id, {
-          quotePreparationStatus: "ready_for_quote",
-          geconverteerdeOfferteId: undefined,
-          geconverteerdeOfferteregelId: undefined,
-          gewijzigdOp: now
-        });
-        touched = true;
-      }
-    }
-    if (touched) {
-      await ctx.db.patch(measurement._id, { gewijzigdOp: now });
-    }
-  }
-}
-
 export const updateQuoteStatus = mutation({
   args: {
     tenantSlug: v.string(),
@@ -723,51 +680,10 @@ export const updateQuoteStatus = mutation({
       }
     }
 
-    // Prijsreview-gate: een offerte mag niet naar 'verstuurd' of 'akkoord' zolang er
-    // ongeprijsde (€0) regels in staan — bv. een verwijderd/inactief product dat als €0
-    // binnenkwam. Alleen prijsdragende regels tellen mee; tekst- en kortingsregels niet.
+    // Prijs-/richtprijs-/leeg-gate vóór 'verstuurd'/'akkoord' — gedeeld met het winkel-
+    // dossierpad (processProjectAction) zodat beide accept-paden dezelfde controle dragen.
     if (args.status === "sent" || args.status === "accepted") {
-      const lines = await ctx.db
-        .query("quoteLines")
-        .withIndex("by_quote", (q: any) => q.eq("tenantId", tenant._id).eq("quoteId", quote._id))
-        .collect();
-      const chargeableTypes = ["product", "material", "labor", "service", "manual"];
-      const chargeableLines = lines.filter((line: Doc<"quoteLines">) =>
-        chargeableTypes.includes(line.regelType)
-      );
-      const hasUnpricedLine = chargeableLines.some(
-        (line: Doc<"quoteLines">) => line.aantal > 0 && line.eenheidsprijsExBtw === 0
-      );
-      if (hasUnpricedLine) {
-        throw new ConvexError(
-          "De offerte bevat nog regels zonder prijs (€0). Controleer en prijs deze regels voordat je de offerte verstuurt of op akkoord zet."
-        );
-      }
-
-      // Indicatieve richtprijzen (uit de inmeting geïmporteerd) moeten eerst handmatig
-      // gecontroleerd zijn — anders glipt een ongecontroleerde richtprijs door naar factuur.
-      const hasUnreviewedIndicative = chargeableLines.some(
-        (line: Doc<"quoteLines">) =>
-          line.aantal > 0 &&
-          (line.metadata as { requiresManualPriceReview?: boolean } | undefined)
-            ?.requiresManualPriceReview === true
-      );
-      if (hasUnreviewedIndicative) {
-        throw new ConvexError(
-          "De offerte bevat nog niet-gecontroleerde richtprijzen. Open en bevestig deze regels (de prijs is indicatief) voordat je de offerte verstuurt of op akkoord zet."
-        );
-      }
-
-      // Een offerte zonder enige geprijsde regel (leeg of alleen tekst/korting) mag niet
-      // als 'verstuurd'/'akkoord' worden gemarkeerd.
-      const hasValueLine = chargeableLines.some(
-        (line: Doc<"quoteLines">) => line.aantal > 0 && line.eenheidsprijsExBtw > 0
-      );
-      if (!hasValueLine) {
-        throw new ConvexError(
-          "De offerte heeft nog geen geprijsde regels. Voeg minstens één regel met een prijs toe voordat je 'm verstuurt of op akkoord zet."
-        );
-      }
+      await assertQuoteAcceptable(ctx, tenant._id, quote._id);
     }
 
     const now = Date.now();
@@ -783,28 +699,10 @@ export const updateQuoteStatus = mutation({
 
     await ctx.db.patch(quote._id, quotePatch);
 
-    // Cancel other open quotes for the same project if this one is accepted
+    // Annuleer de overige open offertes van dit project en bevrijd hun inmeetregels (gedeeld
+    // met het winkel-accept-pad zodat er nooit twee 'levende' offertes op één dossier blijven).
     if (args.status === "accepted") {
-      const otherQuotes = await ctx.db
-        .query("quotes")
-        .withIndex("by_project", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("projectId", project._id)
-        )
-        .collect();
-
-      for (const other of otherQuotes) {
-        if (
-          other._id !== quote._id &&
-          (other.status === "draft" || other.status === "sent")
-        ) {
-          await ctx.db.patch(other._id, {
-            status: "cancelled",
-            gewijzigdOp: now
-          });
-          // Bevrijd de inmeetregels van de zojuist auto-geannuleerde offerte.
-          await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, other._id);
-        }
-      }
+      await cancelOtherOpenQuotesAndRestore(ctx, tenant._id, project._id, quote._id, now);
     }
 
     const statusMap: Partial<Record<Doc<"quotes">["status"], Doc<"projects">["status"]>> = {
@@ -812,6 +710,9 @@ export const updateQuoteStatus = mutation({
       sent: "quote_sent",
       accepted: "quote_accepted",
       rejected: "quote_rejected",
+      // Geen aparte 'quote_expired' projectstatus; een verlopen offerte gedraagt zich als
+      // afgewezen (offerte-fase geëindigd zonder akkoord).
+      expired: "quote_rejected",
       cancelled: "cancelled"
     };
     const nextProjectStatus = statusMap[args.status];
@@ -870,6 +771,13 @@ export const updateQuoteStatus = mutation({
     }
 
     if (args.status === "rejected") {
+      await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "dismissed", quote._id);
+      await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, quote._id);
+    }
+
+    // Verlopen = terminale offerte-staat zoals afgewezen/geannuleerd: bevrijd de inmeetregels
+    // zodat ze niet permanent 'converted' blijven en opnieuw geïmporteerd kunnen worden.
+    if (args.status === "expired") {
       await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "dismissed", quote._id);
       await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, quote._id);
     }

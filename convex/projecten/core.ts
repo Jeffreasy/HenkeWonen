@@ -27,6 +27,9 @@ import {
   latestQuoteForProject,
   latestAcceptedQuoteForProject,
   existingInvoiceForQuote,
+  restoreMeasurementLinesForQuote,
+  assertQuoteAcceptable,
+  cancelOtherOpenQuotesAndRestore,
   hasProjectEvent,
   nextInvoiceNumber,
   completeInvoiceWorkflow,
@@ -925,6 +928,11 @@ export const processProjectAction = mutation({
       if (["cancelled", "rejected", "expired"].includes(latestQuote.status)) {
         throw new ConvexError("Er is geen actieve offerte om akkoord te verwerken.");
       }
+
+      // Dezelfde prijs-/richtprijs-/leeg-gate als updateQuoteStatus — zodat een offerte met
+      // ongecontroleerde richtprijs of €0-regels ook via het winkel-dossierpad niet stil naar
+      // akkoord (en daarmee factuur) kan glippen.
+      await assertQuoteAcceptable(ctx, tenant._id, latestQuote._id);
     }
 
     if (args.action === "invoice_created" && !latestAcceptedQuote) {
@@ -952,6 +960,13 @@ export const processProjectAction = mutation({
           geaccepteerdOp: now,
           gewijzigdOp: now
         });
+      }
+
+      // Annuleer de overige open offertes van dit dossier + bevrijd hun inmeetregels (gedeeld
+      // met updateQuoteStatus) zodat er nooit twee 'levende' offertes blijven en geen siblings
+      // permanent 'converted' staan.
+      if (latestQuote) {
+        await cancelOtherOpenQuotesAndRestore(ctx, tenant._id, project._id, latestQuote._id, now);
       }
 
       await closeOpenProjectTasks(
@@ -1020,6 +1035,9 @@ export const processProjectAction = mutation({
           status: "cancelled",
           gewijzigdOp: now
         });
+        // Bevrijd de inmeetregels van de geannuleerde offerte (gedeeld met updateQuoteStatus)
+        // zodat ze niet permanent 'converted' blijven en opnieuw geïmporteerd kunnen worden.
+        await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, quote._id);
       }
     }
 
