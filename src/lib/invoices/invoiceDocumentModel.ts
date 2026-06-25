@@ -1,4 +1,5 @@
 import type { PortalInvoiceDetail } from "../portalTypes";
+import { roundMoney } from "../money";
 import { henkeCompanyProfile, type QuoteCompanyProfile } from "../quotes/henkeCompanyProfile";
 
 export type InvoiceDocumentModel = {
@@ -78,7 +79,7 @@ export function buildInvoiceDocumentModel({
   companyProfile = henkeCompanyProfile
 }: BuildInvoiceDocumentModelInput): InvoiceDocumentModel {
   const { invoice, customer, project, quote, quoteLines } = detail;
-  const outstanding = Math.max(0, invoice.totaalInclBtw - invoice.betaaldBedrag);
+  const outstanding = Math.max(0, roundMoney(invoice.totaalInclBtw - invoice.betaaldBedrag));
 
   return {
     company: {
