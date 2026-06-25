@@ -1,4 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  SquareStack,
+  Minus,
+  Layers,
+  PanelRight,
+  Blinds,
+  ArrowUpDown,
+  LayoutGrid,
+  Wrench,
+  Plus,
+  Pencil,
+  Trash2
+} from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import type { AppSession } from "../../../lib/auth/session";
@@ -85,6 +98,8 @@ type MeasurementAssignPanelProps = {
   selectedRoomIds: string[];
   onSelectedRoomIdsChange: (ids: string[]) => void;
   onAdded: () => void | Promise<void>;
+  /** Snelle ruimtenamen voor het inline toevoegen. */
+  roomPresets: Array<{ label: string; name: string }>;
 };
 
 /** Eenheid waarmee de richtprijs wordt opgezocht, per rekenmachine. */
@@ -124,6 +139,18 @@ const ADD_TYPES: Array<{ key: AddType; label: string; hint: MeasurementProductGr
   { key: "raambekleding", label: "Raambekleding", hint: null },
   { key: "dienst", label: "Dienst / legkost", hint: null }
 ];
+
+/** Icoon per producttype voor de tegel-keuze (hergebruikt de stijl van CALC_TAB_ICONS). */
+const ADD_TYPE_ICONS: Record<AddType, ReactNode> = {
+  vloer: <SquareStack size={22} aria-hidden="true" />,
+  plint: <Minus size={22} aria-hidden="true" />,
+  behang: <Layers size={22} aria-hidden="true" />,
+  wandpaneel: <PanelRight size={22} aria-hidden="true" />,
+  gordijn: <Blinds size={22} aria-hidden="true" />,
+  trap: <ArrowUpDown size={22} aria-hidden="true" />,
+  raambekleding: <LayoutGrid size={22} aria-hidden="true" />,
+  dienst: <Wrench size={22} aria-hidden="true" />
+};
 
 /** Vaste regel-eigenschappen per speciaal type (eigen rekenmachine, niet ruimte-afgeleid). */
 const SPECIALTY_CONFIG: Record<
@@ -217,7 +244,8 @@ export default function MeasurementAssignPanel({
   canEdit,
   selectedRoomIds,
   onSelectedRoomIdsChange,
-  onAdded
+  onAdded,
+  roomPresets
 }: MeasurementAssignPanelProps) {
   const [addType, setAddType] = useState<AddType>("vloer");
   const [product, setProduct] = useState<PortalProduct | null>(null);
@@ -262,6 +290,15 @@ export default function MeasurementAssignPanel({
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Inline ruimte toevoegen/bewerken (vervangt de aparte "Waar meet je?"-stap).
+  const [roomFormOpen, setRoomFormOpen] = useState(false);
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [rNaam, setRNaam] = useState("");
+  const [rBreedte, setRBreedte] = useState("");
+  const [rLengte, setRLengte] = useState("");
+  const [rHoogte, setRHoogte] = useState("");
+  const [isRoomSaving, setIsRoomSaving] = useState(false);
 
   // Diensten/legkosten laden voor de dienst-kiezer + bundel-suggesties.
   useEffect(() => {
@@ -567,6 +604,114 @@ export default function MeasurementAssignPanel({
     );
   }
 
+  function openNewRoom() {
+    setEditingRoomId(null);
+    setRNaam("");
+    setRBreedte("");
+    setRLengte("");
+    setRHoogte("");
+    setRoomFormOpen(true);
+  }
+
+  function openEditRoom(room: MeasurementRoomDoc) {
+    setEditingRoomId(room._id);
+    setRNaam(room.naam);
+    setRBreedte(room.breedteM !== undefined ? String(room.breedteM) : "");
+    setRLengte(room.lengteM !== undefined ? String(room.lengteM) : "");
+    setRHoogte(room.hoogteM !== undefined ? String(room.hoogteM) : "");
+    setRoomFormOpen(true);
+  }
+
+  async function submitRoom() {
+    if (!rNaam.trim()) return;
+
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      setError("Kan de inmeting nu niet bereiken.");
+      return;
+    }
+
+    const breedteM = parseNum(rBreedte);
+    const lengteM = parseNum(rLengte);
+    const hoogteM = parseNum(rHoogte);
+    const hasBoth = breedteM !== undefined && lengteM !== undefined;
+    const oppervlakteM2 = hasBoth ? Math.round(breedteM! * lengteM! * 100) / 100 : undefined;
+    const omtrekM = hasBoth ? Math.round(2 * (breedteM! + lengteM!) * 100) / 100 : undefined;
+
+    setIsRoomSaving(true);
+    setError(null);
+    try {
+      if (editingRoomId) {
+        await client.mutation(api.projecten.measurements.updateMeasurementRoom, {
+          tenantId: tenantConvexId as Id<"tenants">,
+          actor: mutationActorFromSession(session),
+          ruimteId: editingRoomId as Id<"measurementRooms">,
+          naam: rNaam.trim(),
+          breedteM,
+          lengteM,
+          hoogteM,
+          oppervlakteM2,
+          omtrekM
+        });
+      } else {
+        const newId = (await client.mutation(api.projecten.measurements.addMeasurementRoom, {
+          tenantId: tenantConvexId as Id<"tenants">,
+          actor: mutationActorFromSession(session),
+          inmetingId: measurementId as Id<"measurements">,
+          naam: rNaam.trim(),
+          breedteM,
+          lengteM,
+          hoogteM,
+          oppervlakteM2,
+          omtrekM
+        })) as Id<"measurementRooms">;
+        if (!selectedRoomIds.includes(String(newId))) {
+          onSelectedRoomIdsChange([...selectedRoomIds, String(newId)]);
+        }
+      }
+      setRoomFormOpen(false);
+      setEditingRoomId(null);
+      await onAdded();
+    } catch (saveError) {
+      console.error(saveError);
+      setError("Ruimte kon niet worden opgeslagen.");
+    } finally {
+      setIsRoomSaving(false);
+    }
+  }
+
+  async function deleteRoom(roomId: string) {
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      setError("Kan de inmeting nu niet bereiken.");
+      return;
+    }
+
+    setIsRoomSaving(true);
+    setError(null);
+    try {
+      await client.mutation(api.projecten.measurements.deleteMeasurementRoom, {
+        tenantId: tenantConvexId as Id<"tenants">,
+        actor: mutationActorFromSession(session),
+        ruimteId: roomId as Id<"measurementRooms">
+      });
+      onSelectedRoomIdsChange(selectedRoomIds.filter((id) => id !== roomId));
+      setRoomFormOpen(false);
+      setEditingRoomId(null);
+      await onAdded();
+    } catch (deleteError) {
+      console.error(deleteError);
+      // Een ruimte met meetregels kan niet verwijderd worden — leg dat uit.
+      setError(
+        deleteError instanceof Error && /regel|line|in gebruik/i.test(deleteError.message)
+          ? "Deze ruimte heeft nog meetregels — verwijder die eerst."
+          : "Ruimte kon niet worden verwijderd."
+      );
+    } finally {
+      setIsRoomSaving(false);
+    }
+  }
+
   function toggleBundle(ruleId: string) {
     setBundleRuleIds((current) =>
       current.includes(ruleId) ? current.filter((id) => id !== ruleId) : [...current, ruleId]
@@ -786,18 +931,52 @@ export default function MeasurementAssignPanel({
   return (
     <div className="grid" style={{ gap: 16 }}>
       <Field htmlFor="assign-type" label="Wat toevoegen?">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {ADD_TYPES.map((entry) => (
-            <Button
-              key={entry.key}
-              type="button"
-              size="sm"
-              variant={addType === entry.key ? "primary" : "secondary"}
-              onClick={() => chooseType(entry.key)}
-            >
-              {entry.label}
-            </Button>
-          ))}
+        <div
+          role="radiogroup"
+          aria-label="Producttype"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(112px, 1fr))",
+            gap: 8
+          }}
+        >
+          {ADD_TYPES.map((entry) => {
+            const active = addType === entry.key;
+            return (
+              <button
+                key={entry.key}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => chooseType(entry.key)}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "12px 8px",
+                  cursor: "pointer",
+                  font: "inherit",
+                  border: active ? "2px solid var(--accent)" : "1px solid var(--line)",
+                  borderRadius: "var(--radius-lg)",
+                  background: active ? "var(--surface-muted)" : "var(--surface-raised)",
+                  color: active ? "var(--accent)" : "var(--ink)"
+                }}
+              >
+                {ADD_TYPE_ICONS[entry.key]}
+                <span
+                  style={{
+                    fontSize: "var(--text-sm)",
+                    fontWeight: active ? 700 : 500,
+                    textAlign: "center",
+                    lineHeight: 1.2
+                  }}
+                >
+                  {entry.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </Field>
 
@@ -1167,26 +1346,31 @@ export default function MeasurementAssignPanel({
         )
       ) : null}
 
-      {rooms.length === 0 ? (
-        <Alert variant="info" description="Voeg eerst een ruimte met maten toe." />
-      ) : (
-        <Field htmlFor="assign-rooms" label="Toepassen op ruimtes">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {rooms.map((room) => {
-              const checked = selectedRoomIds.includes(room._id);
-              const area =
-                room.oppervlakteM2 ??
-                (room.breedteM && room.lengteM ? room.breedteM * room.lengteM : undefined);
-              return (
+      <Field htmlFor="assign-rooms" label="Toepassen op ruimtes">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          {rooms.map((room) => {
+            const checked = selectedRoomIds.includes(room._id);
+            const area =
+              room.oppervlakteM2 ??
+              (room.breedteM && room.lengteM ? room.breedteM * room.lengteM : undefined);
+            return (
+              <span
+                key={room._id}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  border: checked ? "1.5px solid var(--accent)" : "1px solid var(--line)",
+                  borderRadius: "var(--radius-md)",
+                  background: checked ? "var(--surface-muted)" : "var(--surface-raised)",
+                  padding: "4px 6px 4px 10px"
+                }}
+              >
                 <label
-                  key={room._id}
                   style={{
-                    display: "flex",
+                    display: "inline-flex",
                     alignItems: "center",
                     gap: 6,
-                    border: "0.5px solid var(--color-border-secondary)",
-                    borderRadius: "var(--border-radius-md)",
-                    padding: "6px 12px",
                     cursor: "pointer"
                   }}
                 >
@@ -1194,11 +1378,133 @@ export default function MeasurementAssignPanel({
                   {room.naam}
                   {area !== undefined ? ` · ${Math.round(area * 100) / 100} m²` : ""}
                 </label>
-              );
-            })}
+                {canEdit ? (
+                  <button
+                    type="button"
+                    onClick={() => openEditRoom(room)}
+                    aria-label={`Maten van ${room.naam} bewerken`}
+                    style={{
+                      display: "inline-flex",
+                      border: 0,
+                      background: "transparent",
+                      color: "var(--muted)",
+                      cursor: "pointer",
+                      padding: 2
+                    }}
+                  >
+                    <Pencil size={14} aria-hidden="true" />
+                  </button>
+                ) : null}
+              </span>
+            );
+          })}
+          {canEdit ? (
+            <Button type="button" size="sm" variant="secondary" onClick={openNewRoom}>
+              <Plus size={15} aria-hidden="true" /> Nieuwe ruimte
+            </Button>
+          ) : null}
+        </div>
+        {rooms.length === 0 && !roomFormOpen ? (
+          <p className="muted" style={{ margin: "6px 0 0", fontSize: "var(--text-sm)" }}>
+            Nog geen ruimtes — voeg er een toe met "Nieuwe ruimte".
+          </p>
+        ) : null}
+      </Field>
+
+      {roomFormOpen ? (
+        <div
+          style={{
+            border: "1px solid var(--line)",
+            borderRadius: "var(--radius-md)",
+            background: "var(--surface-muted)",
+            padding: 12,
+            display: "grid",
+            gap: 12
+          }}
+        >
+          {!editingRoomId && roomPresets.length > 0 ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {roomPresets.map((preset) => (
+                <Button
+                  key={preset.name}
+                  type="button"
+                  size="sm"
+                  variant={rNaam === preset.name ? "primary" : "secondary"}
+                  onClick={() => setRNaam(preset.name)}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
+          ) : null}
+          <div className="responsive-form-row">
+            <Field htmlFor="assign-room-name" label="Ruimte" required>
+              <Input
+                id="assign-room-name"
+                value={rNaam}
+                onChange={(event) => setRNaam(event.target.value)}
+                required
+              />
+            </Field>
+            <Field htmlFor="assign-room-width" label="Breedte m">
+              <Input
+                id="assign-room-width"
+                inputMode="decimal"
+                value={rBreedte}
+                onChange={(event) => setRBreedte(event.target.value)}
+              />
+            </Field>
+            <Field htmlFor="assign-room-length" label="Lengte m">
+              <Input
+                id="assign-room-length"
+                inputMode="decimal"
+                value={rLengte}
+                onChange={(event) => setRLengte(event.target.value)}
+              />
+            </Field>
+            <Field htmlFor="assign-room-height" label="Hoogte m" helpText="Voor behang/wandpaneel.">
+              <Input
+                id="assign-room-height"
+                inputMode="decimal"
+                value={rHoogte}
+                onChange={(event) => setRHoogte(event.target.value)}
+              />
+            </Field>
           </div>
-        </Field>
-      )}
+          <div className="toolbar" style={{ gap: 8 }}>
+            <Button
+              type="button"
+              variant="primary"
+              disabled={!rNaam.trim()}
+              isLoading={isRoomSaving}
+              onClick={() => void submitRoom()}
+            >
+              {editingRoomId ? "Maten opslaan" : "Ruimte toevoegen"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setRoomFormOpen(false);
+                setEditingRoomId(null);
+              }}
+            >
+              Annuleren
+            </Button>
+            {editingRoomId ? (
+              <Button
+                type="button"
+                variant="danger"
+                isLoading={isRoomSaving}
+                onClick={() => void deleteRoom(editingRoomId)}
+                style={{ marginLeft: "auto" }}
+              >
+                <Trash2 size={15} aria-hidden="true" /> Verwijderen
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {!isService && suggestions.length > 0 ? (
         <Field htmlFor="assign-bundles" label="Vaak samen — voeg meteen toe">
