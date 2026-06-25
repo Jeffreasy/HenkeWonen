@@ -552,6 +552,32 @@ export type PortalCustomerContact = {
   gewijzigdOp: number;
 };
 
+export type DossierAttachmentKind =
+  | "floor_plan"
+  | "photo"
+  | "legacy_excel_quote"
+  | "physical_dossier"
+  | "scan"
+  | "other";
+
+export type PortalDossierAttachment = {
+  id: string;
+  tenantId: string;
+  klantId: string;
+  projectId?: string;
+  kind: DossierAttachmentKind;
+  titel: string;
+  omschrijving?: string;
+  bestandsnaam?: string;
+  bestandstype?: string;
+  bestandsgrootteBytes?: number;
+  fileUrl?: string;
+  status: "active" | "archived";
+  createdByExternalUserId?: string;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
+};
+
 export type PortalWorkflowEvent = {
   id: string;
   tenantId: string;

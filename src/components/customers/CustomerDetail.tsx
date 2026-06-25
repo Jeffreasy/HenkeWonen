@@ -7,6 +7,7 @@ import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import type {
   PortalCustomer,
   PortalCustomerContact,
+  PortalDossierAttachment,
   PortalProject
 } from "../../lib/portalTypes";
 import { showToast } from "../../lib/toast";
@@ -23,6 +24,10 @@ import { CustomerEditPanel, type CustomerDraft } from "./CustomerEditPanel";
 import { AddContactForm, type AddContactFormValues } from "./AddContactForm";
 import { ContactListTable } from "./ContactListTable";
 import { LoanedItemsList } from "./LoanedItemsList";
+import {
+  CustomerDossierAttachmentsPanel,
+  type DossierAttachmentDraft
+} from "./CustomerDossierAttachmentsPanel";
 
 type CustomerDetailProps = {
   session: AppSession;
@@ -33,6 +38,7 @@ type CustomerDetailResult = {
   customer: PortalCustomer;
   projects: PortalProject[];
   contacts: PortalCustomerContact[];
+  attachments: PortalDossierAttachment[];
 } | null;
 
 export default function CustomerDetail({ session, customerId }: CustomerDetailProps) {
@@ -183,6 +189,79 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     }
   }
 
+  async function handleCreateAttachment(draft: DossierAttachmentDraft) {
+    const client = createConvexHttpClient(session);
+
+    if (!client) {
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      return;
+    }
+
+    try {
+      let storageId: string | undefined;
+
+      if (draft.file) {
+        const uploadUrl = (await client.mutation(api.portal.generateDossierAttachmentUploadUrl, {
+          tenantSlug: session.tenantId,
+          actor: mutationActorFromSession(session)
+        })) as string;
+
+        const uploadResponse = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": draft.file.type || "application/octet-stream" },
+          body: draft.file
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Upload mislukt");
+        }
+
+        const uploadJson = (await uploadResponse.json()) as { storageId: string };
+        storageId = uploadJson.storageId;
+      }
+
+      await client.mutation(api.portal.createDossierAttachment, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        klantId: customerId,
+        projectId: draft.projectId,
+        kind: draft.kind,
+        titel: draft.titel,
+        omschrijving: draft.omschrijving,
+        bestandsnaam: draft.file?.name,
+        bestandstype: draft.file?.type || undefined,
+        bestandsgrootteBytes: draft.file?.size,
+        storageId
+      });
+
+      await loadDetail();
+      showToast({ title: "Dossierstuk toegevoegd", tone: "success" });
+    } catch {
+      showToast({ title: "Dossierstuk kon niet worden toegevoegd", tone: "error" });
+    }
+  }
+
+  async function handleArchiveAttachment(attachment: PortalDossierAttachment) {
+    const client = createConvexHttpClient(session);
+
+    if (!client) {
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      return;
+    }
+
+    try {
+      await client.mutation(api.portal.archiveDossierAttachment, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        attachmentId: attachment.id
+      });
+      await loadDetail();
+      showToast({ title: "Dossierstuk gearchiveerd", tone: "success" });
+    } catch {
+      showToast({ title: "Dossierstuk kon niet worden gearchiveerd", tone: "error" });
+    }
+  }
+
   if (isLoading) {
     return <CustomerDetailSkeleton />;
   }
@@ -195,7 +274,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     return <EmptyState title="Klant niet gevonden" description="Controleer de link of ga terug naar klanten." />;
   }
 
-  const { customer, projects, contacts } = detail;
+  const { customer, projects, contacts, attachments } = detail;
   const loanedItems = contacts.filter((contact) => contact.type === "loaned_item");
   const openLoanedItems = loanedItems.filter((contact) => !contact.geretourneerdOp);
 
@@ -262,6 +341,14 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         />
         <LoanedItemsList loanedItems={loanedItems} />
       </div>
+
+      <CustomerDossierAttachmentsPanel
+        attachments={attachments}
+        projects={projects}
+        canCreate={canAddContact}
+        onCreate={handleCreateAttachment}
+        onArchive={canAddContact ? handleArchiveAttachment : undefined}
+      />
 
       {canAddContact ? (
         <FormModal

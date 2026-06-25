@@ -9,6 +9,7 @@
  * │ users                   │ Portaalgebruikers gekoppeld aan een tenant            │
  * │ customers               │ Klantdossiers (privé + zakelijk)                     │
  * │ customerContacts        │ Contactmomenten per klant (bezoek, afspraak, leen)   │
+ * │ dossierAttachments      │ Dossierstukken per klant/project (plattegrond, foto) │
  * │ categories              │ Productindeling (boomstructuur met parentCategoryId)  │
  * │ suppliers               │ Leveranciers + prijslijststatus                      │
  * │ brands                  │ Merken, gekoppeld aan supplier + categorie            │
@@ -289,6 +290,32 @@ export default defineSchema({
   })
     .index("by_customer", ["tenantId", "klantId"])
     .index("by_type", ["tenantId", "type"]),
+
+  dossierAttachments: defineTable({
+    tenantId: v.id("tenants"),
+    klantId: v.id("customers"),
+    projectId: v.optional(v.id("projects")),
+    kind: v.union(
+      v.literal("floor_plan"),
+      v.literal("photo"),
+      v.literal("legacy_excel_quote"),
+      v.literal("physical_dossier"),
+      v.literal("scan"),
+      v.literal("other")
+    ),
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
+    bestandsnaam: v.optional(v.string()),
+    bestandstype: v.optional(v.string()),
+    bestandsgrootteBytes: v.optional(v.number()),
+    storageId: v.optional(v.id("_storage")),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    createdByExternalUserId: v.optional(v.string()),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
+  })
+    .index("by_customer", ["tenantId", "klantId"])
+    .index("by_project", ["tenantId", "projectId"]),
 
   categories: defineTable({
     tenantId: v.id("tenants"),

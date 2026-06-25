@@ -13,6 +13,7 @@ import {
   toCustomer,
   toContact,
   toProject,
+  toDossierAttachment,
   customerType,
   customerStatus,
   customerContactType
@@ -382,7 +383,7 @@ export const customerDetail = query({
       return null;
     }
 
-    const [projects, contacts] = await Promise.all([
+    const [projects, contacts, attachments] = await Promise.all([
       ctx.db
         .query("projects")
         .withIndex("by_customer", (q: any) =>
@@ -395,8 +396,19 @@ export const customerDetail = query({
           q.eq("tenantId", tenant._id).eq("klantId", customer._id)
         )
         .order("desc")
+        .collect(),
+      ctx.db
+        .query("dossierAttachments")
+        .withIndex("by_customer", (q: any) =>
+          q.eq("tenantId", tenant._id).eq("klantId", customer._id)
+        )
+        .order("desc")
         .collect()
     ]);
+
+    const activeAttachments = attachments.filter(
+      (attachment: Doc<"dossierAttachments">) => attachment.status === "active"
+    );
 
     return {
       customer: toCustomer(tenant.slug, customer),
@@ -405,6 +417,11 @@ export const customerDetail = query({
       ),
       contacts: contacts.map((contact: Doc<"customerContacts">) =>
         toContact(tenant.slug, contact)
+      ),
+      attachments: await Promise.all(
+        activeAttachments.map((attachment: Doc<"dossierAttachments">) =>
+          toDossierAttachment(ctx, tenant.slug, attachment)
+        )
       )
     };
   }
