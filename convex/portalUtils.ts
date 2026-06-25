@@ -10,7 +10,9 @@ import type {
   PortalQuoteLine,
   PortalQuote,
   QuoteTemplate,
-  PortalSupplier
+  PortalSupplier,
+  PortalSupplierOrder,
+  PortalSupplierOrderLine
 } from "../src/lib/portalTypes";
 import { ConvexError, v } from "convex/values";
 import { pilotHiddenReason } from "./catalog/pilot";
@@ -698,6 +700,51 @@ export async function latestAcceptedQuoteForProject(
   return quotes
     .filter((quote: Doc<"quotes">) => quote.status === "accepted")
     .sort((left: Doc<"quotes">, right: Doc<"quotes">) => right.gewijzigdOp - left.gewijzigdOp)[0];
+}
+
+export function toSupplierOrderLine(line: Doc<"supplierOrderLines">): PortalSupplierOrderLine {
+  return {
+    id: String(line._id),
+    bestellingId: String(line.bestellingId),
+    productId: line.productId ? String(line.productId) : undefined,
+    quoteLineId: line.quoteLineId ? String(line.quoteLineId) : undefined,
+    omschrijving: line.omschrijving,
+    artikelnummer: line.artikelnummer,
+    leverancierCode: line.leverancierCode,
+    aantal: line.aantal,
+    eenheid: line.eenheid,
+    inkoopPrijsExBtw: line.inkoopPrijsExBtw,
+    inkoopPrijsBron: line.inkoopPrijsBron,
+    regelTotaalExBtw: line.regelTotaalExBtw,
+    status: line.status,
+    notities: line.notities,
+    sortOrder: line.sortOrder
+  };
+}
+
+export function toSupplierOrder(
+  tenantSlug: string,
+  order: Doc<"supplierOrders">,
+  extra: { leverancierNaam?: string; regelAantal: number; totaalInkoopExBtw: number }
+): PortalSupplierOrder {
+  return {
+    id: String(order._id),
+    tenantId: tenantSlug,
+    projectId: String(order.projectId),
+    quoteId: order.quoteId ? String(order.quoteId) : undefined,
+    leverancierId: order.leverancierId ? String(order.leverancierId) : undefined,
+    leverancierNaam: extra.leverancierNaam,
+    bestelnummer: order.bestelnummer,
+    status: order.status,
+    besteldOp: order.besteldOp,
+    verwachteLeverdatumOp: order.verwachteLeverdatumOp,
+    ontvangenOp: order.ontvangenOp,
+    notities: order.notities,
+    regelAantal: extra.regelAantal,
+    totaalInkoopExBtw: extra.totaalInkoopExBtw,
+    aangemaaktOp: order.aangemaaktOp,
+    gewijzigdOp: order.gewijzigdOp
+  };
 }
 
 export async function existingInvoiceForQuote(

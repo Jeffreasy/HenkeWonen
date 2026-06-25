@@ -1,4 +1,4 @@
-import { ClipboardList, Ruler } from "lucide-react";
+import { ClipboardList, Package, Ruler } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -34,6 +34,7 @@ import { PlanMeasurementModal, type TeamMember } from "./PlanMeasurementModal";
 import { ProjectRoomsPanel } from "./ProjectRoomsPanel";
 import { ProjectTasksPanel } from "./ProjectTasksPanel";
 import { ProjectTimelinePanel } from "./ProjectTimelinePanel";
+import SupplierOrdersPanel from "./SupplierOrdersPanel";
 import { InvoiceStatusBadge } from "../invoices/InvoiceStatusBadge";
 
 type ProjectDetailProps = {
@@ -681,6 +682,18 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
                   </section>
                 ) : null}
               </>
+            )
+          },
+          {
+            id: "bestellingen",
+            label: "Bestellingen",
+            icon: <Package size={15} aria-hidden="true" />,
+            content: (
+              <SupplierOrdersPanel
+                session={session}
+                projectId={project.id}
+                canEdit={canEditProject}
+              />
             )
           }
         ]}

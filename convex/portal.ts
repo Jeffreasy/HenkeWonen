@@ -294,6 +294,13 @@ export {
   createDossierAttachment,
   archiveDossierAttachment
 } from "./dossiers/attachments";
+export {
+  generateSupplierOrdersFromQuote,
+  listSupplierOrders,
+  supplierOrderDetail,
+  updateSupplierOrderStatus,
+  cancelSupplierOrder
+} from "./inkoop/core";
 export { listTeamMembers } from "./beheer/users";
 export {
   listProjects,

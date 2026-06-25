@@ -262,6 +262,53 @@ export type PortalSupplier = {
   gewijzigdOp: number;
 };
 
+export type SupplierOrderStatus =
+  | "draft"
+  | "ordered"
+  | "confirmed"
+  | "partially_received"
+  | "received"
+  | "cancelled";
+
+export type SupplierOrderLineStatus = "ordered" | "received" | "cancelled";
+
+export type PortalSupplierOrderLine = {
+  id: string;
+  bestellingId: string;
+  productId?: string;
+  quoteLineId?: string;
+  omschrijving: string;
+  artikelnummer?: string;
+  leverancierCode?: string;
+  aantal: number;
+  eenheid: string;
+  inkoopPrijsExBtw?: number;
+  inkoopPrijsBron?: "net_purchase" | "purchase" | "manual" | "none";
+  regelTotaalExBtw?: number;
+  status: SupplierOrderLineStatus;
+  notities?: string;
+  sortOrder: number;
+};
+
+export type PortalSupplierOrder = {
+  id: string;
+  tenantId: string;
+  projectId: string;
+  quoteId?: string;
+  leverancierId?: string;
+  leverancierNaam?: string;
+  bestelnummer?: string;
+  status: SupplierOrderStatus;
+  besteldOp?: number;
+  verwachteLeverdatumOp?: number;
+  ontvangenOp?: number;
+  notities?: string;
+  regelAantal: number;
+  totaalInkoopExBtw: number;
+  aangemaaktOp: number;
+  gewijzigdOp: number;
+};
+
 export type ProductPriceType =
   | "purchase"
   | "net_purchase"

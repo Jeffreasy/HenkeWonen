@@ -37,6 +37,7 @@ import type * as catalog_review from "../catalog/review.js";
 import type * as catalog_validation from "../catalog/validation.js";
 import type * as dossiers_attachments from "../dossiers/attachments.js";
 import type * as facturen_core from "../facturen/core.js";
+import type * as inkoop_core from "../inkoop/core.js";
 import type * as offertes_core from "../offertes/core.js";
 import type * as offertes_maintenance from "../offertes/maintenance.js";
 import type * as offertes_templates from "../offertes/templates.js";
@@ -85,6 +86,7 @@ declare const fullApi: ApiFromModules<{
   "catalog/validation": typeof catalog_validation;
   "dossiers/attachments": typeof dossiers_attachments;
   "facturen/core": typeof facturen_core;
+  "inkoop/core": typeof inkoop_core;
   "offertes/core": typeof offertes_core;
   "offertes/maintenance": typeof offertes_maintenance;
   "offertes/templates": typeof offertes_templates;

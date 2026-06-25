@@ -24,6 +24,7 @@
  * │ importProfiles          │ Herbruikbare import-configuraties per leverancier     │
  * │ catalogDataIssues       │ Datakwaliteitsissues voor catalogusreview             │
  * │ supplierOrders          │ Leveranciersbestellingen per project                  │
+ * │ supplierOrderLines      │ Bestelregels per leveranciersbestelling               │
  * │ serviceCostRules        │ Vaste werktarieven (per m², per meter, etc.)          │
  * │ projects                │ Klantprojecten met volledige statusmachine            │
  * │ projectRooms            │ Ruimtes per project voor inmeting en offerte          │
@@ -1100,6 +1101,7 @@ export default defineSchema({
   supplierOrders: defineTable({
     tenantId: v.id("tenants"),
     projectId: v.id("projects"),
+    quoteId: v.optional(v.id("quotes")),
     leverancierId: v.optional(v.id("suppliers")),
     bestelnummer: v.optional(v.string()),
     status: v.union(
@@ -1114,12 +1116,43 @@ export default defineSchema({
     verwachteLeverdatumOp: v.optional(v.number()),
     ontvangenOp: v.optional(v.number()),
     notities: v.optional(v.string()),
+    createdByExternalUserId: v.optional(v.string()),
     aangemaaktOp: v.number(),
     gewijzigdOp: v.number()
   })
     .index("by_project", ["tenantId", "projectId"])
     .index("by_supplier", ["tenantId", "leverancierId"])
     .index("by_status", ["tenantId", "status"]),
+
+  supplierOrderLines: defineTable({
+    tenantId: v.id("tenants"),
+    bestellingId: v.id("supplierOrders"),
+    productId: v.optional(v.id("products")),
+    quoteLineId: v.optional(v.id("quoteLines")),
+    projectRuimteId: v.optional(v.id("projectRooms")),
+    omschrijving: v.string(),
+    artikelnummer: v.optional(v.string()),
+    leverancierCode: v.optional(v.string()),
+    aantal: v.number(),
+    eenheid: v.string(),
+    inkoopPrijsExBtw: v.optional(v.number()),
+    inkoopPrijsBron: v.optional(
+      v.union(
+        v.literal("net_purchase"),
+        v.literal("purchase"),
+        v.literal("manual"),
+        v.literal("none")
+      )
+    ),
+    regelTotaalExBtw: v.optional(v.number()),
+    status: v.union(v.literal("ordered"), v.literal("received"), v.literal("cancelled")),
+    notities: v.optional(v.string()),
+    sortOrder: v.number(),
+    aangemaaktOp: v.number(),
+    gewijzigdOp: v.number()
+  })
+    .index("by_order", ["tenantId", "bestellingId"])
+    .index("by_quote_line", ["tenantId", "quoteLineId"]),
 
   invoices: defineTable({
     tenantId: v.id("tenants"),
