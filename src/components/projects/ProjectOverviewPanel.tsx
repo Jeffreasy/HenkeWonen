@@ -84,21 +84,17 @@ export function ProjectOverviewPanel({
       </dl>
 
       {canEdit ? (
+        // Twee gelijkwaardige paden voor een dossier: direct verkopen (offerte met
+        // catalogus) óf inmeten. Beide primair zodat "verkopen" net zo vindbaar is als
+        // inmeten; het inplannen van een inmeetbezoek is de secundaire variant.
         <div className="project-primary-actions">
           <a
-            className="ui-button ui-button-secondary ui-button-md"
+            className="ui-button ui-button-primary ui-button-md"
             href={`/portal/offertes?open=nieuw&project=${project.id}`}
           >
             <FileText size={17} aria-hidden="true" />
-            Offerte maken
+            Offerte / verkoop maken
           </a>
-          <Button
-            leftIcon={<CalendarClock size={17} aria-hidden="true" />}
-            onClick={onPlanMeasurement}
-            variant="secondary"
-          >
-            Inmeetbezoek inplannen
-          </Button>
           <Button
             isLoading={isStartingMeasurement}
             leftIcon={<Ruler size={17} aria-hidden="true" />}
@@ -106,6 +102,13 @@ export function ProjectOverviewPanel({
             variant="primary"
           >
             Inmeting starten
+          </Button>
+          <Button
+            leftIcon={<CalendarClock size={17} aria-hidden="true" />}
+            onClick={onPlanMeasurement}
+            variant="secondary"
+          >
+            Inmeetbezoek inplannen
           </Button>
         </div>
       ) : null}
