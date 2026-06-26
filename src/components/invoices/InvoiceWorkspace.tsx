@@ -5,7 +5,7 @@ import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatEuro } from "../../lib/money";
 import type { PortalInvoiceRow } from "../../lib/portalTypes";
 import { Alert } from "../ui/feedback/Alert";
-import { StatCard } from "../ui/data-display/StatCard";
+import { StatPills } from "../ui/data-display/StatPills";
 import { InvoicesTable, type StatusFilter } from "./InvoicesTable";
 
 type InvoiceWorkspaceProps = {
@@ -55,10 +55,7 @@ export default function InvoiceWorkspace({ session }: InvoiceWorkspaceProps) {
       .filter((inv) => inv.status === "sent" || inv.status === "partially_paid")
       .reduce((sum, inv) => sum + (inv.totaalInclBtw - inv.betaaldBedrag), 0);
     const overdueCount = invoices.filter(
-      (inv) =>
-        inv.status !== "paid" &&
-        inv.status !== "cancelled" &&
-        inv.vervaldatum < now
+      (inv) => inv.status !== "paid" && inv.status !== "cancelled" && inv.vervaldatum < now
     ).length;
     const paidThisYear = invoices
       .filter(
@@ -91,35 +88,17 @@ export default function InvoiceWorkspace({ session }: InvoiceWorkspaceProps) {
 
   return (
     <div className="grid">
-      {error ? (
-        <Alert variant="danger" title="Facturen niet geladen" description={error} />
-      ) : null}
+      {error ? <Alert variant="danger" title="Facturen niet geladen" description={error} /> : null}
 
-      <section className="grid four-column">
-        <StatCard
-          label="Openstaand"
-          value={formatEuro(stats.openAmount)}
-          description="Verzonden maar nog niet (volledig) betaald"
-          tone={stats.openAmount > 0 ? "warning" : "neutral"}
-        />
-        <StatCard
-          label="Te laat"
-          value={stats.overdueCount}
-          description="Vervaldatum verstreken, niet betaald"
-          tone={stats.overdueCount > 0 ? "danger" : "neutral"}
-        />
-        <StatCard
-          label="Betaald dit jaar"
-          value={formatEuro(stats.paidThisYear)}
-          description={`${new Date().getFullYear()} — volledig ontvangen`}
-          tone="success"
-        />
-        <StatCard
-          label="Totaal facturen"
-          value={stats.total}
-          description="Alle facturen in dit portaal"
-        />
-      </section>
+      <StatPills
+        ariaLabel="Factuur-overzicht"
+        items={[
+          { label: "Openstaand", value: formatEuro(stats.openAmount) },
+          { label: "Te laat", value: stats.overdueCount },
+          { label: "Betaald dit jaar", value: formatEuro(stats.paidThisYear) },
+          { label: "Totaal facturen", value: stats.total }
+        ]}
+      />
 
       <InvoicesTable
         invoices={filteredInvoices}

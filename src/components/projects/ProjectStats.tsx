@@ -1,4 +1,4 @@
-import { StatCard } from "../ui/data-display/StatCard";
+import { StatPills } from "../ui/data-display/StatPills";
 
 type ProjectStatsProps = {
   total: number;
@@ -8,10 +8,13 @@ type ProjectStatsProps = {
 
 export function ProjectStats({ total, activeCount, quotePhaseCount }: ProjectStatsProps) {
   return (
-    <section className="grid three-column">
-      <StatCard label="Projecten" value={total} tone="info" />
-      <StatCard label="Lopend" value={activeCount} tone="warning" />
-      <StatCard label="In offertefase" value={quotePhaseCount} />
-    </section>
+    <StatPills
+      ariaLabel="Project-overzicht"
+      items={[
+        { label: "Projecten", value: total },
+        { label: "Lopend", value: activeCount },
+        { label: "In offertefase", value: quotePhaseCount }
+      ]}
+    />
   );
 }

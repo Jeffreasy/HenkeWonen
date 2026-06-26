@@ -11,7 +11,7 @@ import { Alert } from "../ui/feedback/Alert";
 import { Button } from "../ui/forms/Button";
 import { FormModal } from "../ui/overlays/FormModal";
 import { SectionHeader } from "../ui/layout/SectionHeader";
-import { StatCard } from "../ui/data-display/StatCard";
+import { StatPills } from "../ui/data-display/StatPills";
 import CustomerForm, { type CustomerFormValues } from "./CustomerForm";
 import CustomerList from "./CustomerList";
 
@@ -25,7 +25,8 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
   const [error, setError] = useState<string | null>(null);
   // ?open=nieuw opent de modal direct (FAB-navigatie)
   const [isModalOpen, setIsModalOpen] = useState(
-    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("open") === "nieuw"
+    typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("open") === "nieuw"
   );
   const canCreateCustomers = canEditDossiers(session.role);
 
@@ -63,7 +64,11 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
     const client = createConvexHttpClient(session);
 
     if (!client) {
-      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      showToast({
+        title: "Verbinding mislukt",
+        description: "Kan de omgeving niet bereiken.",
+        tone: "error"
+      });
       return;
     }
 
@@ -110,23 +115,22 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
 
   return (
     <div className="grid">
-      {error ? (
-        <Alert variant="danger" title="Klanten niet geladen" description={error} />
-      ) : null}
+      {error ? <Alert variant="danger" title="Klanten niet geladen" description={error} /> : null}
 
-      <section className="grid three-column">
-        <StatCard label="Klanten" value={customers.length} tone="info" />
-        <StatCard
-          label="Nieuwe aanvragen"
-          value={customers.filter((customer) => customer.status === "lead").length}
-          tone="warning"
-        />
-        <StatCard
-          label="Actief"
-          value={customers.filter((customer) => customer.status === "active").length}
-          tone="success"
-        />
-      </section>
+      <StatPills
+        ariaLabel="Klant-overzicht"
+        items={[
+          { label: "Klanten", value: customers.length },
+          {
+            label: "Nieuwe aanvragen",
+            value: customers.filter((customer) => customer.status === "lead").length
+          },
+          {
+            label: "Actief",
+            value: customers.filter((customer) => customer.status === "active").length
+          }
+        ]}
+      />
 
       <section className="grid">
         <SectionHeader
