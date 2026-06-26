@@ -54,7 +54,7 @@ export function DashboardWorkOverview({ isLoading, workItems }: DashboardWorkOve
         </div>
       ) : workItems.length > 0 ? (
         <>
-          <div className="dashboard-work-list">
+          <div className="dashboard-work-list" id="werkoverzicht-lijst">
             {visibleItems.map((item) => (
               <a className="dashboard-work-item" href={item.href} key={item.id}>
                 <span className="dashboard-work-copy">
@@ -71,7 +71,13 @@ export function DashboardWorkOverview({ isLoading, workItems }: DashboardWorkOve
           </div>
           {workItems.length > VISIBLE_LIMIT ? (
             <div className="dashboard-work-toggle">
-              <Button variant="ghost" size="sm" onClick={() => setShowAll((current) => !current)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-expanded={showAll}
+                aria-controls="werkoverzicht-lijst"
+                onClick={() => setShowAll((current) => !current)}
+              >
                 {showAll ? "Toon minder" : `Toon alles (${workItems.length})`}
               </Button>
             </div>
