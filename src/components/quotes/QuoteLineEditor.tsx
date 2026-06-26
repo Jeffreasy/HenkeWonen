@@ -366,22 +366,20 @@ export default function QuoteLineEditor({
           </Button>
         </div>
       </div>
-      {!isFieldMode ? (
-        <details className="wallpaper-calculator-details">
-          <summary>Behangcalculator openen</summary>
-          <WallpaperCalculator
-            onUseResult={(result) => {
-              setLineType("product");
-              setTitle((current) => current || "Behang merk, kleur");
-              setDescription(
-                (current) => current || "Aantal rollen indicatief berekend met de behangcalculator."
-              );
-              setQuantity(String(result.rollsNeeded));
-              setUnit("roll");
-            }}
-          />
-        </details>
-      ) : null}
+      <details className="wallpaper-calculator-details">
+        <summary>Behangcalculator openen</summary>
+        <WallpaperCalculator
+          onUseResult={(result) => {
+            setLineType("product");
+            setTitle((current) => current || "Behang merk, kleur");
+            setDescription(
+              (current) => current || "Aantal rollen indicatief berekend met de behangcalculator."
+            );
+            setQuantity(String(result.rollsNeeded));
+            setUnit("roll");
+          }}
+        />
+      </details>
     </form>
   );
 }
