@@ -188,11 +188,11 @@
 }
 
 .dashboard-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .dashboard-focus-card {
-  min-height: 128px;
+  min-height: 104px;
 }
 
 .dashboard-focus-card-info {
@@ -201,11 +201,6 @@
 
 .dashboard-focus-card-success {
   border-color: rgba(22, 101, 52, 0.24);
-}
-
-.dashboard-focus-card-field {
-  border-color: var(--color-border);
-  background: var(--color-success-bg);
 }
 
 .dashboard-focus-card-warning {
@@ -244,7 +239,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--surface-raised);
-  padding: var(--space-3);
+  padding: var(--space-2) var(--space-3);
 }
 
 .dashboard-work-item {
@@ -261,7 +256,7 @@
 .dashboard-work-copy,
 .dashboard-work-meta {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 

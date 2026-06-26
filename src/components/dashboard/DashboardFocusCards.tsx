@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, ClipboardCheck, FileText, Ruler } from "lucide-react";
+import { BriefcaseBusiness, ClipboardCheck, FileText } from "lucide-react";
 
 type DashboardFocusCardsProps = {
   isLoading: boolean;
@@ -41,14 +41,6 @@ export function DashboardFocusCards({
       href: "/portal/dossiers",
       icon: BriefcaseBusiness,
       tone: "success"
-    },
-    {
-      label: "Buitendienst",
-      value: plannedWorkCount,
-      description: "Klantbezoeken, inmeten en conceptoffertes",
-      href: "/portal/buitendienst/vandaag",
-      icon: Ruler,
-      tone: "field"
     }
   ] as const;
 
