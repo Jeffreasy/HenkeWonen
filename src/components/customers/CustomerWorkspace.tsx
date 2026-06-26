@@ -95,16 +95,24 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
           tenantSlug: session.tenantId,
           actor: mutationActorFromSession(session),
           klantId: String(customerId),
-          titel: `${customer.displayName} - nieuw dossier`,
+          titel:
+            customer.intent === "verkoop"
+              ? `${customer.displayName} - directe verkoop`
+              : `${customer.displayName} - nieuw dossier`,
           createdByExternalUserId: session.userId
         });
-        // Snelroute "maten bekend": land op het dossier met de auto-start-vlag zodat de
-        // inmeting meteen begint en de medewerker direct ruimtes/maten kan invoeren.
-        const suffix =
-          customer.intent === "snelroute"
-            ? `${measurementAutostartQuery()}#project-measurement`
-            : "";
-        window.location.assign(`/portal/projecten/${String(projectId)}${suffix}`);
+        if (customer.intent === "verkoop") {
+          // Directe verkoop: meteen naar een nieuwe offerte met de catalogus-picker.
+          window.location.assign(`/portal/offertes?open=nieuw&project=${String(projectId)}`);
+        } else {
+          // Snelroute "maten bekend": land op het dossier met de auto-start-vlag zodat de
+          // inmeting meteen begint en de medewerker direct ruimtes/maten kan invoeren.
+          const suffix =
+            customer.intent === "snelroute"
+              ? `${measurementAutostartQuery()}#project-measurement`
+              : "";
+          window.location.assign(`/portal/projecten/${String(projectId)}${suffix}`);
+        }
       } else {
         window.location.assign(`/portal/klanten/${String(customerId)}`);
       }
