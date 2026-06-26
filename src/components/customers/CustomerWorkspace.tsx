@@ -99,6 +99,7 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
             customer.intent === "verkoop"
               ? `${customer.displayName} - directe verkoop`
               : `${customer.displayName} - nieuw dossier`,
+          directeVerkoop: customer.intent === "verkoop",
           createdByExternalUserId: session.userId
         });
         if (customer.intent === "verkoop") {
