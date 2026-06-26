@@ -178,3 +178,41 @@ export function computeProjectNextStep(input: ProjectNextStepInput): ProjectNext
       };
   }
 }
+
+/**
+ * Dashboard-werklijst-meta per projectstatus: de "opvolgen"-framing van het
+ * dashboard (een lijst van dossiers die aandacht nodig hebben) — bewust anders dan
+ * de imperatieve {@link computeProjectNextStep}-actie op de cockpit, maar híer
+ * gecentraliseerd zodat alle status-afhankelijke copy uit één bestand komt en niet
+ * meer per scherm uiteen kan lopen.
+ *
+ * Geeft `null` voor statussen die geen werklijst-item zijn (afgerond/gestopt/
+ * gefactureerd/betaald). `rank` = sorteervolgorde (lager = urgenter).
+ */
+export type ProjectWorklistMeta = {
+  title: string;
+  badge: string;
+  tone: "warning" | "info" | "success";
+  rank: number;
+};
+
+export function projectWorklistItem(status: string): ProjectWorklistMeta | null {
+  switch (status) {
+    case "lead":
+      return { title: "Nieuwe aanvraag opvolgen", badge: "Aanvraag", tone: "warning", rank: 1 };
+    case "quote_draft":
+      return { title: "Offerte afmaken", badge: "Concept", tone: "warning", rank: 1 };
+    case "quote_sent":
+      return { title: "Offerte opvolgen", badge: "Verzonden", tone: "info", rank: 2 };
+    case "measurement_planned":
+      return { title: "Inmeting voorbereiden", badge: "Inmeting", tone: "info", rank: 2 };
+    case "quote_accepted":
+      return { title: "Akkoord opvolgen", badge: "Opvolging", tone: "info", rank: 2 };
+    case "ordering":
+    case "execution_planned":
+    case "in_progress":
+      return { title: "Uitvoering opvolgen", badge: "Uitvoering", tone: "success", rank: 2 };
+    default:
+      return null;
+  }
+}
