@@ -207,7 +207,7 @@ export function projectWorklistItem(status: string): ProjectWorklistMeta | null 
     case "measurement_planned":
       return { title: "Inmeting voorbereiden", badge: "Inmeting", tone: "info", rank: 2 };
     case "quote_accepted":
-      return { title: "Akkoord opvolgen", badge: "Opvolging", tone: "info", rank: 2 };
+      return { title: "Akkoord opvolgen", badge: "Akkoord", tone: "info", rank: 2 };
     case "ordering":
     case "execution_planned":
     case "in_progress":

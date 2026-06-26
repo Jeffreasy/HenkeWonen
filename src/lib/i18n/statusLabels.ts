@@ -64,7 +64,7 @@ const genericStatusLabels: Record<string, string> = {
 };
 
 const projectStatusLabels: Record<ProjectStatus, string> = {
-  lead: "Lead",
+  lead: "Aanvraag",
   quote_draft: "Offerteconcept",
   quote_sent: "Offerte verzonden",
   quote_accepted: "Offerte akkoord",
@@ -299,7 +299,9 @@ export function formatIssueStatus(status: string): string {
 }
 
 export function formatReviewDecision(decision: string): string {
-  return reviewDecisionLabels[decision] ?? recommendationLabels[decision] ?? readableFallback(decision);
+  return (
+    reviewDecisionLabels[decision] ?? recommendationLabels[decision] ?? readableFallback(decision)
+  );
 }
 
 export function formatRowKind(rowKind: string): string {
@@ -341,7 +343,9 @@ export function formatMeasurementCalculationType(calculationType: string): strin
 }
 
 export function formatQuotePreparationStatus(status: string): string {
-  return quotePreparationStatusLabels[status as QuotePreparationStatus] ?? formatStatusLabel(status);
+  return (
+    quotePreparationStatusLabels[status as QuotePreparationStatus] ?? formatStatusLabel(status)
+  );
 }
 
 const invoiceStatusLabels: Record<InvoiceStatus, string> = {
@@ -356,4 +360,3 @@ const invoiceStatusLabels: Record<InvoiceStatus, string> = {
 export function formatInvoiceStatus(status: string): string {
   return invoiceStatusLabels[status as InvoiceStatus] ?? formatStatusLabel(status);
 }
-
