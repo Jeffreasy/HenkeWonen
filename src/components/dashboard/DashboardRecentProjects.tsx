@@ -4,7 +4,7 @@ import type { PortalProject } from "../../lib/portalTypes";
 import { Badge } from "../ui/data-display/Badge";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { Skeleton } from "../ui/feedback/Skeleton";
-import { CollapsiblePanel } from "./CollapsiblePanel";
+import { CollapsiblePanel } from "../ui/layout/CollapsiblePanel";
 
 type DashboardRecentProjectsProps = {
   isLoading: boolean;

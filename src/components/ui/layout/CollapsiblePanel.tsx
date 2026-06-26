@@ -15,8 +15,9 @@ type CollapsiblePanelProps = {
 };
 
 /**
- * Inklapbaar dashboard-paneel (details/summary). Naslag-secties staan standaard
- * dicht zodat het werkoverzicht in één oogopslag past; de kop blijft de toggle.
+ * Inklapbaar paneel (details/summary). Naslag-/invoer-secties staan standaard dicht
+ * zodat een scherm in één oogopslag past; de kop blijft de toggle. Portaal-breed
+ * herbruikbaar (dashboard, offerte-bouwer, …).
  */
 export function CollapsiblePanel({
   eyebrow,
@@ -29,19 +30,19 @@ export function CollapsiblePanel({
 }: CollapsiblePanelProps) {
   return (
     <details
-      className="panel dashboard-collapsible"
+      className="panel collapsible-panel"
       id={id}
       {...(defaultOpen ? { open: true } : {})}
     >
-      <summary className="dashboard-collapsible-summary">
-        <div className="dashboard-collapsible-titles">
+      <summary className="collapsible-panel-summary">
+        <div className="collapsible-panel-titles">
           {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
           <h2>{title}</h2>
           {description ? <p className="muted">{description}</p> : null}
         </div>
-        <ChevronDown className="dashboard-collapsible-chevron" size={18} aria-hidden="true" />
+        <ChevronDown className="collapsible-panel-chevron" size={18} aria-hidden="true" />
       </summary>
-      {action ? <div className="dashboard-collapsible-action">{action}</div> : null}
+      {action ? <div className="collapsible-panel-action">{action}</div> : null}
       {children}
     </details>
   );

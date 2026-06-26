@@ -3,7 +3,7 @@ import { Badge } from "../ui/data-display/Badge";
 import { Alert } from "../ui/feedback/Alert";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { Skeleton } from "../ui/feedback/Skeleton";
-import { CollapsiblePanel } from "./CollapsiblePanel";
+import { CollapsiblePanel } from "../ui/layout/CollapsiblePanel";
 
 export type DashboardAgendaDag = {
   datumMs: number;

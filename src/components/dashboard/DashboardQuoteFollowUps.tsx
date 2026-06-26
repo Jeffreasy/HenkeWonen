@@ -5,7 +5,7 @@ import type { QuoteStatus } from "../../lib/portalTypes";
 import { Badge } from "../ui/data-display/Badge";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { Skeleton } from "../ui/feedback/Skeleton";
-import { CollapsiblePanel } from "./CollapsiblePanel";
+import { CollapsiblePanel } from "../ui/layout/CollapsiblePanel";
 
 export type DashboardQuoteFollowUp = {
   id: string;

@@ -1,4 +1,15 @@
-import { Ban, CheckCircle2, Eye, FileText, Pencil, Printer, Save, Send, Trash2, XCircle } from "lucide-react";
+import {
+  Ban,
+  CheckCircle2,
+  Eye,
+  FileText,
+  Pencil,
+  Printer,
+  Save,
+  Send,
+  Trash2,
+  XCircle
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
 import type {
@@ -10,12 +21,19 @@ import type {
   QuoteTemplate
 } from "../../lib/portalTypes";
 import { formatDate } from "../../lib/dates";
-import { formatMeasurementProductGroup, formatQuoteStatus, formatUnit } from "../../lib/i18n/statusLabels";
+import {
+  formatMeasurementProductGroup,
+  formatQuoteStatus,
+  formatUnit
+} from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
 import type { MeasurementProductGroup } from "../../lib/portalTypes";
 import { buildQuoteDocumentModel } from "../../lib/quotes/quoteDocumentModel";
 import { PRODUCT_GROUP_OPTIONS } from "../projects/measurement/measurementTypes";
-import { polishQuoteTemplateLines, polishQuoteTemplateText } from "../../lib/quotes/quoteTemplateCopy";
+import {
+  polishQuoteTemplateLines,
+  polishQuoteTemplateText
+} from "../../lib/quotes/quoteTemplateCopy";
 import { Button } from "../ui/forms/Button";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
@@ -24,6 +42,7 @@ import { Field } from "../ui/forms/Field";
 import { IconButton } from "../ui/forms/IconButton";
 import { FormModal } from "../ui/overlays/FormModal";
 import { SectionHeader } from "../ui/layout/SectionHeader";
+import { CollapsiblePanel } from "../ui/layout/CollapsiblePanel";
 import { StatusBadge } from "../ui/data-display/StatusBadge";
 import { SummaryList } from "../ui/data-display/SummaryList";
 import { Textarea } from "../ui/forms/Textarea";
@@ -91,7 +110,8 @@ const quoteStatusActions: Array<{
   {
     status: "cancelled",
     label: "Annuleren",
-    description: "De offerte wordt geannuleerd. Dit is bedoeld voor vervallen concepten of ingetrokken offertes.",
+    description:
+      "De offerte wordt geannuleerd. Dit is bedoeld voor vervallen concepten of ingetrokken offertes.",
     variant: "secondary",
     icon: Ban
   }
@@ -138,7 +158,9 @@ export default function QuoteBuilder({
         : null,
     [customer, defaultTemplate, project, quote]
   );
-  const [termsText, setTermsText] = useState(polishQuoteTemplateLines(quote.voorwaarden ?? []).join("\n"));
+  const [termsText, setTermsText] = useState(
+    polishQuoteTemplateLines(quote.voorwaarden ?? []).join("\n")
+  );
   const [paymentTermsText, setPaymentTermsText] = useState(
     polishQuoteTemplateLines(quote.betalingsvoorwaarden ?? []).join("\n")
   );
@@ -172,8 +194,7 @@ export default function QuoteBuilder({
   const inferredProductGroup = useMemo((): MeasurementProductGroup | null => {
     if (!isFieldMode) return null;
     const measurementLines = quote.lines.filter(
-      (line) =>
-        (line.metadata as Record<string, unknown> | undefined)?.source === "measurement"
+      (line) => (line.metadata as Record<string, unknown> | undefined)?.source === "measurement"
     );
     if (measurementLines.length === 0) return null;
     const counts = new Map<string, number>();
@@ -184,16 +205,19 @@ export default function QuoteBuilder({
     let dominant: string | null = null;
     let highest = 0;
     for (const [group, count] of counts) {
-      if (count > highest) { highest = count; dominant = group; }
+      if (count > highest) {
+        highest = count;
+        dominant = group;
+      }
     }
     return dominant as MeasurementProductGroup | null;
   }, [isFieldMode, quote.lines]);
 
-  const [productGroupOverride, setProductGroupOverride] = useState<MeasurementProductGroup | "all" | null>(null);
+  const [productGroupOverride, setProductGroupOverride] = useState<
+    MeasurementProductGroup | "all" | null
+  >(null);
   const activeProductGroup: MeasurementProductGroup | null =
-    productGroupOverride === "all"
-      ? null
-      : (productGroupOverride ?? inferredProductGroup);
+    productGroupOverride === "all" ? null : (productGroupOverride ?? inferredProductGroup);
   const roomById = useMemo(
     () => new Map((project?.rooms ?? []).map((room) => [room.id, room.naam])),
     [project?.rooms]
@@ -201,7 +225,8 @@ export default function QuoteBuilder({
   const customerVersionReviewCount = useMemo(
     () =>
       documentModel?.sections.reduce(
-        (count, section) => count + section.lines.filter((line) => line.requiresManualReview).length,
+        (count, section) =>
+          count + section.lines.filter((line) => line.requiresManualReview).length,
         0
       ) ?? 0,
     [documentModel]
@@ -371,7 +396,7 @@ export default function QuoteBuilder({
       header: "Ruimte",
       width: "130px",
       hideOnMobile: true,
-      render: (line) => (line.projectRuimteId ? roomById.get(line.projectRuimteId) ?? "-" : "-")
+      render: (line) => (line.projectRuimteId ? (roomById.get(line.projectRuimteId) ?? "-") : "-")
     },
     {
       key: "quantity",
@@ -418,7 +443,7 @@ export default function QuoteBuilder({
       render: renderLineActionButtons
     }
   ];
-  
+
   const quoteTotals = quote.lines.reduce(
     (current, line) => ({
       subtotalExVat: current.subtotalExVat + line.regelTotaalExBtw,
@@ -435,7 +460,8 @@ export default function QuoteBuilder({
   const lineEditor = (
     <QuoteLineEditor
       mode={mode}
-      surface={isFieldMode ? "plain" : "panel"}
+      surface="plain"
+      hideHeader={!isFieldMode}
       sortOrder={quote.lines.length + 1}
       templateLines={defaultTemplate?.standaardRegels ?? []}
       session={session}
@@ -470,7 +496,11 @@ export default function QuoteBuilder({
 
   const quoteLineCards =
     quote.lines.length > 0 ? (
-      <div className="quote-line-list" role="list" aria-label={isFieldMode ? fieldLineLabel : "Offerteposten"}>
+      <div
+        className="quote-line-list"
+        role="list"
+        aria-label={isFieldMode ? fieldLineLabel : "Offerteposten"}
+      >
         {quote.lines.map((line) => (
           <article className="quote-line-card" key={line.id} role="listitem">
             <div className="quote-line-card-copy">
@@ -483,7 +513,9 @@ export default function QuoteBuilder({
             <div className="quote-line-card-values" aria-label={`Bedragen voor ${line.titel}`}>
               <div>
                 <span>Ruimte</span>
-                <strong>{line.projectRuimteId ? roomById.get(line.projectRuimteId) ?? "-" : "-"}</strong>
+                <strong>
+                  {line.projectRuimteId ? (roomById.get(line.projectRuimteId) ?? "-") : "-"}
+                </strong>
               </div>
               <div>
                 <span>Aantal</span>
@@ -527,7 +559,7 @@ export default function QuoteBuilder({
         description={
           isFieldMode
             ? "Controleer of de meetregels en extra posten kloppen voor de klantversie."
-          : "Producten, werkzaamheden, materialen en tekst in verkoopvolgorde."
+            : "Producten, werkzaamheden, materialen en tekst in verkoopvolgorde."
         }
       />
       {isFieldMode ? (
@@ -550,7 +582,9 @@ export default function QuoteBuilder({
               </div>
               <div className="mobile-card-meta">
                 <span>
-                  {line.projectRuimteId ? roomById.get(line.projectRuimteId) ?? "Geen ruimte" : "Geen ruimte"}
+                  {line.projectRuimteId
+                    ? (roomById.get(line.projectRuimteId) ?? "Geen ruimte")
+                    : "Geen ruimte"}
                 </span>
                 <span>
                   {line.aantal} {formatUnit(line.eenheid)}
@@ -622,7 +656,12 @@ export default function QuoteBuilder({
           />
         </Field>
         <div className="quote-terms-action">
-          <Button isLoading={isSavingTerms} onClick={() => void saveTerms()} variant="primary" leftIcon={<Save size={16} aria-hidden="true" />}>
+          <Button
+            isLoading={isSavingTerms}
+            onClick={() => void saveTerms()}
+            variant="primary"
+            leftIcon={<Save size={16} aria-hidden="true" />}
+          >
             Voorwaarden opslaan
           </Button>
         </div>
@@ -639,7 +678,8 @@ export default function QuoteBuilder({
             {polishQuoteTemplateText(term)}
           </div>
         ))}
-        {(quote.voorwaarden ?? []).length === 0 && (quote.betalingsvoorwaarden ?? []).length === 0 ? (
+        {(quote.voorwaarden ?? []).length === 0 &&
+        (quote.betalingsvoorwaarden ?? []).length === 0 ? (
           <EmptyState
             title="Geen voorwaarden gekoppeld"
             description="Voorwaarden verschijnen hier zodra ze aan de offerte zijn gekoppeld."
@@ -649,14 +689,12 @@ export default function QuoteBuilder({
     );
 
   const termsPanel = (
-    <section className="panel">
-      <SectionHeader
-        compact
-        title="Voorwaarden"
-        description="Voorwaarden en factureringsregels die bij deze offerte horen en per offerte overschrijfbaar zijn."
-      />
+    <CollapsiblePanel
+      title="Voorwaarden"
+      description="Voorwaarden en factureringsregels, per offerte overschrijfbaar."
+    >
       {termsContent}
-    </section>
+    </CollapsiblePanel>
   );
 
   const textsContent =
@@ -710,14 +748,12 @@ export default function QuoteBuilder({
     );
 
   const textsPanel = (
-    <section className="panel">
-      <SectionHeader
-        compact
-        title="Offerteteksten"
-        description="Inleiding en afsluiting die bovenaan en onderaan de klantversie verschijnen."
-      />
+    <CollapsiblePanel
+      title="Offerteteksten"
+      description="Inleiding en afsluiting voor de klantversie."
+    >
       {textsContent}
-    </section>
+    </CollapsiblePanel>
   );
 
   const customerVersionPreview = documentModel ? (
@@ -730,24 +766,22 @@ export default function QuoteBuilder({
   );
 
   const customerVersionPanel = (
-    <section className="panel">
-      <SectionHeader
-        compact
-        title="Klantversie"
-        description="Controleer hoe de offerte eruitziet voordat je deze deelt of print."
-        actions={
-          documentModel ? (
-            <Button
-              leftIcon={<Eye size={16} aria-hidden="true" />}
-              onClick={() => setIsCustomerVersionModalOpen(true)}
-              size="sm"
-              variant="primary"
-            >
-              Klantversie openen
-            </Button>
-          ) : null
-        }
-      />
+    <CollapsiblePanel
+      title="Klantversie"
+      description="Controleer hoe de offerte eruitziet voordat je deze deelt of print."
+      action={
+        documentModel ? (
+          <Button
+            leftIcon={<Eye size={16} aria-hidden="true" />}
+            onClick={() => setIsCustomerVersionModalOpen(true)}
+            size="sm"
+            variant="primary"
+          >
+            Klantversie openen
+          </Button>
+        ) : null
+      }
+    >
       {documentModel ? (
         <SummaryList
           items={[
@@ -766,7 +800,7 @@ export default function QuoteBuilder({
       ) : (
         customerVersionPreview
       )}
-    </section>
+    </CollapsiblePanel>
   );
 
   const pendingStatusAction = quoteStatusActions.find((action) => action.status === pendingStatus);
@@ -891,9 +925,7 @@ export default function QuoteBuilder({
             ]}
           />
           {canEdit && onUpdateStatus ? (
-            <div className="field-quote-status-actions">
-              {statusActions}
-            </div>
+            <div className="field-quote-status-actions">{statusActions}</div>
           ) : null}
         </section>
 
@@ -996,24 +1028,22 @@ export default function QuoteBuilder({
       </section>
       <QuoteTotals lines={quote.lines} />
 
-      {canEditDraftLines ? (
-        <div className="grid quote-composer-panel">
-          {isFieldMode ? (
-            <>
-              {measurementPicker}
-              {lineEditor}
-            </>
-          ) : (
-            <>
-              {lineEditor}
-              {measurementPicker}
-            </>
-          )}
-        </div>
-      ) : null}
-
       <div className="quote-full-width-panel">{quoteLinesPanel}</div>
       {lineEditPanel ? <div className="quote-full-width-panel">{lineEditPanel}</div> : null}
+
+      {canEditDraftLines ? (
+        <CollapsiblePanel
+          eyebrow="Toevoegen"
+          title="Offertepost toevoegen"
+          description="Catalogusproduct, handmatige post of inmeting overnemen."
+        >
+          <div className="grid quote-composer-panel">
+            {lineEditor}
+            {measurementPicker}
+          </div>
+        </CollapsiblePanel>
+      ) : null}
+
       <div className="quote-full-width-panel">{textsPanel}</div>
       <div className="quote-full-width-panel">{termsPanel}</div>
       <div className="quote-customer-version-panel">{customerVersionPanel}</div>

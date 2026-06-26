@@ -3,7 +3,13 @@ import { useEffect, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
 import type { SubmitEventLike } from "../../lib/events";
 import { formatLineType } from "../../lib/i18n/statusLabels";
-import type { MeasurementProductGroup, PortalProduct, PortalRoom, QuoteLineType, QuoteTemplateLine } from "../../lib/portalTypes";
+import type {
+  MeasurementProductGroup,
+  PortalProduct,
+  PortalRoom,
+  QuoteLineType,
+  QuoteTemplateLine
+} from "../../lib/portalTypes";
 import { polishQuoteTemplateText } from "../../lib/quotes/quoteTemplateCopy";
 import CatalogProductPicker from "../catalog/CatalogProductPicker";
 import { Alert } from "../ui/feedback/Alert";
@@ -29,6 +35,8 @@ type QuoteLineEditorProps = {
   onAdd: (line: QuoteLineFormValues) => Promise<string | void> | string | void;
   mode?: "full" | "field";
   surface?: "panel" | "plain";
+  /** Verberg de eigen kop (als een omhullend paneel de titel al levert). */
+  hideHeader?: boolean;
   /** Hint vanuit de meetcontext — filtert de catalogus op bijbehorende categorieën. */
   productGroupHint?: MeasurementProductGroup | null;
 };
@@ -41,6 +49,7 @@ export default function QuoteLineEditor({
   onAdd,
   mode = "full",
   surface = "panel",
+  hideHeader = false,
   productGroupHint = null
 }: QuoteLineEditorProps) {
   const isFieldMode = mode === "field";
@@ -78,15 +87,12 @@ export default function QuoteLineEditor({
     setUnit(product.eenheid);
     setUnitPriceExVat(String(product.prijsExBtw));
     setVatRate(String(product.btwTarief));
-    setDescription((current) =>
-      current ||
-      [
-        product.displaySupplierName ?? product.supplier,
-        product.category,
-        product.kleurnaam
-      ]
-        .filter(Boolean)
-        .join(" - ")
+    setDescription(
+      (current) =>
+        current ||
+        [product.displaySupplierName ?? product.supplier, product.category, product.kleurnaam]
+          .filter(Boolean)
+          .join(" - ")
     );
   }
 
@@ -107,7 +113,9 @@ export default function QuoteLineEditor({
       setSelectedProduct(null);
     }
     setTitle(polishQuoteTemplateText(templateLine.titel));
-    setDescription(templateLine.omschrijving ? polishQuoteTemplateText(templateLine.omschrijving) : "");
+    setDescription(
+      templateLine.omschrijving ? polishQuoteTemplateText(templateLine.omschrijving) : ""
+    );
     setQuantity(String(templateLine.standaardAantal ?? 1));
     setUnit(templateLine.eenheid);
     setUnitPriceExVat("");
@@ -190,16 +198,18 @@ export default function QuoteLineEditor({
 
   return (
     <form className={surface === "panel" ? "panel form-grid" : "form-grid"} onSubmit={submit}>
-      <SectionHeader
-        compact
-        title={isFieldMode ? "Extra offertepost toevoegen" : "Offertepost toevoegen"}
-        description={
-          isFieldMode
-            ? "Gebruik dit voor extra posten die niet uit de inmeting komen."
-            : "Kies wat er op de offerte komt: product, werkzaamheid, materiaal, korting of tekst."
-        }
-        actions={<LineTypeBadge lineType={lineType} />}
-      />
+      {hideHeader ? null : (
+        <SectionHeader
+          compact
+          title={isFieldMode ? "Extra offertepost toevoegen" : "Offertepost toevoegen"}
+          description={
+            isFieldMode
+              ? "Gebruik dit voor extra posten die niet uit de inmeting komen."
+              : "Kies wat er op de offerte komt: product, werkzaamheid, materiaal, korting of tekst."
+          }
+          actions={<LineTypeBadge lineType={lineType} />}
+        />
+      )}
       {templateLines.length > 0 ? (
         <Field
           htmlFor="template-line"
@@ -216,7 +226,10 @@ export default function QuoteLineEditor({
               .slice()
               .sort((left, right) => left.sortOrder - right.sortOrder)
               .map((line) => (
-                <option value={`${line.sortOrder}-${line.titel}`} key={`${line.sortOrder}-${line.titel}`}>
+                <option
+                  value={`${line.sortOrder}-${line.titel}`}
+                  key={`${line.sortOrder}-${line.titel}`}
+                >
                   {line.sortOrder}. {polishQuoteTemplateText(line.titel)}
                 </option>
               ))}
@@ -272,7 +285,7 @@ export default function QuoteLineEditor({
           <SectionHeader
             compact
             title="Catalogusproduct"
-            description="Pilotkeuze uit zichtbare catalogusproducten; PVC Click blijft hier verborgen."
+            description="Kies een product uit de catalogus; prijs, eenheid en btw worden overgenomen."
           />
           <CatalogProductPicker
             session={session}
@@ -360,8 +373,8 @@ export default function QuoteLineEditor({
             onUseResult={(result) => {
               setLineType("product");
               setTitle((current) => current || "Behang merk, kleur");
-              setDescription((current) =>
-                current || "Aantal rollen indicatief berekend met de behangcalculator."
+              setDescription(
+                (current) => current || "Aantal rollen indicatief berekend met de behangcalculator."
               );
               setQuantity(String(result.rollsNeeded));
               setUnit("roll");

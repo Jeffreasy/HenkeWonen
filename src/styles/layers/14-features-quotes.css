@@ -221,7 +221,7 @@
 }
 
 .quote-template-line-meta {
-  color: var(--text-subtle);
+  color: var(--subtle);
   display: block;
   margin-top: var(--space-1);
 }
@@ -446,7 +446,7 @@
 }
 
 .quote-document-meta-grid dt {
-  color: var(--text-subtle);
+  color: var(--subtle);
   font-size: var(--text-sm);
   font-weight: 700;
 }
@@ -504,7 +504,7 @@
 
 .quote-document-table th {
   background: var(--surface-muted);
-  color: var(--text-subtle);
+  color: var(--subtle);
   font-size: var(--text-xs);
   font-weight: 800;
   text-transform: uppercase;
