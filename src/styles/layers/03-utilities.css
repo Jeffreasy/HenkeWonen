@@ -224,7 +224,7 @@ a.stat-pill:hover,
 }
 
 /* Inklapbare naslag-secties (details/summary). */
-.dashboard-collapsible-summary {
+.collapsible-panel-summary {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -233,36 +233,36 @@ a.stat-pill:hover,
   list-style: none;
 }
 
-.dashboard-collapsible-summary::-webkit-details-marker {
+.collapsible-panel-summary::-webkit-details-marker {
   display: none;
 }
 
-.dashboard-collapsible-titles {
+.collapsible-panel-titles {
   min-width: 0;
 }
 
-.dashboard-collapsible-titles h2 {
+.collapsible-panel-titles h2 {
   margin: 0;
   color: var(--ink);
   font-size: var(--text-lg);
   line-height: var(--line-tight);
 }
 
-.dashboard-collapsible-chevron {
+.collapsible-panel-chevron {
   flex-shrink: 0;
   color: var(--muted);
   transition: transform 0.15s ease;
 }
 
-.dashboard-collapsible[open] .dashboard-collapsible-chevron {
+.collapsible-panel[open] .collapsible-panel-chevron {
   transform: rotate(180deg);
 }
 
-.dashboard-collapsible-action {
+.collapsible-panel-action {
   margin-top: var(--space-3);
 }
 
-.dashboard-collapsible[open] .dashboard-collapsible-summary {
+.collapsible-panel[open] .collapsible-panel-summary {
   margin-bottom: var(--space-3);
 }
 
