@@ -301,6 +301,11 @@
     flex: 1 1 140px;
   }
 
+  /* Contact-icoon-knoppen blijven compact i.p.v. meegroeien. */
+  .field-card-actions .field-card-icon-action {
+    flex: 0 0 auto;
+  }
+
   .field-detail-list div {
     grid-template-columns: 1fr;
     gap: var(--space-1);
