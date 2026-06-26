@@ -48,8 +48,9 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
   const [error, setError] = useState<string | null>(null);
   const [editingCustomer, setEditingCustomer] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  const [pendingCustomerStatus, setPendingCustomerStatus] =
-    useState<PortalCustomer["status"] | null>(null);
+  const [pendingCustomerStatus, setPendingCustomerStatus] = useState<
+    PortalCustomer["status"] | null
+  >(null);
   const customerEditFormRef = useRef<HTMLFormElement>(null);
   const canAddContact = canEditDossiers(session.role);
 
@@ -94,7 +95,11 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     const client = createConvexHttpClient(session);
 
     if (!client) {
-      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      showToast({
+        title: "Verbinding mislukt",
+        description: "Kan de omgeving niet bereiken.",
+        tone: "error"
+      });
       return;
     }
 
@@ -130,7 +135,11 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     const client = createConvexHttpClient(session);
 
     if (!client) {
-      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      showToast({
+        title: "Verbinding mislukt",
+        description: "Kan de omgeving niet bereiken.",
+        tone: "error"
+      });
       return;
     }
 
@@ -165,7 +174,11 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     const client = createConvexHttpClient(session);
 
     if (!client) {
-      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      showToast({
+        title: "Verbinding mislukt",
+        description: "Kan de omgeving niet bereiken.",
+        tone: "error"
+      });
       return;
     }
 
@@ -194,7 +207,11 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     const client = createConvexHttpClient(session);
 
     if (!client) {
-      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      showToast({
+        title: "Verbinding mislukt",
+        description: "Kan de omgeving niet bereiken.",
+        tone: "error"
+      });
       return;
     }
 
@@ -247,7 +264,11 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     const client = createConvexHttpClient(session);
 
     if (!client) {
-      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      showToast({
+        title: "Verbinding mislukt",
+        description: "Kan de omgeving niet bereiken.",
+        tone: "error"
+      });
       return;
     }
 
@@ -269,7 +290,11 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     const client = createConvexHttpClient(session);
 
     if (!client) {
-      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      showToast({
+        title: "Verbinding mislukt",
+        description: "Kan de omgeving niet bereiken.",
+        tone: "error"
+      });
       return;
     }
 
@@ -284,7 +309,14 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       });
 
       showToast({ title: "Aanvraag gestart", description: scope.label, tone: "success" });
-      window.location.assign(`/portal/projecten/${String(projectId)}#project-measurement`);
+      const newProjectId = String(projectId);
+      // Directe verkoop springt naar een nieuwe offerte met de catalogus-picker;
+      // de overige werksoorten gaan naar de inmeting.
+      window.location.assign(
+        scope.target === "quote"
+          ? `/portal/offertes?open=nieuw&project=${newProjectId}`
+          : `/portal/projecten/${newProjectId}#project-measurement`
+      );
     } catch (startError) {
       console.error(startError);
       showToast({ title: "Aanvraag kon niet worden gestart", tone: "error" });
@@ -300,7 +332,12 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
   }
 
   if (!detail) {
-    return <EmptyState title="Klant niet gevonden" description="Controleer de link of ga terug naar klanten." />;
+    return (
+      <EmptyState
+        title="Klant niet gevonden"
+        description="Controleer de link of ga terug naar klanten."
+      />
+    );
   }
 
   const { customer, projects, contacts, attachments } = detail;
@@ -322,11 +359,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     <div className="grid">
       <ConfirmDialog
         open={Boolean(pendingCustomerStatus)}
-        title={
-          pendingCustomerStatus === "archived"
-            ? "Klant archiveren?"
-            : "Klant herstellen?"
-        }
+        title={pendingCustomerStatus === "archived" ? "Klant archiveren?" : "Klant herstellen?"}
         description={
           pendingCustomerStatus === "archived"
             ? "De klant blijft bewaard, maar verdwijnt uit de dagelijkse werkvoorraad."

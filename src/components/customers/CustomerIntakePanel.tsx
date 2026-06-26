@@ -9,6 +9,9 @@ export type CustomerScopeOption = {
   description: string;
   projectTitle: string;
   projectDescription: string;
+  /** Bestemming na het starten. "measurement" = naar de inmeting (standaard),
+   *  "quote" = direct naar een nieuwe offerte met catalogus (directe verkoop). */
+  target?: "measurement" | "quote";
 };
 
 type CustomerIntakePanelProps = {
@@ -71,6 +74,14 @@ export const customerScopeOptions: CustomerScopeOption[] = [
     description: "Vrije aanvraag die niet in de andere werksoorten past.",
     projectTitle: "Nieuwe aanvraag",
     projectDescription: "Aanvraag gestart vanuit klantdossier."
+  },
+  {
+    id: "verkoop",
+    label: "Directe verkoop / product",
+    description: "Klant koopt een product zonder inmeten — meteen door naar de offerte.",
+    projectTitle: "Directe verkoop",
+    projectDescription: "Aanvraag gestart vanuit klantdossier: directe verkoop.",
+    target: "quote"
   }
 ];
 
