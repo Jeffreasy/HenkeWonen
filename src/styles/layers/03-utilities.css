@@ -191,13 +191,15 @@
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
-/* Compacte KPI-balk (vervangt de grote FocusCards). */
+/* Herbruikbare compacte stat-balk — één bron voor StatPills én de dashboard-KPI's. */
+.stat-strip,
 .dashboard-stat-strip {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
 
+.stat-pill,
 .dashboard-stat-pill {
   display: inline-flex;
   align-items: center;
@@ -211,10 +213,12 @@
   font-size: var(--text-sm);
 }
 
+.stat-pill strong,
 .dashboard-stat-pill strong {
   font-size: var(--text-md);
 }
 
+a.stat-pill:hover,
 .dashboard-stat-pill:hover {
   border-color: var(--line-strong);
 }

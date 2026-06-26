@@ -1,4 +1,4 @@
-import { StatCard } from "../ui/data-display/StatCard";
+import { StatPills } from "../ui/data-display/StatPills";
 
 type DossierStatsProps = {
   customersCount: number;
@@ -12,10 +12,13 @@ export function DossierStats({
   openQuotesCount
 }: DossierStatsProps) {
   return (
-    <section className="grid three-column">
-      <StatCard label="Klanten" value={customersCount} tone="info" />
-      <StatCard label="Lopende projecten" value={openProjectsCount} tone="warning" />
-      <StatCard label="Open offertes" value={openQuotesCount} tone="success" />
-    </section>
+    <StatPills
+      ariaLabel="Dossier-overzicht"
+      items={[
+        { label: "Klanten", value: customersCount },
+        { label: "Lopende projecten", value: openProjectsCount },
+        { label: "Open offertes", value: openQuotesCount }
+      ]}
+    />
   );
 }
