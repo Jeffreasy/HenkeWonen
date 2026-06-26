@@ -9,6 +9,9 @@ export type CustomerScopeOption = {
   description: string;
   projectTitle: string;
   projectDescription: string;
+  /** Bestemming na het starten. "measurement" = naar de inmeting (standaard),
+   *  "quote" = direct naar een nieuwe offerte met catalogus (directe verkoop). */
+  target?: "measurement" | "quote";
 };
 
 type CustomerIntakePanelProps = {
@@ -16,6 +19,14 @@ type CustomerIntakePanelProps = {
 };
 
 export const customerScopeOptions: CustomerScopeOption[] = [
+  {
+    id: "verkoop",
+    label: "Directe verkoop / product",
+    description: "Klant koopt een product zonder inmeten — meteen door naar de offerte.",
+    projectTitle: "Directe verkoop",
+    projectDescription: "Aanvraag gestart vanuit klantdossier: directe verkoop.",
+    target: "quote"
+  },
   {
     id: "pvc",
     label: "PVC vloer",
@@ -97,7 +108,7 @@ export function CustomerIntakePanel({ onStartProject }: CustomerIntakePanelProps
       <SectionHeader
         compact
         title="Aanvraag intake"
-        description="Kies een werksoort en start direct een traject vanuit dit klantdossier."
+        description="Verkoop direct een product, of kies een werksoort om in te meten."
       />
       <div className="customer-scope-list">
         {customerScopeOptions.map((scope) => (

@@ -14,8 +14,10 @@ import { Textarea } from "../ui/forms/Textarea";
  *  - "dossier"   → klant + meteen een leeg dossier (project). Standaardgedrag.
  *  - "snelroute" → klant + dossier én direct doorspringen naar de inmeting (walk-in met
  *                  bekende maten/product). Toont een verkort formulier (naam + telefoon).
+ *  - "verkoop"   → klant + dossier én direct naar een nieuwe offerte met de catalogus
+ *                  (walk-in die gewoon een product koopt, zonder inmeten). Ook verkort.
  */
-export type CustomerIntent = "customer" | "dossier" | "snelroute";
+export type CustomerIntent = "customer" | "dossier" | "snelroute" | "verkoop";
 
 export type CustomerFormValues = {
   type: CustomerType;
@@ -48,9 +50,11 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
   const [intent, setIntent] = useState<CustomerIntent>("dossier");
   const [showMoreFields, setShowMoreFields] = useState(false);
 
-  // Snelroute = balie wil snel door naar inmeten: toon standaard alleen naam + telefoon,
-  // de rest achter "Meer gegevens". In de andere modi tonen we alle velden zoals voorheen.
-  const showExtraFields = intent !== "snelroute" || showMoreFields;
+  // Walk-in-routes (snelroute = inmeten, verkoop = direct offerte): de balie wil snel
+  // door, dus standaard alleen naam + telefoon en de rest achter "Meer gegevens". In de
+  // andere modi tonen we alle velden zoals voorheen.
+  const isWalkIn = intent === "snelroute" || intent === "verkoop";
+  const showExtraFields = !isWalkIn || showMoreFields;
 
   async function submit(event: SubmitEventLike) {
     event.preventDefault();
@@ -117,7 +121,9 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
         helpText={
           intent === "snelroute"
             ? "Maakt klant + dossier en springt direct door naar de inmeting."
-            : undefined
+            : intent === "verkoop"
+              ? "Maakt klant + dossier en springt direct door naar een offerte met de catalogus."
+              : undefined
         }
       >
         <Select
@@ -128,6 +134,7 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
           <option value="customer">Alleen klant</option>
           <option value="dossier">Klant + dossier aanmaken</option>
           <option value="snelroute">Snelroute: maten bekend → direct inmeten</option>
+          <option value="verkoop">Directe verkoop: product kopen → direct offerte</option>
         </Select>
       </Field>
       <Field htmlFor="customer-phone" label="Telefoon">
@@ -169,7 +176,11 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
             />
           </Field>
           <Field htmlFor="customer-city" label="Plaats">
-            <Input id="customer-city" value={city} onChange={(event) => setCity(event.target.value)} />
+            <Input
+              id="customer-city"
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
+            />
           </Field>
           <Field htmlFor="customer-notes" label="Interne notities">
             <Textarea
@@ -194,7 +205,9 @@ export default function CustomerForm({ onCreate }: CustomerFormProps) {
           ? "Vastleggen..."
           : intent === "snelroute"
             ? "Aanmaken en inmeten"
-            : "Klant vastleggen"}
+            : intent === "verkoop"
+              ? "Aanmaken en offerte maken"
+              : "Klant vastleggen"}
       </Button>
     </form>
   );
