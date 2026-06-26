@@ -571,3 +571,11 @@
   flex-shrink: 0;
   color: var(--success);
 }
+
+/* Inmeten → offerte CTA: verschijnt zodra er regels klaarstaan, één klik naar de
+   nieuwe offerte met het project voorgeselecteerd. */
+.measurement-make-quote {
+  align-self: start;
+  width: fit-content;
+  margin-top: var(--space-3);
+}

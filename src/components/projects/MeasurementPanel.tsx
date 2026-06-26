@@ -1,4 +1,4 @@
-import { CalendarClock, Pencil, Plus, Ruler, Save, Trash2 } from "lucide-react";
+import { CalendarClock, FileText, Pencil, Plus, Ruler, Save, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -898,6 +898,20 @@ export default function MeasurementPanel({
           ) : undefined
         }
       />
+
+      {/* Inmeten → offerte: één klik vanaf de inmeting naar een nieuwe offerte (project
+          voorgeselecteerd), zodra er regels klaarstaan. Voorkomt het terug-navigeren en
+          opnieuw moeten bedenken dat er nog een offerte gemaakt moet worden. In de
+          buitendienst staat de conceptofferte al op dezelfde pagina, dus daar niet. */}
+      {!isFieldMode && measurement && readyLineCount > 0 ? (
+        <a
+          className="ui-button ui-button-primary ui-button-md measurement-make-quote"
+          href={`/portal/offertes?open=nieuw&project=${projectId}`}
+        >
+          <FileText size={17} aria-hidden="true" />
+          Maak offerte van deze inmeting ({readyLineCount} klaar)
+        </a>
+      ) : null}
 
       {error ? <Alert variant="danger" description={error} style={{ marginTop: 12 }} /> : null}
 

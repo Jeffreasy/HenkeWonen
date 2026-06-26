@@ -389,7 +389,16 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
 
       {isDetailMode ? (
         <>
-          <div>
+          <div className="toolbar">
+            {selectedProject ? (
+              <a
+                className="ui-button ui-button-secondary ui-button-sm"
+                href={`/portal/projecten/${selectedProject.id}`}
+              >
+                <ArrowLeft size={16} aria-hidden="true" />
+                Terug naar dossier
+              </a>
+            ) : null}
             <a className="ui-button ui-button-ghost ui-button-sm" href="/portal/offertes">
               <ArrowLeft size={16} aria-hidden="true" />
               Terug naar offertes
