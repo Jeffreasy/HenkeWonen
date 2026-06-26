@@ -26,6 +26,8 @@ import { SummaryList } from "../ui/data-display/SummaryList";
 import { Tabs } from "../ui/Tabs";
 import { ProjectDetailSkeleton } from "./ProjectDetailSkeleton";
 import ProjectWorkflowRail from "./ProjectWorkflowRail";
+import { ProjectNextStepBanner } from "./ProjectNextStepBanner";
+import type { ProjectNextStep, ProjectNextStepKind } from "../../../convex/projecten/nextStep";
 import MeasurementPanel from "./MeasurementPanel";
 import { ProjectOverviewPanel } from "./ProjectOverviewPanel";
 import { ProjectEditForm } from "./ProjectEditForm";
@@ -42,6 +44,7 @@ type ProjectDetailProps = {
 
 type ProjectDetailResult = {
   project: PortalProject;
+  nextStep?: ProjectNextStep;
   inmeetOmvang?: "klein" | "volledig" | null;
   inmeetMonteur?: string | null;
   customer: PortalCustomer | null;
@@ -376,6 +379,31 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     }
   }
 
+  // Vertaalt de server-bepaalde "volgende stap" naar de bestaande cockpit-acties.
+  // Navigerende stappen (open_quote/open_invoice/make_quote) gebruiken een href in
+  // de banner zelf en komen hier niet langs.
+  function handleNextStepAction(kind: ProjectNextStepKind) {
+    switch (kind) {
+      case "start_measurement":
+        void startMeasurementWorkflow();
+        break;
+      case "accept_quote":
+        openProjectAction("quote_accepted");
+        break;
+      case "create_order":
+        openProjectAction("supplier_order_created");
+        break;
+      case "create_invoice":
+        openProjectAction("invoice_created");
+        break;
+      case "close_project":
+        openProjectAction("closed");
+        break;
+      default:
+        break;
+    }
+  }
+
   async function updateProjectTaskStatus(
     task: PortalProjectTask,
     status: PortalProjectTask["status"]
@@ -456,6 +484,13 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
           </Field>
         ) : null}
       </ConfirmDialog>
+      {canEditProject && detail.nextStep ? (
+        <ProjectNextStepBanner
+          nextStep={detail.nextStep}
+          isBusy={isStartingMeasurement}
+          onAction={handleNextStepAction}
+        />
+      ) : null}
       <div className="grid project-workspace-top">
         <ProjectOverviewPanel
           project={project}

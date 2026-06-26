@@ -9,6 +9,7 @@ import {
   requireQueryRoleForTenantId
 } from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
+import { computeProjectNextStep } from "./nextStep";
 import { assertInmeetBoeking } from "../beheer/agenda";
 import {
   toProject,
@@ -57,9 +58,7 @@ export const list = query({
     if (args.status) {
       return await ctx.db
         .query("projects")
-        .withIndex("by_status", (q) =>
-          q.eq("tenantId", args.tenantId).eq("status", args.status!)
-        )
+        .withIndex("by_status", (q) => q.eq("tenantId", args.tenantId).eq("status", args.status!))
         .order("desc")
         .collect();
     }
@@ -164,10 +163,8 @@ export const updateStatus = mutation({
     await ctx.db.patch(args.projectId, {
       status: args.status,
       geaccepteerdOp: args.status === "quote_accepted" ? Date.now() : project.geaccepteerdOp,
-      inmeetGeplandOp:
-        args.status === "measurement_planned" ? Date.now() : project.inmeetGeplandOp,
-      uitvoerGeplandOp:
-        args.status === "execution_planned" ? Date.now() : project.uitvoerGeplandOp,
+      inmeetGeplandOp: args.status === "measurement_planned" ? Date.now() : project.inmeetGeplandOp,
+      uitvoerGeplandOp: args.status === "execution_planned" ? Date.now() : project.uitvoerGeplandOp,
       besteldOp: args.status === "ordering" ? Date.now() : project.besteldOp,
       gefactureerdOp: args.status === "invoiced" ? Date.now() : project.gefactureerdOp,
       betaaldOp: args.status === "paid" ? Date.now() : project.betaaldOp,
@@ -265,12 +262,11 @@ export const createProject = mutation({
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    const { tenant, externalUserId } = await requireMutationRole(
-      ctx,
-      args.tenantSlug,
-      args.actor,
-      ["user", "editor", "admin"]
-    );
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const customer = await ctx.db.get(args.klantId as Id<"customers">);
 
     if (!customer || customer.tenantId !== tenant._id) {
@@ -328,9 +324,9 @@ export const updateProject = mutation({
     // monteur van de laatste inmeting voor de capaciteits-/afwezigheidscheck.
     if (hasArg(args, "inmeetdatum")) {
       const laatste = await latestMeasurementForProject(ctx, tenant._id, project._id);
-      const monteur = (laatste?.gemetenDoorUserId
-        ? await ctx.db.get(laatste.gemetenDoorUserId)
-        : null) as Doc<"users"> | null;
+      const monteur = (
+        laatste?.gemetenDoorUserId ? await ctx.db.get(laatste.gemetenDoorUserId) : null
+      ) as Doc<"users"> | null;
       await assertInmeetBoeking(ctx, tenant._id, {
         datumMs: args.inmeetdatum,
         monteur: monteur && monteur.tenantId === tenant._id ? monteur : null,
@@ -395,38 +391,54 @@ export const projectDetail = query({
       return null;
     }
 
-    const [customer, workflowEvents, projectTasks, projectInvoices, latestQuote, latestMeasurement] =
-      await Promise.all([
-        ctx.db.get(project.klantId),
-        ctx.db
-          .query("projectWorkflowEvents")
-          .withIndex("by_project", (q: any) =>
-            q.eq("tenantId", tenant._id).eq("projectId", project._id)
-          )
-          .collect(),
-        ctx.db
-          .query("projectTasks")
-          .withIndex("by_project", (q: any) =>
-            q.eq("tenantId", tenant._id).eq("projectId", project._id)
-          )
-          .collect(),
-        ctx.db
-          .query("invoices")
-          .withIndex("by_project", (q: any) =>
-            q.eq("tenantId", tenant._id).eq("projectId", project._id)
-          )
-          .collect(),
-        latestQuoteForProject(ctx, tenant._id, project._id),
-        latestMeasurementForProject(ctx, tenant._id, project._id)
-      ]);
+    const [
+      customer,
+      workflowEvents,
+      projectTasks,
+      projectInvoices,
+      latestQuote,
+      latestMeasurement
+    ] = await Promise.all([
+      ctx.db.get(project.klantId),
+      ctx.db
+        .query("projectWorkflowEvents")
+        .withIndex("by_project", (q: any) =>
+          q.eq("tenantId", tenant._id).eq("projectId", project._id)
+        )
+        .collect(),
+      ctx.db
+        .query("projectTasks")
+        .withIndex("by_project", (q: any) =>
+          q.eq("tenantId", tenant._id).eq("projectId", project._id)
+        )
+        .collect(),
+      ctx.db
+        .query("invoices")
+        .withIndex("by_project", (q: any) =>
+          q.eq("tenantId", tenant._id).eq("projectId", project._id)
+        )
+        .collect(),
+      latestQuoteForProject(ctx, tenant._id, project._id),
+      latestMeasurementForProject(ctx, tenant._id, project._id)
+    ]);
 
     // Meest recente factuur (doorgaans is er maar één per project)
     const latestInvoice = projectInvoices
-      .sort((left: Doc<"invoices">, right: Doc<"invoices">) => right.aangemaaktOp - left.aangemaaktOp)
+      .sort(
+        (left: Doc<"invoices">, right: Doc<"invoices">) => right.aangemaaktOp - left.aangemaaktOp
+      )
       .at(0);
 
     return {
       project: await toProject(ctx, tenant.slug, project),
+      // Canonieke "volgende stap": server-side bepaald zodat dossier/dashboard/
+      // buitendienst dezelfde vervolgactie tonen (één bron-van-waarheid).
+      nextStep: computeProjectNextStep({
+        status: project.status,
+        projectId: String(project._id),
+        latestQuoteId: latestQuote ? String(latestQuote._id) : null,
+        invoiceId: latestInvoice ? String(latestInvoice._id) : null
+      }),
       // Laatste inmeting: klusgrootte + toegewezen monteur — zodat herplannen
       // terugvalt op de bestaande waarden i.p.v. stil te resetten.
       inmeetOmvang: latestMeasurement?.omvang ?? null,
@@ -584,7 +596,9 @@ export const deleteProjectRoom = mutation({
     ]);
 
     if (measurementRoom || quoteLine) {
-      throw new ConvexError("Ruimte is al gebruikt in een inmeting of offerte en kan niet veilig worden verwijderd.");
+      throw new ConvexError(
+        "Ruimte is al gebruikt in een inmeting of offerte en kan niet veilig worden verwijderd."
+      );
     }
 
     await ctx.db.delete(room._id);
@@ -605,12 +619,11 @@ export const updateProjectStatus = mutation({
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    const { tenant, externalUserId } = await requireMutationRole(
-      ctx,
-      args.tenantSlug,
-      args.actor,
-      ["user", "editor", "admin"]
-    );
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
@@ -622,10 +635,8 @@ export const updateProjectStatus = mutation({
     await ctx.db.patch(project._id, {
       status: args.status,
       geaccepteerdOp: args.status === "quote_accepted" ? now : project.geaccepteerdOp,
-      inmeetGeplandOp:
-        args.status === "measurement_planned" ? now : project.inmeetGeplandOp,
-      uitvoerGeplandOp:
-        args.status === "execution_planned" ? now : project.uitvoerGeplandOp,
+      inmeetGeplandOp: args.status === "measurement_planned" ? now : project.inmeetGeplandOp,
+      uitvoerGeplandOp: args.status === "execution_planned" ? now : project.uitvoerGeplandOp,
       besteldOp: args.status === "ordering" ? now : project.besteldOp,
       gefactureerdOp: args.status === "invoiced" ? now : project.gefactureerdOp,
       betaaldOp: args.status === "paid" ? now : project.betaaldOp,
@@ -662,12 +673,11 @@ export const startOrPlanMeasurement = mutation({
     force: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
-    const { tenant, externalUserId } = await requireMutationRole(
-      ctx,
-      args.tenantSlug,
-      args.actor,
-      ["user", "editor", "admin"]
-    );
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
 
     // Verifieer dat een meegegeven monteur tot deze tenant hoort (tenant-isolatie).
     let monteurDoc: Doc<"users"> | null = null;
@@ -697,7 +707,7 @@ export const startOrPlanMeasurement = mutation({
     const existingMeasurement = await latestMeasurementForProject(ctx, tenant._id, project._id);
     const measurementDate = hasArg(args, "inmeetdatum")
       ? args.inmeetdatum
-      : project.inmeetdatum ?? existingMeasurement?.inmeetdatum;
+      : (project.inmeetdatum ?? existingMeasurement?.inmeetdatum);
 
     // Plan-guard: dwing de inmeet-regels server-side af (tenzij bewust geforceerd), zodat de agenda
     // geen operationeel-onmogelijke staat krijgt. Alleen handhaven wanneer de gebruiker actief een
@@ -815,12 +825,11 @@ export const createWorkflowEvent = mutation({
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    const { tenant, externalUserId } = await requireMutationRole(
-      ctx,
-      args.tenantSlug,
-      args.actor,
-      ["user", "editor", "admin"]
-    );
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
@@ -856,12 +865,11 @@ export const processProjectAction = mutation({
     invoiceDueAt: v.optional(v.number())
   },
   handler: async (ctx, args) => {
-    const { tenant, externalUserId } = await requireMutationRole(
-      ctx,
-      args.tenantSlug,
-      args.actor,
-      ["user", "editor", "admin"]
-    );
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
@@ -869,8 +877,7 @@ export const processProjectAction = mutation({
     }
 
     const now = Date.now();
-    const customer =
-      args.action === "invoice_created" ? await ctx.db.get(project.klantId) : null;
+    const customer = args.action === "invoice_created" ? await ctx.db.get(project.klantId) : null;
     const invoiceTermDays = invoicePaymentTermDays(
       customer && customer.tenantId === tenant._id ? customer : null
     );
@@ -946,8 +953,7 @@ export const processProjectAction = mutation({
       besteldOp: actionConfig.projectStatus === "ordering" ? now : project.besteldOp,
       gefactureerdOp: actionConfig.projectStatus === "invoiced" ? now : project.gefactureerdOp,
       afgeslotenOp:
-        actionConfig.projectStatus === "closed" ||
-        actionConfig.projectStatus === "cancelled"
+        actionConfig.projectStatus === "closed" || actionConfig.projectStatus === "cancelled"
           ? now
           : project.afgeslotenOp,
       gewijzigdOp: now
@@ -1004,7 +1010,8 @@ export const processProjectAction = mutation({
     }
 
     if (args.action === "invoice_created") {
-      const invoiceDueAt = existingInvoice?.vervaldatum ?? args.invoiceDueAt ?? addCalendarDays(now, invoiceTermDays);
+      const invoiceDueAt =
+        existingInvoice?.vervaldatum ?? args.invoiceDueAt ?? addCalendarDays(now, invoiceTermDays);
       await completeInvoiceWorkflow(ctx, tenant._id, project, invoiceDueAt, externalUserId);
 
       if (!existingInvoice) {
@@ -1045,10 +1052,9 @@ export const processProjectAction = mutation({
       const finalTaskStatus = args.action === "closed" ? "done" : "dismissed";
 
       await Promise.all(
-        (["quote_follow_up", "confirmation_payment", "execution_call", "invoice_payment"] as const)
-          .map((type) =>
-            closeOpenProjectTasks(ctx, tenant._id, project._id, type, finalTaskStatus)
-          )
+        (
+          ["quote_follow_up", "confirmation_payment", "execution_call", "invoice_payment"] as const
+        ).map((type) => closeOpenProjectTasks(ctx, tenant._id, project._id, type, finalTaskStatus))
       );
     }
 
