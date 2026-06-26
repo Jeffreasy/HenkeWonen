@@ -825,7 +825,7 @@
     justify-content: center;
   }
 
-  /* Dashboard focus cards 1 per rij */
+  /* Dashboard-grid (o.a. SupplierStats) 1 per rij op smal scherm */
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
