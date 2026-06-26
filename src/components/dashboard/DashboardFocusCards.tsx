@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, ClipboardCheck, FileText, Ruler } from "lucide-react";
+import { BriefcaseBusiness, ClipboardCheck, FileText } from "lucide-react";
 
 type DashboardFocusCardsProps = {
   isLoading: boolean;
@@ -23,50 +23,41 @@ export function DashboardFocusCards({
       value: workItemCount,
       description: "Dossiers die aandacht vragen",
       href: "#werkoverzicht",
-      icon: ClipboardCheck,
-      tone: "warning"
+      icon: ClipboardCheck
     },
     {
       label: "Open offertes",
       value: openQuoteCount,
       description: "Concepten en verzonden offertes",
       href: "/portal/offertes",
-      icon: FileText,
-      tone: "info"
+      icon: FileText
     },
     {
       label: "Lopende uitvoering",
       value: plannedWorkCount,
       description: "Inmeting, bestelling of uitvoering",
       href: "/portal/dossiers",
-      icon: BriefcaseBusiness,
-      tone: "success"
-    },
-    {
-      label: "Buitendienst",
-      value: plannedWorkCount,
-      description: "Klantbezoeken, inmeten en conceptoffertes",
-      href: "/portal/buitendienst/vandaag",
-      icon: Ruler,
-      tone: "field"
+      icon: BriefcaseBusiness
     }
   ] as const;
 
   return (
-    <section className="grid dashboard-grid" aria-label="Belangrijkste werkvoorraad">
+    <section className="dashboard-stat-strip" aria-label="Belangrijkste werkvoorraad">
       {focusCards.map((card) => {
         const Icon = card.icon;
+        const valueText = loadingValue(isLoading, card.value);
 
         return (
           <a
-            className={`card metric dashboard-focus-card dashboard-focus-card-${card.tone}`}
+            className="dashboard-stat-pill"
             href={card.href}
             key={card.label}
+            title={card.description}
+            aria-label={`${card.label}: ${valueText} — ${card.description}`}
           >
-            <Icon size={22} aria-hidden="true" />
+            <Icon size={16} aria-hidden="true" />
+            <strong>{valueText}</strong>
             <span className="muted">{card.label}</span>
-            <strong>{loadingValue(isLoading, card.value)}</strong>
-            <small className="muted">{card.description}</small>
           </a>
         );
       })}

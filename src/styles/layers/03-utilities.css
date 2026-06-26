@@ -188,28 +188,78 @@
 }
 
 .dashboard-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
-.dashboard-focus-card {
-  min-height: 128px;
+/* Compacte KPI-balk (vervangt de grote FocusCards). */
+.dashboard-stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
-.dashboard-focus-card-info {
-  border-color: rgba(29, 78, 137, 0.22);
+.dashboard-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: var(--text-sm);
 }
 
-.dashboard-focus-card-success {
-  border-color: rgba(22, 101, 52, 0.24);
+.dashboard-stat-pill strong {
+  font-size: var(--text-md);
 }
 
-.dashboard-focus-card-field {
-  border-color: var(--color-border);
-  background: var(--color-success-bg);
+.dashboard-stat-pill:hover {
+  border-color: var(--line-strong);
 }
 
-.dashboard-focus-card-warning {
-  border-color: rgba(154, 101, 7, 0.24);
+/* Inklapbare naslag-secties (details/summary). */
+.dashboard-collapsible-summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  cursor: pointer;
+  list-style: none;
+}
+
+.dashboard-collapsible-summary::-webkit-details-marker {
+  display: none;
+}
+
+.dashboard-collapsible-titles {
+  min-width: 0;
+}
+
+.dashboard-collapsible-titles h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-lg);
+  line-height: var(--line-tight);
+}
+
+.dashboard-collapsible-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.dashboard-collapsible[open] .dashboard-collapsible-chevron {
+  transform: rotate(180deg);
+}
+
+.dashboard-collapsible-action {
+  margin-top: var(--space-3);
+}
+
+.dashboard-collapsible[open] .dashboard-collapsible-summary {
+  margin-bottom: var(--space-3);
 }
 
 .dashboard-section-header {
@@ -237,6 +287,10 @@
   gap: var(--space-2);
 }
 
+.dashboard-work-toggle {
+  margin-top: var(--space-2);
+}
+
 .dashboard-work-item,
 .dashboard-project-link {
   display: grid;
@@ -244,7 +298,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--surface-raised);
-  padding: var(--space-3);
+  padding: var(--space-2) var(--space-3);
 }
 
 .dashboard-work-item {
@@ -261,7 +315,7 @@
 .dashboard-work-copy,
 .dashboard-work-meta {
   display: grid;
-  gap: 6px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -354,24 +408,54 @@
 /* ---------------------------------------------------------------------------
    Spacing utilities — vervangt inline style={{ marginTop: 16 }} patronen
    --------------------------------------------------------------------------- */
-.mt-1 { margin-top: var(--space-1); }
-.mt-2 { margin-top: var(--space-2); }
-.mt-3 { margin-top: var(--space-3); }
-.mt-4 { margin-top: var(--space-4); } /* 16px — meest voorkomend */
-.mt-5 { margin-top: var(--space-5); }
-.mt-6 { margin-top: var(--space-6); }
+.mt-1 {
+  margin-top: var(--space-1);
+}
+.mt-2 {
+  margin-top: var(--space-2);
+}
+.mt-3 {
+  margin-top: var(--space-3);
+}
+.mt-4 {
+  margin-top: var(--space-4);
+} /* 16px — meest voorkomend */
+.mt-5 {
+  margin-top: var(--space-5);
+}
+.mt-6 {
+  margin-top: var(--space-6);
+}
 
-.mb-1 { margin-bottom: var(--space-1); }
-.mb-2 { margin-bottom: var(--space-2); }
-.mb-3 { margin-bottom: var(--space-3); }
-.mb-4 { margin-bottom: var(--space-4); }
+.mb-1 {
+  margin-bottom: var(--space-1);
+}
+.mb-2 {
+  margin-bottom: var(--space-2);
+}
+.mb-3 {
+  margin-bottom: var(--space-3);
+}
+.mb-4 {
+  margin-bottom: var(--space-4);
+}
 
 /* ---------------------------------------------------------------------------
    Text-color utilities — vervangt inline style={{ color: "var(--...)" }}
    --------------------------------------------------------------------------- */
-.text-success { color: var(--success); }
-.text-warning { color: var(--warning); }
-.text-danger  { color: var(--danger); }
-.text-info    { color: var(--info); }
-.text-accent  { color: var(--accent); }
+.text-success {
+  color: var(--success);
+}
+.text-warning {
+  color: var(--warning);
+}
+.text-danger {
+  color: var(--danger);
+}
+.text-info {
+  color: var(--info);
+}
+.text-accent {
+  color: var(--accent);
+}
 /* .text-muted al aanwezig via .muted alias */

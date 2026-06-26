@@ -5,6 +5,7 @@ import type { QuoteStatus } from "../../lib/portalTypes";
 import { Badge } from "../ui/data-display/Badge";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { Skeleton } from "../ui/feedback/Skeleton";
+import { CollapsiblePanel } from "./CollapsiblePanel";
 
 export type DashboardQuoteFollowUp = {
   id: string;
@@ -22,20 +23,21 @@ type DashboardQuoteFollowUpsProps = {
   quoteFollowUps: DashboardQuoteFollowUp[];
 };
 
-export function DashboardQuoteFollowUps({ isLoading, quoteFollowUps }: DashboardQuoteFollowUpsProps) {
+export function DashboardQuoteFollowUps({
+  isLoading,
+  quoteFollowUps
+}: DashboardQuoteFollowUpsProps) {
   return (
-    <section className="panel">
-      <div className="dashboard-section-header">
-        <div>
-          <p className="eyebrow">Offertes</p>
-          <h2>Opvolgen</h2>
-          <p className="muted">Concepten afmaken en verzonden offertes nalopen.</p>
-        </div>
+    <CollapsiblePanel
+      eyebrow="Offertes"
+      title="Opvolgen"
+      description="Concepten afmaken en verzonden offertes nalopen."
+      action={
         <a className="ui-button ui-button-secondary ui-button-sm" href="/portal/offertes">
           Offertes
         </a>
-      </div>
-
+      }
+    >
       {isLoading ? (
         <div className="dashboard-work-list" aria-busy="true" aria-label="Offertes laden">
           {Array.from({ length: 3 }).map((_, index) => (
@@ -74,6 +76,6 @@ export function DashboardQuoteFollowUps({ isLoading, quoteFollowUps }: Dashboard
           description="Er staan geen concepten of verzonden offertes open voor opvolging."
         />
       )}
-    </section>
+    </CollapsiblePanel>
   );
 }
