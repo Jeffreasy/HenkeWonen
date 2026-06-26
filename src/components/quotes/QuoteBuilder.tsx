@@ -1038,8 +1038,8 @@ export default function QuoteBuilder({
           description="Catalogusproduct, handmatige post of inmeting overnemen."
         >
           <div className="grid quote-composer-panel">
-            {lineEditor}
             {measurementPicker}
+            {lineEditor}
           </div>
         </CollapsiblePanel>
       ) : null}
