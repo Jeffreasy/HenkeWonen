@@ -16,8 +16,9 @@ const workflowSteps: Array<{
   { label: "Offerte maken", statuses: ["quote_draft"] },
   { label: "Offerte verzonden", statuses: ["quote_sent"] },
   { label: "Offerte akkoord", statuses: ["quote_accepted"] },
-  { label: "Bestellen", statuses: ["ordering"] },
-  { label: "Uitvoering", statuses: ["execution_planned", "in_progress"] },
+  // Bestellen → direct Factureren. De execution_*-statussen bestaan nog in het schema
+  // (legacy/seed) maar zijn geen aparte stap meer; ze vallen onder "Bestellen".
+  { label: "Bestellen", statuses: ["ordering", "execution_planned", "in_progress"] },
   { label: "Factuur", statuses: ["invoiced"] },
   { label: "Betaald", statuses: ["paid"] },
   { label: "Gesloten", statuses: ["closed"] }

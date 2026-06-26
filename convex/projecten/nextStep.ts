@@ -108,7 +108,7 @@ export function computeProjectNextStep(input: ProjectNextStepInput): ProjectNext
     case "execution_planned":
     case "in_progress":
       return {
-        phaseLabel: "Bestellen / uitvoering",
+        phaseLabel: "Bestellen",
         actionLabel: "Factuur aanmaken",
         hint: "Maak de factuur aan zodra het werk is uitgevoerd.",
         kind: "create_invoice",
@@ -211,7 +211,7 @@ export function projectWorklistItem(status: string): ProjectWorklistMeta | null 
     case "ordering":
     case "execution_planned":
     case "in_progress":
-      return { title: "Uitvoering opvolgen", badge: "Uitvoering", tone: "success", rank: 2 };
+      return { title: "Bestelling opvolgen", badge: "Bestellen", tone: "success", rank: 2 };
     default:
       return null;
   }
