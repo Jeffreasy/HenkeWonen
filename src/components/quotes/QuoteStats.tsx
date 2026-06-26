@@ -1,5 +1,5 @@
 import { formatEuro } from "../../lib/money";
-import { StatCard } from "../ui/data-display/StatCard";
+import { StatPills } from "../ui/data-display/StatPills";
 
 type QuoteStatsProps = {
   total: number;
@@ -9,10 +9,13 @@ type QuoteStatsProps = {
 
 export function QuoteStats({ total, draftCount, totalValue }: QuoteStatsProps) {
   return (
-    <section className="grid three-column">
-      <StatCard label="Offertes" value={total} tone="info" />
-      <StatCard label="Concepten" value={draftCount} tone="warning" />
-      <StatCard label="Totaalwaarde" value={formatEuro(totalValue)} tone="success" />
-    </section>
+    <StatPills
+      ariaLabel="Offerte-overzicht"
+      items={[
+        { label: "Offertes", value: total },
+        { label: "Concepten", value: draftCount },
+        { label: "Totaalwaarde", value: formatEuro(totalValue) }
+      ]}
+    />
   );
 }
