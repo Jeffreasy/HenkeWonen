@@ -45,16 +45,31 @@ type ProjectNextStepInput = {
   projectId: string;
   latestQuoteId: string | null;
   invoiceId: string | null;
+  /** Directe-verkoop-dossier: inmeten overslaan, meteen richting offerte. */
+  directeVerkoop?: boolean;
 };
 
 export function computeProjectNextStep(input: ProjectNextStepInput): ProjectNextStep {
-  const { status, projectId, latestQuoteId, invoiceId } = input;
+  const { status, projectId, latestQuoteId, invoiceId, directeVerkoop } = input;
   const quoteHref = latestQuoteId ? `/portal/offertes/${latestQuoteId}` : null;
   const newQuoteHref = `/portal/offertes?open=nieuw&project=${projectId}`;
   const invoiceHref = invoiceId ? `/portal/facturen/${invoiceId}` : null;
 
   switch (status) {
     case "lead":
+      // Directe verkoop slaat inmeten over: stuur meteen naar de offerte (catalogus)
+      // i.p.v. "Inmeting starten" — anders is de banner tegenstrijdig met de intent.
+      if (directeVerkoop) {
+        return {
+          phaseLabel: "Directe verkoop",
+          actionLabel: "Offerte maken",
+          hint: "Klant koopt een product zonder inmeten — maak de offerte met de catalogus.",
+          kind: "make_quote",
+          href: newQuoteHref,
+          tone: "warning",
+          isStopped: false
+        };
+      }
       return {
         phaseLabel: "Aanvraag",
         actionLabel: "Inmeting starten",

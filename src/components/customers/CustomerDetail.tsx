@@ -305,6 +305,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         klantId: customerId,
         titel: scope.projectTitle,
         omschrijving: scope.projectDescription,
+        directeVerkoop: scope.target === "quote",
         createdByExternalUserId: session.userId
       });
 

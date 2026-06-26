@@ -259,6 +259,7 @@ export const createProject = mutation({
     klantId: v.string(),
     titel: v.string(),
     omschrijving: v.optional(v.string()),
+    directeVerkoop: v.optional(v.boolean()),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -280,6 +281,7 @@ export const createProject = mutation({
       klantId: customer._id,
       titel: args.titel,
       omschrijving: args.omschrijving,
+      directeVerkoop: args.directeVerkoop,
       status: "lead",
       createdByExternalUserId: externalUserId,
       aangemaaktOp: now,
@@ -437,7 +439,8 @@ export const projectDetail = query({
         status: project.status,
         projectId: String(project._id),
         latestQuoteId: latestQuote ? String(latestQuote._id) : null,
-        invoiceId: latestInvoice ? String(latestInvoice._id) : null
+        invoiceId: latestInvoice ? String(latestInvoice._id) : null,
+        directeVerkoop: project.directeVerkoop
       }),
       // Laatste inmeting: klusgrootte + toegewezen monteur — zodat herplannen
       // terugvalt op de bestaande waarden i.p.v. stil te resetten.

@@ -113,11 +113,7 @@ const priceUnit = v.union(
  * BTW-modus per prijskolom.
  * `unknown` = nog niet beoordeeld — blokkeert productie-import.
  */
-const vatMode = v.union(
-  v.literal("exclusive"),
-  v.literal("inclusive"),
-  v.literal("unknown")
-);
+const vatMode = v.union(v.literal("exclusive"), v.literal("inclusive"), v.literal("unknown"));
 
 /** Type offerteregel — bepaalt hoe de regel gepresenteerd en berekend wordt */
 const quoteLineType = v.union(
@@ -173,11 +169,7 @@ const projectTaskType = v.union(
   v.literal("invoice_payment")
 );
 
-const projectTaskStatus = v.union(
-  v.literal("open"),
-  v.literal("done"),
-  v.literal("dismissed")
-);
+const projectTaskStatus = v.union(v.literal("open"), v.literal("done"), v.literal("dismissed"));
 
 /**
  * Soort calculator-regel (marge-deler of placeholder-bedrijfsregel) — enum-waarden blijven Engels
@@ -735,6 +727,9 @@ export default defineSchema({
     projectnummer: v.optional(v.string()),
     titel: v.string(),
     omschrijving: v.optional(v.string()),
+    // Directe verkoop: klant koopt een product zonder inmeten. Stuurt de "volgende
+    // stap" naar de offerte i.p.v. inmeten zolang het project nog op "lead" staat.
+    directeVerkoop: v.optional(v.boolean()),
     status: v.union(
       v.literal("lead"),
       v.literal("quote_draft"),
