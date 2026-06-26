@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 export type StatPill = {
+  /** Stabiele React-key; valt terug op label+index als afwezig. */
+  id?: string;
   label: string;
   /** Vooraf opgemaakte waarde (getal of bv. een euro-string). */
   value: ReactNode;
@@ -22,7 +24,8 @@ type StatPillsProps = {
 export function StatPills({ items, ariaLabel }: StatPillsProps) {
   return (
     <section className="stat-strip" aria-label={ariaLabel}>
-      {items.map((item) => {
+      {items.map((item, index) => {
+        const key = item.id ?? `${item.label}-${index}`;
         const inner = (
           <>
             {item.icon}
@@ -32,11 +35,11 @@ export function StatPills({ items, ariaLabel }: StatPillsProps) {
         );
 
         return item.href ? (
-          <a className="stat-pill" href={item.href} key={item.label}>
+          <a className="stat-pill" href={item.href} key={key}>
             {inner}
           </a>
         ) : (
-          <div className="stat-pill" key={item.label}>
+          <div className="stat-pill" key={key}>
             {inner}
           </div>
         );

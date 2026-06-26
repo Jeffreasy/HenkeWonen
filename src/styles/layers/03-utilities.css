@@ -191,41 +191,15 @@
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
-/* Herbruikbare compacte stat-balk (StatPills) — vervangt grote StatCard-blokken. */
-.stat-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.stat-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface-raised);
-  color: var(--ink);
-  text-decoration: none;
-  font-size: var(--text-sm);
-}
-
-.stat-pill strong {
-  font-size: var(--text-md);
-}
-
-a.stat-pill:hover {
-  border-color: var(--line-strong);
-}
-
-/* Compacte KPI-balk (vervangt de grote FocusCards). */
+/* Herbruikbare compacte stat-balk — één bron voor StatPills én de dashboard-KPI's. */
+.stat-strip,
 .dashboard-stat-strip {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
 
+.stat-pill,
 .dashboard-stat-pill {
   display: inline-flex;
   align-items: center;
@@ -239,10 +213,12 @@ a.stat-pill:hover {
   font-size: var(--text-sm);
 }
 
+.stat-pill strong,
 .dashboard-stat-pill strong {
   font-size: var(--text-md);
 }
 
+a.stat-pill:hover,
 .dashboard-stat-pill:hover {
   border-color: var(--line-strong);
 }
