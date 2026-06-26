@@ -45,6 +45,7 @@ export function DashboardFocusCards({
     <section className="dashboard-stat-strip" aria-label="Belangrijkste werkvoorraad">
       {focusCards.map((card) => {
         const Icon = card.icon;
+        const valueText = loadingValue(isLoading, card.value);
 
         return (
           <a
@@ -52,9 +53,10 @@ export function DashboardFocusCards({
             href={card.href}
             key={card.label}
             title={card.description}
+            aria-label={`${card.label}: ${valueText} — ${card.description}`}
           >
             <Icon size={16} aria-hidden="true" />
-            <strong>{loadingValue(isLoading, card.value)}</strong>
+            <strong>{valueText}</strong>
             <span className="muted">{card.label}</span>
           </a>
         );
