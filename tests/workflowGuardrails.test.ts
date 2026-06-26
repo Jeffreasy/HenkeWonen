@@ -239,9 +239,15 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
 
   it("should keep accepted quotes out of the measurement dashboard bucket", () => {
     const dashboardSource = read("convex/portal.ts");
+    const nextStepSource = read("convex/projecten/nextStep.ts");
 
-    expect(dashboardSource).toContain('project.status === "measurement_planned"');
-    expect(dashboardSource).toContain('title: "Akkoord opvolgen"');
+    // De werklijst-copy staat nu centraal in projectWorklistItem(): measurement_planned
+    // en quote_accepted zijn gescheiden buckets met elk een eigen titel.
+    expect(nextStepSource).toContain('case "measurement_planned":');
+    expect(nextStepSource).toContain('title: "Inmeting voorbereiden"');
+    expect(nextStepSource).toContain('case "quote_accepted":');
+    expect(nextStepSource).toContain('title: "Akkoord opvolgen"');
+    // Het dashboard sluit accepted-projecten met openstaande taken uit van de werklijst.
     expect(dashboardSource).toContain('project.status === "quote_accepted"');
     expect(dashboardSource).toContain("openTaskProjectIds");
   });

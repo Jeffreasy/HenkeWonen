@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { readActorValidator, requireQueryRole } from "../authz";
+import { taskPriority } from "../portalUtils";
 import type { Doc, Id } from "../_generated/dataModel";
 import type {
   PortalCustomer,
@@ -13,27 +14,11 @@ import type {
   FieldWorkspaceCard
 } from "../../src/lib/portalTypes";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 function normalizeProjectId(ctx: any, projectId: string): Id<"projects"> | null {
   return ctx.db.normalizeId("projects", projectId);
 }
 
-function taskPriority(dueAt: number, now = Date.now()) {
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const daysUntilDue = Math.floor((dueAt - today.getTime()) / DAY_MS);
-
-  if (daysUntilDue <= 1) {
-    return { level: "red" as const, label: "Rood" as const, tone: "danger" as const, rank: 0 };
-  }
-
-  if (daysUntilDue <= 7) {
-    return { level: "orange" as const, label: "Oranje" as const, tone: "warning" as const, rank: 1 };
-  }
-
-  return { level: "green" as const, label: "Groen" as const, tone: "success" as const, rank: 2 };
-}
+// taskPriority wordt gedeeld met het dashboard — één bron in ../portalUtils.
 
 function toCustomer(tenantSlug: string, customer: Doc<"customers">): PortalCustomer {
   return {
@@ -154,11 +139,7 @@ function toQuoteLine(line: Doc<"quoteLines">): PortalQuoteLine {
   };
 }
 
-async function toQuote(
-  ctx: any,
-  tenantSlug: string,
-  quote: Doc<"quotes">
-): Promise<PortalQuote> {
+async function toQuote(ctx: any, tenantSlug: string, quote: Doc<"quotes">): Promise<PortalQuote> {
   const lines = await ctx.db
     .query("quoteLines")
     .withIndex("by_quote", (q: any) => q.eq("tenantId", quote.tenantId).eq("quoteId", quote._id))
@@ -190,10 +171,7 @@ async function toQuote(
   };
 }
 
-function toQuoteSummary(
-  tenantSlug: string,
-  quote: Doc<"quotes">
-): Omit<PortalQuote, "lines"> {
+function toQuoteSummary(tenantSlug: string, quote: Doc<"quotes">): Omit<PortalQuote, "lines"> {
   return {
     id: String(quote._id),
     tenantId: tenantSlug,
@@ -242,10 +220,8 @@ function customerAddress(customer: Doc<"customers"> | undefined | null) {
 function activeFieldQuote(quotes: Doc<"quotes">[], projectId: Id<"projects">) {
   return quotes
     .filter((quote) => quote.projectId === projectId)
-    .filter((quote) =>
-      quote.status === "draft" ||
-      quote.status === "sent" ||
-      quote.status === "accepted"
+    .filter(
+      (quote) => quote.status === "draft" || quote.status === "sent" || quote.status === "accepted"
     )
     .sort((left, right) => right.gewijzigdOp - left.gewijzigdOp)[0];
 }
@@ -382,7 +358,9 @@ export const fieldServiceWorkspace = query({
         .collect()
     );
     const projectsList = await Promise.all(projectsPromises);
-    const projects = projectsList.flat().sort((left, right) => right.aangemaaktOp - left.aangemaaktOp);
+    const projects = projectsList
+      .flat()
+      .sort((left, right) => right.aangemaaktOp - left.aangemaaktOp);
 
     if (projects.length === 0) {
       return {
@@ -404,7 +382,9 @@ export const fieldServiceWorkspace = query({
         projectIds.map((projectId) =>
           ctx.db
             .query("quotes")
-            .withIndex("by_project", (q: any) => q.eq("tenantId", tenant._id).eq("projectId", projectId))
+            .withIndex("by_project", (q: any) =>
+              q.eq("tenantId", tenant._id).eq("projectId", projectId)
+            )
             .collect()
         )
       ),
@@ -412,7 +392,9 @@ export const fieldServiceWorkspace = query({
         projectIds.map((projectId) =>
           ctx.db
             .query("measurements")
-            .withIndex("by_project", (q: any) => q.eq("tenantId", tenant._id).eq("projectId", projectId))
+            .withIndex("by_project", (q: any) =>
+              q.eq("tenantId", tenant._id).eq("projectId", projectId)
+            )
             .collect()
         )
       ),
@@ -420,7 +402,9 @@ export const fieldServiceWorkspace = query({
         projectIds.map((projectId) =>
           ctx.db
             .query("projectTasks")
-            .withIndex("by_project", (q: any) => q.eq("tenantId", tenant._id).eq("projectId", projectId))
+            .withIndex("by_project", (q: any) =>
+              q.eq("tenantId", tenant._id).eq("projectId", projectId)
+            )
             .collect()
         )
       )
@@ -571,10 +555,9 @@ export const fieldProjectWorkspace = query({
       customer: customer ? toCustomer(tenant.slug, customer) : null,
       quotes: await Promise.all(
         quotes
-          .filter((quote: Doc<"quotes">) =>
-            quote.status === "draft" ||
-            quote.status === "sent" ||
-            quote.status === "accepted"
+          .filter(
+            (quote: Doc<"quotes">) =>
+              quote.status === "draft" || quote.status === "sent" || quote.status === "accepted"
           )
           .map((quote: Doc<"quotes">) => toQuote(ctx, tenant.slug, quote))
       ),

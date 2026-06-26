@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { readActorValidator, requireQueryRole } from "./authz";
 import { taskPriority, toProject, toQuoteSummary } from "./portalUtils";
+import { projectWorklistItem } from "./projecten/nextStep";
 import {
   DAG_MS,
   INMEET_CAPACITEIT,
@@ -96,102 +97,65 @@ export const dashboard = query({
         priorityRank: priority.rank
       };
     });
-    const workItems = [
-      ...taskWorkItems,
-      ...projects
-        .filter((project: Doc<"projects">) => project.status === "lead")
-        .map((project: Doc<"projects">) => ({
-          id: `project-lead-${project._id}`,
-          title: "Nieuwe aanvraag opvolgen",
+    // Project-status-items linken naar het dossier. quote_draft/quote_sent komen uit
+    // de quotes-collectie (zie hieronder, link naar de offerte), dus die slaan we hier
+    // over om dubbeltelling te voorkomen. Alle copy/badges/rangen komen uit de centrale
+    // projectWorklistItem() zodat dashboard en cockpit niet kunnen uiteenlopen.
+    const projectWorkItems = projects.flatMap((project: Doc<"projects">) => {
+      if (["quote_draft", "quote_sent"].includes(project.status)) {
+        return [];
+      }
+      if (project.status === "quote_accepted" && openTaskProjectIds.has(String(project._id))) {
+        return [];
+      }
+      const meta = projectWorklistItem(project.status);
+      if (!meta) {
+        return [];
+      }
+      return [
+        {
+          id: `project-${project._id}`,
+          title: meta.title,
           description: `${project.titel} - ${customerById.get(String(project.klantId)) ?? "Onbekende klant"}`,
           href: `/portal/projecten/${project._id}`,
-          label: "Aanvraag",
-          tone: "warning",
+          label: meta.badge,
+          tone: meta.tone,
           updatedAt: project.gewijzigdOp,
-          priorityRank: 1
-        })),
-      ...quotes
-        .filter((quote: Doc<"quotes">) => quote.status === "draft")
-        .map((quote: Doc<"quotes">) => {
-          const project = projectById.get(String(quote.projectId));
-
-          return {
-            id: `quote-draft-${quote._id}`,
-            title: "Offerte afmaken",
-            description: `${quote.titel} - ${customerById.get(String(quote.klantId)) ?? project?.titel ?? "Geen klant"}`,
-            href: `/portal/offertes/${quote._id}`,
-            label: "Concept",
-            tone: "warning",
-            updatedAt: quote.gewijzigdOp,
-            priorityRank: 1
-          };
-        }),
-      ...quotes
-        .filter((quote: Doc<"quotes">) => quote.status === "sent")
-        .map((quote: Doc<"quotes">) => {
-          const project = projectById.get(String(quote.projectId));
-
-          return {
-            id: `quote-sent-${quote._id}`,
-            title: "Offerte opvolgen",
-            description: `${quote.titel} - ${customerById.get(String(quote.klantId)) ?? project?.titel ?? "Geen klant"}`,
-            href: `/portal/offertes/${quote._id}`,
-            label: "Verzonden",
-            tone: "info",
-            updatedAt: quote.gewijzigdOp,
-            priorityRank: 2
-          };
-        }),
-      ...projects
-        .filter((project: Doc<"projects">) => project.status === "measurement_planned")
-        .map((project: Doc<"projects">) => ({
-          id: `measurement-${project._id}`,
-          title: "Inmeting voorbereiden",
-          description: `${project.titel} - ${customerById.get(String(project.klantId)) ?? "Onbekende klant"}`,
-          href: `/portal/projecten/${project._id}`,
-          label: "Inmeting",
-          tone: "info",
-          updatedAt: project.gewijzigdOp,
-          priorityRank: 2
-        })),
-      ...projects
-        .filter(
-          (project: Doc<"projects">) =>
-            project.status === "quote_accepted" && !openTaskProjectIds.has(String(project._id))
-        )
-        .map((project: Doc<"projects">) => ({
-          id: `accepted-${project._id}`,
-          title: "Akkoord opvolgen",
-          description: `${project.titel} - ${customerById.get(String(project.klantId)) ?? "Onbekende klant"}`,
-          href: `/portal/projecten/${project._id}`,
-          label: "Opvolging",
-          tone: "info",
-          updatedAt: project.gewijzigdOp,
-          priorityRank: 2
-        })),
-      ...projects
-        .filter((project: Doc<"projects">) =>
-          ["execution_planned", "ordering", "in_progress"].includes(project.status)
-        )
-        .map((project: Doc<"projects">) => ({
-          id: `execution-${project._id}`,
-          title: "Uitvoering opvolgen",
-          description: `${project.titel} - ${customerById.get(String(project.klantId)) ?? "Onbekende klant"}`,
-          href: `/portal/projecten/${project._id}`,
-          label: "Uitvoering",
-          tone: "success",
-          updatedAt: project.gewijzigdOp,
-          priorityRank: 2
-        }))
-    ].sort((left, right) => left.priorityRank - right.priorityRank || left.updatedAt - right.updatedAt);
+          priorityRank: meta.rank
+        }
+      ];
+    });
+    const quoteWorkItems = quotes.flatMap((quote: Doc<"quotes">) => {
+      const meta = projectWorklistItem(`quote_${quote.status}`);
+      if (!meta) {
+        return [];
+      }
+      const project = projectById.get(String(quote.projectId));
+      return [
+        {
+          id: `quote-${quote.status}-${quote._id}`,
+          title: meta.title,
+          description: `${quote.titel} - ${customerById.get(String(quote.klantId)) ?? project?.titel ?? "Geen klant"}`,
+          href: `/portal/offertes/${quote._id}`,
+          label: meta.badge,
+          tone: meta.tone,
+          updatedAt: quote.gewijzigdOp,
+          priorityRank: meta.rank
+        }
+      ];
+    });
+    const workItems = [...taskWorkItems, ...projectWorkItems, ...quoteWorkItems].sort(
+      (left, right) => left.priorityRank - right.priorityRank || left.updatedAt - right.updatedAt
+    );
 
     const visibleProjects = await Promise.all(
       projects
         .filter(
-          (project: Doc<"projects">) =>
-            !["closed", "cancelled", "paid"].includes(project.status)
+          (project: Doc<"projects">) => !["closed", "cancelled", "paid"].includes(project.status)
         )
-        .sort((left: Doc<"projects">, right: Doc<"projects">) => right.gewijzigdOp - left.gewijzigdOp)
+        .sort(
+          (left: Doc<"projects">, right: Doc<"projects">) => right.gewijzigdOp - left.gewijzigdOp
+        )
         .slice(0, 6)
         .map((project: Doc<"projects">) => toProject(ctx, tenant.slug, project))
     );
@@ -219,11 +183,8 @@ export const dashboard = query({
         .collect()
     ]);
     const agendaNietViewers = agendaUsers.filter((u: Doc<"users">) => u.role !== "viewer");
-    const agendaAangevinkt = agendaNietViewers.filter(
-      (u: Doc<"users">) => u.toonInAgenda === true
-    );
-    const zichtbareMonteurs =
-      agendaAangevinkt.length > 0 ? agendaAangevinkt : agendaNietViewers;
+    const agendaAangevinkt = agendaNietViewers.filter((u: Doc<"users">) => u.toonInAgenda === true);
+    const zichtbareMonteurs = agendaAangevinkt.length > 0 ? agendaAangevinkt : agendaNietViewers;
     const maxCapaciteitPerDag = Math.max(1, zichtbareMonteurs.length) * INMEET_CAPACITEIT;
 
     const geboektPerWeekdag = new Map<number, number>();
@@ -288,7 +249,13 @@ export const dashboard = query({
 });
 
 // Re-exports
-export { listCustomers, createCustomer, updateCustomer, customerDetail, createCustomerContact } from "./beheer/customers";
+export {
+  listCustomers,
+  createCustomer,
+  updateCustomer,
+  customerDetail,
+  createCustomerContact
+} from "./beheer/customers";
 export {
   generateDossierAttachmentUploadUrl,
   createDossierAttachment,
@@ -329,12 +296,24 @@ export {
   updateQuoteStatus,
   updateQuoteTerms
 } from "./offertes/core";
-export { listSuppliers, createSupplier, updateSupplier, updateSupplierProductListStatus } from "./beheer/suppliers";
+export {
+  listSuppliers,
+  createSupplier,
+  updateSupplier,
+  updateSupplierProductListStatus
+} from "./beheer/suppliers";
 export { listQuoteTemplates, updateQuoteTemplateContent } from "./offertes/templates";
 export { listCategories, upsertCategory } from "./beheer/categories";
 export { listServiceRules, upsertServiceRule } from "./beheer/serviceCostRules";
 export { fieldServiceWorkspace, fieldProjectWorkspace } from "./projecten/fieldService";
-export { listInvoices, invoiceDetail, createInvoice, createInvoiceFromQuote, updateInvoiceStatus, markInvoicePaid } from "./facturen/core";
+export {
+  listInvoices,
+  invoiceDetail,
+  createInvoice,
+  createInvoiceFromQuote,
+  updateInvoiceStatus,
+  markInvoicePaid
+} from "./facturen/core";
 export {
   agendaWeek,
   inmeetBeschikbaarheid,
@@ -348,4 +327,3 @@ export {
 } from "./beheer/agenda";
 // clearTenantData is INTERN (internalMutation) en wordt bewust NIET geherexporteerd in de publieke portal-API.
 // Aanroepen via Convex dashboard of `npx convex run beheer/clearTenantData:clearTenantData`.
-
