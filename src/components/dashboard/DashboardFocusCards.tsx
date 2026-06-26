@@ -23,42 +23,39 @@ export function DashboardFocusCards({
       value: workItemCount,
       description: "Dossiers die aandacht vragen",
       href: "#werkoverzicht",
-      icon: ClipboardCheck,
-      tone: "warning"
+      icon: ClipboardCheck
     },
     {
       label: "Open offertes",
       value: openQuoteCount,
       description: "Concepten en verzonden offertes",
       href: "/portal/offertes",
-      icon: FileText,
-      tone: "info"
+      icon: FileText
     },
     {
       label: "Lopende uitvoering",
       value: plannedWorkCount,
       description: "Inmeting, bestelling of uitvoering",
       href: "/portal/dossiers",
-      icon: BriefcaseBusiness,
-      tone: "success"
+      icon: BriefcaseBusiness
     }
   ] as const;
 
   return (
-    <section className="grid dashboard-grid" aria-label="Belangrijkste werkvoorraad">
+    <section className="dashboard-stat-strip" aria-label="Belangrijkste werkvoorraad">
       {focusCards.map((card) => {
         const Icon = card.icon;
 
         return (
           <a
-            className={`card metric dashboard-focus-card dashboard-focus-card-${card.tone}`}
+            className="dashboard-stat-pill"
             href={card.href}
             key={card.label}
+            title={card.description}
           >
-            <Icon size={22} aria-hidden="true" />
-            <span className="muted">{card.label}</span>
+            <Icon size={16} aria-hidden="true" />
             <strong>{loadingValue(isLoading, card.value)}</strong>
-            <small className="muted">{card.description}</small>
+            <span className="muted">{card.label}</span>
           </a>
         );
       })}

@@ -3,6 +3,7 @@ import { Badge } from "../ui/data-display/Badge";
 import { Alert } from "../ui/feedback/Alert";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { Skeleton } from "../ui/feedback/Skeleton";
+import { CollapsiblePanel } from "./CollapsiblePanel";
 
 export type DashboardAgendaDag = {
   datumMs: number;
@@ -46,13 +47,12 @@ export function DashboardAgendaWidget({
 }: DashboardAgendaWidgetProps) {
   const magInplannen = canPlan && Boolean(onPlan);
   return (
-    <section className="panel" id="agenda-week">
-      <div className="dashboard-section-header">
-        <div>
-          <p className="eyebrow">Agenda</p>
-          <h2>Inmeetweek</h2>
-          <p className="muted">Vrije inmeetplekken op dinsdag, woensdag en donderdag (16:30–17:30).</p>
-        </div>
+    <CollapsiblePanel
+      id="agenda-week"
+      eyebrow="Agenda"
+      title="Inmeetweek"
+      description="Vrije inmeetplekken op dinsdag, woensdag en donderdag (16:30–17:30)."
+      action={
         <div className="dashboard-agenda-acties">
           {magInplannen ? (
             <button
@@ -67,8 +67,8 @@ export function DashboardAgendaWidget({
             Open agenda
           </a>
         </div>
-      </div>
-
+      }
+    >
       {!isLoading && agenda.nietToegewezenCount > 0 ? (
         <Alert
           variant="warning"
@@ -127,6 +127,6 @@ export function DashboardAgendaWidget({
           ))}
         </div>
       )}
-    </section>
+    </CollapsiblePanel>
   );
 }

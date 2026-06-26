@@ -4,6 +4,7 @@ import type { PortalProject } from "../../lib/portalTypes";
 import { Badge } from "../ui/data-display/Badge";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { Skeleton } from "../ui/feedback/Skeleton";
+import { CollapsiblePanel } from "./CollapsiblePanel";
 
 type DashboardRecentProjectsProps = {
   isLoading: boolean;
@@ -12,19 +13,17 @@ type DashboardRecentProjectsProps = {
 
 export function DashboardRecentProjects({ isLoading, projects }: DashboardRecentProjectsProps) {
   return (
-    <section className="panel">
-      <div className="dashboard-section-header">
-        <div>
-          <p className="eyebrow">Snel verder</p>
-          <h2>Recente projectdossiers</h2>
-          <p className="muted">Open lopende projecten zonder opnieuw te zoeken.</p>
-        </div>
+    <CollapsiblePanel
+      eyebrow="Snel verder"
+      title="Recente projectdossiers"
+      description="Open lopende projecten zonder opnieuw te zoeken."
+      action={
         <a className="ui-button ui-button-secondary ui-button-sm" href="/portal/dossiers">
           <Search size={15} aria-hidden="true" />
           Zoeken
         </a>
-      </div>
-
+      }
+    >
       {isLoading ? (
         <div className="dashboard-project-grid" aria-busy="true" aria-label="Projecten laden">
           {Array.from({ length: 4 }).map((_, index) => (
@@ -60,6 +59,6 @@ export function DashboardRecentProjects({ isLoading, projects }: DashboardRecent
           }
         />
       )}
-    </section>
+    </CollapsiblePanel>
   );
 }

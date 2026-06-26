@@ -195,7 +195,9 @@ export default function DashboardShell({ session }: DashboardShellProps) {
         projectId,
         inmeetdatum,
         gemetenDoor: data.measuredBy,
-        gemetenDoorUserId: data.measuredByUserId ? (data.measuredByUserId as Id<"users">) : undefined,
+        gemetenDoorUserId: data.measuredByUserId
+          ? (data.measuredByUserId as Id<"users">)
+          : undefined,
         omvang: data.omvang
       });
       showToast({ title: "Inmeting ingepland", description: klantNaam, tone: "success" });
@@ -215,7 +217,9 @@ export default function DashboardShell({ session }: DashboardShellProps) {
 
   return (
     <div className="grid">
-      {error ? <Alert variant="danger" title="Werkoverzicht niet geladen" description={error} /> : null}
+      {error ? (
+        <Alert variant="danger" title="Werkoverzicht niet geladen" description={error} />
+      ) : null}
 
       <DashboardInvoiceStrip
         isLoading={isLoading}
@@ -230,17 +234,9 @@ export default function DashboardShell({ session }: DashboardShellProps) {
         plannedWorkCount={dashboard.plannedWorkCount}
       />
 
-      <div className="grid two-column">
-        <DashboardWorkOverview
-          isLoading={isLoading}
-          workItems={dashboard.workItems}
-        />
+      <DashboardWorkOverview isLoading={isLoading} workItems={dashboard.workItems} />
 
-        <DashboardQuoteFollowUps
-          isLoading={isLoading}
-          quoteFollowUps={dashboard.quoteFollowUps}
-        />
-      </div>
+      <DashboardQuoteFollowUps isLoading={isLoading} quoteFollowUps={dashboard.quoteFollowUps} />
 
       <DashboardAgendaWidget
         isLoading={isLoading}
@@ -249,10 +245,7 @@ export default function DashboardShell({ session }: DashboardShellProps) {
         onPlan={openWizard}
       />
 
-      <DashboardRecentProjects
-        isLoading={isLoading}
-        projects={dashboard.projects}
-      />
+      <DashboardRecentProjects isLoading={isLoading} projects={dashboard.projects} />
 
       {showAdminReadiness ? <ProductionReadiness session={session} hideWhenReady /> : null}
 
