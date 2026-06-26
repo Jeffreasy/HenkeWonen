@@ -9,19 +9,30 @@ import { Select } from "../ui/forms/Select";
 
 type CreateQuoteFormProps = {
   projects: PortalProject[];
+  /** Vooraf te selecteren project (bv. "Offerte maken" vanuit een dossier). */
+  defaultProjectId?: string;
   onCreateQuote: (projectId: string, title: string) => Promise<void>;
 };
 
-export function CreateQuoteForm({ projects, onCreateQuote }: CreateQuoteFormProps) {
+export function CreateQuoteForm({
+  projects,
+  defaultProjectId,
+  onCreateQuote
+}: CreateQuoteFormProps) {
   const [projectId, setProjectId] = useState("");
   const [title, setTitle] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (projects.length > 0 && !projectId) {
-      setProjectId(projects[0].id);
+    if (projectId || projects.length === 0) {
+      return;
     }
-  }, [projects, projectId]);
+    const preferred =
+      defaultProjectId && projects.some((project) => project.id === defaultProjectId)
+        ? defaultProjectId
+        : projects[0].id;
+    setProjectId(preferred);
+  }, [projects, projectId, defaultProjectId]);
 
   async function handleSubmit(event: SubmitEventLike) {
     event.preventDefault();
@@ -42,37 +53,37 @@ export function CreateQuoteForm({ projects, onCreateQuote }: CreateQuoteFormProp
 
   return (
     <form className="form-grid" onSubmit={handleSubmit}>
-        <Field htmlFor="quote-project" label="Project" required>
-          <Select
-            id="quote-project"
-            value={projectId}
-            onChange={(event) => setProjectId(event.target.value)}
-            required
-          >
-            {projects.map((project) => (
-              <option value={project.id} key={project.id}>
-                {project.titel}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field htmlFor="quote-title" label="Offertenaam" required>
-          <Input
-            id="quote-title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            required
-          />
-        </Field>
-        <Button
-          disabled={projects.length === 0 || isSaving}
-          isLoading={isSaving}
-          leftIcon={<Save size={17} aria-hidden="true" />}
-          type="submit"
-          variant="primary"
+      <Field htmlFor="quote-project" label="Project" required>
+        <Select
+          id="quote-project"
+          value={projectId}
+          onChange={(event) => setProjectId(event.target.value)}
+          required
         >
-          Offerte starten
-        </Button>
+          {projects.map((project) => (
+            <option value={project.id} key={project.id}>
+              {project.titel}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field htmlFor="quote-title" label="Offertenaam" required>
+        <Input
+          id="quote-title"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          required
+        />
+      </Field>
+      <Button
+        disabled={projects.length === 0 || isSaving}
+        isLoading={isSaving}
+        leftIcon={<Save size={17} aria-hidden="true" />}
+        type="submit"
+        variant="primary"
+      >
+        Offerte starten
+      </Button>
     </form>
   );
 }

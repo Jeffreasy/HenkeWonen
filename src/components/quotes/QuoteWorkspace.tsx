@@ -45,7 +45,18 @@ function invoicePaymentTermDays(customer?: PortalCustomer | null) {
 }
 
 function shouldOpenNewQuoteModal() {
-  return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("open") === "nieuw";
+  return (
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("open") === "nieuw"
+  );
+}
+
+/** Vooraf gekozen project bij "Offerte maken" vanuit een dossier (?project=<id>). */
+function newQuoteProjectFromUrl() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  return new URLSearchParams(window.location.search).get("project") ?? "";
 }
 
 export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps) {
@@ -77,14 +88,16 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
 
     try {
       // Detailpagina laadt alleen de betreffende offerte; de lijst laadt de volledige werkruimte.
-      const result = (quoteId
-        ? await client.query(api.portal.quoteDetailWorkspace, {
-            tenantSlug: session.tenantId,
-            quoteId
-          })
-        : await client.query(api.portal.listQuotesWorkspace, {
-            tenantSlug: session.tenantId
-          })) as QuoteWorkspaceResult;
+      const result = (
+        quoteId
+          ? await client.query(api.portal.quoteDetailWorkspace, {
+              tenantSlug: session.tenantId,
+              quoteId
+            })
+          : await client.query(api.portal.listQuotesWorkspace, {
+              tenantSlug: session.tenantId
+            })
+      ) as QuoteWorkspaceResult;
 
       setCustomers(result.customers);
       setProjects(result.projects);
@@ -106,7 +119,11 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     const client = createConvexHttpClient(session);
 
     if (!client) {
-      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      showToast({
+        title: "Verbinding mislukt",
+        description: "Kan de omgeving niet bereiken.",
+        tone: "error"
+      });
       return;
     }
 
@@ -310,12 +327,12 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     const dueDate = Date.now() + invoicePaymentTermDays(selectedCustomer) * DAY_MS;
 
     try {
-      const result = await client.mutation(api.portal.createInvoiceFromQuote, {
+      const result = (await client.mutation(api.portal.createInvoiceFromQuote, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         quoteId: selectedQuoteId,
         vervaldatum: dueDate
-      }) as { invoiceId: string; invoiceNumber: string; alreadyExists: boolean };
+      })) as { invoiceId: string; invoiceNumber: string; alreadyExists: boolean };
 
       showToast({
         title: result.alreadyExists ? "Factuur bestond al" : "Factuur aangemaakt",
@@ -368,9 +385,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
 
   return (
     <div className="grid">
-      {error ? (
-        <Alert variant="danger" title="Offertes niet geladen" description={error} />
-      ) : null}
+      {error ? <Alert variant="danger" title="Offertes niet geladen" description={error} /> : null}
 
       {isDetailMode ? (
         <>
@@ -441,6 +456,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
             >
               <CreateQuoteForm
                 projects={projects}
+                defaultProjectId={newQuoteProjectFromUrl()}
                 onCreateQuote={handleCreateQuote}
               />
             </FormModal>

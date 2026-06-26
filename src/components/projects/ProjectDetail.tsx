@@ -518,7 +518,6 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
                   <MeasurementPanel
                     customerId={project.klantId}
                     projectId={project.id}
-                    projectRooms={project.rooms}
                     session={session}
                     tenantId={session.tenantId}
                   />

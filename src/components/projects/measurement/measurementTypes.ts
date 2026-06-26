@@ -10,7 +10,6 @@ import type {
   QuotePreparationStatus
 } from "../../../lib/portalTypes";
 import type { AppSession } from "../../../lib/auth/session";
-import type { PortalRoom } from "../../../lib/portalTypes";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -18,7 +17,6 @@ export type MeasurementPanelProps = {
   tenantId: string;
   projectId: string;
   customerId: string;
-  projectRooms: PortalRoom[];
   session: AppSession;
   mode?: "full" | "field";
 };

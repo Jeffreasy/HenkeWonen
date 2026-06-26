@@ -953,55 +953,53 @@ export default function MeasurementAssignPanel({
 
   return (
     <div className="grid" style={{ gap: 16 }}>
-      <Field htmlFor="assign-type" label="Wat toevoegen?">
-        <div
-          role="radiogroup"
-          aria-label="Producttype"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(112px, 1fr))",
-            gap: 8
-          }}
-        >
-          {ADD_TYPES.map((entry) => {
-            const active = addType === entry.key;
-            return (
-              <button
-                key={entry.key}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => chooseType(entry.key)}
+      <div
+        role="radiogroup"
+        aria-label="Producttype"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(112px, 1fr))",
+          gap: 8
+        }}
+      >
+        {ADD_TYPES.map((entry) => {
+          const active = addType === entry.key;
+          return (
+            <button
+              key={entry.key}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => chooseType(entry.key)}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 6,
+                padding: "12px 8px",
+                cursor: "pointer",
+                font: "inherit",
+                border: active ? "2px solid var(--accent)" : "1px solid var(--line)",
+                borderRadius: "var(--radius-lg)",
+                background: active ? "var(--surface-muted)" : "var(--surface-raised)",
+                color: active ? "var(--accent)" : "var(--ink)"
+              }}
+            >
+              {ADD_TYPE_ICONS[entry.key]}
+              <span
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "12px 8px",
-                  cursor: "pointer",
-                  font: "inherit",
-                  border: active ? "2px solid var(--accent)" : "1px solid var(--line)",
-                  borderRadius: "var(--radius-lg)",
-                  background: active ? "var(--surface-muted)" : "var(--surface-raised)",
-                  color: active ? "var(--accent)" : "var(--ink)"
+                  fontSize: "var(--text-sm)",
+                  fontWeight: active ? 700 : 500,
+                  textAlign: "center",
+                  lineHeight: 1.2
                 }}
               >
-                {ADD_TYPE_ICONS[entry.key]}
-                <span
-                  style={{
-                    fontSize: "var(--text-sm)",
-                    fontWeight: active ? 700 : 500,
-                    textAlign: "center",
-                    lineHeight: 1.2
-                  }}
-                >
-                  {entry.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </Field>
+                {entry.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       {isMatrix ? null : !isService ? (
         <CatalogProductPicker

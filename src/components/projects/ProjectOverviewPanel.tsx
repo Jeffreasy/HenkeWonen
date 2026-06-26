@@ -1,5 +1,6 @@
 import { CalendarClock, FileText, Pencil, Ruler, XCircle } from "lucide-react";
 import type { PortalCustomer, PortalProject } from "../../lib/portalTypes";
+import { formatDate } from "../../lib/dates";
 import { Badge } from "../ui/data-display/Badge";
 import { Button } from "../ui/forms/Button";
 import ProjectStatusBadge from "./ProjectStatusBadge";
@@ -16,18 +17,6 @@ type ProjectOverviewPanelProps = {
   canEdit: boolean;
 };
 
-function dateText(value?: number) {
-  if (!value) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("nl-NL", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric"
-  }).format(new Date(value));
-}
-
 export function ProjectOverviewPanel({
   project,
   customer,
@@ -39,14 +28,18 @@ export function ProjectOverviewPanel({
   onCancelProject,
   canEdit
 }: ProjectOverviewPanelProps) {
+  // Klant staat al in de kicker; lege/nul-waarden verbergen we tot ze gevuld zijn.
   const metadata = [
-    { id: "customer", label: "Klant", value: customer?.weergaveNaam ?? "-" },
     { id: "rooms", label: "Ruimtes", value: project.rooms.length },
     { id: "events", label: "Momenten", value: workflowEventsCount },
-    { id: "measurement", label: "Inmeetdatum", value: dateText(project.inmeetdatum) },
-    { id: "execution", label: "Uitvoering", value: dateText(project.uitvoerdatum ?? project.uitvoerGeplandOp) },
-    { id: "updated", label: "Bijgewerkt", value: dateText(project.gewijzigdOp) }
-  ];
+    { id: "measurement", label: "Inmeetdatum", value: formatDate(project.inmeetdatum) },
+    {
+      id: "execution",
+      label: "Uitvoering",
+      value: formatDate(project.uitvoerdatum ?? project.uitvoerGeplandOp)
+    },
+    { id: "updated", label: "Bijgewerkt", value: formatDate(project.gewijzigdOp) }
+  ].filter((item) => item.value !== 0 && item.value !== "-");
 
   return (
     <section className="panel project-overview-panel">
@@ -92,7 +85,10 @@ export function ProjectOverviewPanel({
 
       {canEdit ? (
         <div className="project-primary-actions">
-          <a className="ui-button ui-button-secondary ui-button-md" href="/portal/offertes">
+          <a
+            className="ui-button ui-button-secondary ui-button-md"
+            href={`/portal/offertes?open=nieuw&project=${project.id}`}
+          >
             <FileText size={17} aria-hidden="true" />
             Offerte maken
           </a>
@@ -114,7 +110,7 @@ export function ProjectOverviewPanel({
         </div>
       ) : null}
 
-      {(project.interneNotities || project.klantNotities) ? (
+      {project.interneNotities || project.klantNotities ? (
         <div className="project-notes-strip" aria-label="Projectnotities">
           {project.interneNotities ? (
             <div className="project-note-preview">

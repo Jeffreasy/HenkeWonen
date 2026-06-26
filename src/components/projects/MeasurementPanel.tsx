@@ -38,9 +38,7 @@ import { Input } from "../ui/forms/Input";
 import { LoadingState } from "../ui/feedback/LoadingState";
 import { SectionHeader } from "../ui/layout/SectionHeader";
 import { Select } from "../ui/forms/Select";
-import { StatCard } from "../ui/data-display/StatCard";
 import { StatusBadge } from "../ui/data-display/StatusBadge";
-import { SummaryList } from "../ui/data-display/SummaryList";
 import { Textarea } from "../ui/forms/Textarea";
 import type {
   FieldMeasureTool,
@@ -51,7 +49,6 @@ import type {
   MeasurementPanelProps
 } from "./measurement/measurementTypes";
 import {
-  dateText,
   decimalText,
   formatNumber,
   fromDateInputValue,
@@ -875,20 +872,32 @@ export default function MeasurementPanel({
       <SectionHeader
         compact
         title={isFieldMode ? "Meten bij de klant" : "Inmeting"}
-        description={
-          isFieldMode
-            ? "Werk van klantgegevens naar ruimtes, meetregels en een conceptofferte."
-            : "Leg ruimtes, maten en indicatieve hoeveelheden vast voor latere offertevoorbereiding."
+        actions={
+          measurement ? (
+            <div
+              className="measurement-stat-strip"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "2px 14px",
+                alignItems: "baseline",
+                fontSize: "var(--text-sm)"
+              }}
+            >
+              <StatusBadge
+                status={measurement.status}
+                label={formatMeasurementStatus(measurement.status)}
+              />
+              <span>
+                <strong>{rooms.length}</strong> <span className="muted">ruimtes</span>
+              </span>
+              <span>
+                <strong>{readyLineCount}</strong> <span className="muted">klaar voor offerte</span>
+              </span>
+            </div>
+          ) : undefined
         }
       />
-
-      {!isFieldMode ? (
-        <Alert
-          variant="info"
-          title="Richtprijzen zijn indicatief"
-          description="Kies bij het inmeten optioneel een product om direct een richtprijs te zien. De definitieve prijs en btw bepaal je in de offerte."
-        />
-      ) : null}
 
       {error ? <Alert variant="danger" description={error} style={{ marginTop: 12 }} /> : null}
 
@@ -911,21 +920,6 @@ export default function MeasurementPanel({
         />
       ) : (
         <div className="grid">
-          <section className={isFieldMode ? "grid field-measurement-summary" : "grid three-column"}>
-            <StatCard
-              label="Status"
-              value={formatMeasurementStatus(measurement.status)}
-              tone={measurement.status === "reviewed" ? "success" : "warning"}
-            />
-            <StatCard label="Ruimtes gemeten" value={rooms.length} tone="info" />
-            <StatCard
-              label="Klaar voor offerte"
-              value={readyLineCount}
-              description={`${lines.length} inmeetregels totaal`}
-              tone={readyLineCount > 0 ? "success" : "neutral"}
-            />
-          </section>
-
           <Card style={{ order: 9 }}>
             <details
               className="measurement-summary"
@@ -943,18 +937,7 @@ export default function MeasurementPanel({
                 <p className="muted measurement-summary-desc">
                   Deze gegevens horen bij het projectdossier en wijzigen geen offerte.
                 </p>
-                <SummaryList
-                  items={[
-                    { id: "date", label: "Inmeetdatum", value: dateText(measurement.inmeetdatum) },
-                    {
-                      id: "person",
-                      label: "Ingemeten door",
-                      value: measurement.gemetenDoor ?? "-"
-                    },
-                    { id: "updated", label: "Bijgewerkt", value: dateText(measurement.gewijzigdOp) }
-                  ]}
-                />
-                <div className="responsive-form-row" style={{ marginTop: 16 }}>
+                <div className="responsive-form-row" style={{ marginTop: 12 }}>
                   <Field htmlFor="measurement-status" label="Status">
                     <Select
                       id="measurement-status"
@@ -1016,12 +999,8 @@ export default function MeasurementPanel({
             <section className="panel" id="assign-panel-section">
               <SectionHeader
                 compact
-                title={
-                  isFieldMode
-                    ? "Stap 1 - Producten & diensten kiezen"
-                    : "Stap 1 - Producten & diensten toewijzen aan ruimtes"
-                }
-                description="Kies een product of dienst en pas het in één keer toe op één of meer ruimtes. De hoeveelheid volgt automatisch uit de ruimtematen."
+                title="Stap 1 - Producten & diensten"
+                description="Kies een product of dienst en pas het toe op de ruimtes — de hoeveelheid volgt uit de maten."
               />
               <MeasurementAssignPanel
                 session={session}
@@ -1049,12 +1028,8 @@ export default function MeasurementPanel({
       <Card>
         <SectionHeader
           compact
-          title={isFieldMode ? "Stap 2 - Opgeslagen meetregels" : "Stap 2 - Inmeetregels"}
-          description={
-            isFieldMode
-              ? `Dit zijn de hoeveelheden die klaarstaan voor de conceptofferte. Richtprijzen zijn indicatief en ${showPricesIncVat ? "incl." : "excl."} btw.`
-              : `Zet inmeetregels klaar zodat je ze in een offerte kunt overnemen. Richtprijzen zijn indicatief en ${showPricesIncVat ? "incl." : "excl."} btw; de definitieve prijs bepaal je in de offerte.`
-          }
+          title="Stap 2 - Inmeetregels"
+          description={`Hoeveelheden voor de conceptofferte. Richtprijzen indicatief (${showPricesIncVat ? "incl." : "excl."} btw).`}
           actions={
             <Button
               size="sm"
