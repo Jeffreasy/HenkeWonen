@@ -11,7 +11,7 @@ const workflowSteps: Array<{
   label: string;
   statuses: ProjectStatus[];
 }> = [
-  { label: "Lead", statuses: ["lead"] },
+  { label: "Aanvraag", statuses: ["lead"] },
   { label: "Inmeten", statuses: ["measurement_planned"] },
   { label: "Offerte maken", statuses: ["quote_draft"] },
   { label: "Offerte verzonden", statuses: ["quote_sent"] },
