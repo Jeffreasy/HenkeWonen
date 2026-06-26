@@ -436,6 +436,15 @@
   justify-content: flex-end;
 }
 
+/* Compacte vierkante icoon-knop (contact-snelacties op de bezoek-kaart). */
+.field-card-icon-action {
+  padding-inline: var(--space-2);
+}
+
+.field-section-toggle {
+  margin-top: var(--space-2);
+}
+
 .field-loading-state {
   display: flex;
   flex-wrap: wrap;

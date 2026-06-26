@@ -1,6 +1,10 @@
 import { ExternalLink, Mail, MapPin, Navigation, Phone, Ruler, UserRound } from "lucide-react";
 import { formatDate } from "../../lib/dates";
-import { formatMeasurementStatus, formatProjectStatus, formatQuoteStatus } from "../../lib/i18n/statusLabels";
+import {
+  formatMeasurementStatus,
+  formatProjectStatus,
+  formatQuoteStatus
+} from "../../lib/i18n/statusLabels";
 import type { FieldWorkspaceCard } from "../../lib/portalTypes";
 import { StatusBadge } from "../ui/data-display/StatusBadge";
 
@@ -20,7 +24,10 @@ export function cardUrgency(card: FieldWorkspaceCard): CardUrgency {
     return { level: openTask.priority.level, label: openTask.priority.label };
   }
 
-  if (card.measurement?.status === "reviewed" || card.measurement?.status === "converted_to_quote") {
+  if (
+    card.measurement?.status === "reviewed" ||
+    card.measurement?.status === "converted_to_quote"
+  ) {
     return { level: "green", label: "Groen" };
   }
 
@@ -90,7 +97,10 @@ export function FieldCard({ card, preferredAction }: FieldCardProps) {
             <span className={`field-card-priority field-card-priority-${urgency.level}`}>
               {urgency.label}
             </span>
-            <StatusBadge status={card.latestQuote?.status ?? card.project.status} label={statusLabel} />
+            <StatusBadge
+              status={card.latestQuote?.status ?? card.project.status}
+              label={statusLabel}
+            />
           </div>
         </div>
 
@@ -121,34 +131,44 @@ export function FieldCard({ card, preferredAction }: FieldCardProps) {
       </div>
 
       <div className="field-card-actions">
+        {/* Contact-acties als compacte icoon-knoppen; de werk-actie houdt label + nadruk. */}
         {card.telefoon ? (
-          <a className="ui-button ui-button-secondary ui-button-md" href={`tel:${card.telefoon}`}>
+          <a
+            className="ui-button ui-button-secondary ui-button-sm field-card-icon-action"
+            href={`tel:${card.telefoon}`}
+            aria-label="Bellen"
+            title="Bellen"
+          >
             <Phone size={17} aria-hidden="true" />
-            <span>Bellen</span>
           </a>
         ) : null}
         {card.email ? (
-          <a className="ui-button ui-button-secondary ui-button-md" href={`mailto:${card.email}`}>
+          <a
+            className="ui-button ui-button-secondary ui-button-sm field-card-icon-action"
+            href={`mailto:${card.email}`}
+            aria-label="Mail"
+            title="Mail"
+          >
             <Mail size={17} aria-hidden="true" />
-            <span>Mail</span>
           </a>
         ) : null}
         {card.address ? (
           <a
-            className="ui-button ui-button-secondary ui-button-md"
+            className="ui-button ui-button-secondary ui-button-sm field-card-icon-action"
             href={mapsUrl(card.address)}
             rel="noreferrer"
             target="_blank"
+            aria-label="Route"
+            title="Route"
           >
             <Navigation size={17} aria-hidden="true" />
-            <span>Route</span>
           </a>
         ) : null}
         {actions.map((action) => (
           <a
             className={`ui-button ui-button-${
               action.id === preferredAction ? "primary" : "secondary"
-            } ui-button-md`}
+            } ui-button-sm`}
             href={action.href}
             key={action.id}
           >
