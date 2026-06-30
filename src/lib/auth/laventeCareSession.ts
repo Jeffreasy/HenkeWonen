@@ -285,6 +285,22 @@ async function sign(value: string, secret: string) {
   return base64UrlEncodeBytes(new Uint8Array(signature));
 }
 
+/**
+ * Constant-time vergelijking van twee (base64url-)strings van gelijke lengte. Voorkomt
+ * een timing-side-channel op de HMAC-signatuur (WebCrypto-runtime: geen Node
+ * `timingSafeEqual` beschikbaar). De lengtecheck lekt alleen de — vaste — HMAC-lengte.
+ */
+export function timingSafeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 async function verifyJwt(token: string, secret: string) {
   const parts = token.split(".");
 
@@ -295,7 +311,7 @@ async function verifyJwt(token: string, secret: string) {
   const [header, payload, signature] = parts;
   const expectedSignature = await sign(`${header}.${payload}`, secret);
 
-  if (signature !== expectedSignature) {
+  if (!timingSafeEqualStr(signature, expectedSignature)) {
     return null;
   }
 

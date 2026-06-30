@@ -46,6 +46,7 @@ import type * as portalUtils from "../portalUtils.js";
 import type * as projecten_core from "../projecten/core.js";
 import type * as projecten_fieldService from "../projecten/fieldService.js";
 import type * as projecten_measurements from "../projecten/measurements.js";
+import type * as projecten_nextStep from "../projecten/nextStep.js";
 import type * as projecten_workflowEvents from "../projecten/workflowEvents.js";
 import type * as seed_core from "../seed/core.js";
 import type * as seed_demo from "../seed/demo.js";
@@ -95,6 +96,7 @@ declare const fullApi: ApiFromModules<{
   "projecten/core": typeof projecten_core;
   "projecten/fieldService": typeof projecten_fieldService;
   "projecten/measurements": typeof projecten_measurements;
+  "projecten/nextStep": typeof projecten_nextStep;
   "projecten/workflowEvents": typeof projecten_workflowEvents;
   "seed/core": typeof seed_core;
   "seed/demo": typeof seed_demo;

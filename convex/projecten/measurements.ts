@@ -10,6 +10,7 @@ import {
 import { pilotHiddenReason } from "../catalog/pilot";
 import { isUnitCompatible } from "../catalog/pricingRules";
 import { assertInmeetBoeking } from "../beheer/agenda";
+import { assertValidRoomDimensions } from "../portalUtils";
 import type { Doc, Id } from "../_generated/dataModel";
 
 /** Genormaliseerde ruimtenaam voor dedup (trim + lowercase). */
@@ -556,6 +557,13 @@ export const addMeasurementRoom = mutation({
       "editor",
       "admin"
     ]);
+    assertValidRoomDimensions({
+      breedteM: args.breedteM,
+      lengteM: args.lengteM,
+      hoogteM: args.hoogteM,
+      oppervlakteM2: args.oppervlakteM2,
+      omtrekM: args.omtrekM
+    });
     const measurement = await requireMeasurement(ctx, args.tenantId, args.inmetingId);
 
     let projectRuimteId = args.projectRuimteId;
@@ -740,6 +748,13 @@ export const updateMeasurementRoom = mutation({
       "editor",
       "admin"
     ]);
+    assertValidRoomDimensions({
+      breedteM: args.breedteM,
+      lengteM: args.lengteM,
+      hoogteM: args.hoogteM,
+      oppervlakteM2: args.oppervlakteM2,
+      omtrekM: args.omtrekM
+    });
     const room = await ctx.db.get(args.ruimteId);
 
     if (!room || room.tenantId !== args.tenantId) {
@@ -1192,61 +1207,10 @@ export const deleteMeasurementLine = mutation({
   }
 });
 
-export const markMeasurementLineConverted = mutation({
-  args: {
-    tenantId: v.id("tenants"),
-    actor: mutationActorValidator,
-    lineId: v.id("measurementLines"),
-    quoteId: v.id("quotes"),
-    quoteLineId: v.id("quoteLines")
-  },
-  handler: async (ctx, args) => {
-    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
-      "user",
-      "editor",
-      "admin"
-    ]);
-    const line = await ctx.db.get(args.lineId);
-
-    if (!line || line.tenantId !== args.tenantId) {
-      throw new ConvexError("Measurement line not found");
-    }
-
-    if (line.quotePreparationStatus !== "ready_for_quote") {
-      throw new ConvexError("Measurement line is not ready for quote");
-    }
-
-    const measurement = await ctx.db.get(line.inmetingId);
-
-    if (!measurement || measurement.tenantId !== args.tenantId) {
-      throw new ConvexError("Measurement not found");
-    }
-
-    const quote = await ctx.db.get(args.quoteId);
-
-    if (!quote || quote.tenantId !== args.tenantId || quote.projectId !== measurement.projectId) {
-      throw new ConvexError("Quote not found for measurement project");
-    }
-
-    const quoteLine = await ctx.db.get(args.quoteLineId);
-
-    if (!quoteLine || quoteLine.tenantId !== args.tenantId || quoteLine.quoteId !== args.quoteId) {
-      throw new ConvexError("Quote line not found");
-    }
-
-    const now = Date.now();
-
-    await ctx.db.patch(args.lineId, {
-      quotePreparationStatus: "converted",
-      geconverteerdeOfferteId: args.quoteId,
-      geconverteerdeOfferteregelId: args.quoteLineId,
-      gewijzigdOp: now
-    });
-    await touchMeasurement(ctx, line.inmetingId, now);
-
-    return args.lineId;
-  }
-});
+// markMeasurementLineConverted is verwijderd: legacy twee-staps-conversie, volledig
+// vervangen door importMeasurementLinesToQuote (offertes/core.ts) dat de quoteLine
+// aanmaakt én de measurementLine atomisch op 'converted' zet. De oude mutation was
+// publiek en kon een meetregel aan een willekeurige quoteLine koppelen (mislink).
 
 export const listWasteProfiles = query({
   args: {

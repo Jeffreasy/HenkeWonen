@@ -217,6 +217,29 @@ export function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+/**
+ * Bewaakt ruimtematen: een meegegeven maat moet eindig en niet-negatief zijn.
+ * Server-side defense-in-depth náást de client-guard — een directe API-call mag geen
+ * negatieve/NaN/Infinity-maat persisteren (die een onzinnige offertehoeveelheid voedt).
+ * Accepteert beide naamgevingen (measurementRooms: *M, projectRooms: omtrekMeter).
+ */
+export function assertValidRoomDimensions(dims: {
+  breedteM?: number;
+  lengteM?: number;
+  hoogteM?: number;
+  oppervlakteM2?: number;
+  omtrekM?: number;
+  omtrekMeter?: number;
+}): void {
+  for (const [label, value] of Object.entries(dims)) {
+    if (value !== undefined && (!Number.isFinite(value) || value < 0)) {
+      throw new ConvexError(
+        `Ongeldige ruimtemaat (${label}): moet een eindig, niet-negatief getal zijn.`
+      );
+    }
+  }
+}
+
 export function calculateLineTotals(
   lineType: string,
   quantity: number,

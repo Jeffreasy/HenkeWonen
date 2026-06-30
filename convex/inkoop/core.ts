@@ -23,13 +23,17 @@ function roundCents(value: number): number {
  * Kiest de inkoopprijs uit de productPrices: voorkeur net_purchase boven purchase,
  * daarna de nieuwste geldige. Nooit klant-/adviesprijzen — die zijn bewust gescheiden.
  */
-function selectPurchasePrice(
+export function selectPurchasePrice(
   prices: Doc<"productPrices">[],
   now: number
 ): { bedrag?: number; bron: "net_purchase" | "purchase" | "none" } {
   const candidates = prices.filter(
     (price) =>
       (price.prijsSoort === "net_purchase" || price.prijsSoort === "purchase") &&
+      // Een 0/negatieve inkoopprijs telt als afwezig (anders valt 'm bron != "none"
+      // en verdwijnt de "regels zonder inkoopprijs"-waarschuwing stil).
+      Number.isFinite(price.bedrag) &&
+      price.bedrag > 0 &&
       (price.geldigVanaf ?? 0) <= now &&
       (price.geldigTot ?? Number.POSITIVE_INFINITY) >= now
   );
