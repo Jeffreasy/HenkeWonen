@@ -31,6 +31,7 @@ import {
   restoreMeasurementLinesForQuote,
   assertQuoteAcceptable,
   cancelOtherOpenQuotesAndRestore,
+  assertNoOtherAcceptedQuote,
   hasProjectEvent,
   nextInvoiceNumber,
   completeInvoiceWorkflow,
@@ -943,10 +944,35 @@ export const processProjectAction = mutation({
       // ongecontroleerde richtprijs of €0-regels ook via het winkel-dossierpad niet stil naar
       // akkoord (en daarmee factuur) kan glippen.
       await assertQuoteAcceptable(ctx, tenant._id, latestQuote._id);
+
+      // Eén leidende geaccepteerde offerte per dossier (gedeeld met updateQuoteStatus).
+      await assertNoOtherAcceptedQuote(ctx, tenant._id, project._id, latestQuote._id);
     }
 
     if (args.action === "invoice_created" && !latestAcceptedQuote) {
       throw new ConvexError("Maak of accepteer eerst een offerte voordat je een factuur aanmaakt.");
+    }
+
+    // "Export boekhouder" zet het dossier op 'invoiced'; dat mag alleen als er ook
+    // echt een factuur bestaat — anders ontstaat een 'invoiced'-dossier zonder factuur
+    // (en een dode "Betaling registreren"-banner zonder bestemming).
+    if (args.action === "bookkeeper_export_sent") {
+      const projectInvoices = await ctx.db
+        .query("invoices")
+        .withIndex("by_project", (q) =>
+          q.eq("tenantId", tenant._id).eq("projectId", project._id)
+        )
+        .collect();
+      // Alleen een exporteerbare factuur telt: een 'draft' of 'cancelled' factuur mag
+      // het dossier niet naar 'invoiced' tillen.
+      const hasExportableInvoice = projectInvoices.some(
+        (invoice) => invoice.status !== "draft" && invoice.status !== "cancelled"
+      );
+      if (!hasExportableInvoice) {
+        throw new ConvexError(
+          "Maak eerst een factuur aan voordat je het dossier naar de boekhouder exporteert."
+        );
+      }
     }
 
     await ctx.db.patch(project._id, {

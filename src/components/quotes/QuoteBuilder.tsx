@@ -808,6 +808,12 @@ export default function QuoteBuilder({
   // Buitendienst: alleen de 3 relevante statusacties
   const fieldAllowedStatuses = new Set(["sent", "accepted", "rejected"] as const);
 
+  // Een terminale offerte (afgewezen/geannuleerd/verlopen) mag niet herleven naar
+  // verstuurd/akkoord — spiegelt de backend-guard zodat die knoppen niet verschijnen.
+  const terminalQuoteStatuses = new Set(["rejected", "cancelled", "expired"]);
+  const isTerminalQuote = terminalQuoteStatuses.has(quote.status);
+  const revivingStatuses = new Set(["sent", "accepted"]);
+
   const statusActions =
     canEdit && onUpdateStatus ? (
       <div className="toolbar quote-status-actions">
@@ -816,6 +822,7 @@ export default function QuoteBuilder({
           .filter(
             (action) =>
               action.status !== quote.status &&
+              !(isTerminalQuote && revivingStatuses.has(action.status)) &&
               (isFieldMode
                 ? fieldAllowedStatuses.has(action.status as "sent" | "accepted" | "rejected")
                 : true)

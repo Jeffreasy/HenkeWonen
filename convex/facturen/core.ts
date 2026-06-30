@@ -13,7 +13,8 @@ import {
   completeInvoiceWorkflow,
   existingInvoiceForQuote,
   nextInvoiceNumber,
-  requireTenant
+  requireTenant,
+  roundMoney
 } from "../portalUtils";
 
 // ---------------------------------------------------------------------------
@@ -498,17 +499,23 @@ export const markInvoicePaid = mutation({
       throw new ConvexError("Geannuleerde facturen kunnen niet worden bijgewerkt.");
     }
 
+    if (invoice.status === "paid") {
+      throw new ConvexError("Deze factuur is al volledig betaald.");
+    }
+
     const now = Date.now();
     const paidAt = args.betaaldOp ?? now;
 
-    // Bepaal nieuwe status op basis van betaald bedrag
-    const isFullyPaid = args.betaaldBedrag >= invoice.totaalInclBtw;
-    // Cap het opgeslagen bedrag op het factuurtotaal: een overbetaling mag niet als
-    // negatief "openstaand" doorlekken naar de openstaand-rapportages / boekhouder-export.
-    const storedPaid = isFullyPaid ? invoice.totaalInclBtw : args.betaaldBedrag;
+    // `betaaldBedrag` is de NIEUWE (deel)betaling: tel op bij wat al betaald is, zodat
+    // twee deelbetalingen accumuleren i.p.v. elkaar te overschrijven. Cap op het
+    // factuurtotaal — een overbetaling mag niet als negatief "openstaand" doorlekken
+    // naar de openstaand-rapportages / boekhouder-export.
+    const cumulativePaid = roundMoney((invoice.betaaldBedrag ?? 0) + args.betaaldBedrag);
+    const isFullyPaid = cumulativePaid >= invoice.totaalInclBtw;
+    const storedPaid = isFullyPaid ? invoice.totaalInclBtw : cumulativePaid;
     const newStatus = isFullyPaid
       ? ("paid" as const)
-      : args.betaaldBedrag > 0
+      : storedPaid > 0
       ? ("partially_paid" as const)
       : invoice.status;
 
