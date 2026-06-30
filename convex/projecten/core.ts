@@ -963,7 +963,12 @@ export const processProjectAction = mutation({
           q.eq("tenantId", tenant._id).eq("projectId", project._id)
         )
         .collect();
-      if (projectInvoices.length === 0) {
+      // Alleen een exporteerbare factuur telt: een 'draft' of 'cancelled' factuur mag
+      // het dossier niet naar 'invoiced' tillen.
+      const hasExportableInvoice = projectInvoices.some(
+        (invoice) => invoice.status !== "draft" && invoice.status !== "cancelled"
+      );
+      if (!hasExportableInvoice) {
         throw new ConvexError(
           "Maak eerst een factuur aan voordat je het dossier naar de boekhouder exporteert."
         );

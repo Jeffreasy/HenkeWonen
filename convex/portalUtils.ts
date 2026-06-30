@@ -857,12 +857,12 @@ export async function assertQuoteAcceptable(
 
   // Netto-totaal moet positief zijn: een korting groter dan het subtotaal (de gate
   // hierboven kijkt alleen of er één regel >€0 is, niet naar het saldo) zou anders een
-  // negatieve offerte — en daarmee een negatieve factuur — laten passeren.
-  const netTotalExVat = lines.reduce(
-    (sum: number, line: Doc<"quoteLines">) => sum + line.regelTotaalExBtw,
-    0
+  // negatieve offerte — en daarmee een negatieve factuur — laten passeren. Rond af op
+  // centen en weiger niet-eindige waarden (NaN passeert anders `<= 0`).
+  const netTotalExVat = roundMoney(
+    lines.reduce((sum: number, line: Doc<"quoteLines">) => sum + line.regelTotaalExBtw, 0)
   );
-  if (netTotalExVat <= 0) {
+  if (!Number.isFinite(netTotalExVat) || netTotalExVat <= 0) {
     throw new ConvexError(
       "Het offertetotaal is € 0 of negatief. Controleer de regels (bijvoorbeeld een korting die groter is dan het subtotaal) voordat je de offerte verstuurt of op akkoord zet."
     );

@@ -4,7 +4,7 @@ import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canWrite, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatDate } from "../../lib/dates";
-import { formatEuro } from "../../lib/money";
+import { formatEuro, getOutstandingAmount, formatMoneyInput } from "../../lib/money";
 import type { InvoiceStatus, PortalInvoiceDetail } from "../../lib/portalTypes";
 import { Button } from "../ui/forms/Button";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
@@ -77,10 +77,11 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
     const invoice = detail?.invoice;
     // Vul het OPENSTAANDE restant voor (niet het volle totaal): de backend telt deze
     // betaling op bij wat al betaald is, dus bij een 2e deelbetaling klopt het bedrag.
-    const outstanding = invoice
-      ? Math.max(0, invoice.totaalInclBtw - invoice.betaaldBedrag)
-      : 0;
-    setPaidAmount(invoice ? outstanding.toFixed(2).replace(".", ",") : "");
+    setPaidAmount(
+      invoice
+        ? formatMoneyInput(getOutstandingAmount(invoice.totaalInclBtw, invoice.betaaldBedrag))
+        : ""
+    );
     setPendingAction({ type: "mark_paid" });
   }
 
@@ -168,7 +169,7 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
     isOpen && invoice.vervaldatum < Date.now()
       ? Math.floor((Date.now() - invoice.vervaldatum) / msPerDay)
       : 0;
-  const outstanding = Math.max(0, invoice.totaalInclBtw - invoice.betaaldBedrag);
+  const outstanding = getOutstandingAmount(invoice.totaalInclBtw, invoice.betaaldBedrag);
   const paidPct =
     invoice.totaalInclBtw > 0
       ? Math.min(100, Math.max(0, Math.round((invoice.betaaldBedrag / invoice.totaalInclBtw) * 100)))
@@ -236,7 +237,7 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
               label="Ontvangen bedrag (incl. btw)"
               description={
                 invoice.betaaldBedrag > 0
-                  ? `Openstaand: ${formatEuro(Math.max(0, invoice.totaalInclBtw - invoice.betaaldBedrag))} · al betaald ${formatEuro(invoice.betaaldBedrag)} van ${formatEuro(invoice.totaalInclBtw)}`
+                  ? `Openstaand: ${formatEuro(getOutstandingAmount(invoice.totaalInclBtw, invoice.betaaldBedrag))} · al betaald ${formatEuro(invoice.betaaldBedrag)} van ${formatEuro(invoice.totaalInclBtw)}`
                   : `Totaalbedrag factuur: ${formatEuro(invoice.totaalInclBtw)}`
               }
             >

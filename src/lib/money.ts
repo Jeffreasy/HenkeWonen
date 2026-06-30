@@ -17,6 +17,19 @@ export function formatEuro(value: number): string {
   }).format(value);
 }
 
+/**
+ * Openstaand bedrag van een factuur (nooit negatief), afgerond op centen zodat het
+ * exact aansluit op de backend-berekening (`roundMoney`).
+ */
+export function getOutstandingAmount(totalIncVat: number, paidAmount: number): number {
+  return roundMoney(Math.max(0, totalIncVat - paidAmount));
+}
+
+/** Formatteert een geldbedrag als nl-NL invoerwaarde (komma-decimaal) voor een tekstveld. */
+export function formatMoneyInput(value: number): string {
+  return value.toFixed(2).replace(".", ",");
+}
+
 export function calculateLineTotals(
   quantity: number,
   unitPriceExVat: number,

@@ -308,9 +308,10 @@ export function fieldBucket(
   }
 
   if (["lead", "measurement_planned"].includes(project.status)) {
-    // Directe verkoop slaat inmeten over (consistent met computeProjectNextStep):
-    // toon "Conceptofferte maken" i.p.v. "Inmeten", net als het kantoor-dossier.
-    if (project.directeVerkoop) {
+    // Directe verkoop slaat inmeten over: toon "Conceptofferte maken" i.p.v.
+    // "Inmeten", net als het kantoor-dossier. Alleen vanaf 'lead' — gelijk aan
+    // computeProjectNextStep, dat 'measurement_planned' altijd naar inmeten stuurt.
+    if (project.directeVerkoop && project.status === "lead") {
       return "quote";
     }
     return "measure";

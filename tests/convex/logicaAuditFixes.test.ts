@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import schema from "../../convex/schema";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
@@ -16,6 +16,11 @@ function stubAuth() {
   vi.stubEnv("AUTHZ_TOKEN_SECRET", "");
   vi.stubEnv("ALLOW_DEV_AUTHZ_TOKENS", "true");
 }
+
+// vi.stubEnv is globaal; reset na elke test zodat env-stubs niet lekken.
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 async function base(t: ReturnType<typeof convexTest>, projectStatus = "quote_draft") {
   const now = Date.now();
@@ -202,6 +207,28 @@ describe("F4: offerte-statusovergangen", () => {
     expect(quote?.status).toBe("draft");
   });
 
+  test("dezelfde status opnieuw zetten is een idempotente no-op (geen side effects)", async () => {
+    stubAuth();
+    const t = convexTest(schema, modules);
+    const ids = await base(t, "quote_sent");
+    const quoteId = await insertQuote(t, ids, "sent", "OFF-2026-6");
+    const before = await t.run(async (ctx) => ctx.db.get(quoteId));
+
+    const result = await t.mutation(api.portal.updateQuoteStatus, {
+      tenantSlug: "henke-wonen",
+      actor,
+      quoteId: String(quoteId),
+      status: "sent"
+    });
+    expect(String(result)).toBe(String(quoteId));
+
+    const after = await t.run(async (ctx) => ctx.db.get(quoteId));
+    expect(after?.status).toBe("sent");
+    // Early return vóór de patch: gewijzigdOp blijft ongemoeid (= bewijs van no-op,
+    // geen extra workflow-events of taken).
+    expect(after?.gewijzigdOp).toBe(before?.gewijzigdOp);
+  });
+
   test("een tweede offerte op akkoord zetten faalt als er al één geaccepteerd is", async () => {
     stubAuth();
     const t = convexTest(schema, modules);
@@ -305,6 +332,39 @@ describe("F9: invoiced zonder factuur", () => {
     stubAuth();
     const t = convexTest(schema, modules);
     const ids = await base(t, "invoiced");
+
+    await expect(
+      t.mutation(api.portal.processProjectAction, {
+        tenantSlug: "henke-wonen",
+        actor,
+        projectId: String(ids.projectId),
+        action: "bookkeeper_export_sent"
+      })
+    ).rejects.toThrow(/eerst een factuur/i);
+  });
+
+  test("'Export boekhouder' faalt als de enige factuur geannuleerd is (niet exporteerbaar)", async () => {
+    stubAuth();
+    const t = convexTest(schema, modules);
+    const ids = await base(t, "invoiced");
+    const now = Date.now();
+    await t.run(async (ctx) =>
+      ctx.db.insert("invoices", {
+        tenantId: ids.tenantId,
+        projectId: ids.projectId,
+        klantId: ids.customerId,
+        factuurnummer: "FAC-2026-099",
+        status: "cancelled",
+        factuurdatum: now,
+        vervaldatum: now + 14 * 86400000,
+        subtotaalExBtw: 826.45,
+        btwTotaal: 173.55,
+        totaalInclBtw: 1000,
+        betaaldBedrag: 0,
+        aangemaaktOp: now,
+        gewijzigdOp: now
+      })
+    );
 
     await expect(
       t.mutation(api.portal.processProjectAction, {
