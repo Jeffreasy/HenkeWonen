@@ -128,6 +128,7 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
 
       <StatPills
         ariaLabel="Klant-overzicht"
+        loading={isLoading}
         items={[
           { label: "Klanten", value: customers.length },
           {

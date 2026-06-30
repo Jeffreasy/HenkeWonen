@@ -442,6 +442,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
             total={stats.total}
             draftCount={stats.draftCount}
             totalValue={stats.totalValue}
+            isLoading={isLoading}
           />
 
           <QuotesTable

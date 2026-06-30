@@ -92,10 +92,11 @@ export default function InvoiceWorkspace({ session }: InvoiceWorkspaceProps) {
 
       <StatPills
         ariaLabel="Factuur-overzicht"
+        loading={isLoading}
         items={[
-          { label: "Openstaand", value: formatEuro(stats.openAmount) },
+          { label: "Openstaand", value: formatEuro(stats.openAmount), skeletonWidth: 72 },
           { label: "Te laat", value: stats.overdueCount },
-          { label: "Betaald dit jaar", value: formatEuro(stats.paidThisYear) },
+          { label: "Betaald dit jaar", value: formatEuro(stats.paidThisYear), skeletonWidth: 72 },
           { label: "Totaal facturen", value: stats.total }
         ]}
       />

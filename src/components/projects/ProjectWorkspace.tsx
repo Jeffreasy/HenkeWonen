@@ -126,6 +126,7 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
         total={stats.total}
         activeCount={stats.activeCount}
         quotePhaseCount={stats.quotePhaseCount}
+        isLoading={isLoading}
       />
 
       <ProjectsTable
