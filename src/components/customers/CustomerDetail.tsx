@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { navigate } from "astro:transitions/client";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
@@ -313,7 +314,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       const newProjectId = String(projectId);
       // Directe verkoop springt naar een nieuwe offerte met de catalogus-picker;
       // de overige werksoorten gaan naar de inmeting.
-      window.location.assign(
+      void navigate(
         scope.target === "quote"
           ? `/portal/offertes?open=nieuw&project=${newProjectId}`
           : `/portal/projecten/${newProjectId}#project-measurement`

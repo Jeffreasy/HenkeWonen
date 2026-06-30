@@ -283,14 +283,14 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(dossierSearchPanel).toContain("const pageSize = 25");
     expect(customerList).toContain("PaginationControls");
     expect(customerList).toContain("const pageSize = 25");
-    expect(customerWorkspace).toContain("window.location.assign(`/portal/klanten/${String(customerId)}`)");
+    expect(customerWorkspace).toContain("navigate(`/portal/klanten/${String(customerId)}`)");
     expect(projectForm).toContain('className="form-grid"');
     expect(projectForm).not.toContain('className="panel form-grid"');
     expect(createQuoteForm).toContain('className="form-grid"');
     expect(createQuoteForm).not.toContain('className="panel"');
     expect(quoteWorkspace).toContain("shouldOpenNewQuoteModal");
     expect(quoteWorkspace).toContain('get("open") === "nieuw"');
-    expect(quoteWorkspace).toContain("window.location.assign(`/portal/offertes/${newQuoteId}`)");
+    expect(quoteWorkspace).toContain("navigate(`/portal/offertes/${newQuoteId}`)");
     expect(quoteWorkspace).toContain("invoicePaymentTermDays(selectedCustomer)");
   });
 

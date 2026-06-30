@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { navigate } from "astro:transitions/client";
 import { useKeyboardShortcuts, useSequenceShortcuts } from "../../lib/useKeyboardShortcuts";
 import { ShortcutHelpModal } from "../ui/overlays/ShortcutHelpModal";
 
@@ -81,37 +82,37 @@ export function KeyboardShortcutController() {
     {
       key: "k",
       description: "Naar Klanten",
-      handler: () => { window.location.href = "/portal/klanten"; }
+      handler: () => { void navigate("/portal/klanten"); }
     },
     {
       key: "p",
       description: "Naar Projecten",
-      handler: () => { window.location.href = "/portal/projecten"; }
+      handler: () => { void navigate("/portal/projecten"); }
     },
     {
       key: "o",
       description: "Naar Offertes",
-      handler: () => { window.location.href = "/portal/offertes"; }
+      handler: () => { void navigate("/portal/offertes"); }
     },
     {
       key: "f",
       description: "Naar Facturen",
-      handler: () => { window.location.href = "/portal/facturen"; }
+      handler: () => { void navigate("/portal/facturen"); }
     },
     {
       key: "l",
       description: "Naar Leveranciers",
-      handler: () => { window.location.href = "/portal/leveranciers"; }
+      handler: () => { void navigate("/portal/leveranciers"); }
     },
     {
       key: "i",
       description: "Naar Imports",
-      handler: () => { window.location.href = "/portal/imports"; }
+      handler: () => { void navigate("/portal/imports"); }
     },
     {
       key: "s",
       description: "Naar Instellingen",
-      handler: () => { window.location.href = "/portal/instellingen"; }
+      handler: () => { void navigate("/portal/instellingen"); }
     }
   ]);
 

@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { ConvexError } from "convex/values";
+import { navigate } from "astro:transitions/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -140,7 +141,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
 
       setIsNewQuoteModalOpen(false);
       showToast({ title: "Offerte aangemaakt", description: title.trim(), tone: "success" });
-      window.location.assign(`/portal/offertes/${newQuoteId}`);
+      void navigate(`/portal/offertes/${newQuoteId}`);
     } catch {
       showToast({ title: "Offerte aanmaken mislukt", tone: "error" });
     }

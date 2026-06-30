@@ -1,6 +1,7 @@
 import { UserPlus } from "lucide-react";
 import { ConvexError } from "convex/values";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { navigate } from "astro:transitions/client";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
@@ -305,7 +306,7 @@ export default function FieldServiceWorkspace({
           createdByExternalUserId: session.userId
         });
 
-        window.location.assign(`/portal/buitendienst/projecten/${String(newProjectId)}`);
+        void navigate(`/portal/buitendienst/projecten/${String(newProjectId)}`);
         return;
       }
 

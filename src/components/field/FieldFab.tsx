@@ -8,6 +8,7 @@ import {
   X
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { navigate } from "astro:transitions/client";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 
 type FieldFabProps = {
@@ -88,7 +89,7 @@ export function FieldFab({ session, pathname }: FieldFabProps) {
 
   function handleAction(href: string) {
     setIsOpen(false);
-    window.location.href = href;
+    void navigate(href);
   }
 
   function handleToggle() {
