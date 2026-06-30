@@ -203,4 +203,16 @@ describe("F6: selectPurchasePrice", () => {
     expect(result.bron).toBe("purchase");
     expect(result.bedrag).toBe(8);
   });
+
+  test("niet-finite bedragen (NaN/Infinity) tellen als afwezig (bron 'none')", () => {
+    expect(selectPurchasePrice([price("net_purchase", Number.NaN)], now).bron).toBe("none");
+    expect(selectPurchasePrice([price("purchase", Number.POSITIVE_INFINITY)], now).bron).toBe("none");
+    // Een niet-finite net_purchase mag een geldige purchase niet blokkeren.
+    const fallback = selectPurchasePrice(
+      [price("net_purchase", Number.NaN), price("purchase", 12)],
+      now
+    );
+    expect(fallback.bron).toBe("purchase");
+    expect(fallback.bedrag).toBe(12);
+  });
 });
