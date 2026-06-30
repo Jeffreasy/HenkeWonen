@@ -1,6 +1,7 @@
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { FolderOpen, Plus, UserPlus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { navigate } from "astro:transitions/client";
 
 type QuickActionFabProps = {
   session: AppSession;
@@ -49,7 +50,7 @@ export function QuickActionFab({ session }: QuickActionFabProps) {
 
   function handleAction(href: string) {
     setIsOpen(false);
-    window.location.href = href;
+    void navigate(href);
   }
 
   function handleToggle() {

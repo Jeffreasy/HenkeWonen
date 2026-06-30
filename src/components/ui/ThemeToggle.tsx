@@ -3,14 +3,24 @@ import { Sun, Moon, Monitor } from "lucide-react";
 import { getTheme, applyTheme, type Theme } from "../../lib/theme";
 
 export function ThemeToggle() {
-  // Lazy initializer: leest direct localStorage zodat de eerste render altijd klopt.
-  // Zonder dit start de state altijd op "system" en moet je 2x klikken.
+  // Lazy initializer: leest direct localStorage zodat de toggle-logica meteen klopt
+  // (zonder dit start de state op "system" en moet je 2x klikken).
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === "undefined") return "system";
     return getTheme();
   });
+  // Pas ná mount het thema-afhankelijke icoon/label tonen. De server kent het
+  // opgeslagen thema (localStorage) niet en rendert "system"; door op de eerste
+  // client-render óók "system" te tonen matchen server- en client-HTML → geen
+  // hydration-mismatch. Direct na mount schakelt 'ie naar de echte voorkeur.
+  const [mounted, setMounted] = useState(false);
+  const displayTheme: Theme = mounted ? theme : "system";
 
   useEffect(() => {
+    setMounted(true);
+    // Her-synchroniseer voor het geval state en opslag vóór mount uiteenliepen.
+    setTheme(getTheme());
+
     // Synchroniseer bij externe wijzigingen (andere tab, systeem OS-thema)
     const handleThemeChange = () => {
       setTheme(getTheme());
@@ -49,7 +59,7 @@ export function ThemeToggle() {
       dark: "Donker thema actief",
       system: "Systeemthema actief"
     };
-    return labels[theme];
+    return labels[displayTheme];
   };
 
   return (
@@ -72,9 +82,9 @@ export function ThemeToggle() {
         transition: "all 0.2s ease"
       }}
     >
-      {theme === "light" && <Sun size={16} aria-hidden="true" />}
-      {theme === "dark" && <Moon size={16} aria-hidden="true" />}
-      {theme === "system" && <Monitor size={16} aria-hidden="true" />}
+      {displayTheme === "light" && <Sun size={16} aria-hidden="true" />}
+      {displayTheme === "dark" && <Moon size={16} aria-hidden="true" />}
+      {displayTheme === "system" && <Monitor size={16} aria-hidden="true" />}
     </button>
   );
 }

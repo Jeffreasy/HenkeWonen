@@ -11,6 +11,7 @@ import {
   XCircle
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { navigate } from "astro:transitions/client";
 import type { AppSession } from "../../lib/auth/session";
 import type {
   PortalCustomer,
@@ -337,7 +338,7 @@ export default function QuoteBuilder({
       const invoiceId = await onCreateInvoice();
       setPendingCreateInvoice(false);
       if (invoiceId) {
-        window.location.href = `/portal/facturen/${invoiceId}`;
+        void navigate(`/portal/facturen/${invoiceId}`);
       }
     } catch {
       // Fout is al gemeld via toast; laat de bevestiging open staan.

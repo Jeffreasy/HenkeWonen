@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { classNames } from "../utils/classNames";
 import { TableState } from "../utils/TableState";
+import { Skeleton } from "../feedback/Skeleton";
 
 export type DataTableColumn<T> = {
   key: string;
@@ -43,11 +44,77 @@ export function DataTable<T>({
   mobileMode = "scroll",
   ariaLabel
 }: DataTableProps<T>) {
+  const cellClassFor = (column: DataTableColumn<T>) =>
+    classNames(
+      column.hideOnMobile && "data-table-cell-mobile-hidden",
+      column.align === "right" && "data-table-align-right",
+      column.align === "center" && "data-table-align-center",
+      column.priority && `data-table-priority-${column.priority}`,
+      column.cellClassName
+    );
+
   if (loading) {
+    // Professionele loading-staat: dezelfde tabel met de échte kolomkoppen, maar de
+    // rijen als shimmer-skeletons. Geen layout-sprong als de data binnenkomt. Breedtes
+    // zijn deterministisch (Math.sin) zodat SSR en client identiek blijven (geen
+    // hydration-mismatch).
+    const skeletonRows = 6;
+    const skeletonWidth = (column: DataTableColumn<T>, row: number, col: number) => {
+      const base = column.align === "right" ? 42 : col === 0 || column.priority === "primary" ? 66 : 50;
+      return `${Math.round(base + Math.sin(row * 1.7 + col) * 9)}%`;
+    };
+    const showMobileCardsLoading = mobileMode === "cards" && Boolean(renderMobileCard);
+
     return (
-      <div className="data-table-state">
-        <TableState state="loading" title="Overzicht laden" description="De gegevens worden opgehaald." />
-      </div>
+      <>
+        <div className={classNames("data-table-wrap", showMobileCardsLoading && "data-table-wrap-card-mode")}>
+          <table
+            className={classNames("data-table", `data-table-${density}`)}
+            aria-label={ariaLabel}
+            aria-busy="true"
+          >
+            <thead>
+              <tr>
+                {columns.map((column) => (
+                  <th
+                    className={cellClassFor(column)}
+                    key={column.key}
+                    style={column.width ? { width: column.width } : undefined}
+                    scope="col"
+                  >
+                    {column.header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: skeletonRows }).map((_, row) => (
+                <tr key={row}>
+                  {columns.map((column, col) => (
+                    <td className={cellClassFor(column)} key={column.key}>
+                      <Skeleton
+                        height={14}
+                        width={skeletonWidth(column, row, col)}
+                        style={{ display: "inline-block", maxWidth: "100%" }}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {showMobileCardsLoading ? (
+          <div className="data-table-mobile-cards" aria-busy="true">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <article className="data-table-mobile-card" key={i}>
+                <Skeleton height={15} width="55%" />
+                <Skeleton height={12} width="38%" style={{ marginTop: "var(--space-2)" }} />
+              </article>
+            ))}
+          </div>
+        ) : null}
+      </>
     );
   }
 
@@ -85,13 +152,7 @@ export function DataTable<T>({
           <tr>
             {columns.map((column) => (
               <th
-                className={classNames(
-                  column.hideOnMobile && "data-table-cell-mobile-hidden",
-                  column.align === "right" && "data-table-align-right",
-                  column.align === "center" && "data-table-align-center",
-                  column.priority && `data-table-priority-${column.priority}`,
-                  column.cellClassName
-                )}
+                className={cellClassFor(column)}
                 key={column.key}
                 style={column.width ? { width: column.width } : undefined}
                 scope="col"
@@ -105,16 +166,7 @@ export function DataTable<T>({
           {rows.map((row) => (
             <tr key={getRowKey(row)}>
               {columns.map((column) => (
-                <td
-                  className={classNames(
-                    column.hideOnMobile && "data-table-cell-mobile-hidden",
-                    column.align === "right" && "data-table-align-right",
-                    column.align === "center" && "data-table-align-center",
-                    column.priority && `data-table-priority-${column.priority}`,
-                    column.cellClassName
-                  )}
-                  key={column.key}
-                >
+                <td className={cellClassFor(column)} key={column.key}>
                   {column.render(row)}
                 </td>
               ))}

@@ -28,7 +28,7 @@ import { Badge } from "../ui/data-display/Badge";
 import { Button } from "../ui/forms/Button";
 import { Card } from "../ui/data-display/Card";
 import { EmptyState } from "../ui/feedback/EmptyState";
-import { LoadingState } from "../ui/feedback/LoadingState";
+import { AgendaWeekSkeleton } from "./AgendaWeekSkeleton";
 import BeschikbaarheidPanel from "./BeschikbaarheidPanel";
 
 type MonteurAgenda = {
@@ -271,7 +271,7 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
       ) : null}
 
       {isLoading ? (
-        <LoadingState title="Agenda laden" />
+        <AgendaWeekSkeleton />
       ) : monteurs.length === 0 ? (
         <EmptyState
           icon={<CalendarClock size={20} aria-hidden="true" />}

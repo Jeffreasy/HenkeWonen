@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { ConvexError } from "convex/values";
+import { navigate } from "astro:transitions/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
@@ -15,7 +16,7 @@ import type {
 import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/feedback/Alert";
 import { EmptyState } from "../ui/feedback/EmptyState";
-import { LoadingState } from "../ui/feedback/LoadingState";
+import { QuoteDetailSkeleton } from "./QuoteDetailSkeleton";
 import { FormModal } from "../ui/overlays/FormModal";
 import QuoteBuilder from "./QuoteBuilder";
 import type { QuoteLineFormValues } from "./quote/quoteTypes";
@@ -140,7 +141,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
 
       setIsNewQuoteModalOpen(false);
       showToast({ title: "Offerte aangemaakt", description: title.trim(), tone: "success" });
-      window.location.assign(`/portal/offertes/${newQuoteId}`);
+      void navigate(`/portal/offertes/${newQuoteId}`);
     } catch {
       showToast({ title: "Offerte aanmaken mislukt", tone: "error" });
     }
@@ -423,7 +424,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
               onCreateInvoice={handleCreateInvoice}
             />
           ) : isLoading ? (
-            <LoadingState title="Offerte laden" description="Een moment geduld." />
+            <QuoteDetailSkeleton />
           ) : (
             <EmptyState
               title="Offerte niet gevonden"
@@ -442,6 +443,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
             total={stats.total}
             draftCount={stats.draftCount}
             totalValue={stats.totalValue}
+            isLoading={isLoading}
           />
 
           <QuotesTable

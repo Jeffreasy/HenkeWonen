@@ -1,5 +1,6 @@
 import type { VatMappingReview } from "./ImportProfiles";
 import { numberText } from "./import/importUtils";
+import { StatValue } from "../ui/feedback/StatValue";
 
 type VatWorkbenchHeaderProps = {
   isLoading: boolean;
@@ -53,14 +54,14 @@ export function VatWorkbenchHeader({
       <div className="vat-overview-layout">
         <div className="vat-focus-block">
           <p className="eyebrow">Voortgang btw-keuzes</p>
-          <strong>{completionPercentage}% gereed</strong>
+          <strong><StatValue loading={isLoading} value={`${completionPercentage}% gereed`} width={80} /></strong>
           <div className="vat-progress-bar" aria-hidden="true">
             <span style={{ width: `${completionPercentage}%` }} />
           </div>
         </div>
         <div className="vat-focus-block">
           <p className="eyebrow">Btw te beoordelen</p>
-          <strong>{numberText(summary.unresolved)} kolommen</strong>
+          <strong><StatValue loading={isLoading} value={`${numberText(summary.unresolved)} kolommen`} width={90} /></strong>
           <p className="muted">
             {summary.unresolved > 0
               ? "Kies per kolom de btw-modus in de tabel hieronder."
@@ -72,19 +73,19 @@ export function VatWorkbenchHeader({
       <div className="vat-summary-strip" aria-label="Samenvatting btw-keuzes">
         <div className="vat-summary-item vat-summary-danger">
           <span>Te beoordelen</span>
-          <strong>{numberText(summary.unresolved)}</strong>
+          <strong><StatValue loading={isLoading} value={numberText(summary.unresolved)} /></strong>
         </div>
         <div className="vat-summary-item vat-summary-success">
           <span>Inclusief btw</span>
-          <strong>{numberText(summary.inclusive)}</strong>
+          <strong><StatValue loading={isLoading} value={numberText(summary.inclusive)} /></strong>
         </div>
         <div className="vat-summary-item vat-summary-success">
           <span>Exclusief btw</span>
-          <strong>{numberText(summary.exclusive)}</strong>
+          <strong><StatValue loading={isLoading} value={numberText(summary.exclusive)} /></strong>
         </div>
         <div className="vat-summary-item vat-summary-warning">
           <span>Uitzonderingen</span>
-          <strong>{numberText(summary.allowUnknown)}</strong>
+          <strong><StatValue loading={isLoading} value={numberText(summary.allowUnknown)} /></strong>
         </div>
       </div>
     </section>

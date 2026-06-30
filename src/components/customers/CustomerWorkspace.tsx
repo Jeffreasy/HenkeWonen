@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { navigate } from "astro:transitions/client";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
@@ -104,7 +105,7 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
         });
         if (customer.intent === "verkoop") {
           // Directe verkoop: meteen naar een nieuwe offerte met de catalogus-picker.
-          window.location.assign(`/portal/offertes?open=nieuw&project=${String(projectId)}`);
+          void navigate(`/portal/offertes?open=nieuw&project=${String(projectId)}`);
         } else {
           // Snelroute "maten bekend": land op het dossier met de auto-start-vlag zodat de
           // inmeting meteen begint en de medewerker direct ruimtes/maten kan invoeren.
@@ -112,10 +113,10 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
             customer.intent === "snelroute"
               ? `${measurementAutostartQuery()}#project-measurement`
               : "";
-          window.location.assign(`/portal/projecten/${String(projectId)}${suffix}`);
+          void navigate(`/portal/projecten/${String(projectId)}${suffix}`);
         }
       } else {
-        window.location.assign(`/portal/klanten/${String(customerId)}`);
+        void navigate(`/portal/klanten/${String(customerId)}`);
       }
     } catch {
       showToast({ title: "Klant aanmaken mislukt", tone: "error" });
@@ -128,6 +129,7 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
 
       <StatPills
         ariaLabel="Klant-overzicht"
+        loading={isLoading}
         items={[
           { label: "Klanten", value: customers.length },
           {

@@ -1,6 +1,7 @@
 import { CheckCircle2, FileSpreadsheet, ShieldAlert } from "lucide-react";
 import type { ProductImportBatch } from "../../lib/portalTypes";
 import { Badge } from "../ui/data-display/Badge";
+import { StatValue } from "../ui/feedback/StatValue";
 
 type ImportWorkbenchProps = {
   batchSummary: {
@@ -106,9 +107,13 @@ export function ImportWorkbench({
         </div>
         <div className="import-focus-block">
           <p className="eyebrow">Catalogusvolume</p>
-          <strong>{numberText(batchSummary.products)} productregels</strong>
+          <strong><StatValue loading={isLoading} value={`${numberText(batchSummary.products)} productregels`} width={110} /></strong>
           <p className="muted">
-            {numberText(batchSummary.priceRules)} prijsregels over {numberText(batchSummary.total)} controles.
+            {isLoading
+              ? "Het catalogusvolume wordt opgehaald."
+              : `${numberText(batchSummary.priceRules)} prijsregels over ${numberText(
+                  batchSummary.total
+                )} controles.`}
           </p>
         </div>
       </div>
@@ -116,19 +121,19 @@ export function ImportWorkbench({
       <div className="import-summary-strip" aria-label="Samenvatting prijslijsten">
         <div className="import-summary-item import-summary-danger">
           <span>Aandacht nodig</span>
-          <strong>{numberText(needsAttentionCount)}</strong>
+          <strong><StatValue loading={isLoading} value={numberText(needsAttentionCount)} /></strong>
         </div>
         <div className="import-summary-item import-summary-success">
           <span>Verwerkt</span>
-          <strong>{numberText(batchSummary.imported)}</strong>
+          <strong><StatValue loading={isLoading} value={numberText(batchSummary.imported)} /></strong>
         </div>
         <div className="import-summary-item import-summary-info">
           <span>Klaar</span>
-          <strong>{numberText(batchSummary.ready)}</strong>
+          <strong><StatValue loading={isLoading} value={numberText(batchSummary.ready)} /></strong>
         </div>
         <div className="import-summary-item import-summary-warning">
           <span>Rijmeldingen</span>
-          <strong>{numberText(batchSummary.warningRows)}</strong>
+          <strong><StatValue loading={isLoading} value={numberText(batchSummary.warningRows)} /></strong>
           <small>
             {batchSummary.unknownVatModeRows > 0
               ? "Vooral btw-modus onbekend"
@@ -137,7 +142,7 @@ export function ImportWorkbench({
         </div>
         <div className="import-summary-item">
           <span>Zichtbaar</span>
-          <strong>{numberText(visibleCount)}</strong>
+          <strong><StatValue loading={isLoading} value={numberText(visibleCount)} /></strong>
         </div>
       </div>
     </section>

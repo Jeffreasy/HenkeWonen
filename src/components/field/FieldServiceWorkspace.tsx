@@ -1,6 +1,7 @@
-import { Search, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { ConvexError } from "convex/values";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { navigate } from "astro:transitions/client";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
@@ -18,6 +19,7 @@ import { Select } from "../ui/forms/Select";
 import { FieldPrioritySummary } from "./FieldPrioritySummary";
 import { FieldPageTabs } from "./FieldPageTabs";
 import { FieldCardSection, type FieldSection } from "./FieldCardSection";
+import { FieldCardsSkeleton } from "./FieldCardsSkeleton";
 import { FieldIntakeForm, type IntakeFormValues } from "./FieldIntakeForm";
 import { cardUrgency, type CardActionPreference, type CardUrgency } from "./FieldCard";
 import { FieldWeekStrip } from "./FieldWeekStrip";
@@ -304,7 +306,7 @@ export default function FieldServiceWorkspace({
           createdByExternalUserId: session.userId
         });
 
-        window.location.assign(`/portal/buitendienst/projecten/${String(newProjectId)}`);
+        void navigate(`/portal/buitendienst/projecten/${String(newProjectId)}`);
         return;
       }
 
@@ -426,7 +428,7 @@ export default function FieldServiceWorkspace({
           <p className="eyebrow">Buitendienst werkplek</p>
           <h1>{activePage.title}</h1>
           <p>{activePage.description}</p>
-          <FieldPrioritySummary priorityCounts={priorityCounts} />
+          <FieldPrioritySummary priorityCounts={priorityCounts} loading={isLoading} />
         </div>
         <div className="field-hero-search">
           <SearchInput
@@ -507,10 +509,7 @@ export default function FieldServiceWorkspace({
       {view === "today" ? <FieldWeekStrip session={session} /> : null}
 
       {isLoading ? (
-        <div className="panel field-loading-state">
-          <Search size={18} aria-hidden="true" />
-          Inmeten, Conceptoffertes en Klantversie laden...
-        </div>
+        <FieldCardsSkeleton />
       ) : (
         sections.map((section) => (
           <FieldCardSection key={section.title} search={search} section={section} />

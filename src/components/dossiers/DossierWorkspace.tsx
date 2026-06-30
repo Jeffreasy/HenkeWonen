@@ -247,6 +247,7 @@ export default function DossierWorkspace({ session }: DossierWorkspaceProps) {
         customersCount={workspace.customers.length}
         openProjectsCount={openProjects.length}
         openQuotesCount={openQuotes.length}
+        isLoading={isLoading}
       />
 
       <DossierSearchPanel
