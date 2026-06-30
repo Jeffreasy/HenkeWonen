@@ -132,15 +132,28 @@ export function computeProjectNextStep(input: ProjectNextStepInput): ProjectNext
         isStopped: false
       };
     case "invoiced":
-      return {
-        phaseLabel: "Gefactureerd",
-        actionLabel: "Betaling registreren",
-        hint: "Registreer de betaling op de gekoppelde factuur.",
-        kind: "open_invoice",
-        href: invoiceHref,
-        tone: "info",
-        isStopped: false
-      };
+      // Normaal is er een factuur om naartoe te linken. Mocht het dossier 'invoiced'
+      // staan zónder factuur (bv. via een losse statuswijziging), degradeer dan naar
+      // de handler-actie "Factuur aanmaken" i.p.v. een dode link zonder bestemming.
+      return invoiceHref
+        ? {
+            phaseLabel: "Gefactureerd",
+            actionLabel: "Betaling registreren",
+            hint: "Registreer de betaling op de gekoppelde factuur.",
+            kind: "open_invoice",
+            href: invoiceHref,
+            tone: "info",
+            isStopped: false
+          }
+        : {
+            phaseLabel: "Gefactureerd",
+            actionLabel: "Factuur aanmaken",
+            hint: "Er is nog geen factuur gekoppeld; maak de factuur aan.",
+            kind: "create_invoice",
+            href: null,
+            tone: "info",
+            isStopped: false
+          };
     case "paid":
       return {
         phaseLabel: "Betaald",

@@ -854,6 +854,19 @@ export async function assertQuoteAcceptable(
       "De offerte heeft nog geen geprijsde regels. Voeg minstens één regel met een prijs toe voordat je 'm verstuurt of op akkoord zet."
     );
   }
+
+  // Netto-totaal moet positief zijn: een korting groter dan het subtotaal (de gate
+  // hierboven kijkt alleen of er één regel >€0 is, niet naar het saldo) zou anders een
+  // negatieve offerte — en daarmee een negatieve factuur — laten passeren.
+  const netTotalExVat = lines.reduce(
+    (sum: number, line: Doc<"quoteLines">) => sum + line.regelTotaalExBtw,
+    0
+  );
+  if (netTotalExVat <= 0) {
+    throw new ConvexError(
+      "Het offertetotaal is € 0 of negatief. Controleer de regels (bijvoorbeeld een korting die groter is dan het subtotaal) voordat je de offerte verstuurt of op akkoord zet."
+    );
+  }
 }
 
 /**
@@ -878,6 +891,60 @@ export async function cancelOtherOpenQuotesAndRestore(
       await ctx.db.patch(other._id, { status: "cancelled", gewijzigdOp: now });
       await restoreMeasurementLinesForQuote(ctx, tenantId, projectId, other._id);
     }
+  }
+}
+
+/** Terminale offerte-staten: de offerte-fase is geëindigd zonder akkoord. */
+const TERMINAL_QUOTE_STATUSES: ReadonlyArray<Doc<"quotes">["status"]> = [
+  "rejected",
+  "cancelled",
+  "expired"
+];
+/** Levende offerte-staten die het dossier weer "in beweging" zetten. */
+const LIVE_QUOTE_STATUSES: ReadonlyArray<Doc<"quotes">["status"]> = ["sent", "accepted"];
+
+/**
+ * Bewaakt de toegestane offerte-statusovergangen. Een terminale offerte
+ * (afgewezen/geannuleerd/verlopen) mag NIET herleven naar een levende staat
+ * (verstuurd/akkoord) — anders kan dezelfde inmeting via een herleefde offerte
+ * een tweede keer worden gefactureerd. Terug naar concept (om te herzien) of naar
+ * een andere terminale staat blijft toegestaan.
+ */
+export function assertQuoteStatusTransition(
+  from: Doc<"quotes">["status"],
+  to: Doc<"quotes">["status"]
+): void {
+  if (TERMINAL_QUOTE_STATUSES.includes(from) && LIVE_QUOTE_STATUSES.includes(to)) {
+    throw new ConvexError(
+      "Een afgewezen, geannuleerde of verlopen offerte kan niet herleven. Maak een nieuwe offerte, of zet deze eerst terug op concept om 'm te herzien."
+    );
+  }
+}
+
+/**
+ * Bewaakt dat er hooguit één geaccepteerde offerte per dossier is. Voorkomt dat
+ * twee 'accepted' offertes op dezelfde meetregels naast elkaar bestaan (en dus
+ * dubbel gefactureerd kunnen worden). `cancelOtherOpenQuotesAndRestore` annuleert
+ * alleen draft/sent-siblings; dit dekt het accepted-geval af.
+ */
+export async function assertNoOtherAcceptedQuote(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  projectId: Id<"projects">,
+  exceptQuoteId: Id<"quotes">
+): Promise<void> {
+  const quotes = await ctx.db
+    .query("quotes")
+    .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
+    .collect();
+
+  const conflicting = quotes.find(
+    (q: Doc<"quotes">) => q._id !== exceptQuoteId && q.status === "accepted"
+  );
+  if (conflicting) {
+    throw new ConvexError(
+      "Er is al een geaccepteerde offerte op dit dossier. Annuleer die eerst, of maak een vervolgofferte, voordat je een andere offerte op akkoord zet."
+    );
   }
 }
 

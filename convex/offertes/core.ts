@@ -22,7 +22,9 @@ import {
   existingInvoiceForQuote,
   restoreMeasurementLinesForQuote,
   assertQuoteAcceptable,
-  cancelOtherOpenQuotesAndRestore
+  cancelOtherOpenQuotesAndRestore,
+  assertQuoteStatusTransition,
+  assertNoOtherAcceptedQuote
 } from "../portalUtils";
 
 const quoteStatus = v.union(
@@ -666,6 +668,21 @@ export const updateQuoteStatus = mutation({
 
     if (!project || project.tenantId !== tenant._id) {
       throw new ConvexError("Project not found");
+    }
+
+    // Idempotent: dezelfde status opnieuw zetten is een no-op (voorkomt dubbele
+    // workflow-events en een herhaalde sibling-cancel bij een dubbelklik).
+    if (args.status === quote.status) {
+      return quote._id;
+    }
+
+    // Bewaak de toegestane overgang: een terminale offerte mag niet herleven naar
+    // verstuurd/akkoord (zou dezelfde inmeting dubbel factureerbaar maken).
+    assertQuoteStatusTransition(quote.status, args.status);
+
+    // Eén leidende geaccepteerde offerte per dossier.
+    if (args.status === "accepted") {
+      await assertNoOtherAcceptedQuote(ctx, tenant._id, project._id, quote._id);
     }
 
     // Een al-gefactureerde offerte is bevroren op 'akkoord': hij mag niet uit akkoord worden

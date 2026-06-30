@@ -264,7 +264,7 @@ function sortProjectTasks(tasks: Doc<"projectTasks">[]) {
   });
 }
 
-function fieldBucket(
+export function fieldBucket(
   project: Doc<"projects">,
   quote: Doc<"quotes"> | undefined,
   measurement: Doc<"measurements"> | undefined,
@@ -308,6 +308,11 @@ function fieldBucket(
   }
 
   if (["lead", "measurement_planned"].includes(project.status)) {
+    // Directe verkoop slaat inmeten over (consistent met computeProjectNextStep):
+    // toon "Conceptofferte maken" i.p.v. "Inmeten", net als het kantoor-dossier.
+    if (project.directeVerkoop) {
+      return "quote";
+    }
     return "measure";
   }
 

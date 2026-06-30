@@ -74,8 +74,13 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
   }, [loadDetail]);
 
   function openMarkPaid() {
-    const totalStr = detail?.invoice.totaalInclBtw.toFixed(2).replace(".", ",") ?? "";
-    setPaidAmount(totalStr);
+    const invoice = detail?.invoice;
+    // Vul het OPENSTAANDE restant voor (niet het volle totaal): de backend telt deze
+    // betaling op bij wat al betaald is, dus bij een 2e deelbetaling klopt het bedrag.
+    const outstanding = invoice
+      ? Math.max(0, invoice.totaalInclBtw - invoice.betaaldBedrag)
+      : 0;
+    setPaidAmount(invoice ? outstanding.toFixed(2).replace(".", ",") : "");
     setPendingAction({ type: "mark_paid" });
   }
 
@@ -229,7 +234,11 @@ export default function InvoiceDetail({ session, invoiceId }: InvoiceDetailProps
             <Field
               htmlFor="paid-amount"
               label="Ontvangen bedrag (incl. btw)"
-              description={`Totaalbedrag factuur: ${formatEuro(invoice.totaalInclBtw)}`}
+              description={
+                invoice.betaaldBedrag > 0
+                  ? `Openstaand: ${formatEuro(Math.max(0, invoice.totaalInclBtw - invoice.betaaldBedrag))} · al betaald ${formatEuro(invoice.betaaldBedrag)} van ${formatEuro(invoice.totaalInclBtw)}`
+                  : `Totaalbedrag factuur: ${formatEuro(invoice.totaalInclBtw)}`
+              }
             >
               <Input
                 id="paid-amount"
