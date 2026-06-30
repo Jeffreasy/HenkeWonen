@@ -18,6 +18,7 @@ import type {
   PortalWorkflowEvent
 } from "../../lib/portalTypes";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
+import { Alert } from "../ui/feedback/Alert";
 import { ErrorState } from "../ui/feedback/ErrorState";
 import { Field } from "../ui/forms/Field";
 import { Input } from "../ui/forms/Input";
@@ -487,24 +488,11 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
         {pendingProjectAction === "quote_accepted" && detail.latestQuote ? (
           // Maak zichtbaar wélke offerte op akkoord gaat (= de nieuwste van dit dossier),
           // zodat kantoor bij meerdere offertes niet per ongeluk de verkeerde accepteert.
-          <div
-            style={{
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-md)",
-              padding: "var(--space-3)",
-              display: "grid",
-              gap: "var(--space-1)"
-            }}
-          >
-            <strong>
-              Offerte {detail.latestQuote.offertenummer} ·{" "}
-              {formatQuoteStatus(detail.latestQuote.status)}
-            </strong>
-            <span style={{ color: "var(--color-text-muted)" }}>
-              Totaal {formatEuro(detail.latestQuote.totaalInclBtw)} — wordt op akkoord gezet.
-              Eventuele andere open offertes op dit dossier worden geannuleerd.
-            </span>
-          </div>
+          <Alert
+            variant="info"
+            title={`Offerte ${detail.latestQuote.offertenummer} · ${formatQuoteStatus(detail.latestQuote.status)}`}
+            description={`Totaal ${formatEuro(detail.latestQuote.totaalInclBtw)} — wordt op akkoord gezet. Eventuele andere open offertes op dit dossier worden geannuleerd.`}
+          />
         ) : null}
       </ConfirmDialog>
       {canEditProject && detail.nextStep ? (
