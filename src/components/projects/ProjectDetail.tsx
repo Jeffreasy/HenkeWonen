@@ -7,6 +7,7 @@ import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatDate } from "../../lib/dates";
 import { formatEuro } from "../../lib/money";
+import { formatQuoteStatus } from "../../lib/i18n/statusLabels";
 import { showToast } from "../../lib/toast";
 import type {
   InvoiceStatus,
@@ -482,6 +483,28 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
               onChange={(event) => setInvoiceDueDate(event.target.value)}
             />
           </Field>
+        ) : null}
+        {pendingProjectAction === "quote_accepted" && detail.latestQuote ? (
+          // Maak zichtbaar wélke offerte op akkoord gaat (= de nieuwste van dit dossier),
+          // zodat kantoor bij meerdere offertes niet per ongeluk de verkeerde accepteert.
+          <div
+            style={{
+              border: "1px solid var(--color-border)",
+              borderRadius: "var(--radius-md)",
+              padding: "var(--space-3)",
+              display: "grid",
+              gap: "var(--space-1)"
+            }}
+          >
+            <strong>
+              Offerte {detail.latestQuote.offertenummer} ·{" "}
+              {formatQuoteStatus(detail.latestQuote.status)}
+            </strong>
+            <span style={{ color: "var(--color-text-muted)" }}>
+              Totaal {formatEuro(detail.latestQuote.totaalInclBtw)} — wordt op akkoord gezet.
+              Eventuele andere open offertes op dit dossier worden geannuleerd.
+            </span>
+          </div>
         ) : null}
       </ConfirmDialog>
       {canEditProject && detail.nextStep ? (
