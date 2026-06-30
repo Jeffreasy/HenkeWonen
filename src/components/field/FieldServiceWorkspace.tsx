@@ -427,8 +427,7 @@ export default function FieldServiceWorkspace({
           <p className="eyebrow">Buitendienst werkplek</p>
           <h1>{activePage.title}</h1>
           <p>{activePage.description}</p>
-          {/* Niet tijdens laden tonen — voorkomt een 0-naar-echte-waarde-sprong in de prioriteitsbalk. */}
-          {isLoading ? null : <FieldPrioritySummary priorityCounts={priorityCounts} />}
+          <FieldPrioritySummary priorityCounts={priorityCounts} loading={isLoading} />
         </div>
         <div className="field-hero-search">
           <SearchInput
