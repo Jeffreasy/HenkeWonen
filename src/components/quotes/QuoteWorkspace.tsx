@@ -15,7 +15,7 @@ import type {
 import { showToast } from "../../lib/toast";
 import { Alert } from "../ui/feedback/Alert";
 import { EmptyState } from "../ui/feedback/EmptyState";
-import { LoadingState } from "../ui/feedback/LoadingState";
+import { QuoteDetailSkeleton } from "./QuoteDetailSkeleton";
 import { FormModal } from "../ui/overlays/FormModal";
 import QuoteBuilder from "./QuoteBuilder";
 import type { QuoteLineFormValues } from "./quote/quoteTypes";
@@ -423,7 +423,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
               onCreateInvoice={handleCreateInvoice}
             />
           ) : isLoading ? (
-            <LoadingState title="Offerte laden" description="Een moment geduld." />
+            <QuoteDetailSkeleton />
           ) : (
             <EmptyState
               title="Offerte niet gevonden"

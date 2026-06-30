@@ -35,7 +35,7 @@ import { EmptyState } from "../ui/feedback/EmptyState";
 import { ErrorState } from "../ui/feedback/ErrorState";
 import { Field } from "../ui/forms/Field";
 import { Input } from "../ui/forms/Input";
-import { LoadingState } from "../ui/feedback/LoadingState";
+import { MeasurementSkeleton } from "./MeasurementSkeleton";
 import { SectionHeader } from "../ui/layout/SectionHeader";
 import { Select } from "../ui/forms/Select";
 import { StatusBadge } from "../ui/data-display/StatusBadge";
@@ -846,7 +846,7 @@ export default function MeasurementPanel({
   }
 
   if (isLoading) {
-    return <LoadingState title="Inmeting laden" description="Inmeting ophalen." />;
+    return <MeasurementSkeleton />;
   }
 
   if (error && !data) {
