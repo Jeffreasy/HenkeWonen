@@ -1,6 +1,7 @@
 ---
 import { ClientRouter } from "astro:transitions";
 import "../../styles/global.css";
+import ThemeScript from "./ThemeScript.astro";
 import Sidebar from "./Sidebar";
 import PortalTopbar from "./PortalTopbar";
 import { ShellLoadingController } from "./ShellLoadingController";
@@ -29,19 +30,7 @@ const theme = Astro.cookies.get("theme")?.value || "light";
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    <script is:inline>
-      (function () {
-        const applyTheme = () => {
-          const stored = localStorage.getItem("theme");
-          const theme =
-            stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-          document.documentElement.setAttribute("data-theme", theme);
-        };
-        applyTheme();
-        // Her-toepassen na een View Transition-swap (de head wordt vervangen, <html> blijft).
-        document.addEventListener("astro:after-swap", applyTheme);
-      })();
-    </script>
+    <ThemeScript />
   </head>
   <body>
     <a href="#hoofdinhoud" class="skip-link">Naar inhoud</a>

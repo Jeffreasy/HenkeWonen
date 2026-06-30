@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { TransitionBeforePreparationEvent } from "astro:transitions/client";
 
 type ShellLoadingMode = "idle" | "progress" | "blocking";
 
@@ -77,10 +78,9 @@ export function ShellLoadingController() {
       showLoading(event.detail);
     }
 
-    function handleBeforePreparation(event: Event) {
-      const toUrl = (event as unknown as { to?: URL }).to;
+    function handleBeforePreparation(event: TransitionBeforePreparationEvent) {
       showLoading(
-        (toUrl ? workspaceSwitchLoading(toUrl.pathname) : null) ?? {
+        workspaceSwitchLoading(event.to.pathname) ?? {
           mode: "progress",
           title: "Pagina openen"
         }
@@ -113,7 +113,7 @@ export function ShellLoadingController() {
         <span />
       </div>
       {loading.mode === "blocking" ? (
-        <div className="shell-loading-overlay" role="status" aria-live="polite" aria-busy="true">
+        <output className="shell-loading-overlay" aria-live="polite" aria-busy="true">
           <div className="shell-loading-card">
             <span className="shell-loading-spinner" aria-hidden="true" />
             <p className="shell-loading-title">{loading.title}</p>
@@ -121,7 +121,7 @@ export function ShellLoadingController() {
               <p className="shell-loading-description">{loading.description}</p>
             ) : null}
           </div>
-        </div>
+        </output>
       ) : null}
     </>
   );

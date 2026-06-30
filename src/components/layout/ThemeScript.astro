@@ -1,0 +1,19 @@
+---
+// Past het thema toe (localStorage of OS-voorkeur) en herhaalt dit na elke View
+// Transition-swap (de <head> wordt vervangen, <html> blijft bestaan over de
+// wissel heen, dus zonder dit zou het thema terugflitsen naar de server-cookie-
+// waarde). Gedeeld door PortalLayout en FieldLayout zodat dit script-blok niet
+// dupliceert (en dus niet uit sync kan raken) tussen de twee shells.
+---
+<script is:inline>
+  (function () {
+    const applyTheme = () => {
+      const stored = localStorage.getItem("theme");
+      const theme =
+        stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    };
+    applyTheme();
+    document.addEventListener("astro:after-swap", applyTheme);
+  })();
+</script>

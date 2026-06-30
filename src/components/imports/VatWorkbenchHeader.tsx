@@ -1,7 +1,6 @@
-import type { ReactNode } from "react";
 import type { VatMappingReview } from "./ImportProfiles";
 import { numberText } from "./import/importUtils";
-import { Skeleton } from "../ui/feedback/Skeleton";
+import { StatValue } from "../ui/feedback/StatValue";
 
 type VatWorkbenchHeaderProps = {
   isLoading: boolean;
@@ -24,14 +23,6 @@ export function VatWorkbenchHeader({
   review,
   completionPercentage
 }: VatWorkbenchHeaderProps) {
-  // Tijdens laden een shimmer i.p.v. een 0 die daarna naar de echte waarde springt.
-  const stat = (value: ReactNode, width = 40): ReactNode =>
-    isLoading ? (
-      <Skeleton width={width} height={18} style={{ display: "inline-block", verticalAlign: "middle" }} />
-    ) : (
-      value
-    );
-
   return (
     <section
       className={
@@ -63,14 +54,14 @@ export function VatWorkbenchHeader({
       <div className="vat-overview-layout">
         <div className="vat-focus-block">
           <p className="eyebrow">Voortgang btw-keuzes</p>
-          <strong>{stat(`${completionPercentage}% gereed`, 80)}</strong>
+          <strong><StatValue loading={isLoading} value={`${completionPercentage}% gereed`} width={80} /></strong>
           <div className="vat-progress-bar" aria-hidden="true">
             <span style={{ width: `${completionPercentage}%` }} />
           </div>
         </div>
         <div className="vat-focus-block">
           <p className="eyebrow">Btw te beoordelen</p>
-          <strong>{stat(`${numberText(summary.unresolved)} kolommen`, 90)}</strong>
+          <strong><StatValue loading={isLoading} value={`${numberText(summary.unresolved)} kolommen`} width={90} /></strong>
           <p className="muted">
             {summary.unresolved > 0
               ? "Kies per kolom de btw-modus in de tabel hieronder."
@@ -82,19 +73,19 @@ export function VatWorkbenchHeader({
       <div className="vat-summary-strip" aria-label="Samenvatting btw-keuzes">
         <div className="vat-summary-item vat-summary-danger">
           <span>Te beoordelen</span>
-          <strong>{stat(numberText(summary.unresolved))}</strong>
+          <strong><StatValue loading={isLoading} value={numberText(summary.unresolved)} /></strong>
         </div>
         <div className="vat-summary-item vat-summary-success">
           <span>Inclusief btw</span>
-          <strong>{stat(numberText(summary.inclusive))}</strong>
+          <strong><StatValue loading={isLoading} value={numberText(summary.inclusive)} /></strong>
         </div>
         <div className="vat-summary-item vat-summary-success">
           <span>Exclusief btw</span>
-          <strong>{stat(numberText(summary.exclusive))}</strong>
+          <strong><StatValue loading={isLoading} value={numberText(summary.exclusive)} /></strong>
         </div>
         <div className="vat-summary-item vat-summary-warning">
           <span>Uitzonderingen</span>
-          <strong>{stat(numberText(summary.allowUnknown))}</strong>
+          <strong><StatValue loading={isLoading} value={numberText(summary.allowUnknown)} /></strong>
         </div>
       </div>
     </section>
