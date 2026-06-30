@@ -25,7 +25,6 @@ import { Checkbox } from "../ui/forms/Checkbox";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
 import { EmptyState } from "../ui/feedback/EmptyState";
-import { LoadingState } from "../ui/feedback/LoadingState";
 import { SectionHeader } from "../ui/layout/SectionHeader";
 import { StatusBadge } from "../ui/data-display/StatusBadge";
 
@@ -372,7 +371,14 @@ export default function MeasurementLinePicker({
           />
 
           {isLoading ? (
-            <LoadingState title="Inmeetregels laden" description="Klaargezette inmeetregels ophalen." />
+            <DataTable
+              ariaLabel="Inmeetregels klaar voor offerte"
+              columns={columns}
+              density="compact"
+              getRowKey={(item) => item.line._id}
+              loading
+              rows={readyLines}
+            />
           ) : readyLines.length === 0 ? (
             <EmptyState
               title="Geen inmeetregels klaar voor offerte"

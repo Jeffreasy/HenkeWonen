@@ -7,7 +7,7 @@ import type { QuoteTemplate } from "../../lib/portalTypes";
 import { Alert } from "../ui/feedback/Alert";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { ErrorState } from "../ui/feedback/ErrorState";
-import { LoadingState } from "../ui/feedback/LoadingState";
+import { Skeleton } from "../ui/feedback/Skeleton";
 import { StatCard } from "../ui/data-display/StatCard";
 import { QuoteTemplateCard } from "./QuoteTemplateCard";
 
@@ -114,10 +114,24 @@ export default function QuoteTemplatesSettings({ session }: QuoteTemplatesSettin
 
   if (isLoading) {
     return (
-      <LoadingState
-        title="Offerteteksten laden..."
-        description="De standaardregels, voorwaarden en betalingsafspraken worden opgehaald."
-      />
+      <div className="grid" aria-busy="true" aria-label="Offerteteksten laden">
+        <section className="grid quote-template-summary">
+          {[0, 1, 2, 3].map((i) => (
+            <div className="skeleton-stat-card" key={i}>
+              <Skeleton height={12} width="55%" />
+              <Skeleton height={24} width="40%" />
+              <Skeleton height={11} width="72%" />
+            </div>
+          ))}
+        </section>
+        {[0, 1].map((i) => (
+          <div className="skeleton-panel" key={i}>
+            <Skeleton height={16} width="35%" />
+            <Skeleton height={12} width="82%" />
+            <Skeleton height={12} width="64%" />
+          </div>
+        ))}
+      </div>
     );
   }
 
