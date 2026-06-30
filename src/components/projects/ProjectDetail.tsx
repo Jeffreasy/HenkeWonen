@@ -7,6 +7,7 @@ import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatDate } from "../../lib/dates";
 import { formatEuro } from "../../lib/money";
+import { formatQuoteStatus } from "../../lib/i18n/statusLabels";
 import { showToast } from "../../lib/toast";
 import type {
   InvoiceStatus,
@@ -17,6 +18,7 @@ import type {
   PortalWorkflowEvent
 } from "../../lib/portalTypes";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
+import { Alert } from "../ui/feedback/Alert";
 import { ErrorState } from "../ui/feedback/ErrorState";
 import { Field } from "../ui/forms/Field";
 import { Input } from "../ui/forms/Input";
@@ -482,6 +484,15 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
               onChange={(event) => setInvoiceDueDate(event.target.value)}
             />
           </Field>
+        ) : null}
+        {pendingProjectAction === "quote_accepted" && detail.latestQuote ? (
+          // Maak zichtbaar wélke offerte op akkoord gaat (= de nieuwste van dit dossier),
+          // zodat kantoor bij meerdere offertes niet per ongeluk de verkeerde accepteert.
+          <Alert
+            variant="info"
+            title={`Offerte ${detail.latestQuote.offertenummer} · ${formatQuoteStatus(detail.latestQuote.status)}`}
+            description={`Totaal ${formatEuro(detail.latestQuote.totaalInclBtw)} — wordt op akkoord gezet. Eventuele andere open offertes op dit dossier worden geannuleerd.`}
+          />
         ) : null}
       </ConfirmDialog>
       {canEditProject && detail.nextStep ? (
