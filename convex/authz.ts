@@ -27,6 +27,8 @@ type TokenPayload = {
   tenant: string;
   iat: number;
   exp: number;
+  /** Door de auth-bron toegekende rol op mint-moment (optioneel: oude tokens missen 'm). */
+  role?: AppRole;
 };
 
 function base64UrlDecode(value: string) {
@@ -151,14 +153,16 @@ async function verifyToken(
   ) {
     throw new ConvexError("Ongeldige autorisatie.");
   }
+
+  return payload;
 }
 
 export async function requireSyncToken(
   syncToken: string,
   tenantSlug: string,
   externalUserId?: string
-) {
-  await verifyToken(syncToken, "sync", tenantSlug, externalUserId);
+): Promise<TokenPayload | undefined> {
+  return await verifyToken(syncToken, "sync", tenantSlug, externalUserId);
 }
 
 export async function requireMutationRole(

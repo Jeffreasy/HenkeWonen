@@ -38,7 +38,8 @@ import {
   upsertProjectTask,
   closeOpenProjectTasks,
   getRooms,
-  sortProjectTasks
+  sortProjectTasks,
+  assertValidRoomDimensions
 } from "../portalUtils";
 
 export const list = query({
@@ -486,6 +487,10 @@ export const addProjectRoom = mutation({
       "editor",
       "admin"
     ]);
+    assertValidRoomDimensions({
+      oppervlakteM2: args.oppervlakteM2,
+      omtrekMeter: args.omtrekMeter
+    });
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
@@ -528,6 +533,10 @@ export const updateProjectRoom = mutation({
       "editor",
       "admin"
     ]);
+    assertValidRoomDimensions({
+      oppervlakteM2: args.oppervlakteM2,
+      omtrekMeter: args.omtrekMeter
+    });
     const room = await ctx.db.get(args.ruimteId as Id<"projectRooms">);
 
     if (!room || room.tenantId !== tenant._id) {

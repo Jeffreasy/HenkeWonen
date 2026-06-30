@@ -75,7 +75,15 @@ export const ensureUser = mutation({
       throw new ConvexError("Tenant niet gevonden");
     }
 
-    await requireSyncToken(args.syncToken, tenant.slug, args.externalUserId);
+    const tokenPayload = await requireSyncToken(args.syncToken, tenant.slug, args.externalUserId);
+
+    // Pin de rol vast aan het (ondertekende) sync-token: zo kan een gebruiker niet zijn
+    // eigen rol naar 'admin' tillen via een directe ensureUser-call met een gespoofte
+    // `role`-arg. Oude tokens zonder rol (rollout/dev) vallen terug op het bestaande
+    // gedrag — backward-compatible, deploy-volgorde-onafhankelijk.
+    if (tokenPayload?.role && tokenPayload.role !== args.role) {
+      throw new ConvexError("De opgegeven rol komt niet overeen met het autorisatietoken.");
+    }
 
     const now = Date.now();
     const existing = await ctx.db

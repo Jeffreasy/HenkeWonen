@@ -8,6 +8,8 @@ type AuthzTokenPayload = {
   tenant: string;
   iat: number;
   exp: number;
+  /** Rol op mint-moment (door de auth-bron bepaald), zodat de backend 'm kan vastpinnen. */
+  role: AppSession["role"];
 };
 
 const TOKEN_TTL_SECONDS = 8 * 60 * 60;
@@ -56,7 +58,8 @@ async function createToken(kind: AuthzTokenKind, session: AppSession) {
     sub: session.userId,
     tenant: session.tenantId,
     iat: nowSeconds,
-    exp: nowSeconds + TOKEN_TTL_SECONDS
+    exp: nowSeconds + TOKEN_TTL_SECONDS,
+    role: session.role
   };
   const body = base64UrlEncodeBytes(new TextEncoder().encode(JSON.stringify(payload)));
   const signature = await sign(body, secret);
