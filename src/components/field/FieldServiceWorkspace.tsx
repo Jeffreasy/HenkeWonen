@@ -1,4 +1,4 @@
-import { Search, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { ConvexError } from "convex/values";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";

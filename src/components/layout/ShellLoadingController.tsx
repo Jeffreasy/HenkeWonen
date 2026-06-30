@@ -21,72 +21,43 @@ declare global {
   }
 }
 
-function isModifiedClick(event: MouseEvent) {
-  return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
-}
-
-function internalNavigationTarget(anchor: HTMLAnchorElement) {
-  const href = anchor.getAttribute("href");
-
-  if (!href || href.startsWith("#") || anchor.hasAttribute("download")) {
-    return null;
-  }
-
-  if (anchor.target && anchor.target !== "_self") {
-    return null;
-  }
-
-  const url = new URL(href, window.location.href);
-
-  if (url.origin !== window.location.origin) {
-    return null;
-  }
-
-  const isSamePage =
-    url.pathname === window.location.pathname &&
-    url.search === window.location.search &&
-    url.hash !== window.location.hash;
-
-  if (isSamePage) {
-    return null;
-  }
-
-  if (!url.pathname.startsWith("/portal") && url.pathname !== "/login") {
-    return null;
-  }
-
-  return url;
-}
-
 function isFieldPath(pathname: string) {
   return pathname === fieldPathPrefix || pathname.startsWith(`${fieldPathPrefix}/`);
 }
 
-function workspaceSwitchLoading(targetUrl: URL): ShellLoadingEventDetail | null {
-  const currentPathname = window.location.pathname;
-  const targetPathname = targetUrl.pathname;
-  const currentIsField = isFieldPath(currentPathname);
-  const targetIsField = isFieldPath(targetPathname);
+/**
+ * Een wissel tussen winkel- en buitendienstomgeving is een "zware" switch (andere
+ * shell): toon dan een blokkerende overlay i.p.v. alleen de top-progressbar.
+ */
+function workspaceSwitchLoading(toPathname: string): ShellLoadingEventDetail | null {
+  const currentIsField = isFieldPath(window.location.pathname);
+  const targetIsField = isFieldPath(toPathname);
 
   if (currentIsField === targetIsField) {
     return null;
   }
 
-  if (targetIsField) {
-    return {
-      mode: "blocking",
-      title: "Buitendienst openen",
-      description: "De buitendienstomgeving wordt klaargezet."
-    };
-  }
-
-  return {
-    mode: "blocking",
-    title: "Winkel openen",
-    description: "De winkelomgeving wordt klaargezet."
-  };
+  return targetIsField
+    ? {
+        mode: "blocking",
+        title: "Buitendienst openen",
+        description: "De buitendienstomgeving wordt klaargezet."
+      }
+    : {
+        mode: "blocking",
+        title: "Winkel openen",
+        description: "De winkelomgeving wordt klaargezet."
+      };
 }
 
+/**
+ * Stuurt de navigatie-feedback (top-progressbar + blokkerende overlay) aan op basis
+ * van Astro View Transitions: starten bij `astro:before-preparation`, opruimen na
+ * `astro:after-swap`/`astro:page-load`. Zo krijgt élke navigatie (link, back/forward,
+ * programmatisch) feedback — i.p.v. alleen herkende link-clicks — en loopt de bar niet
+ * meer vast. De blokkerende overlay luistert daarnaast nog op het custom shell-event
+ * (bv. uitloggen).
+ */
 export function ShellLoadingController() {
   const [loading, setLoading] = useState<ShellLoadingState>({
     mode: "idle",
@@ -106,51 +77,39 @@ export function ShellLoadingController() {
       showLoading(event.detail);
     }
 
-    function handleClick(event: MouseEvent) {
-      if (event.defaultPrevented || isModifiedClick(event)) {
-        return;
-      }
-
-      const target = event.target instanceof Element ? event.target : null;
-      const anchor = target?.closest("a[href]");
-
-      if (!(anchor instanceof HTMLAnchorElement)) {
-        return;
-      }
-
-      const url = internalNavigationTarget(anchor);
-
-      if (!url) {
-        return;
-      }
-
+    function handleBeforePreparation(event: Event) {
+      const toUrl = (event as unknown as { to?: URL }).to;
       showLoading(
-        workspaceSwitchLoading(url) ?? {
+        (toUrl ? workspaceSwitchLoading(toUrl.pathname) : null) ?? {
           mode: "progress",
-          title: "Pagina openen",
-          description: "De winkel wordt bijgewerkt."
+          title: "Pagina openen"
         }
       );
     }
 
-    function handlePageShow() {
+    function handleNavigationDone() {
       setLoading({ mode: "idle", title: "Pagina openen" });
     }
 
     window.addEventListener(loadingEventName, handleShellLoading);
-    document.addEventListener("click", handleClick, true);
-    window.addEventListener("pageshow", handlePageShow);
+    document.addEventListener("astro:before-preparation", handleBeforePreparation);
+    document.addEventListener("astro:after-swap", handleNavigationDone);
+    document.addEventListener("astro:page-load", handleNavigationDone);
 
     return () => {
       window.removeEventListener(loadingEventName, handleShellLoading);
-      document.removeEventListener("click", handleClick, true);
-      window.removeEventListener("pageshow", handlePageShow);
+      document.removeEventListener("astro:before-preparation", handleBeforePreparation);
+      document.removeEventListener("astro:after-swap", handleNavigationDone);
+      document.removeEventListener("astro:page-load", handleNavigationDone);
     };
   }, []);
 
   return (
     <>
-      <div className={loading.mode !== "idle" ? "shell-progress active" : "shell-progress"} aria-hidden="true">
+      <div
+        className={loading.mode !== "idle" ? "shell-progress active" : "shell-progress"}
+        aria-hidden="true"
+      >
         <span />
       </div>
       {loading.mode === "blocking" ? (
@@ -158,7 +117,9 @@ export function ShellLoadingController() {
           <div className="shell-loading-card">
             <span className="shell-loading-spinner" aria-hidden="true" />
             <p className="shell-loading-title">{loading.title}</p>
-            {loading.description ? <p className="shell-loading-description">{loading.description}</p> : null}
+            {loading.description ? (
+              <p className="shell-loading-description">{loading.description}</p>
+            ) : null}
           </div>
         </div>
       ) : null}

@@ -1,4 +1,5 @@
 ---
+import { ClientRouter } from "astro:transitions";
 import "../../styles/global.css";
 import FieldNavigation from "./FieldNavigation";
 import { ShellLoadingController } from "./ShellLoadingController";
@@ -20,18 +21,21 @@ const theme = Astro.cookies.get("theme")?.value || "light";
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title} | Henke Wonen Buitendienst</title>
+    <ClientRouter />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <script is:inline>
-      (function() {
-        const storedTheme = localStorage.getItem("theme");
-        if (storedTheme) {
-          document.documentElement.setAttribute("data-theme", storedTheme);
-          return;
-        }
-        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-        document.documentElement.setAttribute("data-theme", systemTheme);
+      (function () {
+        const applyTheme = () => {
+          const stored = localStorage.getItem("theme");
+          const theme =
+            stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          document.documentElement.setAttribute("data-theme", theme);
+        };
+        applyTheme();
+        // Her-toepassen na een View Transition-swap (de head wordt vervangen, <html> blijft).
+        document.addEventListener("astro:after-swap", applyTheme);
       })();
     </script>
   </head>
