@@ -273,14 +273,6 @@
   font-family: Arial, Helvetica, sans-serif;
 }
 
-@media screen and (min-width: 720px) {
-  .quote-document-sheet {
-    /* Volledige A4-verhouding zodat een korte factuur toch als heel vel oogt. */
-    min-height: 297mm;
-    padding: 14mm 13mm 13mm;
-  }
-}
-
 /* De documenttitel (Factuur/Offerte + onderwerp) is onderdeel van het vel en
    dus ook op het scherm zichtbaar — buiten het vel blijft .print-only gelden. */
 .quote-document-sheet .quote-document-print-title {
@@ -305,11 +297,18 @@
   margin-top: auto;
 }
 
-/* Op papier scrollt niets: binnen het vel krijgt de regeltabel de vaste
-   print-kolomverdeling zodat hij altijd binnen de A4-breedte past. Op smalle
-   schermen (mobiel) blijft de scroll-fallback van de table-wrap gelden.
-   Bewust alleen voor het scherm: de print heeft zijn eigen maten (18-print). */
+/* Vanaf tablet-breedte krijgt het vel de volledige A4-verhouding en scrollt er
+   niets op papier: de regeltabel volgt de vaste print-kolomverdeling zodat hij
+   altijd binnen de A4-breedte past (mobiel houdt de scroll-fallback van de
+   table-wrap). Bewust alleen voor het scherm: de print heeft eigen maten
+   (18-print). */
 @media screen and (min-width: 720px) {
+  .quote-document-sheet {
+    /* Volledige A4-verhouding zodat een korte factuur toch als heel vel oogt. */
+    min-height: 297mm;
+    padding: 14mm 13mm 13mm;
+  }
+
   .quote-document-sheet .quote-document-table {
     min-width: 0;
     table-layout: fixed;
