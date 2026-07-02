@@ -14,6 +14,7 @@ import type {
 import { Badge, type BadgeVariant } from "../ui/data-display/Badge";
 import { Button } from "../ui/forms/Button";
 import { Alert } from "../ui/feedback/Alert";
+import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { SectionHeader } from "../ui/layout/SectionHeader";
 import SupplierOrderDocument from "./SupplierOrderDocument";
@@ -22,6 +23,12 @@ type SupplierOrdersPanelProps = {
   session: AppSession;
   projectId: string;
   canEdit: boolean;
+  /**
+   * Is er een geaccepteerde offerte om uit te genereren (afgeleid van de projectfase)?
+   * Zonder akkoord is de genereer-knop uitgeschakeld met uitleg, i.p.v. pas bij het
+   * klikken een serverfout te tonen.
+   */
+  magGenereren?: boolean;
 };
 
 type OrderDetail = {
@@ -40,12 +47,18 @@ const statusMeta: Record<SupplierOrderStatus, { label: string; variant: BadgeVar
   cancelled: { label: "Geannuleerd", variant: "danger" }
 };
 
-export default function SupplierOrdersPanel({ session, projectId, canEdit }: SupplierOrdersPanelProps) {
+export default function SupplierOrdersPanel({
+  session,
+  projectId,
+  canEdit,
+  magGenereren = true
+}: SupplierOrdersPanelProps) {
   const [orders, setOrders] = useState<PortalSupplierOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pendingCancel, setPendingCancel] = useState<PortalSupplierOrder | null>(null);
   const [expanded, setExpanded] = useState<Record<string, OrderDetail | "loading">>({});
 
   const loadOrders = useCallback(async () => {
@@ -221,6 +234,10 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
               leftIcon={<PackagePlus size={16} aria-hidden="true" />}
               onClick={() => void handleGenerate()}
               isLoading={isGenerating}
+              disabled={!magGenereren}
+              title={
+                magGenereren ? undefined : "Zet eerst een offerte op akkoord; daaruit worden de bestellingen gegenereerd."
+              }
               size="sm"
               variant="secondary"
             >
@@ -239,7 +256,11 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
       ) : orders.length === 0 ? (
         <EmptyState
           title="Nog geen bestellingen"
-          description="Genereer bestellingen uit de geaccepteerde offerte; ze worden per leverancier gegroepeerd."
+          description={
+            magGenereren
+              ? "Genereer bestellingen uit de geaccepteerde offerte; ze worden per leverancier gegroepeerd."
+              : "Zodra een offerte op akkoord staat kun je hier de leveranciersbestellingen genereren, gegroepeerd per leverancier."
+          }
         />
       ) : (
         <div className="grid" style={{ gap: "var(--space-3)" }}>
@@ -307,7 +328,7 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
                     {canEdit && canCancel ? (
                       <Button
                         leftIcon={<Ban size={15} aria-hidden="true" />}
-                        onClick={() => void handleCancel(order)}
+                        onClick={() => setPendingCancel(order)}
                         isLoading={busyId === order.id}
                         size="sm"
                         variant="ghost"
@@ -332,6 +353,27 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingCancel)}
+        title="Bestelling annuleren?"
+        description={
+          pendingCancel
+            ? `Je annuleert de bestelling bij ${pendingCancel.leverancierNaam ?? "onbekende leverancier"} (${pendingCancel.regelAantal} regel${pendingCancel.regelAantal === 1 ? "" : "s"}). Al bij de leverancier geplaatste bestellingen moet je daar zelf ook afmelden.`
+            : ""
+        }
+        confirmLabel="Bestelling annuleren"
+        tone="danger"
+        isBusy={Boolean(pendingCancel && busyId === pendingCancel.id)}
+        onCancel={() => setPendingCancel(null)}
+        onConfirm={() => {
+          // Dubbele bevestiging afvangen: de knop is bij isBusy al disabled (Button
+          // disablet op isLoading), maar deze guard dekt ook de race vóór de re-render.
+          if (pendingCancel && busyId !== pendingCancel.id) {
+            void handleCancel(pendingCancel).finally(() => setPendingCancel(null));
+          }
+        }}
+      />
     </section>
   );
 }

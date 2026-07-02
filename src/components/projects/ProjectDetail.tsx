@@ -119,6 +119,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   const [error, setError] = useState<string | null>(null);
   const [editingProject, setEditingProject] = useState(false);
   const [pendingProjectAction, setPendingProjectAction] = useState<ProjectAction | null>(null);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
   const [invoiceDueDate, setInvoiceDueDate] = useState("");
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [isStartingMeasurement, setIsStartingMeasurement] = useState(false);
@@ -356,6 +357,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       return;
     }
 
+    setIsProcessingAction(true);
     try {
       await client.mutation(api.portal.processProjectAction, {
         tenantSlug: session.tenantId,
@@ -369,6 +371,8 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
     } catch (processError) {
       setPendingProjectAction(null);
       showErrorToast(processError, "Dossieractie mislukt", "De dossieractie kon niet worden verwerkt.");
+    } finally {
+      setIsProcessingAction(false);
     }
   }
 
@@ -416,6 +420,8 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
         status
       });
       await loadProject();
+    } catch (taskError) {
+      showErrorToast(taskError, "Taak bijwerken mislukt");
     } finally {
       setUpdatingTaskId(null);
     }
@@ -455,9 +461,10 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
         description={pendingProjectActionDetails?.description ?? ""}
         confirmLabel={pendingProjectActionDetails?.confirmLabel ?? "Verwerken"}
         tone={pendingProjectActionDetails?.tone ?? "warning"}
+        isBusy={isProcessingAction}
         onCancel={() => setPendingProjectAction(null)}
         onConfirm={() => {
-          if (pendingProjectAction) {
+          if (pendingProjectAction && !isProcessingAction) {
             void processProjectAction(pendingProjectAction);
           }
         }}
@@ -633,6 +640,14 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
                 session={session}
                 projectId={project.id}
                 canEdit={canEditProject}
+                magGenereren={[
+                  "quote_accepted",
+                  "ordering",
+                  "execution_planned",
+                  "in_progress",
+                  "invoiced",
+                  "paid"
+                ].includes(project.status)}
               />
             )
           }
