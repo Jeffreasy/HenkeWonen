@@ -95,13 +95,15 @@ export function calculateCurtainFabric(
   // Spiegel van de kamerhoog-controle: zonder bruikbare stofbreedte is banen-confectie
   // fysiek onmogelijk. Zonder deze guard zou de clamp hieronder stilletjes honderden
   // banen opleveren (bv. stofbreedte 0,08 m met zijzoom 0,06 m → 1 cm bruikbaar).
-  if (input.fabricWidthM - sideHemM < 0.1) {
+  // Afgerond op 2 decimalen zodat floating-point-ruis (0,16 − 0,06 = 0,0999…) een
+  // exact-grensgeval niet onterecht afkeurt.
+  const useableWidthM = roundToTwoDecimals(input.fabricWidthM - sideHemM);
+  if (useableWidthM < 0.1) {
     return invalidCurtainResult(
       "banen",
       `Stof te smal: na de zijzoom (${roundToTwoDecimals(sideHemM)} m) blijft er van de stofbreedte (${roundToTwoDecimals(input.fabricWidthM)} m) geen bruikbare baanbreedte over.`
     );
   }
-  const useableWidthM = input.fabricWidthM - sideHemM;
   const banen = Math.ceil((input.railWidthM * input.fullness) / useableWidthM);
   let drop = input.curtainHeightM + hemM;
   if (rapportM > 0) {

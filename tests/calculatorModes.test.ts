@@ -131,6 +131,20 @@ describe("calculateCurtainFabric (gordijnstof)", () => {
     expect(r.validationError).toBeUndefined();
     expect(r.banen).toBe(7); // 4 / 0.64 = 6.25 -> 7
   });
+
+  it("keurt het exacte omslagpunt (10 cm bruikbaar) niet af door floating-point-ruis", () => {
+    // 0.16 - 0.06 is in JS 0.0999…; afgerond op 2 decimalen is dat exact de 0.1-grens.
+    const r = calculateCurtainFabric({
+      railWidthM: 2,
+      curtainHeightM: 2.6,
+      fabricWidthM: 0.16,
+      sideHemM: 0.06,
+      fullness: 2,
+      makeUp: "banen"
+    });
+    expect(r.validationError).toBeUndefined();
+    expect(r.banen).toBe(40); // 4 / 0.1
+  });
 });
 
 describe("calculateScreed (egaliseren)", () => {
