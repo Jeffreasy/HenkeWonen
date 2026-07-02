@@ -22,11 +22,24 @@ export type DashboardWorkItem = {
 type DashboardWorkOverviewProps = {
   isLoading: boolean;
   workItems: DashboardWorkItem[];
+  /** Totale werkvoorraad (server-telling); kan hoger zijn dan de meegestuurde lijst. */
+  totalCount?: number;
 };
 
-export function DashboardWorkOverview({ isLoading, workItems }: DashboardWorkOverviewProps) {
+export function DashboardWorkOverview({
+  isLoading,
+  workItems,
+  totalCount
+}: DashboardWorkOverviewProps) {
   const [showAll, setShowAll] = useState(false);
   const visibleItems = showAll ? workItems : workItems.slice(0, VISIBLE_LIMIT);
+  // De server stuurt de lijst met een bovengrens mee; benoem het verschil expliciet
+  // zodat de teller op de pill en deze knop nooit stilzwijgend uiteenlopen.
+  const total = totalCount ?? workItems.length;
+  const toonAllesLabel =
+    total > workItems.length
+      ? `Toon alles (${workItems.length} van ${total} — rest via Dossiers)`
+      : `Toon alles (${workItems.length})`;
   return (
     <section className="panel" id="werkoverzicht">
       <div className="dashboard-section-header">
@@ -78,7 +91,7 @@ export function DashboardWorkOverview({ isLoading, workItems }: DashboardWorkOve
                 aria-controls="werkoverzicht-lijst"
                 onClick={() => setShowAll((current) => !current)}
               >
-                {showAll ? "Toon minder" : `Toon alles (${workItems.length})`}
+                {showAll ? "Toon minder" : toonAllesLabel}
               </Button>
             </div>
           ) : null}

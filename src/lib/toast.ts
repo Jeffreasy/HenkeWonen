@@ -53,8 +53,14 @@ export function errorDescription(error: unknown): string | undefined {
 /**
  * Fout-toast die de specifieke server-melding als omschrijving toont.
  * Logt de fout ook naar de console (vervangt losse console.error op de call-site).
+ * Zonder server-melding (bv. netwerkfout) valt de omschrijving terug op
+ * `fallbackDescription`, zodat de gebruiker nooit een kale titel zonder duiding ziet.
  */
-export function showErrorToast(error: unknown, title: string, fallbackDescription?: string) {
+export function showErrorToast(
+  error: unknown,
+  title: string,
+  fallbackDescription = "Probeer het opnieuw."
+) {
   console.error(error);
   showToast({ title, description: errorDescription(error) ?? fallbackDescription, tone: "error" });
 }

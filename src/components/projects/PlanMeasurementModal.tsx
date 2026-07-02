@@ -188,7 +188,15 @@ export function PlanMeasurementModal({
     if (!date) {
       return;
     }
-    onSubmit({ date, measuredBy, measuredByUserId: monteurId ?? undefined, omvang });
+    // Bij een (e-mail-)match op een teamlid de nette teamnaam opslaan, ook als de
+    // gebruiker de dropdown niet aanraakte — anders blijft het historische
+    // e-mailadres als monteurnaam op de buitendienst-kaart staan.
+    onSubmit({
+      date,
+      measuredBy: selectedMember?.naam ?? measuredBy,
+      measuredByUserId: monteurId ?? undefined,
+      omvang
+    });
   }
 
   function renderHint() {

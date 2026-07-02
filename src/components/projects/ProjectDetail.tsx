@@ -368,13 +368,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       await loadProject();
     } catch (processError) {
       setPendingProjectAction(null);
-      showErrorToast(
-        processError,
-        "Dossieractie mislukt",
-        processError instanceof Error
-          ? processError.message
-          : "De dossieractie kon niet worden verwerkt."
-      );
+      showErrorToast(processError, "Dossieractie mislukt", "De dossieractie kon niet worden verwerkt.");
     }
   }
 

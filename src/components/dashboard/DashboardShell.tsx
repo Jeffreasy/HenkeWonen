@@ -228,7 +228,11 @@ export default function DashboardShell({ session }: DashboardShellProps) {
         plannedWorkCount={dashboard.plannedWorkCount}
       />
 
-      <DashboardWorkOverview isLoading={isLoading} workItems={dashboard.workItems} />
+      <DashboardWorkOverview
+        isLoading={isLoading}
+        workItems={dashboard.workItems}
+        totalCount={dashboard.workItemCount}
+      />
 
       <DashboardQuoteFollowUps isLoading={isLoading} quoteFollowUps={dashboard.quoteFollowUps} />
 
