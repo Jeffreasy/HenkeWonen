@@ -233,7 +233,7 @@
 }
 
 .quote-line-omschrijving-regel + .quote-line-omschrijving-regel {
-  margin-top: 2px;
+  margin-top: calc(var(--space-1) / 2);
 }
 
 .quote-document-preview {
