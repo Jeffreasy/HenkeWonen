@@ -93,7 +93,7 @@ export const ensureUser = mutation({
 
     if (existing) {
       if (existing.tenantId !== args.tenantId) {
-        throw new ConvexError("User exists in another tenant");
+        throw new ConvexError("Deze gebruiker bestaat al in een andere omgeving.");
       }
 
       await ctx.db.patch(existing._id, {

@@ -170,7 +170,7 @@ async function requireMeasurement(ctx: any, tenantId: any, measurementId: any) {
   const measurement = await ctx.db.get(measurementId);
 
   if (!measurement || measurement.tenantId !== tenantId) {
-    throw new ConvexError("Measurement not found");
+    throw new ConvexError("Inmeting niet gevonden.");
   }
 
   return measurement;
@@ -263,7 +263,7 @@ export const getForProject = query({
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
-      throw new ConvexError("Project not found");
+      throw new ConvexError("Project niet gevonden.");
     }
 
     const measurement = await ctx.db
@@ -322,7 +322,7 @@ export const listReadyForQuoteByProject = query({
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
-      throw new ConvexError("Project not found");
+      throw new ConvexError("Project niet gevonden.");
     }
 
     const measurements = await ctx.db
@@ -395,17 +395,17 @@ export const createForProject = mutation({
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
-      throw new ConvexError("Project not found");
+      throw new ConvexError("Project niet gevonden.");
     }
 
     const customer = await ctx.db.get(args.klantId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
-      throw new ConvexError("Customer not found");
+      throw new ConvexError("Klant niet gevonden.");
     }
 
     if (project.klantId !== args.klantId) {
-      throw new ConvexError("Customer does not belong to project");
+      throw new ConvexError("Deze klant hoort niet bij dit project.");
     }
 
     const now = Date.now();
@@ -576,7 +576,7 @@ export const addMeasurementRoom = mutation({
         projectRoom.tenantId !== args.tenantId ||
         projectRoom.projectId !== measurement.projectId
       ) {
-        throw new ConvexError("Project room not found");
+        throw new ConvexError("Ruimte niet gevonden.");
       }
     } else {
       // Auto-promotie: koppel/maak de dossier-ruimte zodat dezelfde ruimte niet twee keer
@@ -758,7 +758,7 @@ export const updateMeasurementRoom = mutation({
     const room = await ctx.db.get(args.ruimteId);
 
     if (!room || room.tenantId !== args.tenantId) {
-      throw new ConvexError("Measurement room not found");
+      throw new ConvexError("Meetruimte niet gevonden.");
     }
 
     const measurement = await requireMeasurement(ctx, args.tenantId, room.inmetingId);
@@ -812,7 +812,7 @@ export const deleteMeasurementRoom = mutation({
     const room = await ctx.db.get(args.ruimteId);
 
     if (!room || room.tenantId !== args.tenantId) {
-      throw new ConvexError("Measurement room not found");
+      throw new ConvexError("Meetruimte niet gevonden.");
     }
 
     const line = await ctx.db
@@ -863,7 +863,7 @@ export const addMeasurementLine = mutation({
       const room = await ctx.db.get(args.ruimteId);
 
       if (!room || room.tenantId !== args.tenantId || room.inmetingId !== args.inmetingId) {
-        throw new ConvexError("Measurement room not found");
+        throw new ConvexError("Meetruimte niet gevonden.");
       }
     }
 
@@ -968,7 +968,7 @@ export const addMeasurementLinesBulk = mutation({
         const room = await ctx.db.get(regel.ruimteId);
 
         if (!room || room.tenantId !== args.tenantId || room.inmetingId !== args.inmetingId) {
-          throw new ConvexError("Measurement room not found");
+          throw new ConvexError("Meetruimte niet gevonden.");
         }
 
         checkedRooms.add(regel.ruimteId);
@@ -1034,7 +1034,7 @@ export const updateMeasurementLineStatus = mutation({
     const line = await ctx.db.get(args.lineId);
 
     if (!line || line.tenantId !== args.tenantId) {
-      throw new ConvexError("Measurement line not found");
+      throw new ConvexError("Inmeetregel niet gevonden.");
     }
 
     if (args.quotePreparationStatus === "converted") {
@@ -1085,7 +1085,7 @@ export const updateMeasurementLine = mutation({
     const line = await ctx.db.get(args.lineId);
 
     if (!line || line.tenantId !== args.tenantId) {
-      throw new ConvexError("Measurement line not found");
+      throw new ConvexError("Inmeetregel niet gevonden.");
     }
 
     if (line.quotePreparationStatus === "converted") {
@@ -1097,7 +1097,7 @@ export const updateMeasurementLine = mutation({
       const room = await ctx.db.get(args.ruimteId);
 
       if (!room || room.tenantId !== args.tenantId || room.inmetingId !== line.inmetingId) {
-        throw new ConvexError("Measurement room not found");
+        throw new ConvexError("Meetruimte niet gevonden.");
       }
     }
 
@@ -1189,7 +1189,7 @@ export const deleteMeasurementLine = mutation({
     const line = await ctx.db.get(args.lineId);
 
     if (!line || line.tenantId !== args.tenantId) {
-      throw new ConvexError("Measurement line not found");
+      throw new ConvexError("Inmeetregel niet gevonden.");
     }
 
     if (

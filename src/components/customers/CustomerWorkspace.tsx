@@ -7,7 +7,7 @@ import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { measurementAutostartQuery } from "../../lib/measurementIntent";
 import type { PortalCustomer } from "../../lib/portalTypes";
-import { showToast } from "../../lib/toast";
+import { showErrorToast, showToast } from "../../lib/toast";
 import { Alert } from "../ui/feedback/Alert";
 import { Button } from "../ui/forms/Button";
 import { FormModal } from "../ui/overlays/FormModal";
@@ -118,8 +118,8 @@ export default function CustomerWorkspace({ session }: CustomerWorkspaceProps) {
       } else {
         void navigate(`/portal/klanten/${String(customerId)}`);
       }
-    } catch {
-      showToast({ title: "Klant aanmaken mislukt", tone: "error" });
+    } catch (createError) {
+      showErrorToast(createError, "Klant aanmaken mislukt");
     }
   }
 

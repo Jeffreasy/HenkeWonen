@@ -91,7 +91,7 @@ export const updateProductListStatus = mutation({
     const supplier = await ctx.db.get(args.leverancierId);
 
     if (!supplier || supplier.tenantId !== args.tenantId) {
-      throw new ConvexError("Supplier not found");
+      throw new ConvexError("Leverancier niet gevonden.");
     }
 
     await ctx.db.patch(args.leverancierId, {
@@ -254,7 +254,7 @@ export const updateSupplier = mutation({
     const supplier = await ctx.db.get(args.leverancierId as Id<"suppliers">);
 
     if (!supplier || supplier.tenantId !== tenant._id) {
-      throw new ConvexError("Supplier not found");
+      throw new ConvexError("Leverancier niet gevonden.");
     }
 
     const patch: Partial<Doc<"suppliers">> = {
@@ -289,7 +289,7 @@ export const updateSupplierProductListStatus = mutation({
     const supplier = await ctx.db.get(args.leverancierId as Id<"suppliers">);
 
     if (!supplier || supplier.tenantId !== tenant._id) {
-      throw new ConvexError("Supplier not found");
+      throw new ConvexError("Leverancier niet gevonden.");
     }
 
     await ctx.db.patch(supplier._id, {

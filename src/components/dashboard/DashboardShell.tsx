@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { ConvexError } from "convex/values";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { canEditDossiers, canManage } from "../../lib/auth/session";
 import type { AppSession } from "../../lib/auth/session";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { createConvexHttpClient } from "../../lib/convex/client";
-import { showToast } from "../../lib/toast";
+import { showErrorToast, showToast } from "../../lib/toast";
 import type { Omvang } from "../../lib/agenda";
 import type { PortalCustomer, PortalProject } from "../../lib/portalTypes";
 import { fromDateInputValue, toDateInputValue } from "../projects/measurement/measurementUtils";
@@ -204,12 +203,7 @@ export default function DashboardShell({ session }: DashboardShellProps) {
       sluitWizard();
       await loadDashboard();
     } catch (planError) {
-      console.error(planError);
-      const melding =
-        planError instanceof ConvexError && typeof planError.data === "string"
-          ? planError.data
-          : "Inplannen mislukt. Controleer de datum en monteur.";
-      showToast({ title: "Inplannen mislukt", description: melding, tone: "error" });
+      showErrorToast(planError, "Inplannen mislukt", "Controleer de datum en monteur.");
     } finally {
       setIsPlanning(false);
     }
@@ -234,7 +228,11 @@ export default function DashboardShell({ session }: DashboardShellProps) {
         plannedWorkCount={dashboard.plannedWorkCount}
       />
 
-      <DashboardWorkOverview isLoading={isLoading} workItems={dashboard.workItems} />
+      <DashboardWorkOverview
+        isLoading={isLoading}
+        workItems={dashboard.workItems}
+        totalCount={dashboard.workItemCount}
+      />
 
       <DashboardQuoteFollowUps isLoading={isLoading} quoteFollowUps={dashboard.quoteFollowUps} />
 

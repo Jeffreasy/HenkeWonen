@@ -207,7 +207,7 @@ export async function requireTenant(ctx: any, tenantSlug: string): Promise<Doc<"
   const tenant = await getTenant(ctx, tenantSlug);
 
   if (!tenant) {
-    throw new ConvexError("Tenant not found");
+    throw new ConvexError("Omgeving niet gevonden.");
   }
 
   return tenant;
@@ -276,7 +276,7 @@ export async function recalculateQuote(ctx: any, tenantId: Id<"tenants">, quoteI
   const quote = await ctx.db.get(quoteId);
 
   if (!quote || quote.tenantId !== tenantId) {
-    throw new ConvexError("Quote not found");
+    throw new ConvexError("Offerte niet gevonden.");
   }
 
   const lines = await ctx.db
@@ -1175,7 +1175,7 @@ export async function validateQuoteLineProduct(
   const product = await ctx.db.get(productId as Id<"products">);
 
   if (!product || product.tenantId !== tenantId) {
-    throw new ConvexError("Product not found");
+    throw new ConvexError("Product niet gevonden.");
   }
 
   const category = product.categorieId ? await ctx.db.get(product.categorieId) : null;

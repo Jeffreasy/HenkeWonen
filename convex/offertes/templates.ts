@@ -170,7 +170,7 @@ export const updateQuoteTemplateContent = mutation({
     const template = await ctx.db.get(args.templateId as Id<"quoteTemplates">);
 
     if (!template || template.tenantId !== tenant._id) {
-      throw new ConvexError("Quote template not found");
+      throw new ConvexError("Offertesjabloon niet gevonden.");
     }
 
     await ctx.db.patch(template._id, {

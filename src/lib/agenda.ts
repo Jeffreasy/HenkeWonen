@@ -53,6 +53,28 @@ export function capaciteitVanBezoeken(bezoeken: { omvang: string | null }[]): nu
   return bezoeken.reduce((som, b) => som + (b.omvang === "volledig" ? 2 : 1), 0);
 }
 
+/**
+ * Eerstvolgende inmeetdag (di/wo/do) ná vandaag, als `YYYY-MM-DD` voor
+ * `<input type="date">`. Voorkomt dat een plan-formulier standaard op een
+ * niet-inmeetdag opent (bv. "morgen" op een vrijdag).
+ */
+export function volgendeInmeetdagInputValue(vanaf = new Date()): string {
+  const d = new Date(vanaf);
+  d.setHours(12, 0, 0, 0);
+  do {
+    d.setDate(d.getDate() + 1);
+  } while (!isInmeetdag(weekdagVan(d.getTime())));
+  const maand = `${d.getMonth() + 1}`.padStart(2, "0");
+  const dag = `${d.getDate()}`.padStart(2, "0");
+  return `${d.getFullYear()}-${maand}-${dag}`;
+}
+
+/** Is deze `YYYY-MM-DD`-waarde (uit een date-input) een inmeetdag (di/wo/do)? */
+export function isInmeetdagInputValue(value: string): boolean {
+  const ms = new Date(`${value}T12:00:00`).getTime();
+  return Number.isFinite(ms) && isInmeetdag(weekdagVan(ms));
+}
+
 /** Spiegelt het resultaat van de Convex-query `inmeetBeschikbaarheid`. */
 export type InmeetBeschikbaarheid = {
   monteur: { id: string; naam: string };

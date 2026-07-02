@@ -5,7 +5,7 @@ import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatEuro } from "../../lib/money";
-import { showToast } from "../../lib/toast";
+import { showErrorToast, showToast } from "../../lib/toast";
 import type {
   PortalSupplierOrder,
   PortalSupplierOrderLine,
@@ -100,15 +100,13 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
       setExpanded({});
       await loadOrders();
     } catch (generateError) {
-      console.error(generateError);
-      showToast({
-        title: "Genereren mislukt",
-        description:
-          generateError instanceof Error && /offerte/i.test(generateError.message)
-            ? "Accepteer eerst een offerte voor dit dossier."
-            : undefined,
-        tone: "error"
-      });
+      showErrorToast(
+        generateError,
+        "Genereren mislukt",
+        generateError instanceof Error && /offerte/i.test(generateError.message)
+          ? "Accepteer eerst een offerte voor dit dossier."
+          : undefined
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -143,8 +141,7 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
       collapseDocument(order.id);
       await loadOrders();
     } catch (statusError) {
-      console.error(statusError);
-      showToast({ title: "Status kon niet worden bijgewerkt", tone: "error" });
+      showErrorToast(statusError, "Status kon niet worden bijgewerkt");
     } finally {
       setBusyId(null);
     }
@@ -166,8 +163,7 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
       collapseDocument(order.id);
       await loadOrders();
     } catch (cancelError) {
-      console.error(cancelError);
-      showToast({ title: "Annuleren mislukt", tone: "error" });
+      showErrorToast(cancelError, "Annuleren mislukt");
     } finally {
       setBusyId(null);
     }
@@ -204,8 +200,7 @@ export default function SupplierOrdersPanel({ session, projectId, canEdit }: Sup
         });
       }
     } catch (detailError) {
-      console.error(detailError);
-      showToast({ title: "Bestelbon kon niet worden geladen", tone: "error" });
+      showErrorToast(detailError, "Bestelbon kon niet worden geladen");
       setExpanded((current) => {
         const next = { ...current };
         delete next[order.id];

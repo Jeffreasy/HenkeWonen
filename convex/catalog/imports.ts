@@ -45,7 +45,7 @@ async function tenantBySlug(ctx: any, tenantSlug: string) {
     .first();
 
   if (!tenant) {
-    throw new ConvexError(`Tenant not found: ${tenantSlug}`);
+    throw new ConvexError(`Omgeving niet gevonden: ${tenantSlug}`);
   }
 
   return tenant;
@@ -270,7 +270,7 @@ export const addPreviewRow = mutation({
     const batch = await ctx.db.get(args.batchId);
 
     if (!batch || batch.tenantId !== args.tenantId) {
-      throw new ConvexError("Import batch not found");
+      throw new ConvexError("Import niet gevonden.");
     }
 
     const now = Date.now();
@@ -525,7 +525,7 @@ export const updateBatchStatusForPortal = mutation({
     const batch = await ctx.db.get(args.batchId as Id<"productImportBatches">);
 
     if (!batch || batch.tenantId !== tenant._id) {
-      throw new ConvexError("Import batch not found");
+      throw new ConvexError("Import niet gevonden.");
     }
 
     if (batch.status === "importing") {
@@ -612,7 +612,7 @@ export const updateProfileStatusForPortal = mutation({
     const profile = await ctx.db.get(args.profileId as Id<"importProfiles">);
 
     if (!profile || profile.tenantId !== tenant._id) {
-      throw new ConvexError("Import profile not found");
+      throw new ConvexError("Importprofiel niet gevonden.");
     }
 
     await ctx.db.patch(profile._id, {
@@ -636,7 +636,7 @@ export const saveMapping = mutation({
     const batch = await ctx.db.get(args.batchId);
 
     if (!batch || batch.tenantId !== args.tenantId) {
-      throw new ConvexError("Import batch not found");
+      throw new ConvexError("Import niet gevonden.");
     }
 
     await ctx.db.patch(args.batchId, {

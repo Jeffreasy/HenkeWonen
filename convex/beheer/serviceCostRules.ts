@@ -123,7 +123,7 @@ export const upsertServiceRule = mutation({
       const rule = await ctx.db.get(args.ruleId as Id<"serviceCostRules">);
 
       if (!rule || rule.tenantId !== tenant._id) {
-        throw new ConvexError("Service rule not found");
+        throw new ConvexError("Servicekostenregel niet gevonden.");
       }
 
       await ctx.db.patch(rule._id, {

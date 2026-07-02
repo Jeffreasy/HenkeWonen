@@ -1,5 +1,4 @@
 import { ArrowLeft } from "lucide-react";
-import { ConvexError } from "convex/values";
 import { navigate } from "astro:transitions/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
@@ -13,7 +12,7 @@ import type {
   QuoteStatus,
   QuoteTemplate
 } from "../../lib/portalTypes";
-import { showToast } from "../../lib/toast";
+import { showErrorToast, showToast } from "../../lib/toast";
 import { Alert } from "../ui/feedback/Alert";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { QuoteDetailSkeleton } from "./QuoteDetailSkeleton";
@@ -142,8 +141,8 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       setIsNewQuoteModalOpen(false);
       showToast({ title: "Offerte aangemaakt", description: title.trim(), tone: "success" });
       void navigate(`/portal/offertes/${newQuoteId}`);
-    } catch {
-      showToast({ title: "Offerte aanmaken mislukt", tone: "error" });
+    } catch (createError) {
+      showErrorToast(createError, "Offerte aanmaken mislukt");
     }
   }
 
@@ -169,8 +168,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       await loadWorkspace();
       return String(lineId);
     } catch (mutationError) {
-      console.error(mutationError);
-      showToast({ title: "Regel toevoegen mislukt", tone: "error" });
+      showErrorToast(mutationError, "Regel toevoegen mislukt");
       throw mutationError;
     }
   }
@@ -192,8 +190,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       await loadWorkspace();
       showToast({ title: "Regel verwijderd", tone: "success" });
     } catch (mutationError) {
-      console.error(mutationError);
-      showToast({ title: "Regel verwijderen mislukt", tone: "error" });
+      showErrorToast(mutationError, "Regel verwijderen mislukt");
       throw mutationError;
     }
   }
@@ -215,8 +212,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       });
       await loadWorkspace();
     } catch (mutationError) {
-      console.error(mutationError);
-      showToast({ title: "Regel bijwerken mislukt", tone: "error" });
+      showErrorToast(mutationError, "Regel bijwerken mislukt");
       throw mutationError;
     }
   }
@@ -244,8 +240,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       await loadWorkspace();
       showToast({ title: "Voorwaarden opgeslagen", tone: "success" });
     } catch (mutationError) {
-      console.error(mutationError);
-      showToast({ title: "Voorwaarden opslaan mislukt", tone: "error" });
+      showErrorToast(mutationError, "Voorwaarden opslaan mislukt");
       throw mutationError;
     }
   }
@@ -273,8 +268,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       await loadWorkspace();
       showToast({ title: "Teksten opgeslagen", tone: "success" });
     } catch (mutationError) {
-      console.error(mutationError);
-      showToast({ title: "Teksten opslaan mislukt", tone: "error" });
+      showErrorToast(mutationError, "Teksten opslaan mislukt");
       throw mutationError;
     }
   }
@@ -301,14 +295,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       await loadWorkspace();
       showToast({ title: "Status bijgewerkt", tone: "success" });
     } catch (mutationError) {
-      console.error(mutationError);
-      showToast({
-        title:
-          mutationError instanceof ConvexError
-            ? String(mutationError.data)
-            : "Status bijwerken mislukt",
-        tone: "error"
-      });
+      showErrorToast(mutationError, "Status bijwerken mislukt");
       throw mutationError;
     }
   }
@@ -342,8 +329,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       });
       return result.invoiceId;
     } catch (mutationError) {
-      console.error(mutationError);
-      showToast({ title: "Factuur aanmaken mislukt", tone: "error" });
+      showErrorToast(mutationError, "Factuur aanmaken mislukt");
       throw mutationError;
     }
   }

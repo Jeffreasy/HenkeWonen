@@ -3,7 +3,7 @@ import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canManage, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
-import { showToast } from "../../lib/toast";
+import { showErrorToast, showToast } from "../../lib/toast";
 import { Alert } from "../ui/feedback/Alert";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
 import { ServiceRuleForm } from "./ServiceRuleForm";
@@ -106,8 +106,7 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
       setEditingRule(null);
       setReloadKey((current) => current + 1);
     } catch (saveError) {
-      console.error(saveError);
-      showToast({ title: "Werkzaamheid kon niet worden opgeslagen", tone: "error" });
+      showErrorToast(saveError, "Werkzaamheid kon niet worden opgeslagen");
       throw saveError;
     } finally {
       setIsSaving(false);
@@ -146,8 +145,7 @@ export default function ServiceRulesSettings({ session }: ServiceRulesSettingsPr
       showToast({ title: nextStatus === "inactive" ? "Werkzaamheid gearchiveerd" : "Werkzaamheid hersteld", description: rule.name, tone: nextStatus === "inactive" ? "warning" : "success" });
       setReloadKey((current) => current + 1);
     } catch (saveError) {
-      console.error(saveError);
-      showToast({ title: "Werkzaamheidstatus kon niet worden bijgewerkt", tone: "error" });
+      showErrorToast(saveError, "Werkzaamheidstatus kon niet worden bijgewerkt");
     } finally {
       setIsSaving(false);
     }

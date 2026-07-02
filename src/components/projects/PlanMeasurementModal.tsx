@@ -4,9 +4,13 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import {
   AFWEZIGHEID_LABEL,
+  INMEET_EIND_MINUUT,
+  INMEET_START_MINUUT,
   OMVANG_LABEL,
   formatMinuut,
+  isInmeetdagInputValue,
   omvangUnits,
+  volgendeInmeetdagInputValue,
   type InmeetBeschikbaarheid,
   type Omvang
 } from "../../lib/agenda";
@@ -75,7 +79,14 @@ export function PlanMeasurementModal({
   // de gebruiker gekozen datum/monteur/omvang overschrijven.
   useEffect(() => {
     if (open && !wasOpenRef.current) {
-      setDate(defaultDate);
+      // Geen default of een niet-inmeetdag (bv. generiek "morgen" op een vrijdag)?
+      // Start dan op de eerstvolgende inmeetdag — een bestaande (geldige) inmeetdatum
+      // blijft gewoon staan.
+      setDate(
+        defaultDate && isInmeetdagInputValue(defaultDate)
+          ? defaultDate
+          : volgendeInmeetdagInputValue()
+      );
       setMeasuredBy(defaultMeasuredBy);
       setMeasuredById(null);
       setOmvang(defaultOmvang);
@@ -93,8 +104,13 @@ export function PlanMeasurementModal({
   const expliciteMember = measuredById
     ? (monteurOpties.find((member) => member.id === measuredById) ?? null)
     : null;
+  // Naam-match, met e-mail als vangnet: oudere inmetingen bewaarden het e-mailadres
+  // als monteurnaam — die koppelen we alsnog aan het teamlid (nette naam + userId,
+  // waardoor ook de beschikbaarheids-hint werkt).
   const selectedMember =
-    expliciteMember ?? monteurOpties.find((member) => member.naam === measuredBy) ?? null;
+    expliciteMember ??
+    monteurOpties.find((member) => member.naam === measuredBy || member.email === measuredBy) ??
+    null;
   const monteurId = selectedMember?.id ?? null;
   // Behoud een bestaande (vrije-tekst) monteurnaam die niet bij een teamlid hoort,
   // zodat we 'm niet stilletjes wegvagen.
@@ -172,12 +188,40 @@ export function PlanMeasurementModal({
     if (!date) {
       return;
     }
-    onSubmit({ date, measuredBy, measuredByUserId: monteurId ?? undefined, omvang });
+    // Bij een (e-mail-)match op een teamlid de nette teamnaam opslaan, ook als de
+    // gebruiker de dropdown niet aanraakte — anders blijft het historische
+    // e-mailadres als monteurnaam op de buitendienst-kaart staan.
+    onSubmit({
+      date,
+      measuredBy: selectedMember?.naam ?? measuredBy,
+      measuredByUserId: monteurId ?? undefined,
+      omvang
+    });
   }
 
   function renderHint() {
-    if (!measuredBy || !date) {
+    if (!date) {
       return null;
+    }
+    // Datum-check kan zonder monteur: waarschuw meteen op een niet-inmeetdag,
+    // in plaats van de gebruiker pas bij het opslaan tegen de servermelding te laten lopen.
+    if (!isInmeetdagInputValue(date)) {
+      const standaardVenster = `${formatMinuut(INMEET_START_MINUUT)}–${formatMinuut(INMEET_EIND_MINUUT)}`;
+      return (
+        <p className="inmeet-hint waarschuwing">
+          <AlertTriangle size={15} aria-hidden="true" />
+          Geen inmeetdag. Inmeten kan op dinsdag, woensdag of donderdag tussen {standaardVenster}.
+        </p>
+      );
+    }
+    if (!monteurId) {
+      // Zonder teamlid (leeg of losse naam) is er geen beschikbaarheid op te vragen.
+      return (
+        <p className="inmeet-hint laden">
+          <CalendarClock size={15} aria-hidden="true" />
+          Kies een monteur uit de lijst om de beschikbaarheid van die dag te zien.
+        </p>
+      );
     }
     if (hintLoading) {
       return <p className="inmeet-hint laden">Beschikbaarheid laden…</p>;
@@ -187,14 +231,6 @@ export function PlanMeasurementModal({
     }
     const venster = `${formatMinuut(hint.venster.startMinuut)}–${formatMinuut(hint.venster.eindMinuut)}`;
 
-    if (!hint.isInmeetdag) {
-      return (
-        <p className="inmeet-hint waarschuwing">
-          <AlertTriangle size={15} aria-hidden="true" />
-          Geen inmeetdag. Inmeten kan op di/wo/do tussen {venster}.
-        </p>
-      );
-    }
     if (hint.afwezig) {
       const label = AFWEZIGHEID_LABEL[hint.afwezig.type] ?? hint.afwezig.type;
       return (

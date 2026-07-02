@@ -62,6 +62,11 @@ type FieldCardProps = {
 export function FieldCard({ card, preferredAction }: FieldCardProps) {
   const customerName = card.customer?.weergaveNaam ?? "Onbekende klant";
   const urgency = cardUrgency(card);
+  // Een afspraak in het verleden expliciet markeren: onder "Vandaag" staan ook
+  // achterstallige bezoeken, en alleen de rode urgentie maakt dat niet duidelijk.
+  const vandaagStart = new Date();
+  vandaagStart.setHours(0, 0, 0, 0);
+  const isAchterstallig = card.visitAt != null && card.visitAt < vandaagStart.getTime();
   const statusLabel = card.latestQuote
     ? formatQuoteStatus(card.latestQuote.status)
     : formatProjectStatus(card.project.status);
@@ -112,7 +117,12 @@ export function FieldCard({ card, preferredAction }: FieldCardProps) {
               {card.address}
             </span>
           ) : null}
-          {card.visitAt ? <span>Afspraak: {formatDate(card.visitAt)}</span> : null}
+          {card.visitAt ? (
+            <span className={isAchterstallig ? "field-visit-overdue" : undefined}>
+              Afspraak: {formatDate(card.visitAt)}
+              {isAchterstallig ? " — achterstallig" : null}
+            </span>
+          ) : null}
           {card.measurement?.gemetenDoor ? (
             <span>
               <UserRound size={16} aria-hidden="true" />

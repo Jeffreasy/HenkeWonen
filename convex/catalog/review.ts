@@ -345,7 +345,7 @@ export const updateProfileVatMode = mutation({
     );
 
     if (!profile || profile.tenantId !== tenant._id) {
-      throw new ConvexError("Import profile not found");
+      throw new ConvexError("Importprofiel niet gevonden.");
     }
 
     const now = Date.now();
@@ -434,7 +434,7 @@ export const bulkUpdateProfileVatModes = mutation({
     );
 
     if (!profile || profile.tenantId !== tenant._id) {
-      throw new ConvexError("Import profile not found");
+      throw new ConvexError("Importprofiel niet gevonden.");
     }
 
     const now = Date.now();
@@ -512,7 +512,7 @@ export const markProfileVatColumnsReviewed = mutation({
     );
 
     if (!profile || profile.tenantId !== tenant._id) {
-      throw new ConvexError("Import profile not found");
+      throw new ConvexError("Importprofiel niet gevonden.");
     }
 
     const now = Date.now();
@@ -568,7 +568,7 @@ export const setProfileAllowUnknownVatMode = mutation({
     );
 
     if (!profile || profile.tenantId !== tenant._id) {
-      throw new ConvexError("Import profile not found");
+      throw new ConvexError("Importprofiel niet gevonden.");
     }
 
     const now = Date.now();
@@ -706,7 +706,7 @@ export const updateDuplicateEanIssueReview = mutation({
     );
 
     if (!issue || issue.tenantId !== tenant._id || issue.kwestieSoort !== "duplicate_ean") {
-      throw new ConvexError("Duplicate EAN issue not found");
+      throw new ConvexError("Dubbele-EAN-melding niet gevonden.");
     }
 
     const status =

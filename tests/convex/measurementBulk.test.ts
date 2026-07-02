@@ -258,7 +258,7 @@ test("bulk weigert een ruimte die bij een andere inmeting hoort", async () => {
       inmetingId: seeded.inmetingId,
       regels: [floorLine(seeded.foreignRoomId, seeded.productId)]
     })
-  ).rejects.toThrow(/room not found/i);
+  ).rejects.toThrow(/meetruimte niet gevonden/i);
 });
 
 test("bulk weigert een ongeldige hoeveelheid", async () => {

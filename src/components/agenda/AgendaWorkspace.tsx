@@ -5,7 +5,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { canManageAgenda, isFieldWorkspace, type AppSession } from "../../lib/auth/session";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { createConvexHttpClient } from "../../lib/convex/client";
-import { showToast } from "../../lib/toast";
+import { showErrorToast } from "../../lib/toast";
 import {
   AFWEZIGHEID_LABEL,
   WEEKDAG_KORT,
@@ -152,12 +152,7 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
       });
       await load(); // agenda herladen — de whitelist kan nu wijzigen
     } catch (toggleError) {
-      console.error(toggleError);
-      showToast({
-        title: "Zichtbaarheid niet opgeslagen",
-        description: "Probeer het opnieuw.",
-        tone: "error"
-      });
+      showErrorToast(toggleError, "Zichtbaarheid niet opgeslagen", "Probeer het opnieuw.");
       await loadTeam(); // herstel de echte stand bij een fout
     }
   }
@@ -176,8 +171,7 @@ export default function AgendaWorkspace({ session }: AgendaWorkspaceProps) {
       await loadTeam();
       await load(); // de monteur-kaarten tonen de nieuwe naam
     } catch (naamError) {
-      console.error(naamError);
-      showToast({ title: "Naam niet opgeslagen", description: "Probeer het opnieuw.", tone: "error" });
+      showErrorToast(naamError, "Naam niet opgeslagen", "Probeer het opnieuw.");
       await loadTeam();
     }
   }

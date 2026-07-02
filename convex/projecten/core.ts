@@ -126,7 +126,7 @@ export const create = mutation({
     const customer = await ctx.db.get(args.klantId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
-      throw new ConvexError("Customer not found");
+      throw new ConvexError("Klant niet gevonden.");
     }
 
     const now = Date.now();
@@ -160,7 +160,7 @@ export const updateStatus = mutation({
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
-      throw new ConvexError("Project not found");
+      throw new ConvexError("Project niet gevonden.");
     }
 
     await ctx.db.patch(args.projectId, {
@@ -274,7 +274,7 @@ export const createProject = mutation({
     const customer = await ctx.db.get(args.klantId as Id<"customers">);
 
     if (!customer || customer.tenantId !== tenant._id) {
-      throw new ConvexError("Customer not found");
+      throw new ConvexError("Klant niet gevonden.");
     }
 
     const now = Date.now();
@@ -321,7 +321,7 @@ export const updateProject = mutation({
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new ConvexError("Project not found");
+      throw new ConvexError("Project niet gevonden.");
     }
 
     // De inmeetdatum vanuit het dossier synct naar de inmeting, dus dezelfde inmeet-regels gelden
@@ -496,7 +496,7 @@ export const addProjectRoom = mutation({
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new ConvexError("Project not found");
+      throw new ConvexError("Project niet gevonden.");
     }
 
     const rooms = await getRooms(ctx, tenant._id, project._id);
@@ -542,7 +542,7 @@ export const updateProjectRoom = mutation({
     const room = await ctx.db.get(args.ruimteId as Id<"projectRooms">);
 
     if (!room || room.tenantId !== tenant._id) {
-      throw new ConvexError("Project room not found");
+      throw new ConvexError("Ruimte niet gevonden.");
     }
 
     const now = Date.now();
@@ -591,7 +591,7 @@ export const deleteProjectRoom = mutation({
     const room = await ctx.db.get(args.ruimteId as Id<"projectRooms">);
 
     if (!room || room.tenantId !== tenant._id) {
-      throw new ConvexError("Project room not found");
+      throw new ConvexError("Ruimte niet gevonden.");
     }
 
     const [measurementRoom, quoteLine] = await Promise.all([
@@ -641,7 +641,7 @@ export const updateProjectStatus = mutation({
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new ConvexError("Project not found");
+      throw new ConvexError("Project niet gevonden.");
     }
 
     const now = Date.now();
@@ -704,7 +704,7 @@ export const startOrPlanMeasurement = mutation({
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new ConvexError("Project not found");
+      throw new ConvexError("Project niet gevonden.");
     }
 
     if (["closed", "cancelled", "paid"].includes(project.status)) {
@@ -714,7 +714,7 @@ export const startOrPlanMeasurement = mutation({
     const customer = await ctx.db.get(project.klantId);
 
     if (!customer || customer.tenantId !== tenant._id) {
-      throw new ConvexError("Customer not found");
+      throw new ConvexError("Klant niet gevonden.");
     }
 
     const now = Date.now();
@@ -847,7 +847,7 @@ export const createWorkflowEvent = mutation({
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new ConvexError("Project not found");
+      throw new ConvexError("Project niet gevonden.");
     }
 
     return await ctx.db.insert("projectWorkflowEvents", {
@@ -887,7 +887,7 @@ export const processProjectAction = mutation({
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
-      throw new ConvexError("Project not found");
+      throw new ConvexError("Project niet gevonden.");
     }
 
     const now = Date.now();
@@ -1131,7 +1131,7 @@ export const updateProjectTaskStatus = mutation({
     const task = await ctx.db.get(args.taskId as Id<"projectTasks">);
 
     if (!task || task.tenantId !== tenant._id) {
-      throw new ConvexError("Project task not found");
+      throw new ConvexError("Taak niet gevonden.");
     }
 
     const now = Date.now();

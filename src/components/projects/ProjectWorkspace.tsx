@@ -4,7 +4,7 @@ import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { PortalCustomer, PortalProject, ProjectStatus } from "../../lib/portalTypes";
-import { showToast } from "../../lib/toast";
+import { showErrorToast, showToast } from "../../lib/toast";
 import { Alert } from "../ui/feedback/Alert";
 import { FormModal } from "../ui/overlays/FormModal";
 import ProjectForm, { type ProjectFormValues } from "./ProjectForm";
@@ -86,8 +86,8 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
       await loadProjects();
       setIsModalOpen(false);
       showToast({ title: "Project gestart", description: project.title, tone: "success" });
-    } catch {
-      showToast({ title: "Project aanmaken mislukt", tone: "error" });
+    } catch (createError) {
+      showErrorToast(createError, "Project aanmaken mislukt");
     }
   }
 
@@ -102,7 +102,14 @@ export default function ProjectWorkspace({ session }: ProjectWorkspaceProps) {
           .join(" ")
           .toLowerCase()
           .includes(normalizedSearch);
-      const matchesStatus = statusFilter === "all" || project.status === statusFilter;
+      // "Bestellen" dekt ook de legacy-statussen uitvoering-gepland/in-uitvoering:
+      // die fase is samengevoegd (keten = Bestellen → Factureren) en het filter
+      // biedt ze niet meer als losse opties aan (zie ProjectsTable).
+      const matchesStatus =
+        statusFilter === "all" ||
+        project.status === statusFilter ||
+        (statusFilter === "ordering" &&
+          ["execution_planned", "in_progress"].includes(project.status));
 
       return matchesSearch && matchesStatus;
     });

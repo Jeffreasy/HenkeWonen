@@ -222,7 +222,10 @@ export const dashboard = query({
       openQuoteCount: openQuotes.length,
       plannedWorkCount: plannedWorkProjects.length,
       workItemCount: workItems.length,
-      workItems: workItems.slice(0, 8),
+      // Ruime bovengrens i.p.v. 8 zodat "Toon alles" in de praktijk alles toont.
+      // Boven de grens benoemt DashboardWorkOverview het verschil expliciet
+      // ("x van y") o.b.v. workItemCount, zodat pill en lijst nooit stil uiteenlopen.
+      workItems: workItems.slice(0, 50),
       quoteFollowUps: openQuotes.slice(0, 5).map((quote: Doc<"quotes">) => {
         const project = projectById.get(String(quote.projectId));
 
