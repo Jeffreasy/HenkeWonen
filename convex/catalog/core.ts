@@ -569,7 +569,7 @@ export const updateProductForPortal = mutation({
     const product = await ctx.db.get(args.productId as Id<"products">);
 
     if (!product || product.tenantId !== tenant._id) {
-      throw new ConvexError("Product not found");
+      throw new ConvexError("Product niet gevonden.");
     }
 
     const patch: Partial<Doc<"products">> = {
@@ -671,14 +671,14 @@ export const createProduct = mutation({
     const category = await ctx.db.get(args.categorieId);
 
     if (!category || category.tenantId !== args.tenantId) {
-      throw new ConvexError("Category not found");
+      throw new ConvexError("Productgroep niet gevonden.");
     }
 
     if (args.leverancierId) {
       const supplier = await ctx.db.get(args.leverancierId);
 
       if (!supplier || supplier.tenantId !== args.tenantId) {
-        throw new ConvexError("Supplier not found");
+        throw new ConvexError("Leverancier niet gevonden.");
       }
     }
 
@@ -791,7 +791,7 @@ export const addPrice = mutation({
     const product = await ctx.db.get(args.productId);
 
     if (!product || product.tenantId !== args.tenantId) {
-      throw new ConvexError("Product not found");
+      throw new ConvexError("Product niet gevonden.");
     }
 
     const now = Date.now();

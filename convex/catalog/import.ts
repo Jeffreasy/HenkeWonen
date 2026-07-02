@@ -770,7 +770,7 @@ export const appendPreviewRows = mutation({
     );
 
     if (!batch || batch.tenantId !== tenantId) {
-      throw new ConvexError("Import batch not found");
+      throw new ConvexError("Import niet gevonden.");
     }
 
     const now = Date.now();
@@ -865,7 +865,7 @@ export const savePreviewMapping = mutation({
     );
 
     if (!batch || batch.tenantId !== tenantId) {
-      throw new ConvexError("Import batch not found");
+      throw new ConvexError("Import niet gevonden.");
     }
 
     const hasUnknownVatMode = (batch.onbekendeBtwModusRijen ?? 0) > 0;
@@ -897,7 +897,7 @@ export const failPreviewBatch = mutation({
     );
 
     if (!batch || batch.tenantId !== tenantId) {
-      throw new ConvexError("Import batch not found");
+      throw new ConvexError("Import niet gevonden.");
     }
 
     const now = Date.now();
@@ -939,7 +939,7 @@ export const commitPreviewBatchChunk = mutation({
     );
 
     if (!batch || batch.tenantId !== tenantId) {
-      throw new ConvexError("Import batch not found");
+      throw new ConvexError("Import niet gevonden.");
     }
 
     const allowUnknownVatMode = args.staBtwModusOnbekendToe ?? batch.staBtwModusOnbekendToe ?? false;
@@ -954,7 +954,7 @@ export const commitPreviewBatchChunk = mutation({
     }
 
     if ((batch.dubbeleBronSleutels ?? 0) > 0) {
-      throw new ConvexError("Duplicate sourceKeys detected; fix mapping before final import.");
+      throw new ConvexError("Er zijn dubbele bronsleutels (sourceKeys) in het bestand gevonden. Corrigeer de kolom-mapping voordat je definitief importeert.");
     }
 
     const limit = Math.min(Math.max(args.limit ?? 50, 1), 100);

@@ -111,7 +111,7 @@ export const upsertCategory = mutation({
       const category = await ctx.db.get(args.categorieId as Id<"categories">);
 
       if (!category || category.tenantId !== tenant._id) {
-        throw new ConvexError("Category not found");
+        throw new ConvexError("Productgroep niet gevonden.");
       }
 
       await ctx.db.patch(category._id, {

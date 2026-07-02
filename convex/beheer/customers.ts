@@ -139,7 +139,7 @@ export const updateStatus = mutation({
     const customer = await ctx.db.get(args.klantId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
-      throw new ConvexError("Customer not found");
+      throw new ConvexError("Klant niet gevonden.");
     }
 
     await ctx.db.patch(args.klantId, {
@@ -205,7 +205,7 @@ export const createContact = mutation({
     const customer = await ctx.db.get(args.klantId);
 
     if (!customer || customer.tenantId !== args.tenantId) {
-      throw new ConvexError("Customer not found");
+      throw new ConvexError("Klant niet gevonden.");
     }
 
     const now = Date.now();
@@ -241,7 +241,7 @@ export const markLoanedItemReturned = mutation({
     const contact = await ctx.db.get(args.contactId);
 
     if (!contact || contact.tenantId !== args.tenantId) {
-      throw new ConvexError("Contact not found");
+      throw new ConvexError("Contactmoment niet gevonden.");
     }
 
     await ctx.db.patch(args.contactId, {
@@ -341,7 +341,7 @@ export const updateCustomer = mutation({
     const customer = await ctx.db.get(args.klantId as Id<"customers">);
 
     if (!customer || customer.tenantId !== tenant._id) {
-      throw new ConvexError("Customer not found");
+      throw new ConvexError("Klant niet gevonden.");
     }
 
     const patch: Partial<Doc<"customers">> = { gewijzigdOp: Date.now() };
@@ -450,7 +450,7 @@ export const createCustomerContact = mutation({
     const customer = await ctx.db.get(args.klantId as Id<"customers">);
 
     if (!customer || customer.tenantId !== tenant._id) {
-      throw new ConvexError("Customer not found");
+      throw new ConvexError("Klant niet gevonden.");
     }
 
     const now = Date.now();

@@ -68,7 +68,7 @@ export const create = mutation({
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
-      throw new ConvexError("Project not found");
+      throw new ConvexError("Project niet gevonden.");
     }
 
     return await ctx.db.insert("projectWorkflowEvents", {
