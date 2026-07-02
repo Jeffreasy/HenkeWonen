@@ -1,0 +1,11 @@
+---
+// /portal/instellingen heeft geen eigen inhoud; de sneltoets (g+s) en beheer-links
+// landen hier. Stuur door naar de eerste instellingen-pagina uit de navigatie.
+const session = Astro.locals.session;
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+
+return Astro.redirect("/portal/instellingen/werkzaamheden");
+---
