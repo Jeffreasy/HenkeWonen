@@ -128,6 +128,7 @@ describe("Quote Document Preview", () => {
   it("should render the preview HTML document correctly", () => {
     expect(html.length).toBeGreaterThan(0);
     expect(html).toContain('class="quote-document-preview"');
+    expect(html).toContain('class="quote-document-sheet"');
     expect(html).toContain('class="quote-document-front-page"');
     expect(html).toContain('class="quote-document-back-matter"');
     expect(html).toContain('data-print-title="OFF-2026-014 - Familie Jansen"');
@@ -163,6 +164,8 @@ describe("Quote Document Preview", () => {
   });
 
   it("should verify CSS classes and rules are defined", () => {
+    expect(combinedCss).toContain(".quote-document-sheet");
+    expect(combinedCss).toContain("min-height: 297mm");
     expect(combinedCss).toContain(".quote-print-root");
     expect(combinedCss).toContain(".quote-document-logo");
     expect(combinedCss).toContain("width: 48mm;");
