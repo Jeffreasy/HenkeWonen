@@ -103,6 +103,34 @@ describe("calculateCurtainFabric (gordijnstof)", () => {
       }).validationError
     ).toBeTruthy();
   });
+
+  it("weigert banen-confectie zonder bruikbare stofbreedte (zijzoom >= stofbreedte)", () => {
+    // Zonder guard zou de oude 1cm-clamp hier stilletjes 400 banen opleveren.
+    const r = calculateCurtainFabric({
+      railWidthM: 2,
+      curtainHeightM: 2.6,
+      fabricWidthM: 0.08,
+      sideHemM: 0.1,
+      fullness: 2,
+      makeUp: "banen"
+    });
+    expect(r.validationError).toMatch(/stof te smal/i);
+    expect(r.fabricMetersM).toBe(0);
+    expect(r.quoteQuantityM).toBe(0);
+  });
+
+  it("accepteert een krappe maar bruikbare stofbreedte gewoon", () => {
+    const r = calculateCurtainFabric({
+      railWidthM: 2,
+      curtainHeightM: 2.6,
+      fabricWidthM: 0.7,
+      sideHemM: 0.06,
+      fullness: 2,
+      makeUp: "banen"
+    });
+    expect(r.validationError).toBeUndefined();
+    expect(r.banen).toBe(7); // 4 / 0.64 = 6.25 -> 7
+  });
 });
 
 describe("calculateScreed (egaliseren)", () => {
