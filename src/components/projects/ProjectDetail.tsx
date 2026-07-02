@@ -8,7 +8,7 @@ import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatDate } from "../../lib/dates";
 import { formatEuro } from "../../lib/money";
 import { formatQuoteStatus } from "../../lib/i18n/statusLabels";
-import { showToast } from "../../lib/toast";
+import { showErrorToast, showToast } from "../../lib/toast";
 import type {
   InvoiceStatus,
   PortalCustomer,
@@ -309,8 +309,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       handleTabChange("inmeting");
       showToast({ title: "Inmeetbezoek ingepland", tone: "success" });
     } catch (planError) {
-      console.error(planError);
-      showToast({ title: "Inplannen mislukt", tone: "error" });
+      showErrorToast(planError, "Inplannen mislukt");
     } finally {
       setIsPlanningMeasurement(false);
     }
@@ -368,16 +367,14 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
       setPendingProjectAction(null);
       await loadProject();
     } catch (processError) {
-      console.error(processError);
       setPendingProjectAction(null);
-      showToast({
-        title: "Dossieractie mislukt",
-        description:
-          processError instanceof Error
-            ? processError.message
-            : "De dossieractie kon niet worden verwerkt.",
-        tone: "error"
-      });
+      showErrorToast(
+        processError,
+        "Dossieractie mislukt",
+        processError instanceof Error
+          ? processError.message
+          : "De dossieractie kon niet worden verwerkt."
+      );
     }
   }
 

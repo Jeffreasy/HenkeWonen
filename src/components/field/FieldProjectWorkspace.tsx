@@ -1,5 +1,4 @@
 import { CalendarClock, FileText, Printer, Ruler, Save } from "lucide-react";
-import { ConvexError } from "convex/values";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -8,7 +7,7 @@ import { canEditDossiers, canEditQuotes, type AppSession } from "../../lib/auth/
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatDate } from "../../lib/dates";
 import { formatQuoteStatus } from "../../lib/i18n/statusLabels";
-import { showToast } from "../../lib/toast";
+import { showErrorToast, showToast } from "../../lib/toast";
 import type { FieldProjectWorkspaceResult, PortalQuote } from "../../lib/portalTypes";
 import { Alert } from "../ui/feedback/Alert";
 import { Button } from "../ui/forms/Button";
@@ -227,8 +226,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       await loadWorkspace();
       showToast({ title: "Inmeetbezoek ingepland", tone: "success" });
     } catch (planError) {
-      console.error(planError);
-      showToast({ title: "Inplannen mislukt", tone: "error" });
+      showErrorToast(planError, "Inplannen mislukt");
     } finally {
       setIsPlanningMeasurement(false);
     }
@@ -302,8 +300,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       await loadWorkspace();
       return String(lineId);
     } catch (mutationError) {
-      console.error(mutationError);
-      showToast({ title: "Regel toevoegen mislukt", tone: "error" });
+      showErrorToast(mutationError, "Regel toevoegen mislukt");
       throw mutationError;
     }
   }
@@ -325,8 +322,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       await loadWorkspace();
       showToast({ title: "Regel verwijderd", tone: "success" });
     } catch (mutationError) {
-      console.error(mutationError);
-      showToast({ title: "Regel verwijderen mislukt", tone: "error" });
+      showErrorToast(mutationError, "Regel verwijderen mislukt");
       throw mutationError;
     }
   }
@@ -348,8 +344,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       });
       await loadWorkspace();
     } catch (mutationError) {
-      console.error(mutationError);
-      showToast({ title: "Regel bijwerken mislukt", tone: "error" });
+      showErrorToast(mutationError, "Regel bijwerken mislukt");
       throw mutationError;
     }
   }
@@ -376,14 +371,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       await loadWorkspace();
       showToast({ title: "Status bijgewerkt", tone: "success" });
     } catch (mutationError) {
-      console.error(mutationError);
-      showToast({
-        title:
-          mutationError instanceof ConvexError
-            ? String(mutationError.data)
-            : "Status bijwerken mislukt",
-        tone: "error"
-      });
+      showErrorToast(mutationError, "Status bijwerken mislukt");
       throw mutationError;
     }
   }
@@ -411,8 +399,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       await loadWorkspace();
       showToast({ title: "Voorwaarden opgeslagen", tone: "success" });
     } catch (mutationError) {
-      console.error(mutationError);
-      showToast({ title: "Voorwaarden opslaan mislukt", tone: "error" });
+      showErrorToast(mutationError, "Voorwaarden opslaan mislukt");
       throw mutationError;
     }
   }
@@ -440,8 +427,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       await loadWorkspace();
       showToast({ title: "Teksten opgeslagen", tone: "success" });
     } catch (mutationError) {
-      console.error(mutationError);
-      showToast({ title: "Teksten opslaan mislukt", tone: "error" });
+      showErrorToast(mutationError, "Teksten opslaan mislukt");
       throw mutationError;
     }
   }

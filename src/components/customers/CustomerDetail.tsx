@@ -11,7 +11,7 @@ import type {
   PortalDossierAttachment,
   PortalProject
 } from "../../lib/portalTypes";
-import { showToast } from "../../lib/toast";
+import { showErrorToast, showToast } from "../../lib/toast";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { ErrorState } from "../ui/feedback/ErrorState";
@@ -123,8 +123,8 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       setEditingCustomer(false);
       await loadDetail();
       showToast({ title: "Klantgegevens opgeslagen", tone: "success" });
-    } catch {
-      showToast({ title: "Opslaan mislukt", tone: "error" });
+    } catch (saveError) {
+      showErrorToast(saveError, "Opslaan mislukt");
     }
   }
 
@@ -166,8 +166,8 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         title: pendingCustomerStatus === "archived" ? "Klant gearchiveerd" : "Klant hersteld",
         tone: pendingCustomerStatus === "archived" ? "warning" : "success"
       });
-    } catch {
-      showToast({ title: "Status kon niet worden bijgewerkt", tone: "error" });
+    } catch (statusError) {
+      showErrorToast(statusError, "Status kon niet worden bijgewerkt");
     }
   }
 
@@ -199,8 +199,8 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       await loadDetail();
       setIsContactModalOpen(false);
       showToast({ title: "Contactmoment toegevoegd", tone: "success" });
-    } catch {
-      showToast({ title: "Contactmoment kon niet worden toegevoegd", tone: "error" });
+    } catch (contactError) {
+      showErrorToast(contactError, "Contactmoment kon niet worden toegevoegd");
     }
   }
 
@@ -256,8 +256,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       await loadDetail();
       showToast({ title: "Dossierstuk toegevoegd", tone: "success" });
     } catch (createError) {
-      console.error(createError);
-      showToast({ title: "Dossierstuk kon niet worden toegevoegd", tone: "error" });
+      showErrorToast(createError, "Dossierstuk kon niet worden toegevoegd");
     }
   }
 
@@ -282,8 +281,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       await loadDetail();
       showToast({ title: "Dossierstuk gearchiveerd", tone: "success" });
     } catch (archiveError) {
-      console.error(archiveError);
-      showToast({ title: "Dossierstuk kon niet worden gearchiveerd", tone: "error" });
+      showErrorToast(archiveError, "Dossierstuk kon niet worden gearchiveerd");
     }
   }
 
@@ -320,8 +318,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
           : `/portal/projecten/${newProjectId}#project-measurement`
       );
     } catch (startError) {
-      console.error(startError);
-      showToast({ title: "Aanvraag kon niet worden gestart", tone: "error" });
+      showErrorToast(startError, "Aanvraag kon niet worden gestart");
     }
   }
 

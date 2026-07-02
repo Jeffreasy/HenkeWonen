@@ -4,7 +4,7 @@ import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { PortalSupplier, ProductListStatus } from "../../lib/portalTypes";
-import { showToast } from "../../lib/toast";
+import { showErrorToast, showToast } from "../../lib/toast";
 import { Alert } from "../ui/feedback/Alert";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
 import { FormModal } from "../ui/overlays/FormModal";
@@ -156,8 +156,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
       setIsAddModalOpen(false);
       await loadSuppliers();
     } catch (saveError) {
-      console.error(saveError);
-      showToast({ title: "Leverancier kon niet worden opgeslagen", tone: "error" });
+      showErrorToast(saveError, "Leverancier kon niet worden opgeslagen");
       throw saveError;
     } finally {
       setIsSaving(false);
@@ -208,8 +207,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
       setEditingSupplier(null);
       await loadSuppliers();
     } catch (saveError) {
-      console.error(saveError);
-      showToast({ title: "Leverancier kon niet worden bijgewerkt", tone: "error" });
+      showErrorToast(saveError, "Leverancier kon niet worden bijgewerkt");
     } finally {
       setSavingSupplierId(null);
     }
@@ -240,8 +238,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
       showToast({ title: `Prijslijststatus bijgewerkt`, description: supplier.naam, tone: "success" });
       await loadSuppliers();
     } catch (saveError) {
-      console.error(saveError);
-      showToast({ title: "Status kon niet worden bijgewerkt", tone: "error" });
+      showErrorToast(saveError, "Status kon niet worden bijgewerkt");
     } finally {
       setSavingSupplierId(null);
     }
@@ -285,8 +282,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
       setPendingSupplierStatus(null);
       await loadSuppliers();
     } catch (saveError) {
-      console.error(saveError);
-      showToast({ title: "Leverancierstatus kon niet worden bijgewerkt", tone: "error" });
+      showErrorToast(saveError, "Leverancierstatus kon niet worden bijgewerkt");
     } finally {
       setSavingSupplierId(null);
     }

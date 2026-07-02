@@ -12,7 +12,7 @@ import {
   type Afwezigheid,
   type Werktijd
 } from "../../lib/agenda";
-import { showToast } from "../../lib/toast";
+import { showErrorToast, showToast } from "../../lib/toast";
 import { Badge } from "../ui/data-display/Badge";
 import { Button } from "../ui/forms/Button";
 import { Field } from "../ui/forms/Field";
@@ -117,8 +117,7 @@ export default function BeschikbaarheidPanel({
       showToast({ title: "Rooster opgeslagen", description: monteur.naam, tone: "success" });
       onSaved();
     } catch (e) {
-      console.error(e);
-      showToast({ title: "Rooster opslaan mislukt", description: "Controleer de tijden.", tone: "error" });
+      showErrorToast(e, "Rooster opslaan mislukt", "Controleer de tijden.");
     } finally {
       setBezig(false);
     }
@@ -155,8 +154,7 @@ export default function BeschikbaarheidPanel({
       showToast({ title: "Afwezigheid toegevoegd", tone: "success" });
       onChanged?.();
     } catch (e) {
-      console.error(e);
-      showToast({ title: "Toevoegen mislukt", description: "Controleer de datums.", tone: "error" });
+      showErrorToast(e, "Toevoegen mislukt", "Controleer de datums.");
     } finally {
       setBezig(false);
     }
@@ -174,8 +172,7 @@ export default function BeschikbaarheidPanel({
       setLijst((l) => l.filter((a) => a.id !== id));
       onChanged?.();
     } catch (e) {
-      console.error(e);
-      showToast({ title: "Verwijderen mislukt", tone: "error" });
+      showErrorToast(e, "Verwijderen mislukt");
     }
   }
 
