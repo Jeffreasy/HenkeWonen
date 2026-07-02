@@ -519,12 +519,10 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
           project.inmeetdatum ? toDateInputValue(project.inmeetdatum) : defaultDateInputInDays(1)
         }
         defaultMeasuredBy={
-          // Bij herplannen: de reeds toegewezen monteur; anders de ingelogde gebruiker.
-          detail.inmeetMonteur ??
-          teamMembers.find(
-            (member) => member.email === session.email || member.naam === session.name
-          )?.naam ??
-          ""
+          // Bij herplannen: de reeds toegewezen monteur; anders leeg — de modal stelt
+          // zelf de enige whitelisted monteur voor. Bewust niet de ingelogde gebruiker:
+          // wie plant (winkel) is meestal niet wie meet.
+          detail.inmeetMonteur ?? ""
         }
         isSaving={isPlanningMeasurement}
         onSubmit={(data) => void planMeasurementVisit(data)}
