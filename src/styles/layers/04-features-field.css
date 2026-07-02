@@ -419,6 +419,12 @@
   color: var(--ink);
 }
 
+/* Afspraak in het verleden: expliciet markeren op de bezoek-kaart. */
+.field-visit-overdue {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
 .field-customer-block span,
 .field-card-actions,
 .field-visit-actions,
