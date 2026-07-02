@@ -231,27 +231,41 @@ export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProp
                     </tr>
                   </thead>
                   <tbody>
-                    {section.lines.map((line, lineIndex) => (
-                      <tr
-                        className={line.requiresManualReview ? "quote-document-line-needs-review" : undefined}
-                        key={`${section.key ?? sectionIndex}-${lineIndex}`}
-                      >
-                        <td>{formatQuantity(line.quantity)}</td>
-                        <td>{line.unit}</td>
-                        <td>
-                          <DescriptionText description={line.description} />
-                          {line.requiresManualReview ? (
-                            <small className="quote-document-review-warning no-print">
-                              <AlertTriangle size={14} aria-hidden="true" />
-                              Controleer product, prijs en btw.
-                            </small>
-                          ) : null}
-                        </td>
-                        <td>{formatCurrencyEUR(line.unitPriceExVat)}</td>
-                        <td>{formatVatRate(line.vatRate)}</td>
-                        <td>{formatCurrencyEUR(line.lineTotalIncVat)}</td>
-                      </tr>
-                    ))}
+                    {section.lines.map((line, lineIndex) =>
+                      line.isText ? (
+                        // Tekstregel: alleen de tekst, geen 0-bedragen — zelfde opmaak
+                        // als de factuur-klantversie (InvoiceDocumentPreview).
+                        <tr key={`${section.key ?? sectionIndex}-${lineIndex}`}>
+                          <td />
+                          <td />
+                          <td colSpan={4}>
+                            <span className="muted">
+                              <DescriptionText description={line.description} />
+                            </span>
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr
+                          className={line.requiresManualReview ? "quote-document-line-needs-review" : undefined}
+                          key={`${section.key ?? sectionIndex}-${lineIndex}`}
+                        >
+                          <td>{formatQuantity(line.quantity)}</td>
+                          <td>{line.unit}</td>
+                          <td>
+                            <DescriptionText description={line.description} />
+                            {line.requiresManualReview ? (
+                              <small className="quote-document-review-warning no-print">
+                                <AlertTriangle size={14} aria-hidden="true" />
+                                Controleer product, prijs en btw.
+                              </small>
+                            ) : null}
+                          </td>
+                          <td>{formatCurrencyEUR(line.unitPriceExVat)}</td>
+                          <td>{formatVatRate(line.vatRate)}</td>
+                          <td>{formatCurrencyEUR(line.lineTotalIncVat)}</td>
+                        </tr>
+                      )
+                    )}
                   </tbody>
                 </table>
               </div>
