@@ -226,6 +226,16 @@
   margin-top: var(--space-1);
 }
 
+/* Meerregelige omschrijvingen in de werkweergave (postenlijst/tabel): elke
+   regel op een eigen rij, zodat werkinstructies scanbaar blijven i.p.v. één lap. */
+.quote-line-omschrijving-regel {
+  display: block;
+}
+
+.quote-line-omschrijving-regel + .quote-line-omschrijving-regel {
+  margin-top: calc(var(--space-1) / 2);
+}
+
 .quote-document-preview {
   display: grid;
   gap: var(--space-4);
