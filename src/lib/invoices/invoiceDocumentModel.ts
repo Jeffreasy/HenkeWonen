@@ -1,6 +1,7 @@
 import type { PortalInvoiceDetail } from "../portalTypes";
 import { roundMoney } from "../money";
 import { henkeCompanyProfile, type QuoteCompanyProfile } from "../quotes/henkeCompanyProfile";
+import { buildVatBreakdown, type VatBreakdownRow } from "../documents/vatBreakdown";
 
 export type InvoiceDocumentModel = {
   company: {
@@ -37,6 +38,8 @@ export type InvoiceDocumentModel = {
     subtotalExVat: number;
     vatTotal: number;
     totalIncVat: number;
+    /** Btw uitgesplitst per tarief (grondslag + btw-bedrag) — verplicht factuurelement. */
+    vatBreakdown: VatBreakdownRow[];
   };
   payment: {
     iban?: string;
@@ -118,7 +121,8 @@ export function buildInvoiceDocumentModel({
     totals: {
       subtotalExVat: invoice.subtotaalExBtw,
       vatTotal: invoice.btwTotaal,
-      totalIncVat: invoice.totaalInclBtw
+      totalIncVat: invoice.totaalInclBtw,
+      vatBreakdown: buildVatBreakdown(quoteLines)
     },
     payment: {
       iban: companyProfile.iban,

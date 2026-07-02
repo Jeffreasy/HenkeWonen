@@ -6,6 +6,7 @@ import type {
   QuoteTemplate,
   QuoteTemplateSection
 } from "../portalTypes";
+import { buildVatBreakdown, type VatBreakdownRow } from "../documents/vatBreakdown";
 import { henkeCompanyProfile, type QuoteCompanyProfile } from "./henkeCompanyProfile";
 
 export type QuoteDocumentModel = {
@@ -20,6 +21,8 @@ export type QuoteDocumentModel = {
   customer: {
     name: string;
     addressLines: string[];
+    email?: string;
+    telefoon?: string;
     salutation: string;
   };
   quote: {
@@ -51,10 +54,14 @@ export type QuoteDocumentModel = {
     vatTotal: number;
     totalIncVat: number;
     vatLabel: string;
+    /** Btw uitgesplitst per tarief (grondslag + btw-bedrag), zoals op een nette NL-factuur. */
+    vatBreakdown: VatBreakdownRow[];
   };
   terms: string[];
   paymentTerms: string[];
 };
+
+// Gedeeld met het factuurdocument: zie src/lib/documents/vatBreakdown.ts.
 
 export type BuildQuoteDocumentModelInput = {
   quote: PortalQuote;
@@ -118,8 +125,55 @@ function formatDate(timestamp: number | undefined, timeZone: string): string {
   return `${byType.day}-${byType.month}-${byType.year}`;
 }
 
+/**
+ * Interne werkregels die bij het importeren van inmeetregels in de omschrijving
+ * terechtkomen (zie convex/portalUtils.ts, importedMeasurementLineDescription).
+ * Die instructies zijn voor de winkel — niet voor de klant — en maakten de
+ * productteksten op de klantversie onnodig lang.
+ */
+const INTERNE_OMSCHRIJVING_PREFIXEN = [
+  "Overgenomen uit inmeting",
+  "Richtprijs",
+  "Matrix-richtprijs",
+  "Snijverlies:",
+  "Meetnotitie:"
+];
+
+const MATRIX_CONTEXT_PREFIX = "Raambekleding (matrix):";
+const MATRIX_AFMETING_PATROON = /(\d+(?:[.,]\d+)?\s*×\s*\d+(?:[.,]\d+)?\s*cm)/;
+
+/**
+ * Filtert de omschrijving tot wat de klant hoort te zien: interne
+ * werkinstructies vallen weg; van de matrix-contextregel blijft alleen de
+ * (klantrelevante) afmeting over.
+ */
+function klantOmschrijvingRegels(omschrijving: string | undefined): string[] {
+  if (!isText(omschrijving)) {
+    return [];
+  }
+  const regels: string[] = [];
+  for (const ruweRegel of omschrijving.split(/\r?\n/)) {
+    const regel = ruweRegel.trim();
+    if (regel.length === 0) {
+      continue;
+    }
+    if (regel.startsWith(MATRIX_CONTEXT_PREFIX)) {
+      const afmeting = regel.match(MATRIX_AFMETING_PATROON);
+      if (afmeting) {
+        regels.push(`Afmeting: ${afmeting[1]}.`);
+      }
+      continue;
+    }
+    if (INTERNE_OMSCHRIJVING_PREFIXEN.some((prefix) => regel.startsWith(prefix))) {
+      continue;
+    }
+    regels.push(regel);
+  }
+  return regels;
+}
+
 function quoteLineDescription(line: PortalQuoteLine): string {
-  return [line.titel, line.omschrijving].filter(isText).join("\n");
+  return [line.titel, ...klantOmschrijvingRegels(line.omschrijving)].filter(isText).join("\n");
 }
 
 function requiresManualReview(line: PortalQuoteLine): boolean {
@@ -221,6 +275,8 @@ export function buildQuoteDocumentModel({
     customer: {
       name: customer.weergaveNaam,
       addressLines: formatCustomerAddress(customer),
+      email: customer.email,
+      telefoon: customer.telefoon,
       salutation: salutation?.trim() || `Beste ${customer.weergaveNaam}`
     },
     quote: {
@@ -237,7 +293,8 @@ export function buildQuoteDocumentModel({
       subtotalExVat: quote.subtotaalExBtw,
       vatTotal: quote.btwTotaal,
       totalIncVat: quote.totaalInclBtw,
-      vatLabel: buildVatLabel()
+      vatLabel: buildVatLabel(),
+      vatBreakdown: buildVatBreakdown(quote.lines)
     },
     terms: normalizeLines(quote.voorwaarden),
     paymentTerms: normalizeLines(quote.betalingsvoorwaarden)

@@ -182,6 +182,8 @@ export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProp
             {model.customer.addressLines.map((line) => (
               <span key={line}>{line}</span>
             ))}
+            {model.customer.telefoon ? <span>{model.customer.telefoon}</span> : null}
+            {model.customer.email ? <span>{model.customer.email}</span> : null}
           </div>
           <div>
             <p className="eyebrow">Offerte</p>
@@ -280,10 +282,22 @@ export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProp
             <span>Subtotaal excl. btw</span>
             <strong>{formatCurrencyEUR(model.totals.subtotalExVat)}</strong>
           </div>
-          <div>
-            <span>Btw</span>
-            <strong>{formatCurrencyEUR(model.totals.vatTotal)}</strong>
-          </div>
+          {model.totals.vatBreakdown.length > 0 ? (
+            // Zelfde btw-uitsplitsing per tarief als op de factuur.
+            model.totals.vatBreakdown.map((row) => (
+              <div key={row.rate}>
+                <span>
+                  Btw {formatVatRate(row.rate)} over {formatCurrencyEUR(row.base)}
+                </span>
+                <strong>{formatCurrencyEUR(row.amount)}</strong>
+              </div>
+            ))
+          ) : (
+            <div>
+              <span>Btw</span>
+              <strong>{formatCurrencyEUR(model.totals.vatTotal)}</strong>
+            </div>
+          )}
           <div className="quote-document-total-row">
             <span>Totaal incl. btw</span>
             <strong>{formatCurrencyEUR(model.totals.totalIncVat)}</strong>
@@ -309,6 +323,25 @@ export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProp
           <p>Met vriendelijke groet,</p>
           <strong>{model.company.name}</strong>
           <span>{model.company.signatoryName}</span>
+        </section>
+
+        <section className="quote-document-agreement print-page-break-avoid" aria-label="Akkoord klant">
+          <h3>Voor akkoord</h3>
+          <p>
+            Voor akkoord met deze offerte
+            {model.quote.validUntil ? ` (geldig tot ${formatDateNL(model.quote.validUntil)})` : ""}:
+          </p>
+          <div className="quote-document-agreement-grid">
+            <div>
+              <span>Naam</span>
+            </div>
+            <div>
+              <span>Datum</span>
+            </div>
+            <div>
+              <span>Handtekening</span>
+            </div>
+          </div>
         </section>
       </div>
       </div>

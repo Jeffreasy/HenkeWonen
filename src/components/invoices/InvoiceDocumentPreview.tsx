@@ -184,10 +184,22 @@ export default function InvoiceDocumentPreview({ model }: InvoiceDocumentPreview
             <span>Subtotaal excl. btw</span>
             <strong>{formatCurrencyEUR(model.totals.subtotalExVat)}</strong>
           </div>
-          <div>
-            <span>Btw</span>
-            <strong>{formatCurrencyEUR(model.totals.vatTotal)}</strong>
-          </div>
+          {model.totals.vatBreakdown.length > 0 ? (
+            // Verplicht factuurelement: btw per tarief met grondslag.
+            model.totals.vatBreakdown.map((row) => (
+              <div key={row.rate}>
+                <span>
+                  Btw {formatVatRate(row.rate)} over {formatCurrencyEUR(row.base)}
+                </span>
+                <strong>{formatCurrencyEUR(row.amount)}</strong>
+              </div>
+            ))
+          ) : (
+            <div>
+              <span>Btw</span>
+              <strong>{formatCurrencyEUR(model.totals.vatTotal)}</strong>
+            </div>
+          )}
           <div className="quote-document-total-row">
             <span>Totaal incl. btw</span>
             <strong>{formatCurrencyEUR(model.totals.totalIncVat)}</strong>

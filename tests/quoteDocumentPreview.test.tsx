@@ -109,7 +109,8 @@ const model: QuoteDocumentModel = {
     subtotalExVat: 2053.13,
     vatTotal: 431.16,
     totalIncVat: 2484.29,
-    vatLabel: "Btw wordt berekend op basis van de offerteregels."
+    vatLabel: "Btw wordt berekend op basis van de offerteregels.",
+    vatBreakdown: [{ rate: 21, base: 2053.13, amount: 431.16 }]
   },
   terms: [
     "Ruimtes leeg en bezemschoon opleveren.",
@@ -161,6 +162,13 @@ describe("Quote Document Preview", () => {
     expect(html).toContain("Levering in overleg, circa week 32.");
     // De tekstregel gebruikt de colspan-rij i.p.v. de bedragen-kolommen.
     expect(html).toContain('colSpan="4"');
+  });
+
+  it("toont de btw-uitsplitsing per tarief en het akkoordvak", () => {
+    expect(html).toContain("Btw 21% over");
+    expect(html).toContain("Voor akkoord");
+    expect(html).toContain("Handtekening");
+    expect(combinedCss).toContain(".quote-document-agreement");
   });
 
   it("should verify CSS classes and rules are defined", () => {
