@@ -338,6 +338,10 @@ test("offerte-annulering laat een reeds ontvangen bestelling staan", async () =>
   const after = await t.query(api.portal.listSupplierOrders, { tenantSlug: "henke-wonen", actor, projectId });
   expect(after.find((o) => o.id === a.id)?.status).toBe("received");
   expect(after.filter((o) => o.id !== a.id).every((o) => o.status === "cancelled")).toBe(true);
+
+  // De regels van de ontvangen bestelling blijven eveneens onaangeroerd (niet mee-geannuleerd).
+  const detail = await t.query(api.portal.supplierOrderDetail, { tenantSlug: "henke-wonen", actor, bestellingId: a.id });
+  expect(detail!.lines.every((line) => line.status === "ordered")).toBe(true);
 });
 
 test("dossier-annulering (processProjectAction) annuleert alle open bestellingen van het project", async () => {
@@ -353,6 +357,8 @@ test("dossier-annulering (processProjectAction) annuleert alle open bestellingen
   });
 
   const after = await t.query(api.portal.listSupplierOrders, { tenantSlug: "henke-wonen", actor, projectId });
+  // Zelfde groepering als de generate-test: Leverancier A + Leverancier B + 'onbekend'
+  // (product zonder leverancier) = 3 orders.
   expect(after).toHaveLength(3);
   expect(after.every((o) => o.status === "cancelled")).toBe(true);
 });
