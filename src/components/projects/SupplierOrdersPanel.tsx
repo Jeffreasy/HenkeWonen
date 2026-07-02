@@ -367,7 +367,9 @@ export default function SupplierOrdersPanel({
         isBusy={Boolean(pendingCancel && busyId === pendingCancel.id)}
         onCancel={() => setPendingCancel(null)}
         onConfirm={() => {
-          if (pendingCancel) {
+          // Dubbele bevestiging afvangen: de knop is bij isBusy al disabled (Button
+          // disablet op isLoading), maar deze guard dekt ook de race vóór de re-render.
+          if (pendingCancel && busyId !== pendingCancel.id) {
             void handleCancel(pendingCancel).finally(() => setPendingCancel(null));
           }
         }}
