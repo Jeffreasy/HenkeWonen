@@ -587,7 +587,9 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
           teamMembers={teamMembers}
           excludeProjectId={workspace.project.id}
           defaultDate={workspace.visit.visitAt ? toDateInputValue(workspace.visit.visitAt) : ""}
-          defaultMeasuredBy={workspace.visit.gemetenDoor ?? session.name ?? ""}
+          // Bestaande monteur, anders leeg: de modal stelt zelf de enige whitelisted
+          // monteur voor (geen ingelogde-gebruiker-default; wie plant is niet per se wie meet).
+          defaultMeasuredBy={workspace.visit.gemetenDoor ?? ""}
           defaultOmvang={workspace.visit.omvang ?? "klein"}
           isSaving={isPlanningMeasurement}
           onSubmit={(data) => void planMeasurementVisit(data)}

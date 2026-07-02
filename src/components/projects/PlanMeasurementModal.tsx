@@ -9,6 +9,7 @@ import {
   OMVANG_LABEL,
   formatMinuut,
   isInmeetdagInputValue,
+  kiesbareMonteurs,
   omvangUnits,
   volgendeInmeetdagInputValue,
   type InmeetBeschikbaarheid,
@@ -29,6 +30,8 @@ export type TeamMember = {
   naam: string;
   email: string;
   role: string;
+  /** Agenda-whitelist (beheerd op de Agenda-pagina): bepaalt wie als monteur kiesbaar is. */
+  toonInAgenda?: boolean | null;
 };
 
 type PlanMeasurementModalProps = {
@@ -72,6 +75,9 @@ export function PlanMeasurementModal({
   const [hint, setHint] = useState<InmeetBeschikbaarheid | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
   const wasOpenRef = useRef(false);
+  // Zodra de gebruiker zelf de monteur-keuze aanraakt, stoppen we met auto-invullen
+  // (anders zou "Nog niet toegewezen" direct weer worden overschreven).
+  const monteurAangeraaktRef = useRef(false);
 
   // Seed de defaults alléén op de open-transitie (false→true). Niet bij elke
   // wijziging van defaultDate/defaultMeasuredBy/defaultOmvang — die kunnen async
@@ -90,13 +96,15 @@ export function PlanMeasurementModal({
       setMeasuredBy(defaultMeasuredBy);
       setMeasuredById(null);
       setOmvang(defaultOmvang);
+      monteurAangeraaktRef.current = false;
     }
     wasOpenRef.current = open;
   }, [open, defaultDate, defaultMeasuredBy, defaultOmvang]);
 
-  // Kijkers (viewer) doen geen inmetingen en worden ook in de agenda verborgen —
-  // bied ze hier dus niet als monteur aan, zodat toewijzing en weergave consistent zijn.
-  const monteurOpties = teamMembers.filter((member) => member.role !== "viewer");
+  // Zelfde regels als de week-agenda: kijkers nooit, en zodra de agenda-whitelist
+  // (toonInAgenda) is ingevuld alleen die monteurs — zo verschijnen winkel- en
+  // admin-accounts niet als monteur in de planning.
+  const monteurOpties = kiesbareMonteurs(teamMembers);
   // Selecteer op stabiele user-id. Een expliciete keuze (measuredById) is leidend en
   // duplicaat-veilig; zonder expliciete keuze vallen we terug op naam-match zodat de
   // standaardmonteur ook werkt als het team async ná het openen binnenkomt.
@@ -121,7 +129,20 @@ export function PlanMeasurementModal({
       ? LOSSE_NAAM
       : "";
 
+  // Precies één kiesbare monteur (bv. alleen Wim op de agenda-whitelist) en nog niets
+  // ingevuld of aangeraakt? Stel die dan voor. Bewust géén "ingelogde gebruiker"-default:
+  // de planner (winkel) is meestal niet degene die de inmeting uitvoert.
+  useEffect(() => {
+    if (!open || monteurAangeraaktRef.current) return;
+    if (measuredBy.trim() !== "" || measuredById) return;
+    if (monteurOpties.length === 1) {
+      setMeasuredById(monteurOpties[0].id);
+      setMeasuredBy(monteurOpties[0].naam);
+    }
+  }, [open, measuredBy, measuredById, monteurOpties]);
+
   function kiesMonteur(waarde: string) {
+    monteurAangeraaktRef.current = true;
     if (waarde === "") {
       setMeasuredById(null);
       setMeasuredBy("");

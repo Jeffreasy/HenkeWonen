@@ -54,6 +54,21 @@ export function capaciteitVanBezoeken(bezoeken: { omvang: string | null }[]): nu
 }
 
 /**
+ * Kiesbare monteurs voor toewijzing/planning, gespiegeld aan de server-semantiek
+ * van de week-agenda (convex/beheer/agenda.ts + convex/portal.ts): kijkers doen
+ * nooit mee, en zodra minstens één gebruiker expliciet op `toonInAgenda: true`
+ * staat geldt die whitelist — zo blijven winkel-/admin-accounts uit de
+ * monteurkeuze terwijl alles blijft werken zolang er nog niets is aangevinkt.
+ */
+export function kiesbareMonteurs<T extends { role: string; toonInAgenda?: boolean | null }>(
+  teamleden: T[]
+): T[] {
+  const nietViewers = teamleden.filter((lid) => lid.role !== "viewer");
+  const aangevinkt = nietViewers.filter((lid) => lid.toonInAgenda === true);
+  return aangevinkt.length > 0 ? aangevinkt : nietViewers;
+}
+
+/**
  * Eerstvolgende inmeetdag (di/wo/do) ná vandaag, als `YYYY-MM-DD` voor
  * `<input type="date">`. Voorkomt dat een plan-formulier standaard op een
  * niet-inmeetdag opent (bv. "morgen" op een vrijdag).
