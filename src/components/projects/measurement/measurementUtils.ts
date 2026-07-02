@@ -74,7 +74,10 @@ export function toDateInputValue(value?: number): string {
 
 /**
  * Converteert een ISO-datumstring (YYYY-MM-DD) van `<input type="date">`
- * terug naar een Unix-timestamp (ms). Gebruikt 12:00 UTC om timezone-issues te vermijden.
+ * terug naar een Unix-timestamp (ms). Ankert op 12:00 LOKALE tijd (geen Z-suffix):
+ * voor NL-gebruikers (UTC+1/+2) valt het anker daardoor binnen dezelfde UTC-kalenderdag,
+ * zodat de server-side weekdag-/dagvenster-berekening (convex/beheer/agenda.ts) klopt,
+ * ook rond zomer-/wintertijd.
  */
 export function fromDateInputValue(value: string): number | undefined {
   if (!value) {

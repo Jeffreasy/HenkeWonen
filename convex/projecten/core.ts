@@ -40,7 +40,8 @@ import {
   closeOpenProjectTasks,
   getRooms,
   sortProjectTasks,
-  assertValidRoomDimensions
+  assertValidRoomDimensions,
+  cancelOpenSupplierOrders
 } from "../portalUtils";
 
 export const list = query({
@@ -1084,6 +1085,9 @@ export const processProjectAction = mutation({
         // zodat ze niet permanent 'converted' blijven en opnieuw geïmporteerd kunnen worden.
         await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, quote._id);
       }
+      // Het hele dossier stopt: laat geen inkoop doorlopen en annuleer álle nog-open
+      // leveranciersbestellingen van dit project. Ontvangen bestellingen blijven staan.
+      await cancelOpenSupplierOrders(ctx, tenant._id, project._id, now);
     }
 
     if (args.action === "closed" || args.action === "cancelled") {

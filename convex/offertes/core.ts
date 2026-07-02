@@ -24,7 +24,8 @@ import {
   assertQuoteAcceptable,
   cancelOtherOpenQuotesAndRestore,
   assertQuoteStatusTransition,
-  assertNoOtherAcceptedQuote
+  assertNoOtherAcceptedQuote,
+  cancelOpenSupplierOrders
 } from "../portalUtils";
 
 const quoteStatus = v.union(
@@ -798,6 +799,13 @@ export const updateQuoteStatus = mutation({
     if (args.status === "expired") {
       await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "dismissed", quote._id);
       await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, quote._id);
+    }
+
+    // Een terminale offerte laat geen inkoop doorlopen: annuleer de nog-open
+    // leveranciersbestellingen van déze offerte (een eerder geaccepteerde offerte kan
+    // al bestellingen hebben). Ontvangen bestellingen blijven staan.
+    if (args.status === "cancelled" || args.status === "rejected" || args.status === "expired") {
+      await cancelOpenSupplierOrders(ctx, tenant._id, project._id, now, quote._id);
     }
 
     return quote._id;

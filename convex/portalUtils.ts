@@ -917,6 +917,46 @@ export async function cancelOtherOpenQuotesAndRestore(
   }
 }
 
+/**
+ * Annuleert de nog-open leveranciersbestellingen (niet ontvangen, niet al geannuleerd)
+ * van een project — optioneel beperkt tot één offerte. GEDEELD door het offerte-annuleerpad
+ * (updateQuoteStatus → terminale staat) en het dossier-annuleerpad (processProjectAction),
+ * zodat bestellingen niet als wees doorlopen op een geannuleerde offerte of dossier.
+ * Ontvangen bestellingen en al-ontvangen regels blijven staan (fysieke goederen; historie).
+ */
+export async function cancelOpenSupplierOrders(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  projectId: Id<"projects">,
+  now: number,
+  quoteId?: Id<"quotes">
+): Promise<void> {
+  const orders = await ctx.db
+    .query("supplierOrders")
+    .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
+    .collect();
+
+  for (const order of orders) {
+    if (quoteId && order.quoteId !== quoteId) {
+      continue;
+    }
+    if (order.status === "received" || order.status === "cancelled") {
+      continue;
+    }
+    await ctx.db.patch(order._id, { status: "cancelled", gewijzigdOp: now });
+
+    const lines = await ctx.db
+      .query("supplierOrderLines")
+      .withIndex("by_order", (q: any) => q.eq("tenantId", tenantId).eq("bestellingId", order._id))
+      .collect();
+    for (const line of lines) {
+      if (line.status !== "received") {
+        await ctx.db.patch(line._id, { status: "cancelled", gewijzigdOp: now });
+      }
+    }
+  }
+}
+
 /** Terminale offerte-staten: de offerte-fase is geëindigd zonder akkoord. */
 const TERMINAL_QUOTE_STATUSES: ReadonlyArray<Doc<"quotes">["status"]> = [
   "rejected",

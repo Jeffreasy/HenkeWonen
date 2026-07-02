@@ -112,7 +112,7 @@ const quoteStatusActions: Array<{
     status: "cancelled",
     label: "Annuleren",
     description:
-      "De offerte wordt geannuleerd. Dit is bedoeld voor vervallen concepten of ingetrokken offertes.",
+      "De offerte wordt geannuleerd. Dit is bedoeld voor vervallen concepten of ingetrokken offertes. Nog niet ontvangen leveranciersbestellingen van deze offerte worden mee-geannuleerd.",
     variant: "secondary",
     icon: Ban
   }
