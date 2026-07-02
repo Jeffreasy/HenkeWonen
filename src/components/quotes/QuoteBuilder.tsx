@@ -129,6 +129,22 @@ function splitLines(value: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Meerregelige omschrijvingen (bv. de werkinstructies van geïmporteerde
+ * inmeetregels) als losse korte regels i.p.v. één doorlopende lap tekst.
+ */
+function OmschrijvingRegels({ tekst }: { tekst: string }) {
+  return (
+    <>
+      {splitLines(tekst).map((regel, index) => (
+        <span className="quote-line-omschrijving-regel" key={`${regel}-${index}`}>
+          {regel}
+        </span>
+      ))}
+    </>
+  );
+}
+
 export default function QuoteBuilder({
   quote,
   customer,
@@ -392,7 +408,11 @@ export default function QuoteBuilder({
       render: (line) => (
         <div className="stack-sm">
           <strong>{line.titel}</strong>
-          {line.omschrijving ? <small className="muted">{line.omschrijving}</small> : null}
+          {line.omschrijving ? (
+            <small className="muted">
+              <OmschrijvingRegels tekst={line.omschrijving} />
+            </small>
+          ) : null}
         </div>
       )
     },
@@ -513,7 +533,11 @@ export default function QuoteBuilder({
                 <LineTypeBadge lineType={line.regelType} />
                 <strong>{line.titel}</strong>
               </div>
-              {line.omschrijving ? <p>{line.omschrijving}</p> : null}
+              {line.omschrijving ? (
+                <p>
+                  <OmschrijvingRegels tekst={line.omschrijving} />
+                </p>
+              ) : null}
             </div>
             <div className="quote-line-card-values" aria-label={`Bedragen voor ${line.titel}`}>
               <div>
@@ -581,7 +605,11 @@ export default function QuoteBuilder({
               <div className="mobile-card-header">
                 <div className="mobile-card-title">
                   <strong>{line.titel}</strong>
-                  {line.omschrijving ? <small className="muted">{line.omschrijving}</small> : null}
+                  {line.omschrijving ? (
+            <small className="muted">
+              <OmschrijvingRegels tekst={line.omschrijving} />
+            </small>
+          ) : null}
                 </div>
                 <LineTypeBadge lineType={line.regelType} />
               </div>
@@ -932,6 +960,7 @@ export default function QuoteBuilder({
             items={[
               { id: "customer", label: "Klant", value: customerName },
               { id: "number", label: "Offertenummer", value: quote.offertenummer },
+              { id: "valid", label: "Geldig tot", value: validUntilLabel },
               { id: "lines", label: fieldLineLabel, value: quote.lines.length },
               { id: "total", label: "Totaal incl. btw", value: formatEuro(quoteTotals.totalIncVat) }
             ]}

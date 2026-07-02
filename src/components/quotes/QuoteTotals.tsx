@@ -1,3 +1,4 @@
+import { buildVatBreakdown } from "../../lib/documents/vatBreakdown";
 import { formatEuro } from "../../lib/money";
 import type { PortalQuoteLine } from "../../lib/portalTypes";
 import { SectionHeader } from "../ui/layout/SectionHeader";
@@ -27,6 +28,10 @@ export default function QuoteTotals({ lines }: QuoteTotalsProps) {
   // (bruto -> korting -> netto) zodat het btw-bedrag aansluit op het subtotaal.
   const hasDiscount = totals.discountExVat > 0;
 
+  // Zelfde btw-uitsplitsing per tarief als op de klantversie, zodat de winkel
+  // hier exact controleert wat de klant straks op het document ziet.
+  const vatBreakdown = buildVatBreakdown(lines);
+
   return (
     <aside className="panel quote-totals-panel">
       <SectionHeader compact title="Totalen" description={`${lines.length} offerteregels`} />
@@ -51,11 +56,19 @@ export default function QuoteTotals({ lines }: QuoteTotalsProps) {
             label: "Subtotaal excl. btw",
             value: formatEuro(totals.subtotalExVat)
           },
-          {
-            id: "vat",
-            label: "Btw",
-            value: formatEuro(totals.vatTotal)
-          },
+          ...(vatBreakdown.length > 0
+            ? vatBreakdown.map((row) => ({
+                id: `vat-${row.rate}`,
+                label: `Btw ${row.rate}% over ${formatEuro(row.base)}`,
+                value: formatEuro(row.amount)
+              }))
+            : [
+                {
+                  id: "vat",
+                  label: "Btw",
+                  value: formatEuro(totals.vatTotal)
+                }
+              ]),
           {
             id: "total",
             label: "Totaal incl. btw",
