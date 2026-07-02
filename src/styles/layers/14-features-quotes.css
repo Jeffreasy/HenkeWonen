@@ -297,6 +297,47 @@
   margin-top: auto;
 }
 
+/* Regelomschrijving: eerste regel is de productnaam (nadruk), vervolgregels zijn
+   toelichting (kleiner, gedempt) — zo blijven lange productteksten rustig leesbaar. */
+.quote-document-sheet .quote-document-line-description span:first-child {
+  font-weight: 600;
+}
+
+.quote-document-sheet .quote-document-line-description span + span {
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+/* Akkoordvak voor de klant: schrijfruimte met een lijn en het label eronder. */
+.quote-document-agreement h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.quote-document-agreement p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.quote-document-agreement-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 1.4fr;
+  gap: var(--space-5);
+  margin-top: var(--space-4);
+}
+
+.quote-document-agreement-grid > div {
+  padding-top: 44px;
+}
+
+.quote-document-agreement-grid span {
+  display: block;
+  border-top: 1px solid var(--ink, currentColor);
+  padding-top: var(--space-1);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
 /* Vanaf tablet-breedte krijgt het vel de volledige A4-verhouding en scrollt er
    niets op papier: de regeltabel volgt de vaste print-kolomverdeling zodat hij
    altijd binnen de A4-breedte past (mobiel houdt de scroll-fallback van de

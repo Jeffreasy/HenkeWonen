@@ -85,7 +85,8 @@ describe("Quote Document Model", () => {
       subtotalExVat: 1234.56,
       vatTotal: 259.26,
       totalIncVat: 1493.82,
-      vatLabel: "Btw wordt berekend op basis van de offerteregels."
+      vatLabel: "Btw wordt berekend op basis van de offerteregels.",
+      vatBreakdown: [{ rate: 21, base: 200, amount: 42 }]
     });
     expect(model.sections[0].key).toBe("vloeren");
     expect(model.sections[0].title).toBe("Vloeren");
@@ -157,6 +158,66 @@ describe("Quote Document Model", () => {
     expect(manualReviewModel.sections[0].lines[0].vatRate).toBe(0);
     expect(manualReviewModel.sections[0].lines[0].requiresManualReview).toBe(true);
     expect(manualReviewModel.totals.vatLabel).toBe("Btw wordt berekend op basis van de offerteregels.");
+  });
+
+  it("filtert interne werkinstructies uit de omschrijving op de klantversie", () => {
+    const model = buildQuoteDocumentModel({
+      quote: quote({
+        lines: [
+          line({
+            titel: "Basic dark grey - Woonkamer",
+            omschrijving: [
+              "Overgenomen uit inmeting.",
+              "Richtprijs uit de inmeting overgenomen. Controleer product, verkoopprijs en btw bewust voordat je de offerte verstuurt.",
+              "Snijverlies: 3%.",
+              "Meetnotitie: let op scheve muur bij de erker.",
+              "Inclusief egaliseren en plaatsen."
+            ].join("\n")
+          })
+        ]
+      }),
+      customer: baseCustomer
+    });
+
+    const beschrijving = model.sections[0].lines[0].description;
+    expect(beschrijving).toBe("Basic dark grey - Woonkamer\nInclusief egaliseren en plaatsen.");
+    expect(beschrijving).not.toMatch(/Controleer|Snijverlies|Meetnotitie|Overgenomen/);
+  });
+
+  it("houdt van de matrix-contextregel alleen de klantrelevante afmeting over", () => {
+    const model = buildQuoteDocumentModel({
+      quote: quote({
+        lines: [
+          line({
+            titel: "Raambekleding - Matrix - Woonkamer",
+            omschrijving:
+              "Overgenomen uit inmeting.\nMatrix-richtprijs uit de inmeting overgenomen. Controleer verkoopprijs en btw bewust voordat je de offerte verstuurt.\nRaambekleding (matrix): PRIJSLIJST-2026 – Groep 3 – 120×180 cm."
+          })
+        ]
+      }),
+      customer: baseCustomer
+    });
+
+    expect(model.sections[0].lines[0].description).toBe(
+      "Raambekleding - Matrix - Woonkamer\nAfmeting: 120×180 cm."
+    );
+  });
+
+  it("splitst de btw per tarief uit over de offerteregels", () => {
+    const model = buildQuoteDocumentModel({
+      quote: quote({
+        lines: [
+          line({ id: "l1", btwTarief: 9, regelTotaalExBtw: 200, regelBtwTotaal: 18, sortOrder: 1 }),
+          line({ id: "l2", btwTarief: 21, regelTotaalExBtw: 300, regelBtwTotaal: 63, sortOrder: 2 })
+        ]
+      }),
+      customer: baseCustomer
+    });
+
+    expect(model.totals.vatBreakdown).toEqual([
+      { rate: 9, base: 200, amount: 18 },
+      { rate: 21, base: 300, amount: 63 }
+    ]);
   });
 
   it("markeert tekstregels als isText zodat de klantversie geen 0-bedragen toont", () => {

@@ -86,7 +86,24 @@ describe("buildInvoiceDocumentModel", () => {
     expect(model.invoice.invoiceNumber).toBe("2026-0042");
     expect(model.invoice.quoteNumber).toBe("OF-2026-0031");
     expect(model.invoice.subject).toBe("PVC-vloer woonkamer");
-    expect(model.totals).toEqual({ subtotalExVat: 2000, vatTotal: 420, totalIncVat: 2420 });
+    expect(model.totals).toEqual({
+      subtotalExVat: 2000,
+      vatTotal: 420,
+      totalIncVat: 2420,
+      vatBreakdown: [{ rate: 21, base: 2000, amount: 420 }]
+    });
+  });
+
+  it("splitst de btw exact uit per tarief (tekstregels tellen niet mee)", () => {
+    const detail = makeDetail();
+    detail.quoteLines[0].btwTarief = 9;
+    detail.quoteLines[0].regelBtwTotaal = 39.6; // 440 × 9%
+    const model = buildInvoiceDocumentModel({ detail });
+
+    expect(model.totals.vatBreakdown).toEqual([
+      { rate: 9, base: 440, amount: 39.6 },
+      { rate: 21, base: 1560, amount: 327.6 }
+    ]);
   });
 
   it("sorteert regels op sortOrder en markeert tekstregels", () => {

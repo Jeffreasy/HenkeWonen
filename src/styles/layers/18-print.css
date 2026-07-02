@@ -197,8 +197,18 @@
 
   .quote-document-table {
     min-width: 0;
-    font-size: 8.4pt;
+    font-size: 9pt;
     table-layout: fixed;
+  }
+
+  /* Productnaam met nadruk; toelichting kleiner en gedempt. */
+  .quote-document-line-description span:first-child {
+    font-weight: 700;
+  }
+
+  .quote-document-line-description span + span {
+    color: #555 !important;
+    font-size: 8pt;
   }
 
   .quote-document-table thead {
@@ -302,6 +312,31 @@
     margin-top: 14pt;
     padding-top: 10pt;
     page-break-inside: avoid;
+  }
+
+  .quote-document-agreement {
+    break-inside: avoid;
+    margin-top: 16pt;
+    page-break-inside: avoid;
+  }
+
+  .quote-document-agreement h3 {
+    margin: 0 0 5pt;
+    font-size: 11pt;
+  }
+
+  .quote-document-agreement-grid {
+    gap: 24pt;
+  }
+
+  .quote-document-agreement-grid > div {
+    padding-top: 34pt;
+  }
+
+  .quote-document-agreement-grid span {
+    border-top-color: #111;
+    color: #333 !important;
+    font-size: 8.5pt;
   }
 
   .print-keep-together,
