@@ -71,6 +71,29 @@
     margin-top: 10pt;
   }
 
+  /* Het scherm-"A4-vel" is in print alleen een doorgeefluik: de paginamaat,
+     marges en typografie komen van .quote-document-preview hierboven. */
+  .quote-document-sheet {
+    display: block;
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: #fff !important;
+    box-shadow: none;
+    padding: 0;
+    font-family: inherit;
+  }
+
+  .quote-document-sheet > * + * {
+    margin-top: 10pt;
+  }
+
+  .quote-document-sheet .quote-document-print-title h1 {
+    font-size: 17pt;
+  }
+
   .quote-document-front-page {
     display: flex;
     flex-direction: column;

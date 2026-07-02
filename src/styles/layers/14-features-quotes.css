@@ -241,6 +241,124 @@
   gap: var(--space-5);
 }
 
+/* ── Klantversie als A4-vel ──────────────────────────────────────────────────
+   Het document-deel oogt op het scherm als het papier dat de klant krijgt:
+   een wit vel op A4-breedte, gecentreerd, met dezelfde lettertypes als de
+   print. Lokale token-overrides houden het papier wit met donkere inkt,
+   óók in dark mode (papier volgt het portalthema bewust niet). */
+.quote-document-sheet {
+  --ink: #1c1a17;
+  --muted: #5b564e;
+  --subtle: #6d675e;
+  --line: #d9d4ca;
+  --line-strong: #8f887c;
+  --surface-raised: #ffffff;
+  --surface-muted: #f1efea;
+  --warning: #9a6507;
+  --color-warning-bg: #fdf3dd;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: min(100%, 210mm);
+  margin: 0 auto;
+  border: 1px solid #d9d4ca;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(31, 26, 18, 0.12),
+    0 14px 34px rgba(31, 26, 18, 0.16);
+  padding: 10mm 9mm;
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* De documenttitel (Factuur/Offerte + onderwerp) is onderdeel van het vel en
+   dus ook op het scherm zichtbaar — buiten het vel blijft .print-only gelden. */
+.quote-document-sheet .quote-document-print-title {
+  display: block;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: var(--space-2);
+}
+
+.quote-document-sheet .quote-document-print-title h1 {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-2xl);
+  line-height: var(--line-tight);
+}
+
+.quote-document-sheet .quote-document-print-title .eyebrow {
+  margin: 0 0 var(--space-1);
+}
+
+/* Ondertekening onderaan het vel laten "ademen" zoals op papier. */
+.quote-document-sheet .quote-document-back-matter {
+  margin-top: auto;
+}
+
+/* Vanaf tablet-breedte krijgt het vel de volledige A4-verhouding en scrollt er
+   niets op papier: de regeltabel volgt de vaste print-kolomverdeling zodat hij
+   altijd binnen de A4-breedte past (mobiel houdt de scroll-fallback van de
+   table-wrap). Bewust alleen voor het scherm: de print heeft eigen maten
+   (18-print). */
+@media screen and (min-width: 720px) {
+  .quote-document-sheet {
+    /* Volledige A4-verhouding zodat een korte factuur toch als heel vel oogt. */
+    min-height: 297mm;
+    padding: 14mm 13mm 13mm;
+  }
+
+  .quote-document-sheet .quote-document-table {
+    min-width: 0;
+    table-layout: fixed;
+    font-size: var(--text-sm);
+  }
+
+  .quote-document-sheet .quote-document-table th,
+  .quote-document-sheet .quote-document-table td {
+    overflow-wrap: anywhere;
+    white-space: normal;
+    padding: var(--space-2);
+  }
+
+  /* Kopteksten wel laten wisselen van regel, maar niet midden in een woord
+     afbreken ("EENHEI-D"). */
+  .quote-document-sheet .quote-document-table th {
+    overflow-wrap: normal;
+  }
+
+  .quote-document-sheet .quote-document-table th:nth-child(1),
+  .quote-document-sheet .quote-document-table td:nth-child(1) {
+    width: 9%;
+  }
+
+  .quote-document-sheet .quote-document-table th:nth-child(2),
+  .quote-document-sheet .quote-document-table td:nth-child(2) {
+    width: 11%;
+  }
+
+  .quote-document-sheet .quote-document-table th:nth-child(3),
+  .quote-document-sheet .quote-document-table td:nth-child(3) {
+    width: 34%;
+  }
+
+  .quote-document-sheet .quote-document-table th:nth-child(4),
+  .quote-document-sheet .quote-document-table td:nth-child(4) {
+    width: 16%;
+  }
+
+  .quote-document-sheet .quote-document-table th:nth-child(5),
+  .quote-document-sheet .quote-document-table td:nth-child(5) {
+    width: 10%;
+  }
+
+  .quote-document-sheet .quote-document-table th:nth-child(6),
+  .quote-document-sheet .quote-document-table td:nth-child(6) {
+    width: 20%;
+  }
+}
+
 .quote-document-control-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

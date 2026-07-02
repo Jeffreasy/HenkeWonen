@@ -71,6 +71,8 @@ export default function InvoiceDocumentPreview({ model }: InvoiceDocumentPreview
         </div>
       </section>
 
+      {/* Het vel: dit deel is wat de klant op papier krijgt (zie .quote-document-sheet). */}
+      <div className="quote-document-sheet">
       <div className="quote-document-front-page">
         <section className="quote-document-letterhead print-page-break-avoid">
           <div>
@@ -232,6 +234,7 @@ export default function InvoiceDocumentPreview({ model }: InvoiceDocumentPreview
           <strong>{model.company.name}</strong>
           <span>{model.company.signatoryName}</span>
         </section>
+      </div>
       </div>
     </article>
   );
