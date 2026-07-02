@@ -23,9 +23,10 @@ const statusOptions: Array<{ value: StatusFilter; label: string }> = [
   { value: "quote_sent", label: formatProjectStatus("quote_sent") },
   { value: "quote_accepted", label: formatProjectStatus("quote_accepted") },
   { value: "measurement_planned", label: formatProjectStatus("measurement_planned") },
-  { value: "execution_planned", label: formatProjectStatus("execution_planned") },
+  // "Uitvoering gepland"/"In uitvoering" zijn legacy-statussen die onder de fase
+  // "Bestellen" vallen (de keten is Bestellen → Factureren); het ordering-filter
+  // matcht ze alle drie (zie ProjectWorkspace).
   { value: "ordering", label: formatProjectStatus("ordering") },
-  { value: "in_progress", label: formatProjectStatus("in_progress") },
   { value: "invoiced", label: formatProjectStatus("invoiced") },
   { value: "paid", label: formatProjectStatus("paid") },
   { value: "closed", label: formatProjectStatus("closed") },

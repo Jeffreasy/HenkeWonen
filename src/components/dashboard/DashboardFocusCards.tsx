@@ -33,9 +33,9 @@ export function DashboardFocusCards({
       icon: FileText
     },
     {
-      label: "Lopende uitvoering",
+      label: "Lopend werk",
       value: plannedWorkCount,
-      description: "Inmeting, bestelling of uitvoering",
+      description: "Geplande inmetingen en bestellingen",
       href: "/portal/dossiers",
       icon: BriefcaseBusiness
     }

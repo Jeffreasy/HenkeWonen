@@ -86,7 +86,7 @@ export function DashboardWorkOverview({ isLoading, workItems }: DashboardWorkOve
       ) : (
         <EmptyState
           title="Geen directe acties"
-          description="Er zijn geen nieuwe aanvragen, open offerteacties of uitvoeringsmomenten gevonden."
+          description="Er zijn geen nieuwe aanvragen, open offertes of geplande inmetingen en bestellingen gevonden."
           action={
             <a className="ui-button ui-button-secondary ui-button-md" href="/portal/dossiers">
               Dossiers bekijken
