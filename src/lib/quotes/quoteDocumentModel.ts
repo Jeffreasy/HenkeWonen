@@ -41,6 +41,8 @@ export type QuoteDocumentModel = {
       unitPriceExVat: number;
       vatRate: number;
       lineTotalIncVat: number;
+      /** Tekstregel (regelType "text"): alleen de omschrijving tonen, geen bedragen. */
+      isText: boolean;
       requiresManualReview?: boolean;
     }>;
   }>;
@@ -190,6 +192,7 @@ function groupQuoteLines(
             unitPriceExVat: line.eenheidsprijsExBtw,
             vatRate: line.btwTarief,
             lineTotalIncVat: line.regelTotaalInclBtw,
+            isText: line.regelType === "text",
             ...(manualReview ? { requiresManualReview: true } : {})
           };
         })

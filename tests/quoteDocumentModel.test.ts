@@ -158,4 +158,32 @@ describe("Quote Document Model", () => {
     expect(manualReviewModel.sections[0].lines[0].requiresManualReview).toBe(true);
     expect(manualReviewModel.totals.vatLabel).toBe("Btw wordt berekend op basis van de offerteregels.");
   });
+
+  it("markeert tekstregels als isText zodat de klantversie geen 0-bedragen toont", () => {
+    const model = buildQuoteDocumentModel({
+      quote: quote({
+        lines: [
+          line({ id: "line-1", sortOrder: 1 }),
+          line({
+            id: "line-2",
+            regelType: "text",
+            titel: "Levering in overleg, circa week 32.",
+            aantal: 0,
+            eenheidsprijsExBtw: 0,
+            btwTarief: 0,
+            regelTotaalExBtw: 0,
+            regelBtwTotaal: 0,
+            regelTotaalInclBtw: 0,
+            sortOrder: 2
+          })
+        ]
+      }),
+      customer: baseCustomer
+    });
+
+    const [productLine, textLine] = model.sections[0].lines;
+    expect(productLine.isText).toBe(false);
+    expect(textLine.isText).toBe(true);
+    expect(textLine.description).toBe("Levering in overleg, circa week 32.");
+  });
 });

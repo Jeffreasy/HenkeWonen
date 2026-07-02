@@ -48,7 +48,8 @@ const model: QuoteDocumentModel = {
             "PVC vloer geleverd en gelegd inclusief egaliseren, snijverlies and aansluiting op bestaande plinten in woonkamer, keuken en hal.",
           unitPriceExVat: 38.75,
           vatRate: 21,
-          lineTotalIncVat: 1992.72
+          lineTotalIncVat: 1992.72,
+          isText: false
         }
       ]
     },
@@ -63,7 +64,8 @@ const model: QuoteDocumentModel = {
             "Voorbereidende werkzaamheden, transport, afvoer van schoon restmateriaal en afwerking rond dorpels.",
           unitPriceExVat: 325,
           vatRate: 21,
-          lineTotalIncVat: 393.25
+          lineTotalIncVat: 393.25,
+          isText: false
         },
         {
           quantity: 6.5,
@@ -71,7 +73,17 @@ const model: QuoteDocumentModel = {
           description: "Plinten leveren en monteren langs lange wand met nette verstekafwerking.",
           unitPriceExVat: 12.5,
           vatRate: 21,
-          lineTotalIncVat: 98.31
+          lineTotalIncVat: 98.31,
+          isText: false
+        },
+        {
+          quantity: 0,
+          unit: "",
+          description: "Levering in overleg, circa week 32.",
+          unitPriceExVat: 0,
+          vatRate: 0,
+          lineTotalIncVat: 0,
+          isText: true
         }
       ]
     },
@@ -87,6 +99,7 @@ const model: QuoteDocumentModel = {
           unitPriceExVat: 0,
           vatRate: 21,
           lineTotalIncVat: 0,
+          isText: false,
           requiresManualReview: true
         }
       ]
@@ -141,6 +154,12 @@ describe("Quote Document Preview", () => {
     expect(html).toContain("Product, prijs en btw moeten nog handmatig worden gecontroleerd.");
     expect(html).toContain("Ruimtes leeg en bezemschoon opleveren.");
     expect(html).toContain("50% bij akkoord.");
+  });
+
+  it("rendert een tekstregel zonder bedragen (zelfde opmaak als de factuur)", () => {
+    expect(html).toContain("Levering in overleg, circa week 32.");
+    // De tekstregel gebruikt de colspan-rij i.p.v. de bedragen-kolommen.
+    expect(html).toContain('colSpan="4"');
   });
 
   it("should verify CSS classes and rules are defined", () => {
