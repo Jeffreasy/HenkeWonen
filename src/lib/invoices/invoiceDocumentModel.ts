@@ -1,7 +1,7 @@
 import type { PortalInvoiceDetail } from "../portalTypes";
 import { roundMoney } from "../money";
 import { henkeCompanyProfile, type QuoteCompanyProfile } from "../quotes/henkeCompanyProfile";
-import { buildVatBreakdown, type VatBreakdownRow } from "../quotes/quoteDocumentModel";
+import { buildVatBreakdown, type VatBreakdownRow } from "../documents/vatBreakdown";
 
 export type InvoiceDocumentModel = {
   company: {

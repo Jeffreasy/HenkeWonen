@@ -328,7 +328,8 @@ export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProp
         <section className="quote-document-agreement print-page-break-avoid" aria-label="Akkoord klant">
           <h3>Voor akkoord</h3>
           <p>
-            Voor akkoord met deze offerte{model.quote.validUntil ? ` (geldig tot ${model.quote.validUntil})` : ""}:
+            Voor akkoord met deze offerte
+            {model.quote.validUntil ? ` (geldig tot ${formatDateNL(model.quote.validUntil)})` : ""}:
           </p>
           <div className="quote-document-agreement-grid">
             <div>

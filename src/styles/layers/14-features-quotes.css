@@ -327,7 +327,8 @@
 }
 
 .quote-document-agreement-grid > div {
-  padding-top: 44px;
+  /* Schrijfruimte boven de lijn. */
+  padding-top: calc(var(--space-10) + var(--space-1));
 }
 
 .quote-document-agreement-grid span {

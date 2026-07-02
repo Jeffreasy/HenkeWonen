@@ -6,7 +6,7 @@ import type {
   QuoteTemplate,
   QuoteTemplateSection
 } from "../portalTypes";
-import { roundMoney } from "../money";
+import { buildVatBreakdown, type VatBreakdownRow } from "../documents/vatBreakdown";
 import { henkeCompanyProfile, type QuoteCompanyProfile } from "./henkeCompanyProfile";
 
 export type QuoteDocumentModel = {
@@ -61,43 +61,7 @@ export type QuoteDocumentModel = {
   paymentTerms: string[];
 };
 
-export type VatBreakdownRow = {
-  rate: number;
-  base: number;
-  amount: number;
-};
-
-/**
- * Splitst de btw uit per tarief (grondslag excl. btw + btw-bedrag), exact
- * gesommeerd uit de opgeslagen regeltotalen. Gedeeld door offerte- en
- * factuurdocument zodat beide dezelfde uitsplitsing tonen.
- */
-export function buildVatBreakdown(
-  lines: Array<
-    Pick<PortalQuoteLine, "btwTarief" | "regelTotaalExBtw" | "regelBtwTotaal"> & {
-      regelType?: PortalQuoteLine["regelType"];
-    }
-  >
-): VatBreakdownRow[] {
-  const perTarief = new Map<number, { base: number; amount: number }>();
-  for (const line of lines) {
-    if (line.regelType === "text") {
-      continue;
-    }
-    const huidig = perTarief.get(line.btwTarief) ?? { base: 0, amount: 0 };
-    huidig.base += line.regelTotaalExBtw;
-    huidig.amount += line.regelBtwTotaal;
-    perTarief.set(line.btwTarief, huidig);
-  }
-  return [...perTarief.entries()]
-    .map(([rate, { base, amount }]) => ({
-      rate,
-      base: roundMoney(base),
-      amount: roundMoney(amount)
-    }))
-    .filter((row) => row.base !== 0 || row.amount !== 0)
-    .sort((left, right) => left.rate - right.rate);
-}
+// Gedeeld met het factuurdocument: zie src/lib/documents/vatBreakdown.ts.
 
 export type BuildQuoteDocumentModelInput = {
   quote: PortalQuote;
