@@ -296,6 +296,67 @@ test("cancelSupplierOrder laat reeds ontvangen regels ongemoeid", async () => {
   expect(detail!.lines.some((line) => line.status === "cancelled")).toBe(true);
 });
 
+test("annuleren van de geaccepteerde offerte annuleert de open bestellingen mee", async () => {
+  const t = convexTest(schema, modules);
+  const { projectId } = await seed(t);
+  await t.mutation(api.portal.generateSupplierOrdersFromQuote, { tenantSlug: "henke-wonen", actor, projectId });
+  const orders = await t.query(api.portal.listSupplierOrders, { tenantSlug: "henke-wonen", actor, projectId });
+  const a = orders.find((o) => o.leverancierNaam === "Leverancier A")!;
+  await t.mutation(api.portal.updateSupplierOrderStatus, { tenantSlug: "henke-wonen", actor, bestellingId: a.id, status: "ordered" });
+
+  const quoteId = await t.run(async (ctx) => (await ctx.db.query("quotes").collect())[0]._id);
+  await t.mutation(api.portal.updateQuoteStatus, {
+    tenantSlug: "henke-wonen",
+    actor,
+    quoteId: String(quoteId),
+    status: "cancelled"
+  });
+
+  const after = await t.query(api.portal.listSupplierOrders, { tenantSlug: "henke-wonen", actor, projectId });
+  expect(after.every((o) => o.status === "cancelled")).toBe(true);
+
+  const detail = await t.query(api.portal.supplierOrderDetail, { tenantSlug: "henke-wonen", actor, bestellingId: a.id });
+  expect(detail!.lines.every((line) => line.status === "cancelled")).toBe(true);
+});
+
+test("offerte-annulering laat een reeds ontvangen bestelling staan", async () => {
+  const t = convexTest(schema, modules);
+  const { projectId } = await seed(t);
+  await t.mutation(api.portal.generateSupplierOrdersFromQuote, { tenantSlug: "henke-wonen", actor, projectId });
+  const orders = await t.query(api.portal.listSupplierOrders, { tenantSlug: "henke-wonen", actor, projectId });
+  const a = orders.find((o) => o.leverancierNaam === "Leverancier A")!;
+  await t.mutation(api.portal.updateSupplierOrderStatus, { tenantSlug: "henke-wonen", actor, bestellingId: a.id, status: "received" });
+
+  const quoteId = await t.run(async (ctx) => (await ctx.db.query("quotes").collect())[0]._id);
+  await t.mutation(api.portal.updateQuoteStatus, {
+    tenantSlug: "henke-wonen",
+    actor,
+    quoteId: String(quoteId),
+    status: "cancelled"
+  });
+
+  const after = await t.query(api.portal.listSupplierOrders, { tenantSlug: "henke-wonen", actor, projectId });
+  expect(after.find((o) => o.id === a.id)?.status).toBe("received");
+  expect(after.filter((o) => o.id !== a.id).every((o) => o.status === "cancelled")).toBe(true);
+});
+
+test("dossier-annulering (processProjectAction) annuleert alle open bestellingen van het project", async () => {
+  const t = convexTest(schema, modules);
+  const { projectId } = await seed(t);
+  await t.mutation(api.portal.generateSupplierOrdersFromQuote, { tenantSlug: "henke-wonen", actor, projectId });
+
+  await t.mutation(api.portal.processProjectAction, {
+    tenantSlug: "henke-wonen",
+    actor,
+    projectId,
+    action: "cancelled"
+  });
+
+  const after = await t.query(api.portal.listSupplierOrders, { tenantSlug: "henke-wonen", actor, projectId });
+  expect(after).toHaveLength(3);
+  expect(after.every((o) => o.status === "cancelled")).toBe(true);
+});
+
 test("generate zonder geaccepteerde offerte gooit een fout", async () => {
   const t = convexTest(schema, modules);
   const { projectId } = await seed(t);
