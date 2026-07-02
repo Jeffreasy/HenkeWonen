@@ -221,7 +221,10 @@ export const generateSupplierOrdersFromQuote = mutation({
       );
     }
     if (missingPriceCount > 0) {
-      warnings.push(`${missingPriceCount} regel(s) zonder inkoopprijs — vul handmatig aan.`);
+      // Regels zijn (nog) niet los te bewerken; wijs dus naar de routes die wél bestaan.
+      warnings.push(
+        `${missingPriceCount} regel(s) zonder inkoopprijs — voeg de inkoopprijs toe in de catalogus en genereer opnieuw (concept-bestellingen worden vervangen), of noteer de prijs op de bestelbon.`
+      );
     }
     if (skipped > 0) {
       warnings.push(`${skipped} leverancier(s) met een reeds geplaatste bestelling overgeslagen.`);
