@@ -76,6 +76,8 @@ type QuoteBuilderProps = {
 const quoteStatusActions: Array<{
   status: QuoteStatus;
   label: string;
+  /** Afwijkend label voor de bevestigingsknop in de dialoog (default: label). */
+  confirmLabel?: string;
   description: string;
   variant: "primary" | "secondary" | "danger";
   icon: typeof Send;
@@ -111,6 +113,8 @@ const quoteStatusActions: Array<{
   {
     status: "cancelled",
     label: "Annuleren",
+    // Onderscheid met de dialoog-sluitknop, die óók "Annuleren" heet.
+    confirmLabel: "Offerte annuleren",
     description:
       "De offerte wordt geannuleerd. Dit is bedoeld voor vervallen concepten of ingetrokken offertes. Nog niet ontvangen leveranciersbestellingen van deze offerte worden mee-geannuleerd.",
     variant: "secondary",
@@ -884,7 +888,7 @@ export default function QuoteBuilder({
             ? `${pendingStatusAction.description} Dit wordt ook vastgelegd op het bijbehorende project.`
             : ""
         }
-        confirmLabel={pendingStatusAction?.label ?? "Status aanpassen"}
+        confirmLabel={pendingStatusAction?.confirmLabel ?? pendingStatusAction?.label ?? "Status aanpassen"}
         tone={pendingStatus === "cancelled" || pendingStatus === "rejected" ? "danger" : "warning"}
         isBusy={isUpdatingStatus}
         onCancel={() => setPendingStatus(null)}
