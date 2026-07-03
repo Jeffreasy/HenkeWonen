@@ -129,7 +129,7 @@ export default function BeschikbaarheidPanel({
     if (periodeOngeldig) return;
     setBezig(true);
     try {
-      const id = await c.mutation(api.portal.addAfwezigheid, {
+      const resultaat = await c.mutation(api.portal.addAfwezigheid, {
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         userId: monteur.id as Id<"users">,
@@ -142,7 +142,7 @@ export default function BeschikbaarheidPanel({
       setLijst((l) => [
         ...l,
         {
-          id: String(id),
+          id: resultaat.id,
           type: afType,
           vanafDatum: dateInputNaarMs(afVanaf),
           totDatum: dateInputNaarMs(afTot),
@@ -151,7 +151,22 @@ export default function BeschikbaarheidPanel({
         }
       ]);
       setAfReden("");
-      showToast({ title: "Afwezigheid toegevoegd", tone: "success" });
+      // Botst de afwezigheid met al geboekte inmeetbezoeken, dan moet dat direct
+      // opvallen: die klanten staan anders ingepland bij een monteur die er niet is.
+      if (resultaat.conflicten.length > 0) {
+        const eerste = resultaat.conflicten[0];
+        const datumTekst = new Intl.DateTimeFormat("nl-NL", {
+          day: "2-digit",
+          month: "2-digit"
+        }).format(new Date(eerste.inmeetdatum));
+        showToast({
+          title: `Let op: ${resultaat.conflicten.length} gepland(e) inmeetbezoek(en) in deze periode`,
+          description: `O.a. ${eerste.klantNaam} op ${datumTekst}. Herplan deze bezoeken naar een andere monteur of datum.`,
+          tone: "warning"
+        });
+      } else {
+        showToast({ title: "Afwezigheid toegevoegd", tone: "success" });
+      }
       onChanged?.();
     } catch (e) {
       showErrorToast(e, "Toevoegen mislukt", "Controleer de datums.");
