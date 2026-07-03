@@ -74,6 +74,78 @@ export function hoortBijMonteur(
   return (meting.gemetenDoor ?? "") === naam;
 }
 
+/**
+ * Zoekt een gebruiker op ÉÉNduidige naam-match ((naam ?? email) === naam) — dezelfde
+ * regel als de backfill en de naam-fallback van hoortBijMonteur. Bij 0 of meerdere
+ * matches: null (dan is er geen herleidbare monteur).
+ */
+export async function resolveMonteurByNaam(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  naam?: string | null
+): Promise<Doc<"users"> | null> {
+  if (!naam) return null;
+  const users = await ctx.db
+    .query("users")
+    .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
+    .collect();
+  const matches = users.filter((u: Doc<"users">) => (u.naam ?? u.email) === naam);
+  return matches.length === 1 ? (matches[0] as Doc<"users">) : null;
+}
+
+/**
+ * Resolvet de monteur van een inmeting voor de capaciteits-/afwezigheidscheck: primair
+ * via gemetenDoorUserId, anders via een éénduidige naam-match. Zonder dit vangnet zou
+ * een legacy rij (alleen een naam) wél meetellen in iemands agenda/capaciteit (via de
+ * naam-fallback van hoortBijMonteur) maar bij het verzetten van de datum zónder
+ * capaciteitscheck passeren — een dubbele boeking die de plan-modal juist weigert.
+ */
+export async function resolveMonteurVoorMeting(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  meting: Pick<Doc<"measurements">, "gemetenDoor" | "gemetenDoorUserId">
+): Promise<Doc<"users"> | null> {
+  if (meting.gemetenDoorUserId) {
+    const monteur = await ctx.db.get(meting.gemetenDoorUserId);
+    return monteur && monteur.tenantId === tenantId ? (monteur as Doc<"users">) : null;
+  }
+  return resolveMonteurByNaam(ctx, tenantId, meting.gemetenDoor);
+}
+
+/**
+ * Bewaakt dat een expliciet toegewezen monteur ook echt boekbaar is: geen kijker, en —
+ * zodra de toonInAgenda-whitelist in gebruik is — aangevinkt als monteur. Spiegelt de
+ * client-side filtering van de plan-modal (kiesbareMonteurs), zodat een race met het
+ * uitvinken van een monteur niet tot een boeking leidt die in geen enkele teamagenda
+ * zichtbaar is.
+ */
+export async function assertMonteurBoekbaar(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  monteur: Doc<"users">
+): Promise<void> {
+  // Tenant-isolatie ook hier afdwingen: een per ongeluk doorgegeven gebruiker uit
+  // een andere tenant mag nooit als boekbare monteur passeren.
+  if (monteur.tenantId !== tenantId) {
+    throw new ConvexError("Monteur niet gevonden.");
+  }
+  if (monteur.role === "viewer") {
+    throw new ConvexError("Een kijker kan geen inmetingen uitvoeren. Kies een andere monteur.");
+  }
+  const nietViewers = (
+    await ctx.db
+      .query("users")
+      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
+      .collect()
+  ).filter((u: Doc<"users">) => u.role !== "viewer");
+  const aangevinkt = nietViewers.filter((u: Doc<"users">) => u.toonInAgenda === true);
+  if (aangevinkt.length > 0 && monteur.toonInAgenda !== true) {
+    throw new ConvexError(
+      "Deze medewerker staat niet (meer) als monteur in de agenda. Vink de medewerker aan in de agenda-instellingen of kies een andere monteur."
+    );
+  }
+}
+
 const afwezigheidType = v.union(
   v.literal("verlof"),
   v.literal("ziek"),

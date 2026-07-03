@@ -319,8 +319,10 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   async function handleSaveProject(data: {
     title: string;
     description?: string;
-    measurementDate?: number;
-    executionDate?: number;
+    // null = datum expliciet gewist (afspraak afzeggen); undefined zou door de
+    // Convex-client uit de request vallen en stil worden genegeerd.
+    measurementDate: number | null;
+    executionDate: number | null;
     internalNotes?: string;
     customerNotes?: string;
   }) {
@@ -364,7 +366,11 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
         actor: mutationActorFromSession(session),
         projectId,
         action,
-        invoiceDueAt: action === "invoice_created" ? fromDateInputValue(invoiceDueDate) : undefined
+        invoiceDueAt: action === "invoice_created" ? fromDateInputValue(invoiceDueDate) : undefined,
+        // Akkoord geldt voor de offerte die in de bevestigingsdialoog getoond is — niet
+        // voor "de nieuwste" op het mutatiemoment (race met een collega die intussen
+        // een andere offerte aanmaakt).
+        quoteId: action === "quote_accepted" ? (detail?.latestQuote?.id ?? undefined) : undefined
       });
       setPendingProjectAction(null);
       await loadProject();

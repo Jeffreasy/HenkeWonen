@@ -10,7 +10,13 @@ import {
 } from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
 import { computeProjectNextStep } from "./nextStep";
-import { assertInmeetBoeking } from "../beheer/agenda";
+import {
+  DAG_MS,
+  assertInmeetBoeking,
+  assertMonteurBoekbaar,
+  resolveMonteurByNaam,
+  resolveMonteurVoorMeting
+} from "../beheer/agenda";
 import {
   toProject,
   toCustomer,
@@ -301,8 +307,12 @@ export const updateProject = mutation({
     titel: v.optional(v.string()),
     omschrijving: v.optional(v.string()),
     gewensteUitvoerdatum: v.optional(v.number()),
-    inmeetdatum: v.optional(v.number()),
-    uitvoerdatum: v.optional(v.number()),
+    // `null` = de afspraak expliciet afzeggen (datum wissen). `undefined` overleeft JSON
+    // niet (de Convex-client laat het veld weg), dus zonder null-sentinel werd het
+    // leegmaken van het datumveld in het dossier stil genegeerd en bestond er geen
+    // enkel pad om alleen het inmeetbezoek af te zeggen.
+    inmeetdatum: v.optional(v.union(v.number(), v.null())),
+    uitvoerdatum: v.optional(v.union(v.number(), v.null())),
     interneNotities: v.optional(v.string()),
     klantNotities: v.optional(v.string()),
     // Bewust de inmeet-regels overrulen bij het zetten van de inmeetdatum vanuit het dossier.
@@ -324,17 +334,20 @@ export const updateProject = mutation({
       throw new ConvexError("Project niet gevonden.");
     }
 
+    const nieuweInmeetdatum = args.inmeetdatum ?? undefined; // null → wissen
+    const inmeetdatumGewijzigd =
+      hasArg(args, "inmeetdatum") && project.inmeetdatum !== nieuweInmeetdatum;
+
     // De inmeetdatum vanuit het dossier synct naar de inmeting, dus dezelfde inmeet-regels gelden
-    // (geen niet-inmeetdag / volle of afwezige toegewezen monteur). Resolve de eventueel toegewezen
-    // monteur van de laatste inmeting voor de capaciteits-/afwezigheidscheck.
-    if (hasArg(args, "inmeetdatum")) {
+    // (geen niet-inmeetdag / volle of afwezige toegewezen monteur). Alleen toetsen bij een echte
+    // wijziging: een ongewijzigde (legacy) datum mag het opslaan van de overige velden niet
+    // blokkeren. Resolve de monteur van de laatste inmeting (userId, anders éénduidige naam).
+    if (inmeetdatumGewijzigd && nieuweInmeetdatum !== undefined) {
       const laatste = await latestMeasurementForProject(ctx, tenant._id, project._id);
-      const monteur = (
-        laatste?.gemetenDoorUserId ? await ctx.db.get(laatste.gemetenDoorUserId) : null
-      ) as Doc<"users"> | null;
+      const monteur = laatste ? await resolveMonteurVoorMeting(ctx, tenant._id, laatste) : null;
       await assertInmeetBoeking(ctx, tenant._id, {
-        datumMs: args.inmeetdatum,
-        monteur: monteur && monteur.tenantId === tenant._id ? monteur : null,
+        datumMs: nieuweInmeetdatum,
+        monteur,
         omvang: laatste?.omvang,
         excludeProjectId: project._id,
         force: args.force
@@ -348,20 +361,20 @@ export const updateProject = mutation({
     if (hasArg(args, "gewensteUitvoerdatum")) {
       patch.gewensteUitvoerdatum = args.gewensteUitvoerdatum;
     }
-    if (hasArg(args, "inmeetdatum")) patch.inmeetdatum = args.inmeetdatum;
-    if (hasArg(args, "uitvoerdatum")) patch.uitvoerdatum = args.uitvoerdatum;
+    if (hasArg(args, "inmeetdatum")) patch.inmeetdatum = nieuweInmeetdatum;
+    if (hasArg(args, "uitvoerdatum")) patch.uitvoerdatum = args.uitvoerdatum ?? undefined;
     if (hasArg(args, "interneNotities")) patch.interneNotities = args.interneNotities;
     if (hasArg(args, "klantNotities")) patch.klantNotities = args.klantNotities;
 
     await ctx.db.patch(project._id, patch);
 
     // Houd de inmeetdatum in sync met de laatste inmeting (zoals startOrPlanMeasurement),
-    // zodat winkel en buitendienst niet uiteenlopende datums tonen.
+    // zodat winkel en buitendienst dezelfde planningsdatum zien — ook bij afzeggen.
     if (hasArg(args, "inmeetdatum")) {
       const measurement = await latestMeasurementForProject(ctx, tenant._id, project._id);
-      if (measurement && measurement.inmeetdatum !== args.inmeetdatum) {
+      if (measurement && measurement.inmeetdatum !== nieuweInmeetdatum) {
         await ctx.db.patch(measurement._id, {
-          inmeetdatum: args.inmeetdatum,
+          inmeetdatum: nieuweInmeetdatum,
           gewijzigdOp: Date.now()
         });
       }
@@ -693,13 +706,18 @@ export const startOrPlanMeasurement = mutation({
       "admin"
     ]);
 
-    // Verifieer dat een meegegeven monteur tot deze tenant hoort (tenant-isolatie).
+    // Verifieer dat een meegegeven monteur tot deze tenant hoort (tenant-isolatie) én
+    // boekbaar is (geen kijker; op de toonInAgenda-whitelist zodra die in gebruik is).
+    // De whitelist-check zat alleen client-side in de plan-modal: een race met het
+    // uitvinken van een monteur leverde anders een boeking op die in geen enkele
+    // teamagenda zichtbaar is.
     let monteurDoc: Doc<"users"> | null = null;
     if (args.gemetenDoorUserId) {
       monteurDoc = await ctx.db.get(args.gemetenDoorUserId);
       if (!monteurDoc || monteurDoc.tenantId !== tenant._id) {
         throw new ConvexError("Monteur niet gevonden.");
       }
+      await assertMonteurBoekbaar(ctx, tenant._id, monteurDoc);
     }
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
@@ -724,13 +742,31 @@ export const startOrPlanMeasurement = mutation({
       : (project.inmeetdatum ?? existingMeasurement?.inmeetdatum);
 
     // Plan-guard: dwing de inmeet-regels server-side af (tenzij bewust geforceerd), zodat de agenda
-    // geen operationeel-onmogelijke staat krijgt. Alleen handhaven wanneer de gebruiker actief een
-    // datum of monteur (opnieuw) zet; een pure start-/statusactie mag een al bestaande inmeetdatum
-    // niet retroactief afkeuren. Dezelfde guard draait op elk schrijfpad (zie assertInmeetBoeking).
-    const zetDatumOfMonteur = hasArg(args, "inmeetdatum") || hasArg(args, "gemetenDoorUserId");
+    // geen operationeel-onmogelijke staat krijgt. Alleen handhaven bij een DAADWERKELIJKE wijziging
+    // van datum of monteur; een pure start-/statusactie of het ongewijzigd herbevestigen van een
+    // (legacy) datum mag een bestaande boeking niet retroactief afkeuren. Dezelfde guard draait op
+    // elk schrijfpad (zie assertInmeetBoeking).
+    const gemetenDoorNaam = args.gemetenDoor?.trim() ? args.gemetenDoor.trim() : undefined;
+    const datumGewijzigd =
+      hasArg(args, "inmeetdatum") && existingMeasurement?.inmeetdatum !== measurementDate;
+    const monteurGewijzigd =
+      (hasArg(args, "gemetenDoorUserId") &&
+        existingMeasurement?.gemetenDoorUserId !== args.gemetenDoorUserId) ||
+      (hasArg(args, "gemetenDoor") && existingMeasurement?.gemetenDoor !== gemetenDoorNaam);
+    // Effectieve monteur voor de capaciteits-/afwezigheidscheck: de expliciet
+    // meegegeven monteur (userId, anders éénduidige naam-match), en bij een pure
+    // datumwijziging de monteur die al op de inmeting staat — die bleef anders
+    // buiten de controle en de dag kon dubbel geboekt worden.
+    const effectieveMonteur =
+      monteurDoc ??
+      (hasArg(args, "gemetenDoor") && !args.gemetenDoorUserId
+        ? await resolveMonteurByNaam(ctx, tenant._id, gemetenDoorNaam)
+        : existingMeasurement
+          ? await resolveMonteurVoorMeting(ctx, tenant._id, existingMeasurement)
+          : null);
     await assertInmeetBoeking(ctx, tenant._id, {
-      datumMs: zetDatumOfMonteur ? measurementDate : null,
-      monteur: monteurDoc,
+      datumMs: datumGewijzigd || monteurGewijzigd ? measurementDate : null,
+      monteur: effectieveMonteur,
       omvang: args.omvang ?? existingMeasurement?.omvang,
       excludeProjectId: project._id,
       force: args.force
@@ -789,9 +825,15 @@ export const startOrPlanMeasurement = mutation({
     }
 
     const projectPatch: Partial<Doc<"projects">> = {
-      status: "measurement_planned",
       gewijzigdOp: now
     };
+
+    // Statusovergang alleen vanuit de aanloopfase: een (na)meting plannen of een afspraak
+    // verzetten op een dossier dat al in de offerte-/uitvoeringsfase zit, mag de workflow
+    // niet stil terugzetten naar 'Inmeting gepland' (statusregressie zonder spoor).
+    if (["lead", "measurement_planned"].includes(project.status)) {
+      projectPatch.status = "measurement_planned";
+    }
 
     if (hasArg(args, "inmeetdatum")) {
       projectPatch.inmeetdatum = measurementDate;
@@ -876,7 +918,12 @@ export const processProjectAction = mutation({
       v.literal("closed"),
       v.literal("cancelled")
     ),
-    invoiceDueAt: v.optional(v.number())
+    invoiceDueAt: v.optional(v.number()),
+    // Bij 'quote_accepted': de offerte die de gebruiker in de bevestigingsdialoog te
+    // zien kreeg. Zonder expliciete id pakt de server "de nieuwste offerte" op het
+    // mutatiemoment — een race met een collega (bv. buitendienst die intussen een
+    // conceptofferte maakt) kon dan stil een ándere offerte op akkoord zetten.
+    quoteId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
@@ -928,10 +975,18 @@ export const processProjectAction = mutation({
       }
     }[args.action];
 
-    const latestQuote =
-      args.action === "quote_accepted"
-        ? await latestQuoteForProject(ctx, tenant._id, project._id)
-        : undefined;
+    let latestQuote: Doc<"quotes"> | null | undefined;
+    if (args.action === "quote_accepted") {
+      if (args.quoteId) {
+        const expliciet = await ctx.db.get(args.quoteId as Id<"quotes">);
+        if (!expliciet || expliciet.tenantId !== tenant._id || expliciet.projectId !== project._id) {
+          throw new ConvexError("Offerte niet gevonden bij dit dossier.");
+        }
+        latestQuote = expliciet;
+      } else {
+        latestQuote = await latestQuoteForProject(ctx, tenant._id, project._id);
+      }
+    }
     const latestAcceptedQuote =
       args.action === "invoice_created"
         ? await latestAcceptedQuoteForProject(ctx, tenant._id, project._id)
@@ -1088,6 +1143,37 @@ export const processProjectAction = mutation({
       // Het hele dossier stopt: laat geen inkoop doorlopen en annuleer álle nog-open
       // leveranciersbestellingen van dit project. Ontvangen bestellingen blijven staan.
       await cancelOpenSupplierOrders(ctx, tenant._id, project._id, now);
+
+      // Zeg ook het nog komende inmeetbezoek af: de agenda en de dagcapaciteit filteren
+      // niet op projectstatus, dus zonder dit reed de monteur naar een geannuleerde klant
+      // en bleef de plek bezet voor nieuwe boekingen. Zowel de inmeting als een losse
+      // toekomstige dossierdatum worden gewist. Een bezoek in het verleden blijft staan
+      // (historie). De datum is rond het middaguur verankerd; > now - DAG_MS/2 dekt
+      // "vandaag of later".
+      const measurement = await latestMeasurementForProject(ctx, tenant._id, project._id);
+      const measurementToekomstig = Boolean(
+        measurement?.inmeetdatum && measurement.inmeetdatum > now - DAG_MS / 2
+      );
+      const projectToekomstig = Boolean(
+        project.inmeetdatum && project.inmeetdatum > now - DAG_MS / 2
+      );
+      if (measurementToekomstig && measurement) {
+        await ctx.db.patch(measurement._id, { inmeetdatum: undefined, gewijzigdOp: now });
+      }
+      if (projectToekomstig || (measurementToekomstig && project.inmeetdatum)) {
+        await ctx.db.patch(project._id, { inmeetdatum: undefined, gewijzigdOp: now });
+      }
+      if (measurementToekomstig || projectToekomstig) {
+        await addProjectEvent(
+          ctx,
+          tenant._id,
+          project._id,
+          "measurement_planned",
+          "Inmeetbezoek afgezegd",
+          externalUserId,
+          "Het geplande inmeetbezoek is afgezegd omdat het dossier is geannuleerd."
+        );
+      }
     }
 
     if (args.action === "closed" || args.action === "cancelled") {
