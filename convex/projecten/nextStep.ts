@@ -214,8 +214,9 @@ export function computeProjectNextStep(input: ProjectNextStepInput): ProjectNext
  * gecentraliseerd zodat alle status-afhankelijke copy uit één bestand komt en niet
  * meer per scherm uiteen kan lopen.
  *
- * Geeft `null` voor statussen die geen werklijst-item zijn (afgerond/gestopt/
- * gefactureerd/betaald). `rank` = sorteervolgorde (lager = urgenter).
+ * Geeft `null` voor statussen die geen werklijst-item zijn (afgerond/geannuleerd/
+ * gefactureerd/betaald). Een afgewezen offerte is bewust wél een item — die vraagt
+ * nog een keuze van de winkel. `rank` = sorteervolgorde (lager = urgenter).
  */
 export type ProjectWorklistMeta = {
   title: string;
@@ -240,6 +241,11 @@ export function projectWorklistItem(status: string): ProjectWorklistMeta | null 
     case "execution_planned":
     case "in_progress":
       return { title: "Bestelling opvolgen", badge: "Bestellen", tone: "success", rank: 2 };
+    case "quote_rejected":
+      // Bewust wél een werklijst-item: een afgewezen offerte was voorheen een stil
+      // dood einde (geen event, bij geen van beide rollen zichtbaar). De winkel moet
+      // de keuze maken: nieuwe offerte of dossier annuleren.
+      return { title: "Afwijzing opvolgen", badge: "Afgewezen", tone: "warning", rank: 3 };
     default:
       return null;
   }

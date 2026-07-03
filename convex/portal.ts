@@ -126,6 +126,12 @@ export const dashboard = query({
       ];
     });
     const quoteWorkItems = quotes.flatMap((quote: Doc<"quotes">) => {
+      // "Afwijzing opvolgen" hangt aan de dossierstatus (projectWorkItems), niet aan de
+      // losse offerte: anders krijgt elke historisch afgewezen offerte een eigen item,
+      // ook op dossiers die allang met een nieuwe offerte verder zijn.
+      if (quote.status === "rejected") {
+        return [];
+      }
       const meta = projectWorklistItem(`quote_${quote.status}`);
       if (!meta) {
         return [];
@@ -190,10 +196,14 @@ export const dashboard = query({
     const geboektPerWeekdag = new Map<number, number>();
     let agendaNietToegewezenCount = 0;
     for (const m of weekMetingen) {
-      const herleidbaar = agendaNietViewers.some((u: Doc<"users">) =>
+      // Toetsen tegen de GETOONDE monteurs (zelfde set als agendaWeek), niet tegen alle
+      // niet-viewers: een bezoek van een uitgevinkte monteur telde anders wél mee als
+      // "geboekt" tegen een capaciteit die op de whitelist is gebaseerd, terwijl het in
+      // de week-agenda nergens zichtbaar was (dashboard zei "vol", agenda toonde leeg).
+      const zichtbaarInKolom = zichtbareMonteurs.some((u: Doc<"users">) =>
         hoortBijMonteur(m, u._id, u.naam ?? u.email)
       );
-      if (!herleidbaar) {
+      if (!zichtbaarInKolom) {
         agendaNietToegewezenCount += 1;
         continue;
       }

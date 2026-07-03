@@ -783,6 +783,48 @@ export async function existingInvoiceForQuote(
     .first();
 }
 
+/** Projectstatussen waarin een nieuwe offerte het dossier de offerte-fase in trekt. */
+const QUOTE_DRAFT_ELIGIBLE_STATUSES: ReadonlyArray<Doc<"projects">["status"]> = [
+  "lead",
+  "measurement_planned",
+  "quote_draft",
+  "quote_rejected"
+];
+
+/**
+ * Projectstatus-zet bij het aanmaken van een offerte. GEDEELD door beide create-paden
+ * (offertes.create en offertes.createQuote) zodat ze dezelfde invariant dragen:
+ *
+ * - Een gestopt dossier (geannuleerd/gesloten) mag niet stil herleven via een nieuwe
+ *   offerte; dat vergt een bewuste heropening.
+ * - Een dossier voorbij de offerte-fase (akkoord/bestellen/gefactureerd/betaald) behoudt
+ *   zijn status: een meerwerk-/vervolgofferte mag de lopende uitvoering niet terugzetten
+ *   naar 'Offerteconcept' — workflow-rail, werklijsten en buitendienst-buckets zouden
+ *   anders allemaal terugspringen. Ook 'quote_sent' blijft staan: de verstuurde offerte
+ *   blijft leidend voor de opvolging totdat er iets met háár status gebeurt.
+ * - Alleen in de aanloopfase (lead/inmeting/concept/afgewezen) trekt een nieuwe offerte
+ *   het dossier naar 'quote_draft'.
+ */
+export async function applyProjectStatusForNewQuote(
+  ctx: any,
+  project: Doc<"projects">,
+  now: number
+): Promise<void> {
+  if (project.status === "cancelled" || project.status === "closed") {
+    throw new ConvexError(
+      project.status === "cancelled"
+        ? "Dit dossier is geannuleerd; er kan geen nieuwe offerte op worden gemaakt. Maak zo nodig een nieuw dossier voor deze klant."
+        : "Dit dossier is afgesloten; er kan geen nieuwe offerte op worden gemaakt. Maak zo nodig een nieuw dossier voor deze klant."
+    );
+  }
+
+  if (QUOTE_DRAFT_ELIGIBLE_STATUSES.includes(project.status)) {
+    await ctx.db.patch(project._id, { status: "quote_draft", gewijzigdOp: now });
+  } else {
+    await ctx.db.patch(project._id, { gewijzigdOp: now });
+  }
+}
+
 /**
  * Bevrijdt alle uit een offerte geïmporteerde inmeetregels: terug op 'ready_for_quote' +
  * conversie-refs gewist, zodat de buitendienst-inmeting opnieuw naar een (andere) offerte kan
@@ -823,7 +865,19 @@ export async function restoreMeasurementLinesForQuote(
       }
     }
     if (touched) {
-      await ctx.db.patch(measurement._id, { gewijzigdOp: now });
+      // De inmeting is pas niet langer 'verwerkt naar offerte' als er ook geen regels
+      // meer geconverteerd zijn naar een ÁNDERE (nog levende) offerte — terug naar
+      // 'gecontroleerd', zodat de buitendienst-bucket 'Conceptofferte maken' het
+      // dossier weer oppakt en de status niet liegt.
+      const nogGeconverteerd = mLines.some(
+        (ml) => ml.geconverteerdeOfferteId !== quoteId && ml.quotePreparationStatus === "converted"
+      );
+      await ctx.db.patch(measurement._id, {
+        ...(measurement.status === "converted_to_quote" && !nogGeconverteerd
+          ? { status: "reviewed" as const }
+          : {}),
+        gewijzigdOp: now
+      });
     }
   }
 }
@@ -923,6 +977,8 @@ export async function cancelOtherOpenQuotesAndRestore(
  * (updateQuoteStatus → terminale staat) en het dossier-annuleerpad (processProjectAction),
  * zodat bestellingen niet als wees doorlopen op een geannuleerde offerte of dossier.
  * Ontvangen bestellingen en al-ontvangen regels blijven staan (fysieke goederen; historie).
+ * Geeft het aantal geannuleerde bestellingen terug, zodat de aanroeper dat kan
+ * terugkoppelen (workflow-event/melding) — annuleren mag niet onzichtbaar gebeuren.
  */
 export async function cancelOpenSupplierOrders(
   ctx: any,
@@ -930,12 +986,13 @@ export async function cancelOpenSupplierOrders(
   projectId: Id<"projects">,
   now: number,
   quoteId?: Id<"quotes">
-): Promise<void> {
+): Promise<number> {
   const orders = await ctx.db
     .query("supplierOrders")
     .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
     .collect();
 
+  let cancelledCount = 0;
   for (const order of orders) {
     if (quoteId && order.quoteId !== quoteId) {
       continue;
@@ -944,6 +1001,7 @@ export async function cancelOpenSupplierOrders(
       continue;
     }
     await ctx.db.patch(order._id, { status: "cancelled", gewijzigdOp: now });
+    cancelledCount += 1;
 
     const lines = await ctx.db
       .query("supplierOrderLines")
@@ -955,6 +1013,8 @@ export async function cancelOpenSupplierOrders(
       }
     }
   }
+
+  return cancelledCount;
 }
 
 /** Terminale offerte-staten: de offerte-fase is geëindigd zonder akkoord. */
@@ -972,6 +1032,11 @@ const LIVE_QUOTE_STATUSES: ReadonlyArray<Doc<"quotes">["status"]> = ["sent", "ac
  * (verstuurd/akkoord) — anders kan dezelfde inmeting via een herleefde offerte
  * een tweede keer worden gefactureerd. Terug naar concept (om te herzien) of naar
  * een andere terminale staat blijft toegestaan.
+ *
+ * Een geaccepteerde offerte gaat alleen nog naar 'geannuleerd': stil terug naar
+ * concept/verstuurd zou de offerte laten afwijken van de al op basis van dat akkoord
+ * geplaatste leveranciersbestellingen (het annuleer-pad annuleert die bestellingen
+ * juist expliciet en met terugkoppeling).
  */
 export function assertQuoteStatusTransition(
   from: Doc<"quotes">["status"],
@@ -980,6 +1045,12 @@ export function assertQuoteStatusTransition(
   if (TERMINAL_QUOTE_STATUSES.includes(from) && LIVE_QUOTE_STATUSES.includes(to)) {
     throw new ConvexError(
       "Een afgewezen, geannuleerde of verlopen offerte kan niet herleven. Maak een nieuwe offerte, of zet deze eerst terug op concept om 'm te herzien."
+    );
+  }
+
+  if (from === "accepted" && to !== "cancelled") {
+    throw new ConvexError(
+      "Een geaccepteerde offerte kan alleen worden geannuleerd (open bestellingen worden dan mee-geannuleerd). Annuleer de offerte en maak daarna een nieuwe versie."
     );
   }
 }
