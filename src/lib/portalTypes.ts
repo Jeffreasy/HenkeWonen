@@ -634,6 +634,7 @@ export type PortalWorkflowEvent = {
     | "quote_created"
     | "measurement_requested"
     | "measurement_planned"
+    | "measurement_completed"
     | "quote_sent"
     | "quote_accepted"
     | "quote_rejected"

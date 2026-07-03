@@ -47,10 +47,25 @@ type ProjectNextStepInput = {
   invoiceId: string | null;
   /** Directe-verkoop-dossier: inmeten overslaan, meteen richting offerte. */
   directeVerkoop?: boolean;
+  /**
+   * Status van de laatste inmeting. Nodig om binnen 'measurement_planned' het
+   * overdrachtsmoment te zien: is de inmeting al afgerond, dan is de volgende stap
+   * niet langer "Inmeting uitvoeren" (buitendienst) maar "Offerte maken" (winkel).
+   */
+  measurementStatus?: string | null;
 };
 
+/** De inmeting is klaar voor de winkel (gemeten, gecontroleerd of al verwerkt). */
+export function isMeasurementCompleted(measurementStatus?: string | null): boolean {
+  return (
+    measurementStatus === "measured" ||
+    measurementStatus === "reviewed" ||
+    measurementStatus === "converted_to_quote"
+  );
+}
+
 export function computeProjectNextStep(input: ProjectNextStepInput): ProjectNextStep {
-  const { status, projectId, latestQuoteId, invoiceId, directeVerkoop } = input;
+  const { status, projectId, latestQuoteId, invoiceId, directeVerkoop, measurementStatus } = input;
   const quoteHref = latestQuoteId ? `/portal/offertes/${latestQuoteId}` : null;
   const newQuoteHref = `/portal/offertes?open=nieuw&project=${projectId}`;
   const invoiceHref = invoiceId ? `/portal/facturen/${invoiceId}` : null;
@@ -80,6 +95,20 @@ export function computeProjectNextStep(input: ProjectNextStepInput): ProjectNext
         isStopped: false
       };
     case "measurement_planned":
+      // Overdracht buitendienst → winkel: is de inmeting afgerond, dan is de bal weer
+      // bij de winkel. Voorheen bleef hier "Inmeting uitvoeren" staan en zag de winkel
+      // alleen via de Inmeting-tab dat er al gemeten was.
+      if (isMeasurementCompleted(measurementStatus)) {
+        return {
+          phaseLabel: "Inmeting afgerond",
+          actionLabel: "Offerte maken",
+          hint: "De inmeting is afgerond — maak de offerte met de klaargezette meetregels.",
+          kind: "make_quote",
+          href: newQuoteHref,
+          tone: "warning",
+          isStopped: false
+        };
+      }
       return {
         phaseLabel: "Inmeting gepland",
         actionLabel: "Inmeting uitvoeren",
@@ -225,7 +254,10 @@ export type ProjectWorklistMeta = {
   rank: number;
 };
 
-export function projectWorklistItem(status: string): ProjectWorklistMeta | null {
+export function projectWorklistItem(
+  status: string,
+  opts?: { measurementCompleted?: boolean }
+): ProjectWorklistMeta | null {
   switch (status) {
     case "lead":
       return { title: "Nieuwe aanvraag opvolgen", badge: "Aanvraag", tone: "warning", rank: 1 };
@@ -234,6 +266,11 @@ export function projectWorklistItem(status: string): ProjectWorklistMeta | null 
     case "quote_sent":
       return { title: "Offerte opvolgen", badge: "Verzonden", tone: "info", rank: 2 };
     case "measurement_planned":
+      // Afgeronde inmeting = overdracht terug naar de winkel: de werklijst moet dan
+      // "offerte maken" zeggen i.p.v. te blijven hangen op "Inmeting voorbereiden".
+      if (opts?.measurementCompleted) {
+        return { title: "Inmeting afgerond — offerte maken", badge: "Ingemeten", tone: "warning", rank: 1 };
+      }
       return { title: "Inmeting voorbereiden", badge: "Inmeting", tone: "info", rank: 2 };
     case "quote_accepted":
       return { title: "Akkoord opvolgen", badge: "Akkoord", tone: "info", rank: 2 };

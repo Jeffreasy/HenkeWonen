@@ -232,15 +232,55 @@ function latestMeasurement(measurements: Doc<"measurements">[], projectId: Id<"p
     .sort((left, right) => right.gewijzigdOp - left.gewijzigdOp)[0];
 }
 
+/** Projectfases waarin een geplande uitvoer-/montagedatum een echt komend bezoek is. */
+const UITVOER_FASEN = ["quote_accepted", "ordering", "execution_planned", "in_progress"];
+
+function measurementDone(measurement: Doc<"measurements"> | undefined) {
+  return (
+    measurement?.status === "measured" ||
+    measurement?.status === "reviewed" ||
+    measurement?.status === "converted_to_quote"
+  );
+}
+
+/**
+ * Het nog relevante inmeetbezoek: een afgeronde inmeting is geen komend bezoek meer
+ * (het werk is gedaan), tenzij er een nieuwe, toekomstige afspraak staat (na-meting).
+ * Voorheen bleef een al ingemeten bezoek van (voor) vandaag eeuwig in de bucket
+ * "Vandaag" hangen, met een vals rood "achterstallig" als gevolg.
+ */
+function fieldInmeetTimestamp(
+  project: Doc<"projects">,
+  measurement: Doc<"measurements"> | undefined,
+  now: number
+) {
+  const inmeet = project.inmeetdatum ?? measurement?.inmeetdatum;
+  if (inmeet !== undefined && measurementDone(measurement) && isDueTodayOrEarlier(inmeet, now)) {
+    return undefined;
+  }
+  return inmeet;
+}
+
+function fieldUitvoerTimestamp(project: Doc<"projects">) {
+  // De uitvoerdatum telt mee zodra het dossier in de uitvoerfase zit — de winkel plant
+  // de montage doorgaans ná akkoord/bij het bestellen. Voorheen telde hij alleen bij de
+  // legacy-statussen execution_planned/in_progress (die geen enkele UI-flow nog zet),
+  // waardoor de geplande montage de buitendienst nergens bereikte. Ná facturatie is de
+  // montage geweest en is de datum historie.
+  return UITVOER_FASEN.includes(project.status) ? project.uitvoerdatum : undefined;
+}
+
 function fieldVisitTimestamp(
   project: Doc<"projects">,
-  measurement: Doc<"measurements"> | undefined
+  measurement: Doc<"measurements"> | undefined,
+  now: number
 ) {
-  if (project.status === "execution_planned" || project.status === "in_progress") {
-    return project.uitvoerdatum ?? project.inmeetdatum ?? measurement?.inmeetdatum;
+  const inmeet = fieldInmeetTimestamp(project, measurement, now);
+  const uitvoer = fieldUitvoerTimestamp(project);
+  if (inmeet !== undefined && uitvoer !== undefined) {
+    return Math.min(inmeet, uitvoer);
   }
-
-  return project.inmeetdatum ?? measurement?.inmeetdatum;
+  return inmeet ?? uitvoer;
 }
 
 function isDueTodayOrEarlier(timestamp: number | undefined, now: number) {
@@ -277,7 +317,7 @@ export function fieldBucket(
     return "today";
   }
 
-  if (isDueTodayOrEarlier(fieldVisitTimestamp(project, measurement), now)) {
+  if (isDueTodayOrEarlier(fieldVisitTimestamp(project, measurement, now), now)) {
     return "today";
   }
 
@@ -287,6 +327,14 @@ export function fieldBucket(
 
   if (project.status === "execution_planned" || project.status === "in_progress") {
     return "followUp";
+  }
+
+  // Een toekomstige inmeetafspraak (ook een ná-meting op een al gemeten dossier) hoort
+  // in "Inmeten" — vóór de conceptofferte-check, anders verdween de afspraak in
+  // "Conceptoffertes" en zag de monteur zijn geplande bezoek nergens terug.
+  const komendeInmeting = fieldInmeetTimestamp(project, measurement, now);
+  if (komendeInmeting !== undefined && !isDueTodayOrEarlier(komendeInmeting, now)) {
+    return "measure";
   }
 
   if (
@@ -449,7 +497,7 @@ export const fieldServiceWorkspace = query({
           const tasks = sortProjectTasks(tasksByProjectId.get(String(project._id)) ?? []);
           const nextTask = tasks.find((task) => task.status === "open");
           const bucket = fieldBucket(project, quote, measurement, now, tasks);
-          const visitAt = fieldVisitTimestamp(project, measurement);
+          const visitAt = fieldVisitTimestamp(project, measurement, now);
 
           return {
             id: String(project._id),
@@ -554,7 +602,8 @@ export const fieldProjectWorkspace = query({
         .collect()
     ]);
     const measurement = latestMeasurement(measurements, project._id);
-    const visitAt = fieldVisitTimestamp(project, measurement);
+    const now = Date.now();
+    const visitAt = fieldVisitTimestamp(project, measurement, now);
 
     return {
       project: await toProject(ctx, tenant.slug, project),

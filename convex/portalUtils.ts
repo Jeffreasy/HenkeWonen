@@ -870,7 +870,8 @@ export async function restoreMeasurementLinesForQuote(
       // 'gecontroleerd', zodat de buitendienst-bucket 'Conceptofferte maken' het
       // dossier weer oppakt en de status niet liegt.
       const nogGeconverteerd = mLines.some(
-        (ml) => ml.geconverteerdeOfferteId !== quoteId && ml.quotePreparationStatus === "converted"
+        (ml: Doc<"measurementLines">) =>
+          ml.geconverteerdeOfferteId !== quoteId && ml.quotePreparationStatus === "converted"
       );
       await ctx.db.patch(measurement._id, {
         ...(measurement.status === "converted_to_quote" && !nogGeconverteerd
