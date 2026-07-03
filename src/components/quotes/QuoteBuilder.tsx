@@ -857,6 +857,9 @@ export default function QuoteBuilder({
             (action) =>
               action.status !== quote.status &&
               !(isTerminalQuote && revivingStatuses.has(action.status)) &&
+              // Een geaccepteerde offerte gaat alleen nog naar 'geannuleerd' — spiegelt
+              // de backend-guard: er kunnen al bestellingen op dit akkoord zijn geplaatst.
+              !(quote.status === "accepted" && action.status !== "cancelled") &&
               (isFieldMode
                 ? fieldAllowedStatuses.has(action.status as "sent" | "accepted" | "rejected")
                 : true)

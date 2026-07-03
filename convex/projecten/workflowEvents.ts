@@ -15,6 +15,7 @@ const workflowEventType = v.union(
   v.literal("measurement_completed"),
   v.literal("quote_sent"),
   v.literal("quote_accepted"),
+  v.literal("quote_rejected"),
   v.literal("thank_you_letter_sent"),
   v.literal("execution_planned"),
   v.literal("supplier_order_created"),
