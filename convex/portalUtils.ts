@@ -388,13 +388,17 @@ export function toContact(tenantSlug: string, contact: Doc<"customerContacts">):
   };
 }
 
-export async function toDossierAttachment(
-  ctx: any,
+/**
+ * Bouwt de portal-weergave van een dossierstuk. Bevat BEWUST geen permanente storage-URL:
+ * `ctx.storage.getUrl` levert een publieke, login-loze, niet-verlopende link op die niet in
+ * de client thuishoort (AVG). In plaats daarvan geeft `hasFile` alleen aan dát er een bestand
+ * is; de bytes worden per request achter de sessie opgehaald via de proxyroute
+ * /portal/dossierbestand/[id].
+ */
+export function toDossierAttachment(
   tenantSlug: string,
   attachment: Doc<"dossierAttachments">
-): Promise<PortalDossierAttachment> {
-  const fileUrl = attachment.storageId ? await ctx.storage.getUrl(attachment.storageId) : null;
-
+): PortalDossierAttachment {
   return {
     id: String(attachment._id),
     tenantId: tenantSlug,
@@ -406,7 +410,7 @@ export async function toDossierAttachment(
     bestandsnaam: attachment.bestandsnaam,
     bestandstype: attachment.bestandstype,
     bestandsgrootteBytes: attachment.bestandsgrootteBytes,
-    fileUrl: fileUrl ?? undefined,
+    hasFile: attachment.storageId !== undefined,
     status: attachment.status,
     createdByExternalUserId: attachment.createdByExternalUserId,
     aangemaaktOp: attachment.aangemaaktOp,

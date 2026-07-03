@@ -1,8 +1,75 @@
-import { mutation } from "../_generated/server";
+import { mutation, query } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
-import { mutationActorValidator, requireMutationRole } from "../authz";
+import {
+  mutationActorValidator,
+  readActorValidator,
+  requireMutationRole,
+  requireQueryRole
+} from "../authz";
 import { dossierAttachmentKind } from "../portalUtils";
+
+/**
+ * Resolvet de storage-URL van één dossierstuk. Wordt UITSLUITEND server-side aangeroepen
+ * door de proxyroute /portal/dossierbestand/[id]: de teruggegeven Convex-storage-URL is
+ * publiek en login-loos en mag de server NIET verlaten. De proxy controleert de sessie en
+ * streamt de bytes door, zodat er nergens een permanente bestandslink in de client belandt
+ * (AVG-audit 2026-07-03, punt 1). Geeft null terug als het stuk niet bestaat, niet bij deze
+ * tenant hoort, gearchiveerd is of geen bestand heeft.
+ *
+ * Server-only afdwingen: zet op de Convex-omgeving én de webserver dezelfde
+ * DOSSIERBESTAND_PROXY_SECRET. Zolang die staat, weigert de query elke aanroep zonder het
+ * geheim — een ingelogde client die de query rechtstreeks aanroept (devtools) krijgt dan
+ * null i.p.v. de permanente URL. Zonder geconfigureerd geheim werkt de query als voorheen,
+ * zodat niets breekt vóór de eigenaar de variabele heeft gezet.
+ */
+export const getDossierAttachmentFile = query({
+  args: {
+    tenantSlug: v.string(),
+    actor: readActorValidator,
+    attachmentId: v.string(),
+    proxySecret: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
+
+    const vereistGeheim = process.env.DOSSIERBESTAND_PROXY_SECRET;
+    if (vereistGeheim && args.proxySecret !== vereistGeheim) {
+      return null;
+    }
+
+    const attachmentId = ctx.db.normalizeId("dossierAttachments", args.attachmentId);
+    if (!attachmentId) {
+      return null;
+    }
+
+    const attachment = await ctx.db.get(attachmentId);
+    if (
+      !attachment ||
+      attachment.tenantId !== tenant._id ||
+      attachment.status !== "active" ||
+      !attachment.storageId
+    ) {
+      return null;
+    }
+
+    const url = await ctx.storage.getUrl(attachment.storageId);
+    if (!url) {
+      return null;
+    }
+
+    return {
+      url,
+      bestandsnaam: attachment.bestandsnaam,
+      bestandstype: attachment.bestandstype
+    };
+  }
+});
 
 /**
  * Vraagt een eenmalige upload-URL aan Convex storage. De client POST't het bestand

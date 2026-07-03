@@ -6,10 +6,11 @@ import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatDate } from "../../lib/dates";
 import { showErrorToast, showToast } from "../../lib/toast";
-import type {
-  FieldSupplierOrderSummary,
-  PortalCustomerContact,
-  PortalDossierAttachment
+import {
+  dossierBestandHref,
+  type FieldSupplierOrderSummary,
+  type PortalCustomerContact,
+  type PortalDossierAttachment
 } from "../../lib/portalTypes";
 import { Button } from "../ui/forms/Button";
 import { SectionHeader } from "../ui/layout/SectionHeader";
@@ -163,8 +164,8 @@ export function FieldDossierPanel({
               <li key={attachment.id}>
                 <FileText size={15} aria-hidden="true" />
                 <span>
-                  {attachment.fileUrl ? (
-                    <a href={attachment.fileUrl} target="_blank" rel="noreferrer">
+                  {attachment.hasFile ? (
+                    <a href={dossierBestandHref(attachment.id)} target="_blank" rel="noreferrer">
                       {attachment.titel} <ExternalLink size={12} aria-hidden="true" />
                     </a>
                   ) : (

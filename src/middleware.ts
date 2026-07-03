@@ -35,7 +35,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   context.locals.session = session;
 
-  if (session && pathname.startsWith("/portal")) {
+  // De dossierbestand-proxy is een pure byte-read (eigen tenant/rol-check in de query);
+  // de sessie-sync (2 Convex-mutaties) zou daar per bestandsweergave pure overhead zijn.
+  const isFileProxy = pathname.startsWith("/portal/dossierbestand/");
+
+  if (session && pathname.startsWith("/portal") && !isFileProxy) {
     try {
       await syncSessionToConvex(session);
     } catch (syncError) {
