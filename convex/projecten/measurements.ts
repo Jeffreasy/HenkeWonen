@@ -423,11 +423,20 @@ export const createForProject = mutation({
 
     // Plan-guard óók op dit pad: de invariant is dat ELK pad dat measurement.inmeetdatum
     // muteert de inmeet-regels toetst (zie assertInmeetBoeking) — dit pad omzeilde ze.
+    // De effectieve monteur is de NIEUW meegegeven naam (die hieronder ook wordt gezet),
+    // anders de monteur die al op de inmeting staat — een call die tegelijk datum én
+    // monteur meegeeft kon anders de capaciteit van de gekozen monteur omzeilen.
+    const zetGemetenDoor = Boolean(args.gemetenDoor && !existing?.gemetenDoor);
     const datumGewijzigd = hasArg(args, "inmeetdatum") && existing?.inmeetdatum !== args.inmeetdatum;
+    const nieuweMonteur = zetGemetenDoor
+      ? await resolveMonteurByNaam(ctx, args.tenantId, args.gemetenDoor)
+      : null;
     if (datumGewijzigd && args.inmeetdatum !== undefined) {
-      const monteur = existing
-        ? await resolveMonteurVoorMeting(ctx, args.tenantId, existing)
-        : await resolveMonteurByNaam(ctx, args.tenantId, args.gemetenDoor);
+      const monteur =
+        nieuweMonteur ??
+        (existing
+          ? await resolveMonteurVoorMeting(ctx, args.tenantId, existing)
+          : await resolveMonteurByNaam(ctx, args.tenantId, args.gemetenDoor));
       await assertInmeetBoeking(ctx, args.tenantId, {
         datumMs: args.inmeetdatum,
         monteur,
@@ -444,8 +453,10 @@ export const createForProject = mutation({
         patch.inmeetdatum = args.inmeetdatum;
       }
 
-      if (args.gemetenDoor && !existing.gemetenDoor) {
+      if (zetGemetenDoor) {
+        // Naam én userId synchroon houden (agenda/capaciteit is userId-primair).
         patch.gemetenDoor = args.gemetenDoor;
+        patch.gemetenDoorUserId = nieuweMonteur?._id;
       }
 
       if (hasArg(args, "notities") && args.notities && !existing.notities) {
@@ -468,6 +479,7 @@ export const createForProject = mutation({
         status: "draft",
         inmeetdatum: args.inmeetdatum,
         gemetenDoor: args.gemetenDoor,
+        gemetenDoorUserId: nieuweMonteur?._id,
         notities: args.notities,
         createdByExternalUserId: externalUserId,
         aangemaaktOp: now,
@@ -539,10 +551,17 @@ export const updateMeasurement = mutation({
     // en synct die naar het dossier. Alleen toetsen bij een DAADWERKELIJKE datumwijziging: een
     // ongewijzigde (legacy) datum mag het opslaan van status/notities niet blokkeren — er bestaat
     // geen UI-pad dat force meestuurt, dus zo'n dossier zat anders muurvast. Resolve de monteur
-    // (userId, anders éénduidige naam) voor de capaciteits-/afwezigheidscheck, zodat ook rijen
-    // zonder userId niet buiten de capaciteit om verzet kunnen worden.
+    // voor de capaciteits-/afwezigheidscheck: bij een gelijktijdige naamswijziging de NIEUWE
+    // monteur (die de boeking straks draagt), anders de monteur die al op de inmeting staat
+    // (userId, anders éénduidige naam) — zodat geen enkel pad de capaciteit omzeilt.
     if (datumGewijzigd && nieuweDatum !== undefined) {
-      const monteur = await resolveMonteurVoorMeting(ctx, args.tenantId, measurement);
+      const monteur = hasArg(args, "gemetenDoor")
+        ? await resolveMonteurByNaam(
+            ctx,
+            args.tenantId,
+            args.gemetenDoor?.trim() ? args.gemetenDoor.trim() : undefined
+          )
+        : await resolveMonteurVoorMeting(ctx, args.tenantId, measurement);
       await assertInmeetBoeking(ctx, args.tenantId, {
         datumMs: nieuweDatum,
         monteur,

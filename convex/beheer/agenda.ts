@@ -124,6 +124,11 @@ export async function assertMonteurBoekbaar(
   tenantId: Id<"tenants">,
   monteur: Doc<"users">
 ): Promise<void> {
+  // Tenant-isolatie ook hier afdwingen: een per ongeluk doorgegeven gebruiker uit
+  // een andere tenant mag nooit als boekbare monteur passeren.
+  if (monteur.tenantId !== tenantId) {
+    throw new ConvexError("Monteur niet gevonden.");
+  }
   if (monteur.role === "viewer") {
     throw new ConvexError("Een kijker kan geen inmetingen uitvoeren. Kies een andere monteur.");
   }

@@ -14,6 +14,7 @@ import {
   DAG_MS,
   assertInmeetBoeking,
   assertMonteurBoekbaar,
+  resolveMonteurByNaam,
   resolveMonteurVoorMeting
 } from "../beheer/agenda";
 import {
@@ -745,14 +746,27 @@ export const startOrPlanMeasurement = mutation({
     // van datum of monteur; een pure start-/statusactie of het ongewijzigd herbevestigen van een
     // (legacy) datum mag een bestaande boeking niet retroactief afkeuren. Dezelfde guard draait op
     // elk schrijfpad (zie assertInmeetBoeking).
+    const gemetenDoorNaam = args.gemetenDoor?.trim() ? args.gemetenDoor.trim() : undefined;
     const datumGewijzigd =
       hasArg(args, "inmeetdatum") && existingMeasurement?.inmeetdatum !== measurementDate;
     const monteurGewijzigd =
-      hasArg(args, "gemetenDoorUserId") &&
-      existingMeasurement?.gemetenDoorUserId !== args.gemetenDoorUserId;
+      (hasArg(args, "gemetenDoorUserId") &&
+        existingMeasurement?.gemetenDoorUserId !== args.gemetenDoorUserId) ||
+      (hasArg(args, "gemetenDoor") && existingMeasurement?.gemetenDoor !== gemetenDoorNaam);
+    // Effectieve monteur voor de capaciteits-/afwezigheidscheck: de expliciet
+    // meegegeven monteur (userId, anders éénduidige naam-match), en bij een pure
+    // datumwijziging de monteur die al op de inmeting staat — die bleef anders
+    // buiten de controle en de dag kon dubbel geboekt worden.
+    const effectieveMonteur =
+      monteurDoc ??
+      (hasArg(args, "gemetenDoor") && !args.gemetenDoorUserId
+        ? await resolveMonteurByNaam(ctx, tenant._id, gemetenDoorNaam)
+        : existingMeasurement
+          ? await resolveMonteurVoorMeting(ctx, tenant._id, existingMeasurement)
+          : null);
     await assertInmeetBoeking(ctx, tenant._id, {
       datumMs: datumGewijzigd || monteurGewijzigd ? measurementDate : null,
-      monteur: monteurDoc,
+      monteur: effectieveMonteur,
       omvang: args.omvang ?? existingMeasurement?.omvang,
       excludeProjectId: project._id,
       force: args.force
@@ -1132,15 +1146,24 @@ export const processProjectAction = mutation({
 
       // Zeg ook het nog komende inmeetbezoek af: de agenda en de dagcapaciteit filteren
       // niet op projectstatus, dus zonder dit reed de monteur naar een geannuleerde klant
-      // en bleef de plek bezet voor nieuwe boekingen. Een bezoek in het verleden blijft
-      // staan (historie). De datum is rond het middaguur verankerd; > now - DAG_MS/2
-      // dekt "vandaag of later".
+      // en bleef de plek bezet voor nieuwe boekingen. Zowel de inmeting als een losse
+      // toekomstige dossierdatum worden gewist. Een bezoek in het verleden blijft staan
+      // (historie). De datum is rond het middaguur verankerd; > now - DAG_MS/2 dekt
+      // "vandaag of later".
       const measurement = await latestMeasurementForProject(ctx, tenant._id, project._id);
-      if (measurement?.inmeetdatum && measurement.inmeetdatum > now - DAG_MS / 2) {
+      const measurementToekomstig = Boolean(
+        measurement?.inmeetdatum && measurement.inmeetdatum > now - DAG_MS / 2
+      );
+      const projectToekomstig = Boolean(
+        project.inmeetdatum && project.inmeetdatum > now - DAG_MS / 2
+      );
+      if (measurementToekomstig && measurement) {
         await ctx.db.patch(measurement._id, { inmeetdatum: undefined, gewijzigdOp: now });
-        if (project.inmeetdatum) {
-          await ctx.db.patch(project._id, { inmeetdatum: undefined, gewijzigdOp: now });
-        }
+      }
+      if (projectToekomstig || (measurementToekomstig && project.inmeetdatum)) {
+        await ctx.db.patch(project._id, { inmeetdatum: undefined, gewijzigdOp: now });
+      }
+      if (measurementToekomstig || projectToekomstig) {
         await addProjectEvent(
           ctx,
           tenant._id,
