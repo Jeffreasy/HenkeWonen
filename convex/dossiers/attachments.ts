@@ -16,12 +16,19 @@ import { dossierAttachmentKind } from "../portalUtils";
  * streamt de bytes door, zodat er nergens een permanente bestandslink in de client belandt
  * (AVG-audit 2026-07-03, punt 1). Geeft null terug als het stuk niet bestaat, niet bij deze
  * tenant hoort, gearchiveerd is of geen bestand heeft.
+ *
+ * Server-only afdwingen: zet op de Convex-omgeving én de webserver dezelfde
+ * DOSSIERBESTAND_PROXY_SECRET. Zolang die staat, weigert de query elke aanroep zonder het
+ * geheim — een ingelogde client die de query rechtstreeks aanroept (devtools) krijgt dan
+ * null i.p.v. de permanente URL. Zonder geconfigureerd geheim werkt de query als voorheen,
+ * zodat niets breekt vóór de eigenaar de variabele heeft gezet.
  */
 export const getDossierAttachmentFile = query({
   args: {
     tenantSlug: v.string(),
     actor: readActorValidator,
-    attachmentId: v.string()
+    attachmentId: v.string(),
+    proxySecret: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
@@ -30,6 +37,11 @@ export const getDossierAttachmentFile = query({
       "editor",
       "admin"
     ]);
+
+    const vereistGeheim = process.env.DOSSIERBESTAND_PROXY_SECRET;
+    if (vereistGeheim && args.proxySecret !== vereistGeheim) {
+      return null;
+    }
 
     const attachmentId = ctx.db.normalizeId("dossierAttachments", args.attachmentId);
     if (!attachmentId) {

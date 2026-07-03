@@ -327,3 +327,53 @@ test("getDossierAttachmentFile lekt geen bestand van een andere tenant (null)", 
     })
   ).toBeNull();
 });
+
+test("getDossierAttachmentFile eist het proxy-geheim zodra DOSSIERBESTAND_PROXY_SECRET staat", async () => {
+  vi.stubEnv("DOSSIERBESTAND_PROXY_SECRET", "server-only-geheim");
+
+  const t = convexTest(schema, modules);
+  const { tenantId, klantId } = await seed(t);
+  const now = Date.now();
+
+  const attachmentId = await t.run(async (ctx) => {
+    const storageId = await ctx.storage.store(new Blob(["pdf-bytes"]));
+    return await ctx.db.insert("dossierAttachments", {
+      tenantId,
+      klantId,
+      kind: "scan",
+      titel: "Werkbon",
+      storageId,
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+  });
+
+  // Zonder (of met een verkeerd) geheim — zoals een client die de query rechtstreeks
+  // aanroept — lekt de permanente URL niet.
+  expect(
+    await t.query(api.portal.getDossierAttachmentFile, {
+      tenantSlug: "henke-wonen",
+      actor,
+      attachmentId
+    })
+  ).toBeNull();
+  expect(
+    await t.query(api.portal.getDossierAttachmentFile, {
+      tenantSlug: "henke-wonen",
+      actor,
+      attachmentId,
+      proxySecret: "fout"
+    })
+  ).toBeNull();
+
+  // De proxyroute (met het juiste geheim) krijgt het bestand wel.
+  const file = await t.query(api.portal.getDossierAttachmentFile, {
+    tenantSlug: "henke-wonen",
+    actor,
+    attachmentId,
+    proxySecret: "server-only-geheim"
+  });
+  expect(file).not.toBeNull();
+  expect(typeof file?.url).toBe("string");
+});
