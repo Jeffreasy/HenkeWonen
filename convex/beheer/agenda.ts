@@ -367,7 +367,7 @@ export const addAfwezigheid = mutation({
       "editor",
       "admin"
     ]);
-    await requireMonteur(ctx, tenant._id, args.userId);
+    const monteur = await requireMonteur(ctx, tenant._id, args.userId);
 
     if (!Number.isFinite(args.vanafDatum) || !Number.isFinite(args.totDatum)) {
       throw new ConvexError("Afwezigheid: ongeldige datums.");
@@ -382,8 +382,59 @@ export const addAfwezigheid = mutation({
       assertTijdvak(args.startMinuut, args.eindMinuut, "Afwezigheid");
     }
 
+    // Conflictdetectie: al geboekte inmeetbezoeken van deze monteur binnen de periode
+    // waarvan het inmeetvenster (16:30-17:30) door deze afwezigheid wordt geblokkeerd.
+    // De afwezigheid wordt gewoon vastgelegd (ziek is ziek), maar de conflicten gaan
+    // mee terug zodat de melder direct kan (laten) herplannen — voorheen kregen winkel
+    // noch buitendienst hier enig signaal van en bleef de klant ingepland staan bij
+    // een monteur die er niet is.
+    const blokkeertVenster =
+      args.heleDag ||
+      (args.startMinuut !== undefined &&
+        args.eindMinuut !== undefined &&
+        args.startMinuut < INMEET_EIND_MINUUT &&
+        args.eindMinuut > INMEET_START_MINUUT);
+    const conflicten: Array<{
+      inmetingId: string;
+      projectId: string;
+      projectTitel: string;
+      klantNaam: string;
+      inmeetdatum: number;
+    }> = [];
+    if (blokkeertVenster) {
+      const monteurNaam = monteur.naam ?? monteur.email;
+      const metingen = await ctx.db
+        .query("measurements")
+        .withIndex("by_measurement_date", (q: any) =>
+          q
+            .eq("tenantId", tenant._id)
+            .gte("inmeetdatum", args.vanafDatum - DAG_MS / 2)
+            .lt("inmeetdatum", args.totDatum + DAG_MS)
+        )
+        .collect();
+      for (const m of metingen) {
+        if (!m.inmeetdatum || !hoortBijMonteur(m, args.userId, monteurNaam)) continue;
+        // Zelfde dag-overlap als berekenInmeetBeschikbaarheid (datum verankerd rond 12:00).
+        if (!(args.vanafDatum < m.inmeetdatum + DAG_MS / 2 && args.totDatum >= m.inmeetdatum - DAG_MS / 2)) {
+          continue;
+        }
+        const project = await ctx.db.get(m.projectId);
+        const klant = await ctx.db.get(m.klantId);
+        conflicten.push({
+          inmetingId: String(m._id),
+          projectId: String(m.projectId),
+          projectTitel:
+            project && project.tenantId === tenant._id ? (project.titel ?? "Project") : "Project",
+          klantNaam:
+            klant && klant.tenantId === tenant._id ? (klant.weergaveNaam ?? "Klant") : "Klant",
+          inmeetdatum: m.inmeetdatum
+        });
+      }
+      conflicten.sort((a, b) => a.inmeetdatum - b.inmeetdatum);
+    }
+
     const now = Date.now();
-    return await ctx.db.insert("monteurAfwezigheid", {
+    const id = await ctx.db.insert("monteurAfwezigheid", {
       tenantId: tenant._id,
       userId: args.userId,
       type: args.type,
@@ -396,6 +447,8 @@ export const addAfwezigheid = mutation({
       aangemaaktOp: now,
       gewijzigdOp: now
     });
+
+    return { id: String(id), conflicten };
   }
 });
 
@@ -438,6 +491,35 @@ export const setAgendaZichtbaarheid = mutation({
     if (!user || user.tenantId !== tenant._id) {
       throw new ConvexError("Gebruiker niet gevonden.");
     }
+
+    // Uitvinken met nog geplande (toekomstige) inmeetbezoeken zou die bezoeken uit de
+    // teamagenda laten verdwijnen terwijl de klant gewoon wacht — eerst herplannen.
+    // Bezoeken in het verleden zijn historie en blokkeren niet.
+    if (!args.toonInAgenda) {
+      const naam = user.naam ?? user.email;
+      const komend = (
+        await ctx.db
+          .query("measurements")
+          .withIndex("by_measurement_date", (q: any) =>
+            q.eq("tenantId", tenant._id).gte("inmeetdatum", Date.now() - DAG_MS / 2)
+          )
+          .collect()
+      ).filter((m: Doc<"measurements">) => hoortBijMonteur(m, user._id, naam));
+      if (komend.length > 0) {
+        const eerstvolgende = komend
+          .map((m: Doc<"measurements">) => m.inmeetdatum as number)
+          .sort((a: number, b: number) => a - b)[0];
+        const datumTekst = new Intl.DateTimeFormat("nl-NL", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric"
+        }).format(new Date(eerstvolgende));
+        throw new ConvexError(
+          `Deze medewerker heeft nog ${komend.length} gepland(e) inmeetbezoek(en) (eerstvolgende op ${datumTekst}). Herplan die eerst naar een andere monteur voordat je de medewerker uit de agenda haalt.`
+        );
+      }
+    }
+
     await ctx.db.patch(args.userId, {
       toonInAgenda: args.toonInAgenda,
       gewijzigdOp: Date.now()
@@ -619,16 +701,18 @@ export const agendaWeek = query({
       });
     }
 
-    // S1: inmetingen met een datum binnen de week maar zonder herleidbare monteur staan in
-    // geen enkele monteur-agenda en tellen niet mee in de capaciteit. Toon ze apart (alleen in
-    // de teambrede kantoorweergave) zodat ze niet stil verdwijnen.
+    // S1: inmetingen met een datum binnen de week die in geen enkele GETOONDE monteurkolom
+    // staan, tellen nergens mee en zouden anders stil verdwijnen. Toon ze apart (alleen in de
+    // teambrede kantoorweergave). Bewust getoetst tegen de getoonde monteurs (whitelist) en
+    // niet tegen alle niet-viewers: een bezoek van een úítgevinkte monteur (bv. na het
+    // uitzetten van een medewerker) is anders "herleidbaar" maar in de hele agenda onzichtbaar.
     const nietToegewezen = [];
     if (toonNietToegewezen) {
       for (const m of metingen) {
-        const herleidbaar = alleNietViewers.some((u: Doc<"users">) =>
+        const zichtbaarInKolom = monteurs.some((u: Doc<"users">) =>
           hoortBijMonteur(m, u._id, u.naam ?? u.email)
         );
-        if (!herleidbaar) nietToegewezen.push(await bezoekDetail(m));
+        if (!zichtbaarInKolom) nietToegewezen.push(await bezoekDetail(m));
       }
     }
 
