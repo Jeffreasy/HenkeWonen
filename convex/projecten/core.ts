@@ -157,11 +157,11 @@ export const updateStatus = mutation({
     status: projectStatus
   },
   handler: async (ctx, args) => {
-    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
-      "user",
-      "editor",
-      "admin"
-    ]);
+    // Vrije statuspatch zonder de invarianten van processProjectAction (offerte-/
+    // factuur-gates, taken, events): uitsluitend een admin-vangnet voor datacorrecties.
+    // Met rol 'user' kon elke medewerker een dossier zó op 'invoiced'/'paid' zetten
+    // zonder offerte of factuur — het viel dan uit alle werklijsten zonder spoor.
+    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
     const project = await ctx.db.get(args.projectId);
 
     if (!project || project.tenantId !== args.tenantId) {
@@ -316,10 +316,10 @@ export const updateProject = mutation({
     klantNotities: v.optional(v.string()),
     // Bewust de inmeet-regels overrulen bij het zetten van de inmeetdatum vanuit het dossier.
     force: v.optional(v.boolean())
-    // status staat hier BEWUST niet: statusovergangen lopen uitsluitend via
-    // updateProjectStatus/processProjectAction (met invarianten, timestamps en
-    // workflow-events). Een vrije status-patch hier zou bv. een sprong naar
-    // invoiced/paid/closed zonder factuur/offerte toestaan.
+    // status staat hier BEWUST niet: statusovergangen lopen via processProjectAction
+    // (met invarianten, timestamps en workflow-events); updateProjectStatus/updateStatus
+    // zijn admin-vangnetten voor datacorrecties. Een vrije status-patch hier zou bv. een
+    // sprong naar invoiced/paid/closed zonder factuur/offerte toestaan.
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
@@ -455,10 +455,13 @@ export const projectDetail = query({
         projectId: String(project._id),
         latestQuoteId: latestQuote ? String(latestQuote._id) : null,
         invoiceId: latestInvoice ? String(latestInvoice._id) : null,
-        directeVerkoop: project.directeVerkoop
+        directeVerkoop: project.directeVerkoop,
+        measurementStatus: latestMeasurement?.status ?? null
       }),
-      // Laatste inmeting: klusgrootte + toegewezen monteur — zodat herplannen
-      // terugvalt op de bestaande waarden i.p.v. stil te resetten.
+      // Laatste inmeting: status + klusgrootte + toegewezen monteur — zodat de winkel
+      // de overdracht (afgeronde inmeting) ziet en herplannen terugvalt op de
+      // bestaande waarden i.p.v. stil te resetten.
+      inmeetStatus: latestMeasurement?.status ?? null,
       inmeetOmvang: latestMeasurement?.omvang ?? null,
       inmeetMonteur: latestMeasurement?.gemetenDoor ?? null,
       customer: customer ? toCustomer(tenant.slug, customer) : null,
@@ -645,9 +648,10 @@ export const updateProjectStatus = mutation({
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
+    // Vrije statuspatch zonder invarianten: uitsluitend een admin-vangnet voor
+    // datacorrecties. Reguliere statusovergangen lopen via processProjectAction
+    // (offerte-/factuur-gates, taken sluiten, sibling-offertes, workflow-events).
     const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
-      "user",
-      "editor",
       "admin"
     ]);
     const project = await ctx.db.get(args.projectId as Id<"projects">);

@@ -996,6 +996,9 @@ export default defineSchema({
       v.literal("quote_created"),
       v.literal("measurement_requested"),
       v.literal("measurement_planned"),
+      // Afgeronde inmeting: het overdrachtsmoment buitendienst → winkel. Zonder dit
+      // event was de terugweg onzichtbaar in de dossier-tijdlijn.
+      v.literal("measurement_completed"),
       v.literal("quote_sent"),
       v.literal("quote_accepted"),
       v.literal("thank_you_letter_sent"),

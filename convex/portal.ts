@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { readActorValidator, requireQueryRole } from "./authz";
 import { taskPriority, toProject, toQuoteSummary } from "./portalUtils";
-import { projectWorklistItem } from "./projecten/nextStep";
+import { isMeasurementCompleted, projectWorklistItem } from "./projecten/nextStep";
 import {
   DAG_MS,
   INMEET_CAPACITEIT,
@@ -29,32 +29,40 @@ export const dashboard = query({
 
     const invoiceStatuses = ["sent", "partially_paid", "overdue"] as const;
 
-    const [customers, projects, quotes, projectTasks, invoicesByStatus] = await Promise.all([
-      ctx.db
-        .query("customers")
-        .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-        .collect(),
-      ctx.db
-        .query("projects")
-        .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-        .collect(),
-      ctx.db
-        .query("quotes")
-        .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-        .collect(),
-      ctx.db
-        .query("projectTasks")
-        .withIndex("by_status", (q: any) => q.eq("tenantId", tenant._id).eq("status", "open"))
-        .collect(),
-      Promise.all(
-        invoiceStatuses.map((status) =>
-          ctx.db
-            .query("invoices")
-            .withIndex("by_status", (q: any) => q.eq("tenantId", tenant._id).eq("status", status))
-            .collect()
-        )
-      )
-    ]);
+    const [customers, projects, quotes, projectTasks, invoicesByStatus, alleMetingen] =
+      await Promise.all([
+        ctx.db
+          .query("customers")
+          .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+          .collect(),
+        ctx.db
+          .query("projects")
+          .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+          .collect(),
+        ctx.db
+          .query("quotes")
+          .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+          .collect(),
+        ctx.db
+          .query("projectTasks")
+          .withIndex("by_status", (q: any) => q.eq("tenantId", tenant._id).eq("status", "open"))
+          .collect(),
+        Promise.all(
+          invoiceStatuses.map((status) =>
+            ctx.db
+              .query("invoices")
+              .withIndex("by_status", (q: any) => q.eq("tenantId", tenant._id).eq("status", status))
+              .collect()
+          )
+        ),
+        // Laatste inmetingsstatus per dossier (laagvolume: ~1 per project): nodig om in
+        // de werklijst het overdrachtsmoment te tonen ("Inmeting afgerond — offerte
+        // maken") i.p.v. te blijven hangen op "Inmeting voorbereiden".
+        ctx.db
+          .query("measurements")
+          .withIndex("by_project", (q: any) => q.eq("tenantId", tenant._id))
+          .collect()
+      ]);
 
     const allOpenInvoices: Doc<"invoices">[] = invoicesByStatus.flat();
     const now = Date.now();
@@ -101,6 +109,14 @@ export const dashboard = query({
     // de quotes-collectie (zie hieronder, link naar de offerte), dus die slaan we hier
     // over om dubbeltelling te voorkomen. Alle copy/badges/rangen komen uit de centrale
     // projectWorklistItem() zodat dashboard en cockpit niet kunnen uiteenlopen.
+    const laatsteMetingPerProject = new Map<string, Doc<"measurements">>();
+    for (const meting of alleMetingen) {
+      const key = String(meting.projectId);
+      const huidige = laatsteMetingPerProject.get(key);
+      if (!huidige || meting.gewijzigdOp > huidige.gewijzigdOp) {
+        laatsteMetingPerProject.set(key, meting);
+      }
+    }
     const projectWorkItems = projects.flatMap((project: Doc<"projects">) => {
       if (["quote_draft", "quote_sent"].includes(project.status)) {
         return [];
@@ -108,7 +124,11 @@ export const dashboard = query({
       if (project.status === "quote_accepted" && openTaskProjectIds.has(String(project._id))) {
         return [];
       }
-      const meta = projectWorklistItem(project.status);
+      const meta = projectWorklistItem(project.status, {
+        measurementCompleted: isMeasurementCompleted(
+          laatsteMetingPerProject.get(String(project._id))?.status ?? null
+        )
+      });
       if (!meta) {
         return [];
       }

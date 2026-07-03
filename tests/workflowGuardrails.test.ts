@@ -229,7 +229,9 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     const portalUtils = read("convex/portalUtils.ts");
 
     expect(fieldServiceSource).toContain('project.status === "execution_planned"');
-    expect(fieldServiceSource).toContain("project.uitvoerdatum ?? project.inmeetdatum");
+    // De uitvoer-/montagedatum telt in de hele uitvoerfase mee als komend bezoek
+    // (niet alleen bij de legacy-statussen execution_planned/in_progress).
+    expect(fieldServiceSource).toContain("UITVOER_FASEN.includes(project.status)");
     expect(fieldServiceSource).toContain('quote.status === "accepted"');
     expect(fieldServiceSource).not.toContain('["lead", "quote_accepted", "measurement_planned"]');
     expect(portalUtils).toContain('quote.status === "accepted"');

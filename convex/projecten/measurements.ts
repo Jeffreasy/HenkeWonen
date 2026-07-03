@@ -600,7 +600,7 @@ export const updateMeasurement = mutation({
     force: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
-    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
+    const { externalUserId } = await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
       "user",
       "editor",
       "admin"
@@ -666,6 +666,25 @@ export const updateMeasurement = mutation({
     }
 
     await ctx.db.patch(args.inmetingId, patch);
+
+    // Overdrachtsmoment buitendienst → winkel: de inmeting is afgerond. Zonder dit
+    // event bleef de terugweg volledig stil — geen tijdlijn-spoor, en de winkel bleef
+    // "Inmeting uitvoeren" zien terwijl het werk allang klaar was. Alleen bij de échte
+    // overgang vanuit concept, zodat status heen-en-weer zetten de tijdlijn niet spamt.
+    if (
+      measurement.status === "draft" &&
+      (patch.status === "measured" || patch.status === "reviewed")
+    ) {
+      await addProjectEvent(
+        ctx,
+        args.tenantId,
+        measurement.projectId as Id<"projects">,
+        "measurement_completed",
+        "Inmeting afgerond",
+        externalUserId,
+        measurement.gemetenDoor ? `Ingemeten door ${measurement.gemetenDoor}.` : undefined
+      );
+    }
 
     // Houd de inmeetdatum op het dossier in sync met de inmeting, zodat winkel en
     // buitendienst dezelfde planningsdatum zien (M5: bidirectionele sync).
