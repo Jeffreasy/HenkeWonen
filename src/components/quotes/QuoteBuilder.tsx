@@ -106,7 +106,8 @@ const quoteStatusActions: Array<{
   {
     status: "rejected",
     label: "Afwijzen",
-    description: "De offerte wordt afgewezen en het project krijgt opvolgstatus afgewezen.",
+    description:
+      "De offerte wordt afgewezen en het project krijgt opvolgstatus afgewezen. Nog niet ontvangen leveranciersbestellingen van deze offerte worden mee-geannuleerd.",
     variant: "danger",
     icon: XCircle
   },

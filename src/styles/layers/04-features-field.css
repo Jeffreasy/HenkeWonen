@@ -587,6 +587,34 @@
   margin: 0;
 }
 
+/* Dossierstukken / contactmomenten / bestellingen op het klantbezoek-scherm. */
+.field-dossier-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.field-dossier-list li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  min-width: 0;
+}
+
+.field-dossier-list li > svg {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+  transform: translateY(2px);
+}
+
+.field-dossier-list li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .field-detail-list div {
   display: grid;
   grid-template-columns: minmax(120px, 0.45fr) minmax(0, 1fr);

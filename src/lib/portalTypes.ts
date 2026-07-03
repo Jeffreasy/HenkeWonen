@@ -750,12 +750,29 @@ export type FieldServiceWorkspaceResult = {
   counts: Record<FieldWorkspaceBucket, number>;
 };
 
+/** Bestelling-samenvatting voor de buitendienst: leverstatus zonder inkoopbedragen. */
+export type FieldSupplierOrderSummary = {
+  id: string;
+  bestelnummer?: string;
+  leverancierNaam: string;
+  status: "draft" | "ordered" | "confirmed" | "partially_received" | "received" | "cancelled";
+  besteldOp?: number;
+  verwachteLeverdatumOp?: number;
+  ontvangenOp?: number;
+};
+
 export type FieldProjectWorkspaceResult = {
   project: PortalProject;
   customer: PortalCustomer | null;
   quotes: PortalQuote[];
   templates: QuoteTemplate[];
   tasks: PortalProjectTask[];
+  /** Contactmomenten van de winkel (notities, uitgeleende stalen) — context aan de deur. */
+  contacts: PortalCustomerContact[];
+  /** Actieve dossierstukken (plattegrond, foto's, oude offertes). */
+  attachments: PortalDossierAttachment[];
+  /** Leveranciersbestellingen met leverstatus — relevant voor de montage. */
+  supplierOrders: FieldSupplierOrderSummary[];
   visit: {
     status: string;
     visitAt?: number;

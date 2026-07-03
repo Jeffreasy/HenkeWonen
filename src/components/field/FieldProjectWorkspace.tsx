@@ -22,6 +22,8 @@ import { quoteLineFormToApi } from "../quotes/quote/quoteTypes";
 import { FieldVisitHeader, type FieldUrgency } from "./FieldVisitHeader";
 import { FieldActionPlan } from "./FieldActionPlan";
 import { FieldProjectDetailsGrid } from "./FieldProjectDetailsGrid";
+import { FieldDossierPanel } from "./FieldDossierPanel";
+import { useAutoRefresh } from "../../lib/useAutoRefresh";
 
 type FieldProjectWorkspaceProps = {
   session: AppSession;
@@ -167,6 +169,10 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
     void loadWorkspace();
   }, [loadWorkspace]);
 
+  // De winkel kan intussen herplannen/afzeggen/versturen: ververs bij terugkeer naar
+  // de tab en periodiek, zodat de monteur niet op een verouderd scherm rijdt.
+  useAutoRefresh(loadWorkspace);
+
   // Teamleden voor de monteur-keuze bij het (her)plannen van een inmeetbezoek.
   useEffect(() => {
     let cancelled = false;
@@ -241,7 +247,12 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
   }, [selectedQuoteId, workspace]);
   const draftQuote = workspace?.quotes.find((quote) => quote.status === "draft") ?? null;
   const address = workspace ? customerAddress(workspace) : undefined;
-  const canEditSelectedQuote = canEditQuote && selectedQuote?.status === "draft";
+  // Geen draft-beperking (zelfde semantiek als de winkel-QuoteWorkspace): de
+  // regel-bewerking is in QuoteBuilder al beperkt tot concepten, maar de
+  // statusacties (Akkoord/Afwijzen bij een verstuurde offerte) moeten juist
+  // beschikbaar zijn — de opvolgtaak stuurt de monteur naar de klant en die
+  // moet het akkoord aan de deur kunnen vastleggen.
+  const canEditSelectedQuote = canEditQuote;
   const canCreateConceptQuote = canEditQuote && !draftQuote && !selectedQuote;
 
   async function createConceptQuote() {
@@ -456,7 +467,8 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
   const openTasks = workspace.tasks.filter((task) => task.status === "open");
 
   return (
-    <div className="grid field-project-workspace">
+    // data-field-address voedt de "Route openen"-actie in het FAB-menu.
+    <div className="grid field-project-workspace" data-field-address={address || undefined}>
       {error ? <Alert variant="danger" title="Klantbezoek niet geladen" description={error} /> : null}
 
       <FieldVisitHeader
@@ -479,6 +491,16 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
         address={address}
         visit={workspace.visit}
         projectNotes={workspace.project.klantNotities ?? workspace.project.omschrijving ?? undefined}
+      />
+
+      <FieldDossierPanel
+        session={session}
+        klantId={workspace.customer?.id ?? workspace.project.klantId}
+        projectId={workspace.project.id}
+        contacts={workspace.contacts}
+        attachments={workspace.attachments}
+        supplierOrders={workspace.supplierOrders}
+        onChanged={loadWorkspace}
       />
 
       <section className="field-measurement-section" id="inmeten">

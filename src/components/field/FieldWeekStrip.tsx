@@ -4,6 +4,7 @@ import { api } from "../../../convex/_generated/api";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import type { AppSession } from "../../lib/auth/session";
 import { DAG_MS, WEEKDAG_KORT, startVanWeek, weekdagVan, type Bezoek } from "../../lib/agenda";
+import { useAutoRefresh } from "../../lib/useAutoRefresh";
 
 type FieldWeekStripProps = {
   session: AppSession;
@@ -46,6 +47,10 @@ export function FieldWeekStrip({ session }: FieldWeekStripProps) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Herplanningen door de winkel bereiken de weekstrip anders pas na een handmatige
+  // refresh — ververs bij terugkeer naar de tab en periodiek.
+  useAutoRefresh(load);
 
   // Niets tonen zolang we laden — houdt de Vandaag-pagina compact.
   if (bezoeken === null) {

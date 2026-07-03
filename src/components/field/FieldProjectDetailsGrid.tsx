@@ -1,11 +1,14 @@
 import { formatDate } from "../../lib/dates";
 import { SectionHeader } from "../ui/layout/SectionHeader";
 
+// Veldnamen volgen PortalCustomer (weergaveNaam/telefoon/notities): de workspace geeft
+// de klant 1-op-1 door — de eerdere Engelse propnamen matchten nergens op, waardoor
+// naam, telefoon en klantnotitie altijd "-" toonden.
 type CustomerInfo = {
-  displayName?: string;
-  phone?: string;
+  weergaveNaam?: string;
+  telefoon?: string;
   email?: string;
-  notes?: string;
+  notities?: string;
 } | null;
 
 type VisitInfo = {
@@ -37,11 +40,11 @@ export function FieldProjectDetailsGrid({
         <dl className="field-detail-list">
           <div>
             <dt>Klant</dt>
-            <dd>{customer?.displayName ?? "Onbekende klant"}</dd>
+            <dd>{customer?.weergaveNaam ?? "Onbekende klant"}</dd>
           </div>
           <div>
             <dt>Telefoon</dt>
-            <dd>{customer?.phone ?? "-"}</dd>
+            <dd>{customer?.telefoon ?? "-"}</dd>
           </div>
           <div>
             <dt>E-mail</dt>
@@ -75,7 +78,7 @@ export function FieldProjectDetailsGrid({
           </div>
           <div>
             <dt>Klantnotitie</dt>
-            <dd>{customer?.notes ?? "-"}</dd>
+            <dd>{customer?.notities ?? "-"}</dd>
           </div>
         </dl>
       </article>

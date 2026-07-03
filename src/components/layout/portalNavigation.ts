@@ -24,6 +24,12 @@ export type PortalNavItem = {
   matches?: NavMatch[];
   adminOnly?: boolean;
   quickbar?: boolean;
+  /**
+   * Verbergen voor buitendienst-sessies (workspaceMode "field"), ook in de
+   * winkel-weergave (?full=1): de backend weigert deze domeinen voor het veld
+   * (ensureNotFieldMode), dus de link zou een gegarandeerd dood eind zijn.
+   */
+  hiddenInFieldMode?: boolean;
 };
 
 export type PortalNavGroup = {
@@ -56,7 +62,8 @@ export const portalNavGroups: PortalNavGroup[] = [
         href: "/portal/facturen",
         label: "Facturen",
         icon: Receipt,
-        matches: [{ path: "/portal/facturen" }]
+        matches: [{ path: "/portal/facturen" }],
+        hiddenInFieldMode: true
       },
       {
         href: "/portal/catalogus",
@@ -162,7 +169,11 @@ export function visiblePortalNavGroups(session: AppSession) {
     .filter((group) => !group.adminOnly || canManage(session.role))
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => !item.adminOnly || canManage(session.role))
+      items: group.items.filter(
+        (item) =>
+          (!item.adminOnly || canManage(session.role)) &&
+          (!item.hiddenInFieldMode || session.workspaceMode !== "field")
+      )
     }))
     .filter((group) => group.items.length > 0);
 }
