@@ -10,7 +10,7 @@ import {
   Settings,
   type LucideIcon
 } from "lucide-react";
-import { canManage, type AppSession } from "../../lib/auth/session";
+import { canManage, canViewFinancials, type AppSession } from "../../lib/auth/session";
 
 export type NavMatch = {
   path: string;
@@ -30,6 +30,8 @@ export type PortalNavItem = {
    * (ensureNotFieldMode), dus de link zou een gegarandeerd dood eind zijn.
    */
   hiddenInFieldMode?: boolean;
+  /** Alleen tonen aan rollen die financiële data mogen zien (geen kijker). */
+  requiresFinancials?: boolean;
 };
 
 export type PortalNavGroup = {
@@ -63,7 +65,8 @@ export const portalNavGroups: PortalNavGroup[] = [
         label: "Facturen",
         icon: Receipt,
         matches: [{ path: "/portal/facturen" }],
-        hiddenInFieldMode: true
+        hiddenInFieldMode: true,
+        requiresFinancials: true
       },
       {
         href: "/portal/catalogus",
@@ -172,7 +175,8 @@ export function visiblePortalNavGroups(session: AppSession) {
       items: group.items.filter(
         (item) =>
           (!item.adminOnly || canManage(session.role)) &&
-          (!item.hiddenInFieldMode || session.workspaceMode !== "field")
+          (!item.hiddenInFieldMode || session.workspaceMode !== "field") &&
+          (!item.requiresFinancials || canViewFinancials(session.role))
       )
     }))
     .filter((group) => group.items.length > 0);

@@ -8,6 +8,9 @@ import {
   requireQueryRole
 } from "../authz";
 import {
+  addProjectEvent,
+  closeOpenProjectTasks,
+  hasProjectEvent,
   latestAcceptedQuoteForProject,
   toSupplierOrder,
   toSupplierOrderLine
@@ -230,6 +233,41 @@ export const generateSupplierOrdersFromQuote = mutation({
       warnings.push(`${skipped} leverancier(s) met een reeds geplaatste bestelling overgeslagen.`);
     }
 
+    // Koppel het bestellen aan de dossier-workflow: het aanmaken van échte
+    // bestellingen zette voorheen geen status en geen tijdlijn-event, terwijl de
+    // losse tijdlijn-actie dat juist wél deed zonder bestelling — twee losgekoppelde
+    // sporen. Status alleen vooruit vanuit 'quote_accepted' (geen regressie op
+    // dossiers die al verder zijn), event met dedup zodat hergenereren en de
+    // tijdlijn-actie samen geen dubbele events opleveren.
+    if (created > 0) {
+      const workflowNow = Date.now();
+      if (project.status === "quote_accepted") {
+        await ctx.db.patch(project._id, {
+          status: "ordering",
+          besteldOp: project.besteldOp ?? workflowNow,
+          gewijzigdOp: workflowNow
+        });
+      }
+      const alreadyLogged = await hasProjectEvent(
+        ctx,
+        tenant._id,
+        project._id,
+        "supplier_order_created"
+      );
+      if (!alreadyLogged) {
+        await addProjectEvent(
+          ctx,
+          tenant._id,
+          project._id,
+          "supplier_order_created",
+          "Bestelling aangemaakt",
+          externalUserId,
+          `${created} leveranciersbestelling(en) gegenereerd uit offerte ${quote.offertenummer}.`
+        );
+      }
+      await closeOpenProjectTasks(ctx, tenant._id, project._id, "execution_call", "done");
+    }
+
     return { created, skipped, warnings };
   }
 });
@@ -394,6 +432,20 @@ export const updateSupplierOrderStatus = mutation({
       throw new ConvexError("Bestelling niet gevonden.");
     }
 
+    // Overgangsguard: zonder deze checks kon een (door bv. een offerte-afwijzing)
+    // geannuleerde bestelling bij gelijktijdig werken alsnog op "Ontvangen" worden
+    // gezet — en telde dan weer mee als lopende inkoop.
+    if (order.status === "cancelled") {
+      throw new ConvexError(
+        "Deze bestelling is geannuleerd en kan niet meer worden bijgewerkt. Genereer zo nodig een nieuwe bestelling."
+      );
+    }
+    if (order.status === "received" && args.status !== "partially_received") {
+      throw new ConvexError(
+        "Deze bestelling is al volledig ontvangen. Zet 'm zo nodig terug naar 'Deels ontvangen' om een correctie te doen."
+      );
+    }
+
     const now = Date.now();
     const patch: Record<string, unknown> = { status: args.status, gewijzigdOp: now };
 
@@ -405,6 +457,10 @@ export const updateSupplierOrderStatus = mutation({
     }
     if (args.status === "received") {
       patch.ontvangenOp = now;
+    }
+    // Correctie terug vanuit 'Ontvangen': de ontvangst-datum hoort dan weer leeg.
+    if (order.status === "received" && args.status === "partially_received") {
+      patch.ontvangenOp = undefined;
     }
 
     await ctx.db.patch(order._id, patch);

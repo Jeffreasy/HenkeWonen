@@ -76,9 +76,14 @@ export function canEditCatalog(role: AppRole): boolean {
   return role === "admin" || role === "editor";
 }
 
-/** Whether the user can see financial data (prices, invoice amounts). `editor` and `admin` only. */
+/**
+ * Whether the user can see financial data (invoices, amounts). Everyone except the
+ * read-only `viewer` role — spiegel van de server-side rollenlijst op de
+ * facturen-queries (convex/facturen/core.ts), zodat helper en backend niet
+ * uiteenlopen. Gebruikt voor de Facturen-navigatie en de pagina-guard.
+ */
 export function canViewFinancials(role: AppRole): boolean {
-  return role === "admin" || role === "editor";
+  return role !== "viewer";
 }
 
 /** Whether the user can manage monteur-beschikbaarheid (weekrooster + afwezigheid). `editor` and `admin` — gelijk aan de server-side authz van de agenda-mutaties. */

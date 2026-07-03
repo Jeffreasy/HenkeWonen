@@ -2,6 +2,7 @@
 import PortalLayout from "../../../components/layout/PortalLayout.astro";
 import InvoiceWorkspace from "../../../components/invoices/InvoiceWorkspace";
 import { PageHeader } from "../../../components/ui/layout/PageHeader";
+import { canViewFinancials } from "../../../lib/auth/session";
 
 const session = Astro.locals.session;
 
@@ -14,6 +15,12 @@ if (!session) {
 // waarvan elke query gegarandeerd faalt.
 if (session.workspaceMode === "field") {
   return Astro.redirect("/portal/buitendienst/vandaag");
+}
+
+// Een kijker (viewer) mag geen financiële data zien; de facturen-queries
+// weigeren die rol server-side, dus de pagina zou alleen fouten tonen.
+if (!canViewFinancials(session.role)) {
+  return Astro.redirect("/portal");
 }
 ---
 
