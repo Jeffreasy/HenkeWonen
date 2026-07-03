@@ -418,10 +418,8 @@ export const customerDetail = query({
       contacts: contacts.map((contact: Doc<"customerContacts">) =>
         toContact(tenant.slug, contact)
       ),
-      attachments: await Promise.all(
-        activeAttachments.map((attachment: Doc<"dossierAttachments">) =>
-          toDossierAttachment(ctx, tenant.slug, attachment)
-        )
+      attachments: activeAttachments.map((attachment: Doc<"dossierAttachments">) =>
+        toDossierAttachment(tenant.slug, attachment)
       )
     };
   }

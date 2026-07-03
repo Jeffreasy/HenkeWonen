@@ -159,3 +159,171 @@ test("archiveDossierAttachment verbergt het stuk uit customerDetail", async () =
   expect(detail?.attachments[0].id).toBe(blijft);
   expect(detail?.attachments[0].titel).toBe("Foto situatie");
 });
+
+test("customerDetail geeft geen permanente URL meer terug, alleen hasFile", async () => {
+  const t = convexTest(schema, modules);
+  const { tenantId, klantId } = await seed(t);
+  const now = Date.now();
+
+  // Stuk mét bestand (storageId) en stuk zonder (fysieke-map-verwijzing).
+  await t.run(async (ctx) => {
+    const storageId = await ctx.storage.store(new Blob(["foto-bytes"]));
+    await ctx.db.insert("dossierAttachments", {
+      tenantId,
+      klantId,
+      kind: "photo",
+      titel: "Met bestand",
+      storageId,
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    await ctx.db.insert("dossierAttachments", {
+      tenantId,
+      klantId,
+      kind: "physical_dossier",
+      titel: "Zonder bestand",
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+  });
+
+  const detail = await t.query(api.portal.customerDetail, {
+    tenantSlug: "henke-wonen",
+    klantId,
+    actor
+  });
+
+  const byTitle = new Map(detail?.attachments.map((a) => [a.titel, a]));
+  expect(byTitle.get("Met bestand")?.hasFile).toBe(true);
+  expect(byTitle.get("Zonder bestand")?.hasFile).toBe(false);
+  // Er lekt geen directe/permanente URL meer via de query.
+  for (const attachment of detail?.attachments ?? []) {
+    expect((attachment as Record<string, unknown>).fileUrl).toBeUndefined();
+  }
+});
+
+test("getDossierAttachmentFile levert de storage-URL voor een actief stuk met bestand", async () => {
+  const t = convexTest(schema, modules);
+  const { tenantId, klantId } = await seed(t);
+  const now = Date.now();
+
+  const attachmentId = await t.run(async (ctx) => {
+    const storageId = await ctx.storage.store(new Blob(["pdf-bytes"]));
+    return await ctx.db.insert("dossierAttachments", {
+      tenantId,
+      klantId,
+      kind: "scan",
+      titel: "Werkbon",
+      bestandsnaam: "werkbon.pdf",
+      bestandstype: "application/pdf",
+      storageId,
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+  });
+
+  const file = await t.query(api.portal.getDossierAttachmentFile, {
+    tenantSlug: "henke-wonen",
+    actor,
+    attachmentId
+  });
+
+  expect(file).not.toBeNull();
+  expect(typeof file?.url).toBe("string");
+  expect(file?.url.length).toBeGreaterThan(0);
+  expect(file?.bestandsnaam).toBe("werkbon.pdf");
+  expect(file?.bestandstype).toBe("application/pdf");
+});
+
+test("getDossierAttachmentFile weigert een gearchiveerd of bestandsloos stuk (null)", async () => {
+  const t = convexTest(schema, modules);
+  const { tenantId, klantId } = await seed(t);
+  const now = Date.now();
+
+  const { gearchiveerd, zonderBestand } = await t.run(async (ctx) => {
+    const storageId = await ctx.storage.store(new Blob(["x"]));
+    const gearchiveerd = await ctx.db.insert("dossierAttachments", {
+      tenantId,
+      klantId,
+      kind: "scan",
+      titel: "Gearchiveerd",
+      storageId,
+      status: "archived",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    const zonderBestand = await ctx.db.insert("dossierAttachments", {
+      tenantId,
+      klantId,
+      kind: "physical_dossier",
+      titel: "Alleen verwijzing",
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    return { gearchiveerd, zonderBestand };
+  });
+
+  expect(
+    await t.query(api.portal.getDossierAttachmentFile, {
+      tenantSlug: "henke-wonen",
+      actor,
+      attachmentId: gearchiveerd
+    })
+  ).toBeNull();
+  expect(
+    await t.query(api.portal.getDossierAttachmentFile, {
+      tenantSlug: "henke-wonen",
+      actor,
+      attachmentId: zonderBestand
+    })
+  ).toBeNull();
+});
+
+test("getDossierAttachmentFile lekt geen bestand van een andere tenant (null)", async () => {
+  const t = convexTest(schema, modules);
+  await seed(t);
+  const now = Date.now();
+
+  // Een tweede tenant met een eigen klant + dossierstuk-met-bestand.
+  const vreemdAttachmentId = await t.run(async (ctx) => {
+    const andereTenant = await ctx.db.insert("tenants", {
+      slug: "andere-winkel",
+      naam: "Andere Winkel",
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    const andereKlant = await ctx.db.insert("customers", {
+      tenantId: andereTenant,
+      type: "private",
+      weergaveNaam: "Klant B",
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    const storageId = await ctx.storage.store(new Blob(["geheim"]));
+    return await ctx.db.insert("dossierAttachments", {
+      tenantId: andereTenant,
+      klantId: andereKlant,
+      kind: "scan",
+      titel: "Vreemd stuk",
+      storageId,
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+  });
+
+  // Actor van henke-wonen mag het stuk van de andere tenant niet kunnen ophalen.
+  expect(
+    await t.query(api.portal.getDossierAttachmentFile, {
+      tenantSlug: "henke-wonen",
+      actor,
+      attachmentId: vreemdAttachmentId
+    })
+  ).toBeNull();
+});

@@ -618,12 +618,25 @@ export type PortalDossierAttachment = {
   bestandsnaam?: string;
   bestandstype?: string;
   bestandsgrootteBytes?: number;
-  fileUrl?: string;
+  /**
+   * Of er een fysiek bestand aan dit stuk hangt. Bewust géén directe URL meer: de bytes
+   * worden per request achter de sessie opgehaald via de proxyroute (AVG). Bouw de link
+   * met `dossierBestandHref(id)`.
+   */
+  hasFile: boolean;
   status: "active" | "archived";
   createdByExternalUserId?: string;
   aangemaaktOp: number;
   gewijzigdOp: number;
 };
+
+/**
+ * Link naar de sessie-beveiligde proxyroute die de bytes van een dossierstuk streamt.
+ * Zie src/pages/portal/dossierbestand/[id].ts.
+ */
+export function dossierBestandHref(attachmentId: string): string {
+  return `/portal/dossierbestand/${attachmentId}`;
+}
 
 export type PortalWorkflowEvent = {
   id: string;
