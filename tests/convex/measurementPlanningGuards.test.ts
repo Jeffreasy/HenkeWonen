@@ -280,3 +280,39 @@ test("akkoord verwerken accepteert de expliciet meegegeven offerte, niet 'de nie
   // De sibling-cancel ruimt het tussendoor-concept op (bestaand gedrag).
   expect(nieuwere?.status).toBe("cancelled");
 });
+
+test("datum en monteur in één update: de guard toetst de NIEUWE monteur op capaciteit", async () => {
+  stubAuth();
+  const t = convexTest(schema, modules);
+  const ids = await base(t, "measurement_planned");
+  const now = Date.now();
+  const inmeetdag = volgendeInmeetdag();
+  const measurementId = await t.run(async (ctx) => {
+    const wimId = await ctx.db.insert("users", {
+      tenantId: ids.tenantId, externalUserId: "wim", email: "wim@henke.nl", naam: "Wim",
+      role: "user", toonInAgenda: true, aangemaaktOp: now, gewijzigdOp: now
+    });
+    // Wims dag zit al vol (volledige woning = 2 van 2 plekken) op een ander dossier.
+    const anderProjectId = await ctx.db.insert("projects", {
+      tenantId: ids.tenantId, klantId: ids.customerId, titel: "Volle dag",
+      status: "measurement_planned", aangemaaktOp: now, gewijzigdOp: now
+    });
+    await ctx.db.insert("measurements", {
+      tenantId: ids.tenantId, projectId: anderProjectId, klantId: ids.customerId,
+      status: "draft", inmeetdatum: inmeetdag, omvang: "volledig",
+      gemetenDoor: "Wim", gemetenDoorUserId: wimId, aangemaaktOp: now, gewijzigdOp: now
+    });
+    // Doel-inmeting: nog zonder datum en zonder monteur.
+    return ctx.db.insert("measurements", {
+      tenantId: ids.tenantId, projectId: ids.projectId, klantId: ids.customerId,
+      status: "draft", aangemaaktOp: now, gewijzigdOp: now
+    });
+  });
+
+  await expect(
+    t.mutation(api.projecten.measurements.updateMeasurement, {
+      tenantId: ids.tenantId, actor, inmetingId: measurementId,
+      inmeetdatum: inmeetdag, gemetenDoor: "Wim"
+    })
+  ).rejects.toThrow(/vol/i);
+});
