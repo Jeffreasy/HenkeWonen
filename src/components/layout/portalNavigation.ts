@@ -194,6 +194,27 @@ export function quickbarPortalItems(groups: PortalNavGroup[]) {
   return groups.flatMap((group) => group.items).filter((item) => item.quickbar);
 }
 
+export function groupHasActiveItem(group: PortalNavGroup, currentPathname: string) {
+  return group.items.some((item) => isActivePortalItem(currentPathname, item));
+}
+
+/**
+ * Eén bron-van-waarheid voor "staat deze navigatiegroep open": een EXPLICIETE
+ * gebruikerskeuze (openGroups) wint altijd; zonder keuze valt 'ie terug op
+ * "bevat de actieve pagina". Voorheen won de actieve pagina áltijd, waardoor de
+ * Beheer-groep op een beheer-pagina nooit dicht kon — de toggle leek kapot.
+ */
+export function isPortalGroupOpen(
+  group: PortalNavGroup,
+  currentPathname: string,
+  openGroups: Record<string, boolean>
+) {
+  if (!group.collapsible) {
+    return true;
+  }
+  return openGroups[group.id] ?? groupHasActiveItem(group, currentPathname);
+}
+
 export function roleLabel(role: AppSession["role"]) {
   const labels: Record<AppSession["role"], string> = {
     viewer: "Kijker",

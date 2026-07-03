@@ -1,7 +1,9 @@
 import { ChevronDown } from "lucide-react";
 import { classNames } from "../ui/classNames";
 import {
+  groupHasActiveItem,
   isActivePortalItem,
+  isPortalGroupOpen,
   type PortalNavGroup
 } from "./portalNavigation";
 
@@ -13,10 +15,6 @@ type SidebarNavProps = {
   onLinkClick: () => void;
 };
 
-function groupHasActiveItem(group: PortalNavGroup, currentPathname: string) {
-  return group.items.some((item) => isActivePortalItem(currentPathname, item));
-}
-
 export function SidebarNav({
   visibleNavGroups,
   currentPathname,
@@ -24,11 +22,11 @@ export function SidebarNav({
   onToggleGroup,
   onLinkClick
 }: SidebarNavProps) {
+  // Gedeeld met Sidebar.toggleGroup (isPortalGroupOpen): een expliciete keuze
+  // wint van "groep bevat de actieve pagina", anders kon de Beheer-groep op een
+  // beheer-pagina nooit dicht.
   function isGroupOpen(group: PortalNavGroup) {
-    if (!group.collapsible) {
-      return true;
-    }
-    return groupHasActiveItem(group, currentPathname) || (openGroups[group.id] ?? false);
+    return isPortalGroupOpen(group, currentPathname, openGroups);
   }
 
   return (
