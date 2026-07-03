@@ -998,6 +998,10 @@ export default defineSchema({
       v.literal("measurement_planned"),
       v.literal("quote_sent"),
       v.literal("quote_accepted"),
+      // Afwijzing/verloop van een offerte: zonder dit event was een afgewezen
+      // offerte onzichtbaar in de tijdlijn (stil dood einde tussen winkel en
+      // buitendienst).
+      v.literal("quote_rejected"),
       v.literal("thank_you_letter_sent"),
       v.literal("execution_planned"),
       v.literal("supplier_order_created"),
