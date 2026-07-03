@@ -110,6 +110,86 @@ test("createInvoiceFromQuote is idempotent: één factuur per offerte met gatloo
 
   const invoiceCount = await t.run(async (ctx) => (await ctx.db.query("invoices").collect()).length);
   expect(invoiceCount).toBe(1);
+
+  // De vervaldatum-guard geldt alleen voor een nieuwe factuur: het idempotente
+  // "bestaat al"-pad gebruikt existing.vervaldatum en mag dus niet stranden.
+  const repeatWithBadDate = await t.mutation(api.facturen.core.createInvoiceFromQuote, {
+    ...args,
+    vervaldatum: Number.NaN
+  });
+  expect(repeatWithBadDate.alreadyExists).toBe(true);
+});
+
+test("createInvoiceFromQuote weigert een ongeldige vervaldatum voor een nieuwe factuur", async () => {
+  vi.stubEnv("AUTHZ_TOKEN_SECRET", "");
+  vi.stubEnv("ALLOW_DEV_AUTHZ_TOKENS", "true");
+
+  const t = convexTest(schema, modules);
+  const now = Date.now();
+  const externalUserId = "dev-user-1";
+
+  const quoteId = await t.run(async (ctx) => {
+    const tenantId = await ctx.db.insert("tenants", {
+      slug: "henke-wonen",
+      naam: "Henke Wonen",
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    await ctx.db.insert("users", {
+      tenantId,
+      externalUserId,
+      email: "admin@henke.nl",
+      role: "admin",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    const customerId = await ctx.db.insert("customers", {
+      tenantId,
+      type: "private",
+      weergaveNaam: "Testklant",
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    const projectId = await ctx.db.insert("projects", {
+      tenantId,
+      klantId: customerId,
+      titel: "Testproject",
+      status: "quote_accepted",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    return await ctx.db.insert("quotes", {
+      tenantId,
+      projectId,
+      klantId: customerId,
+      offertenummer: "OFF-2026-2",
+      titel: "Testofferte",
+      status: "accepted",
+      subtotaalExBtw: 100,
+      btwTotaal: 21,
+      totaalInclBtw: 121,
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+  });
+
+  const actor = { externalUserId, authzToken: `dev.actor.henke-wonen.${externalUserId}` };
+
+  for (const vervaldatum of [Number.NaN, -1]) {
+    await expect(
+      t.mutation(api.facturen.core.createInvoiceFromQuote, {
+        tenantSlug: "henke-wonen",
+        actor,
+        quoteId,
+        vervaldatum
+      })
+    ).rejects.toThrow(/[Vv]ervaldatum/u);
+  }
+
+  const invoiceCount = await t.run(async (ctx) => (await ctx.db.query("invoices").collect()).length);
+  expect(invoiceCount).toBe(0);
 });
 
 test("createInvoice weigert €0-facturen en een ongeldige vervaldatum", async () => {
@@ -174,16 +254,28 @@ test("createInvoice weigert €0-facturen en een ongeldige vervaldatum", async (
     })
   ).rejects.toThrow(/€0/u);
 
-  // NaN-vervaldatum zou een factuur zonder bruikbare vervaldag opleveren.
+  // Negatieve bedragen zijn geen geldige factuur (creditering loopt niet via deze mutatie).
   await expect(
     t.mutation(api.facturen.core.createInvoice, {
       ...base,
-      vervaldatum: Number.NaN,
-      subtotaalExBtw: 100,
-      btwTotaal: 21,
-      totaalInclBtw: 121
+      subtotaalExBtw: -100,
+      btwTotaal: -21,
+      totaalInclBtw: -121
     })
-  ).rejects.toThrow(/[Vv]ervaldatum/u);
+  ).rejects.toThrow(/niet-negatieve/u);
+
+  // NaN- of negatieve vervaldatum zou een factuur zonder bruikbare vervaldag opleveren.
+  for (const vervaldatum of [Number.NaN, -1]) {
+    await expect(
+      t.mutation(api.facturen.core.createInvoice, {
+        ...base,
+        vervaldatum,
+        subtotaalExBtw: 100,
+        btwTotaal: 21,
+        totaalInclBtw: 121
+      })
+    ).rejects.toThrow(/[Vv]ervaldatum/u);
+  }
 
   // Geldige factuur blijft gewoon werken.
   const created = await t.mutation(api.facturen.core.createInvoice, {

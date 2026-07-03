@@ -339,10 +339,6 @@ export const createInvoiceFromQuote = mutation({
       throw new ConvexError("Factuur kan alleen worden aangemaakt voor een geaccepteerde offerte.");
     }
 
-    if (!Number.isFinite(args.vervaldatum) || args.vervaldatum <= 0) {
-      throw new ConvexError("Vervaldatum is ongeldig.");
-    }
-
     const project = await ctx.db.get(quote.projectId);
 
     if (!project || project.tenantId !== tenant._id) {
@@ -370,6 +366,12 @@ export const createInvoiceFromQuote = mutation({
         invoiceNumber: existing.factuurnummer,
         alreadyExists: true
       };
+    }
+
+    // Pas ná het idempotente "bestaat al"-pad: die tak gebruikt existing.vervaldatum
+    // en mag niet stranden op een parameter die daar nooit wordt geraadpleegd.
+    if (!Number.isFinite(args.vervaldatum) || args.vervaldatum <= 0) {
+      throw new ConvexError("Vervaldatum is ongeldig.");
     }
 
     const invoiceNumber = await nextInvoiceNumber(ctx, tenant._id);
