@@ -715,7 +715,11 @@
   gap: var(--space-1);
 }
 
-.nav-group-items-collapsed {
+/* Dubbele klasse voor specificiteit: de mobiele laag (17-responsive.css) zet
+   `.nav-group-items` op display: grid en won anders van deze inklap-regel,
+   waardoor de Beheer-groep op telefoon niet kon dichtklappen (de toggle
+   leek kapot terwijl desktop gewoon werkte). */
+.nav-group-items.nav-group-items-collapsed {
   display: none;
 }
 

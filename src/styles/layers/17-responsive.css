@@ -111,7 +111,8 @@
   .mobile-quickbar {
     position: fixed;
     right: var(--space-3);
-    bottom: var(--space-3);
+    /* iPhones met home-indicator: quickbar boven de veegzone houden. */
+    bottom: max(var(--space-3), calc(var(--space-2) + env(safe-area-inset-bottom, 0px)));
     left: var(--space-3);
     z-index: 45;
     display: grid;
@@ -225,7 +226,8 @@
   .field-quickbar {
     position: fixed;
     right: var(--space-3);
-    bottom: var(--space-3);
+    /* iPhones met home-indicator: quickbar boven de veegzone houden. */
+    bottom: max(var(--space-3), calc(var(--space-2) + env(safe-area-inset-bottom, 0px)));
     left: var(--space-3);
     z-index: 59;
     display: grid;

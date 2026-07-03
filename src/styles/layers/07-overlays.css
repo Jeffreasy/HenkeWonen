@@ -550,16 +550,30 @@
   flex-direction: column;
   align-items: flex-end;
   gap: var(--space-3);
+  /* De container zelf mag GEEN tikken vangen: het (gesloten, onzichtbare) menu geeft
+     hem de maat van zijn breedste item, waardoor hij op mobiel een strook van bijna
+     de volle schermbreedte boven de quickbar bedekte — alles daaronder (bv. de
+     Klantversie/Voorwaarden-dropdowns onderaan de offertepagina) was onaantikbaar.
+     pointer-events erft door, dus de échte interactieve delen (knop, backdrop,
+     geopend menu) zetten 'm hieronder expliciet weer aan. */
+  pointer-events: none;
+}
+
+/* De FAB-knop zelf blijft uiteraard klikbaar (container staat op none). */
+.quick-action-fab {
+  pointer-events: auto;
 }
 
 /* Transparante full-screen backdrop: sluit menu bij klik buiten container.
-   Positie: fixed, achter de container-children via stacking context. */
+   Positie: fixed, achter de container-children via stacking context. Alleen
+   aanwezig bij een geopend menu; moet buiten-klikken dus wél vangen. */
 .quick-action-fab-backdrop {
   position: fixed;
   inset: 0;
   z-index: 0;
   background: transparent;
   cursor: default;
+  pointer-events: auto;
 }
 
 /* Het actiemenu — menu groeit omhoog, start verborgen iets lager */
@@ -850,6 +864,10 @@ html[data-theme="dark"] .quick-action-fab:hover {
   flex-direction: column;
   align-items: flex-end;
   gap: var(--space-3);
+  /* Zelfde tik-doorlaat als .quick-action-fab-container: de onzichtbare menu-maat
+     mag geen strook van het scherm blokkeren (knop/backdrop/open menu zetten
+     pointer-events zelf weer aan via de gedeelde .quick-action-*-regels). */
+  pointer-events: none;
 }
 
 /* Route-actie icon: groen tint */
