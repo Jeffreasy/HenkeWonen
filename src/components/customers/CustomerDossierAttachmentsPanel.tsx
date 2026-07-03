@@ -1,9 +1,10 @@
 import { FileText, Plus, Save, Trash2, Upload } from "lucide-react";
 import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
-import type {
-  DossierAttachmentKind,
-  PortalDossierAttachment,
-  PortalProject
+import {
+  dossierBestandHref,
+  type DossierAttachmentKind,
+  type PortalDossierAttachment,
+  type PortalProject
 } from "../../lib/portalTypes";
 import { Badge, type BadgeVariant } from "../ui/data-display/Badge";
 import { Button } from "../ui/forms/Button";
@@ -272,10 +273,10 @@ export function CustomerDossierAttachmentsPanel({
                   </div>
                 </div>
                 <div className="dossier-attachment-card-actions">
-                  {attachment.fileUrl ? (
+                  {attachment.hasFile ? (
                     <a
                       className="ui-button ui-button-secondary ui-button-sm"
-                      href={attachment.fileUrl}
+                      href={dossierBestandHref(attachment.id)}
                       rel="noreferrer"
                       target="_blank"
                     >

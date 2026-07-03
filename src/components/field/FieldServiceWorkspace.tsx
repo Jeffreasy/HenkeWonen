@@ -247,7 +247,9 @@ export default function FieldServiceWorkspace({
       return;
     }
 
-    setIsLoading(true);
+    // Bewust geen setIsLoading(true): het skeleton is er alleen voor de eerste lading.
+    // Herladingen (auto-refresh, na een intake) verversen stil, anders klapt de
+    // kaartenlijst elke paar minuten terug naar het skeleton.
     setError(null);
 
     try {

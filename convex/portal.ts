@@ -293,7 +293,8 @@ export {
 export {
   generateDossierAttachmentUploadUrl,
   createDossierAttachment,
-  archiveDossierAttachment
+  archiveDossierAttachment,
+  getDossierAttachmentFile
 } from "./dossiers/attachments";
 export {
   generateSupplierOrdersFromQuote,

@@ -11,7 +11,8 @@ type DeleteCustomerDialogProps = {
   customerName: string;
   isBusy?: boolean;
   onCancel: () => void;
-  onConfirm: () => void | Promise<void>;
+  /** Krijgt de door de gebruiker getypte naam mee — de server hercontroleert die onafhankelijk. */
+  onConfirm: (typedName: string) => void | Promise<void>;
 };
 
 /**
@@ -81,7 +82,7 @@ export function DeleteCustomerDialog({
             leftIcon={<Trash2 size={16} aria-hidden="true" />}
             disabled={!matches || isBusy}
             isLoading={isBusy}
-            onClick={() => void onConfirm()}
+            onClick={() => void onConfirm(typedName)}
           >
             Definitief verwijderen
           </Button>

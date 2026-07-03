@@ -1,4 +1,5 @@
 import type { AppRole, AppSession, AppWorkspaceMode } from "./session";
+import { laventeCareAuthTimeoutMs } from "./laventeCareConfig";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -354,9 +355,20 @@ export async function getSessionFromMeEndpoint(
     headers.authorization = `Bearer ${authToken}`;
   }
 
-  const response = await fetch(meUrl, {
-    headers
-  });
+  // Begrensd: dit staat in het hot path van elke /portal-request. Zonder timeout
+  // hangt de hele app zodra de auth-dienst niet reageert; met timeout vangt de
+  // middleware dit af met een nette storingspagina.
+  let response: Response;
+  try {
+    response = await fetch(meUrl, {
+      headers,
+      signal: AbortSignal.timeout(laventeCareAuthTimeoutMs())
+    });
+  } catch (fetchError) {
+    throw new Error("LaventeCare AuthSystem is niet bereikbaar (timeout of netwerkfout).", {
+      cause: fetchError
+    });
+  }
 
   if (response.status === 401 || response.status === 403) {
     console.warn("LaventeCare /auth/me weigerde sessie.", {

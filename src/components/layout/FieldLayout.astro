@@ -4,6 +4,7 @@ import "../../styles/global.css";
 import ThemeScript from "./ThemeScript.astro";
 import FieldNavigation from "./FieldNavigation";
 import { ShellLoadingController } from "./ShellLoadingController";
+import { ToastContainer } from "../ui/overlays/ToastContainer";
 import { FieldFab } from "../field/FieldFab";
 import type { AppSession } from "../../lib/auth/session";
 
@@ -38,6 +39,8 @@ const theme = Astro.cookies.get("theme")?.value || "light";
         </div>
       </main>
       <ShellLoadingController client:load />
+      <!-- Toast container — vangt portal:toast-events van alle veld-islands (foto-upload, inplannen, statuswijzigingen) -->
+      <ToastContainer client:load />
       <!-- Field FAB — contextgevoelig: lijstscherm vs. projectscherm -->
       <FieldFab client:load session={session} pathname={pathname} />
     </div>

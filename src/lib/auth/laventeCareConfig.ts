@@ -47,6 +47,17 @@ export function laventeCareLoginUrl() {
   return cleanValue(import.meta.env.LAVENTECARE_LOGIN_URL);
 }
 
+// Ruim genoeg voor een cold start van de auth-dienst (Render), maar begrensd:
+// zonder timeout hangt elke /portal-request oneindig als LaventeCare niet reageert.
+const DEFAULT_AUTH_TIMEOUT_MS = 15_000;
+
+export function laventeCareAuthTimeoutMs() {
+  const raw = cleanValue(import.meta.env.LAVENTECARE_AUTH_TIMEOUT_MS);
+  const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_AUTH_TIMEOUT_MS;
+}
+
 export function hasLaventeCareApiConnection() {
   return Boolean(laventeCareTenantId());
 }

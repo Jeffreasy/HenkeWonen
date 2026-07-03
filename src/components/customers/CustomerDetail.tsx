@@ -329,8 +329,9 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     }
   }
 
-  async function handleDeleteCustomer() {
-    if (!detail?.customer) {
+  async function handleDeleteCustomer(typedName: string) {
+    // Re-entrancy-guard: een snelle dubbelklik vóór de re-render mag geen tweede mutation starten.
+    if (!detail?.customer || isDeleting) {
       return;
     }
 
@@ -351,7 +352,9 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         tenantSlug: session.tenantId,
         actor: mutationActorFromSession(session),
         klantId: customerId,
-        bevestigNaam: detail.customer.weergaveNaam
+        // Bewust de gebruikersinvoer, niet de server-opgehaalde naam: anders vergelijkt de
+        // servercheck het record met zichzelf en beschermt hij niet tegen een verkeerd id.
+        bevestigNaam: typedName
       })) as { mode?: "deleted" | "anonymized" };
 
       const anonymized = result?.mode === "anonymized";

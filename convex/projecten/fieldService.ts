@@ -662,11 +662,9 @@ export const fieldProjectWorkspace = query({
       contacts: (contacts as Doc<"customerContacts">[]).map((contact) =>
         toContact(tenant.slug, contact)
       ),
-      attachments: await Promise.all(
-        (attachments as Doc<"dossierAttachments">[])
-          .filter((attachment) => attachment.status === "active")
-          .map((attachment) => toDossierAttachment(ctx, tenant.slug, attachment))
-      ),
+      attachments: (attachments as Doc<"dossierAttachments">[])
+        .filter((attachment) => attachment.status === "active")
+        .map((attachment) => toDossierAttachment(tenant.slug, attachment)),
       supplierOrders: (orders as Doc<"supplierOrders">[])
         .sort((left, right) => right.aangemaaktOp - left.aangemaaktOp)
         .map((order) => ({
