@@ -8,7 +8,7 @@ import { createConvexHttpClient } from "../../lib/convex/client";
 import { isUnitCompatible } from "../../../convex/catalog/pricingRules";
 import type { SubmitEventLike } from "../../lib/events";
 import { calculateIncVat, formatEuro, roundMoney } from "../../lib/money";
-import { showToast } from "../../lib/toast";
+import { errorDescription, showToast } from "../../lib/toast";
 import {
   MEASUREMENT_AUTOSTART_PARAM,
   shouldAutostartMeasurement
@@ -580,7 +580,36 @@ export default function MeasurementPanel({
 
     const context = requireClientAndMeasurement();
 
-    if (!context) {
+    if (!context || !measurement) {
+      return;
+    }
+
+    // Alleen de velden meesturen die t.o.v. de geladen inmeting ZIJN GEWIJZIGD.
+    // Winkel en buitendienst werken elk op een eigen (one-shot geladen) kopie; alles
+    // altijd meesturen betekende last-write-wins waarbij een verouderd leeg veld de
+    // notities of monteursnaam van de ander stilletjes wiste.
+    const wijzigingen: {
+      status?: MeasurementStatus;
+      inmeetdatum?: number | null;
+      gemetenDoor?: string;
+      notities?: string;
+    } = {};
+    if (measurementStatus !== measurement.status) {
+      wijzigingen.status = measurementStatus;
+    }
+    if (measurementDate !== toDateInputValue(measurement.inmeetdatum)) {
+      // Leeg veld = afspraak expliciet afzeggen (null; undefined valt uit de request).
+      wijzigingen.inmeetdatum = fromDateInputValue(measurementDate) ?? null;
+    }
+    if (measuredBy.trim() !== (measurement.gemetenDoor ?? "")) {
+      wijzigingen.gemetenDoor = measuredBy.trim();
+    }
+    if (measurementNotes.trim() !== (measurement.notities ?? "")) {
+      wijzigingen.notities = measurementNotes.trim();
+    }
+
+    if (Object.keys(wijzigingen).length === 0) {
+      showToast({ title: "Geen wijzigingen om op te slaan", tone: "info" });
       return;
     }
 
@@ -592,16 +621,13 @@ export default function MeasurementPanel({
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
         inmetingId: context.measurementId,
-        status: measurementStatus,
-        inmeetdatum: fromDateInputValue(measurementDate),
-        gemetenDoor: measuredBy.trim(),
-        notities: measurementNotes.trim()
+        ...wijzigingen
       });
       showToast({ title: "Inmeting bijgewerkt", tone: "success" });
       await loadMeasurement();
     } catch (saveError) {
       console.error(saveError);
-      setError("Inmeting kon niet worden bijgewerkt.");
+      setError(errorDescription(saveError) ?? "Inmeting kon niet worden bijgewerkt.");
     } finally {
       setIsSaving(false);
     }
@@ -953,21 +979,31 @@ export default function MeasurementPanel({
                 </p>
                 <div className="responsive-form-row" style={{ marginTop: 12 }}>
                   <Field htmlFor="measurement-status" label="Status">
-                    <Select
-                      id="measurement-status"
-                      value={measurementStatus}
-                      onChange={(event) =>
-                        setMeasurementStatus(event.target.value as MeasurementStatus)
-                      }
-                    >
-                      {(["draft", "measured", "reviewed", "converted_to_quote"] as const).map(
-                        (status) => (
+                    {/* 'Verwerkt naar offerte' wordt automatisch beheerd door de
+                        offerte-import (en teruggedraaid als regels weer vrijkomen);
+                        handmatig kiezen gaf tegenstrijdige signalen richting de
+                        buitendienst-kaart. */}
+                    {measurement.status === "converted_to_quote" ? (
+                      <Select id="measurement-status" value="converted_to_quote" disabled>
+                        <option value="converted_to_quote">
+                          {formatMeasurementStatus("converted_to_quote")}
+                        </option>
+                      </Select>
+                    ) : (
+                      <Select
+                        id="measurement-status"
+                        value={measurementStatus}
+                        onChange={(event) =>
+                          setMeasurementStatus(event.target.value as MeasurementStatus)
+                        }
+                      >
+                        {(["draft", "measured", "reviewed"] as const).map((status) => (
                           <option key={status} value={status}>
                             {formatMeasurementStatus(status)}
                           </option>
-                        )
-                      )}
-                    </Select>
+                        ))}
+                      </Select>
+                    )}
                   </Field>
                   <Field htmlFor="measurement-date" label="Inmeetdatum">
                     <Input

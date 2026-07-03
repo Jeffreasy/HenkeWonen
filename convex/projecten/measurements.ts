@@ -15,6 +15,12 @@ import {
   resolveMonteurVoorMeting
 } from "../beheer/agenda";
 import { addProjectEvent, assertValidRoomDimensions, hasProjectEvent } from "../portalUtils";
+import {
+  calculatorForLine,
+  deriveLineForRoom,
+  paramsFromInvoer,
+  type RoomDimensions
+} from "../../src/lib/quotes/roomLineDerivation";
 import type { Doc, Id } from "../_generated/dataModel";
 
 /** Genormaliseerde ruimtenaam voor dedup (trim + lowercase). */
@@ -120,6 +126,66 @@ export async function syncProjectRoomFromMeasurement(
   if (typeof fields.omtrekM === "number") patch.omtrekMeter = fields.omtrekM;
 
   await ctx.db.patch(projectRuimteId, patch);
+}
+
+/**
+ * Herrekent de niet-handmatige, nog niet geconverteerde meetregels van een ruimte met de
+ * actuele ruimtematen — de belofte van `handmatigAangepast` (schema): automatische regels
+ * bewegen mee bij een maatcorrectie. Zonder dit stroomden verouderde hoeveelheden de
+ * offerte in (klant krijgt te weinig/te veel besteld). Regels die niet automatisch
+ * herleidbaar zijn (maatwerk/gordijnen/trap) of waarvan de maten onvolledig raken,
+ * blijven ongemoeid. Retourneert het aantal herrekende regels voor terugkoppeling.
+ */
+async function recalculateLinesForRoom(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  room: Doc<"measurementRooms">
+): Promise<number> {
+  const lines = await ctx.db
+    .query("measurementLines")
+    .withIndex("by_room", (q: any) => q.eq("tenantId", tenantId).eq("ruimteId", room._id))
+    .collect();
+  const dims: RoomDimensions = {
+    breedteM: room.breedteM,
+    lengteM: room.lengteM,
+    hoogteM: room.hoogteM,
+    oppervlakteM2: room.oppervlakteM2,
+    omtrekM: room.omtrekM
+  };
+
+  let recalculated = 0;
+  const now = Date.now();
+  for (const line of lines as Doc<"measurementLines">[]) {
+    if (line.handmatigAangepast || line.quotePreparationStatus === "converted") {
+      continue;
+    }
+    const calculator = calculatorForLine(line);
+    if (!calculator) {
+      continue;
+    }
+    const derived = deriveLineForRoom(
+      calculator,
+      dims,
+      paramsFromInvoer((line.invoer ?? {}) as Record<string, unknown>)
+    );
+    if (derived.validationError) {
+      continue; // maten (nu) onvolledig voor deze berekening: regel laten staan
+    }
+    if (derived.aantal === line.aantal && derived.eenheid === line.eenheid) {
+      continue;
+    }
+    await ctx.db.patch(line._id, {
+      invoer: derived.invoer,
+      resultaat: derived.resultaat,
+      snijverliesPct: derived.snijverliesPct,
+      aantal: derived.aantal,
+      eenheid: derived.eenheid,
+      gewijzigdOp: now
+    });
+    recalculated += 1;
+  }
+
+  return recalculated;
 }
 
 const measurementStatus = v.union(
@@ -338,6 +404,11 @@ export const listReadyForQuoteByProject = query({
       .collect();
     const latestMeasurement = measurements[0] ?? null;
     const readyLines = [];
+    // Aantal regels dat nog in concept staat: de import-picker toont alleen
+    // ready_for_quote-regels, dus zonder deze telling ziet de winkel niet dat de
+    // inmeting nog niet-klaargezette regels bevat en gaat een onvolledige offerte
+    // de deur uit zonder enige waarschuwing.
+    let draftLineCount = 0;
 
     for (const measurement of measurements) {
       const [rooms, lines] = await Promise.all([
@@ -357,6 +428,9 @@ export const listReadyForQuoteByProject = query({
       const roomsById = new Map(rooms.map((room: any) => [String(room._id), room]));
 
       for (const line of lines) {
+        if (line.quotePreparationStatus === "draft") {
+          draftLineCount += 1;
+        }
         if (line.quotePreparationStatus !== "ready_for_quote") {
           continue;
         }
@@ -373,7 +447,8 @@ export const listReadyForQuoteByProject = query({
 
     return {
       measurement: latestMeasurement,
-      readyLines: readyLines.sort((left, right) => left.line.aangemaaktOp - right.line.aangemaaktOp)
+      readyLines: readyLines.sort((left, right) => left.line.aangemaaktOp - right.line.aangemaaktOp),
+      draftLineCount
     };
   }
 });
@@ -556,7 +631,16 @@ export const updateMeasurement = mutation({
       gewijzigdOp: Date.now()
     };
 
-    if (args.status !== undefined) {
+    if (args.status !== undefined && args.status !== measurement.status) {
+      // 'Verwerkt naar offerte' wordt automatisch beheerd (gezet bij de offerte-import,
+      // teruggedraaid als de regels weer vrijkomen). Handmatig die status in- of
+      // uitstappen gaf tegenstrijdige signalen tussen het winkel-paneel en de
+      // urgentiekleur op de buitendienst-kaart.
+      if (args.status === "converted_to_quote" || measurement.status === "converted_to_quote") {
+        throw new ConvexError(
+          "De status 'Verwerkt naar offerte' wordt automatisch beheerd bij het verwerken naar (of terugtrekken uit) een offerte en kan niet handmatig worden gezet."
+        );
+      }
       patch.status = args.status;
     }
 
@@ -665,12 +749,55 @@ export const addMeasurementRoom = mutation({
       .collect();
     const now = Date.now();
 
-    // Idempotent: dezelfde ruimte niet dubbel toevoegen (bv. dubbelklik op een
-    // preset-knop of twee apparaten). Match op genormaliseerde naam binnen deze inmeting.
+    // Idempotent op naam, maar als UPSERT: wie op locatie dezelfde ruimtenaam mét maten
+    // invoert (bv. de winkel had "Woonkamer" alvast zonder maten voorbereid) verwacht dat
+    // die maten landen — voorheen werden ze stil weggegooid en meldde de UI even later
+    // "Deze ruimtes missen nog maten". Alleen meegegeven velden worden toegepast; een
+    // pure dubbelklik (identieke invoer) blijft een no-op.
     const duplicateRoom = rooms.find(
       (room) => room.naam.trim().toLowerCase() === args.naam.trim().toLowerCase()
     );
     if (duplicateRoom) {
+      const dupPatch: Record<string, unknown> = {};
+      if (args.verdieping !== undefined && args.verdieping !== duplicateRoom.verdieping) {
+        dupPatch.verdieping = args.verdieping;
+      }
+      if (args.breedteM !== undefined && args.breedteM !== duplicateRoom.breedteM) {
+        dupPatch.breedteM = args.breedteM;
+      }
+      if (args.lengteM !== undefined && args.lengteM !== duplicateRoom.lengteM) {
+        dupPatch.lengteM = args.lengteM;
+      }
+      if (args.hoogteM !== undefined && args.hoogteM !== duplicateRoom.hoogteM) {
+        dupPatch.hoogteM = args.hoogteM;
+      }
+      if (args.oppervlakteM2 !== undefined && args.oppervlakteM2 !== duplicateRoom.oppervlakteM2) {
+        dupPatch.oppervlakteM2 = args.oppervlakteM2;
+      }
+      if (args.omtrekM !== undefined && args.omtrekM !== duplicateRoom.omtrekM) {
+        dupPatch.omtrekM = args.omtrekM;
+      }
+      if (args.notities !== undefined && args.notities !== duplicateRoom.notities) {
+        dupPatch.notities = args.notities;
+      }
+
+      if (Object.keys(dupPatch).length > 0) {
+        await ctx.db.patch(duplicateRoom._id, { ...dupPatch, gewijzigdOp: now });
+        const updatedDuplicate = await ctx.db.get(duplicateRoom._id);
+        if (updatedDuplicate) {
+          await syncProjectRoomFromMeasurement(ctx, args.tenantId, updatedDuplicate.projectRuimteId, {
+            naam: updatedDuplicate.naam,
+            verdieping: updatedDuplicate.verdieping,
+            breedteM: updatedDuplicate.breedteM,
+            lengteM: updatedDuplicate.lengteM,
+            hoogteM: updatedDuplicate.hoogteM,
+            oppervlakteM2: updatedDuplicate.oppervlakteM2,
+            omtrekM: updatedDuplicate.omtrekM
+          });
+          await recalculateLinesForRoom(ctx, args.tenantId, updatedDuplicate);
+        }
+      }
+
       await touchMeasurement(ctx, args.inmetingId, now);
       return duplicateRoom._id;
     }
@@ -843,8 +970,11 @@ export const updateMeasurementRoom = mutation({
     await ctx.db.patch(args.ruimteId, patch);
     await touchMeasurement(ctx, measurement._id);
 
-    // Houd de gekoppelde dossier-ruimte in sync met de nieuwe meetwaarden.
+    // Houd de gekoppelde dossier-ruimte in sync met de nieuwe meetwaarden en herreken de
+    // automatische meetregels van deze ruimte, zodat een maatcorrectie niet met verouderde
+    // hoeveelheden in de offerte belandt.
     const updated = await ctx.db.get(args.ruimteId);
+    let herekendeRegels = 0;
     if (updated) {
       await syncProjectRoomFromMeasurement(ctx, args.tenantId, updated.projectRuimteId, {
         naam: updated.naam,
@@ -855,9 +985,10 @@ export const updateMeasurementRoom = mutation({
         oppervlakteM2: updated.oppervlakteM2,
         omtrekM: updated.omtrekM
       });
+      herekendeRegels = await recalculateLinesForRoom(ctx, args.tenantId, updated);
     }
 
-    return args.ruimteId;
+    return { ruimteId: args.ruimteId, herekendeRegels };
   }
 });
 

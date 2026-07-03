@@ -77,6 +77,8 @@ type ReadyMeasurementLine = {
 type ReadyMeasurementResult = {
   measurement: ReadyMeasurement | null;
   readyLines: ReadyMeasurementLine[];
+  /** Meetregels die nog in concept staan (niet klaargezet) — onzichtbaar in de picker. */
+  draftLineCount?: number;
 };
 
 function formatNumber(value?: number) {
@@ -124,6 +126,7 @@ export default function MeasurementLinePicker({
 }: MeasurementLinePickerProps) {
   const isFieldMode = mode === "field";
   const [readyLines, setReadyLines] = useState<ReadyMeasurementLine[]>([]);
+  const [draftLineCount, setDraftLineCount] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -157,6 +160,7 @@ export default function MeasurementLinePicker({
       })) as ReadyMeasurementResult;
 
       setReadyLines(result.readyLines);
+      setDraftLineCount(result.draftLineCount ?? 0);
       setSelectedIds((current) =>
         current.filter((lineId) => result.readyLines.some((item) => item.line._id === lineId))
       );
@@ -360,6 +364,19 @@ export default function MeasurementLinePicker({
 
       {isOpen ? (
         <div className="grid" style={{ marginTop: 12 }}>
+          {/* De picker toont alleen klaargezette regels; zonder deze telling ging een
+              onvolledige offerte de deur uit terwijl er nog concept-meetregels bestonden. */}
+          {draftLineCount > 0 ? (
+            <Alert
+              variant="warning"
+              title={`${draftLineCount} meetregel${draftLineCount === 1 ? "" : "s"} nog niet klaargezet`}
+              description={
+                isFieldMode
+                  ? "Deze regels staan nog in concept en komen niet in de offerte. Zet ze bij Inmeten eerst op 'klaar voor offerte', of laat ze bewust achterwege."
+                  : "De inmeting bevat nog concept-regels die niet in deze lijst staan. Controleer bij Inmeten of ze klaargezet moeten worden voordat je de offerte verstuurt."
+              }
+            />
+          ) : null}
           <Alert
             variant="warning"
             title="Controleer de offerteposten"

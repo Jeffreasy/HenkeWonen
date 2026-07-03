@@ -1,6 +1,7 @@
 import { ClipboardList } from "lucide-react";
 import { useState } from "react";
 import type { CustomerType } from "../../lib/portalTypes";
+import { useFormDraft } from "../../lib/useFormDraft";
 import { Alert } from "../ui/feedback/Alert";
 import { Button } from "../ui/forms/Button";
 import { Checkbox } from "../ui/forms/Checkbox";
@@ -24,7 +25,8 @@ export type IntakeFormValues = {
 };
 
 type FieldIntakeFormProps = {
-  onSubmit: (values: IntakeFormValues) => Promise<void>;
+  /** Retourneert of het vastleggen is gelukt, zodat het formulier zijn draft kan wissen. */
+  onSubmit: (values: IntakeFormValues) => Promise<boolean>;
   isSaving: boolean;
   error: string | null;
 };
@@ -42,6 +44,31 @@ export function FieldIntakeForm({ onSubmit, isSaving, error }: FieldIntakeFormPr
   const [createDossier, setCreateDossier] = useState(true);
   const [projectTitle, setProjectTitle] = useState("");
 
+  // Draft-vangnet voor mobiel: de intake gebeurt bij de klant aan de deur; als de
+  // browser de tab weggooit (wisselen naar telefoon/camera) was alle invoer weg.
+  const { clear: clearDraft } = useFormDraft(
+    "henke-veld-intake",
+    {
+      leadType, leadName, leadPhone, leadEmail, leadStreet, leadHouseNumber,
+      leadPostalCode, leadCity, leadNotes, createDossier, projectTitle
+    },
+    (draft) => {
+      if (draft.leadType === "private" || draft.leadType === "business") {
+        setLeadType(draft.leadType);
+      }
+      if (typeof draft.leadName === "string") setLeadName(draft.leadName);
+      if (typeof draft.leadPhone === "string") setLeadPhone(draft.leadPhone);
+      if (typeof draft.leadEmail === "string") setLeadEmail(draft.leadEmail);
+      if (typeof draft.leadStreet === "string") setLeadStreet(draft.leadStreet);
+      if (typeof draft.leadHouseNumber === "string") setLeadHouseNumber(draft.leadHouseNumber);
+      if (typeof draft.leadPostalCode === "string") setLeadPostalCode(draft.leadPostalCode);
+      if (typeof draft.leadCity === "string") setLeadCity(draft.leadCity);
+      if (typeof draft.leadNotes === "string") setLeadNotes(draft.leadNotes);
+      if (typeof draft.createDossier === "boolean") setCreateDossier(draft.createDossier);
+      if (typeof draft.projectTitle === "string") setProjectTitle(draft.projectTitle);
+    }
+  );
+
   function resetForm() {
     setLeadType("private");
     setLeadName("");
@@ -54,25 +81,33 @@ export function FieldIntakeForm({ onSubmit, isSaving, error }: FieldIntakeFormPr
     setLeadNotes("");
     setCreateDossier(true);
     setProjectTitle("");
+    clearDraft();
   }
 
   const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!leadName.trim()) return;
 
-    void onSubmit({
-      type: leadType,
-      displayName: leadName.trim(),
-      email: leadEmail.trim() || undefined,
-      phone: leadPhone.trim() || undefined,
-      street: leadStreet.trim() || undefined,
-      houseNumber: leadHouseNumber.trim() || undefined,
-      postalCode: leadPostalCode.trim() || undefined,
-      city: leadCity.trim() || undefined,
-      notes: leadNotes.trim() || undefined,
-      createDossier,
-      projectTitle: projectTitle.trim() || undefined
-    });
+    void (async () => {
+      const gelukt = await onSubmit({
+        type: leadType,
+        displayName: leadName.trim(),
+        email: leadEmail.trim() || undefined,
+        phone: leadPhone.trim() || undefined,
+        street: leadStreet.trim() || undefined,
+        houseNumber: leadHouseNumber.trim() || undefined,
+        postalCode: leadPostalCode.trim() || undefined,
+        city: leadCity.trim() || undefined,
+        notes: leadNotes.trim() || undefined,
+        createDossier,
+        projectTitle: projectTitle.trim() || undefined
+      });
+      // Alleen bij succes wissen: bij een fout blijft de invoer (én de draft) staan
+      // zodat de monteur direct kan corrigeren.
+      if (gelukt) {
+        clearDraft();
+      }
+    })();
   };
 
   return (
