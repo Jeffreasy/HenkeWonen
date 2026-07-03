@@ -142,6 +142,14 @@ export const updateStatus = mutation({
       throw new ConvexError("Klant niet gevonden.");
     }
 
+    // Een geanonimiseerde stub (AVG) is bevroren — status terug op actief zou de
+    // "vergeten" klant weer in de werkvoorraad zetten (zelfde guard als updateCustomer).
+    if (customer.geanonimiseerdOp !== undefined) {
+      throw new ConvexError(
+        "Deze klant is geanonimiseerd (AVG) en kan niet meer worden bewerkt."
+      );
+    }
+
     await ctx.db.patch(args.klantId, {
       status: args.status,
       gewijzigdOp: Date.now()
@@ -206,6 +214,14 @@ export const createContact = mutation({
 
     if (!customer || customer.tenantId !== args.tenantId) {
       throw new ConvexError("Klant niet gevonden.");
+    }
+
+    // Geen nieuwe persoonsgegevens vastleggen op een geanonimiseerde stub (AVG) —
+    // zelfde guard als createCustomerContact.
+    if (customer.geanonimiseerdOp !== undefined) {
+      throw new ConvexError(
+        "Deze klant is geanonimiseerd (AVG); er kunnen geen contactmomenten meer worden vastgelegd."
+      );
     }
 
     const now = Date.now();

@@ -458,6 +458,26 @@ test("een geanonimiseerde stub is bevroren: niet opnieuw wissen of bewerken", as
       zichtbaarVoorKlant: false
     })
   ).rejects.toThrow(/geanonimiseerd/u);
+
+  // Ook via de oudere tenantId-varianten (publieke mutations) blijft de stub bevroren.
+  await expect(
+    t.mutation(api.beheer.customers.updateStatus, {
+      tenantId: seeded.tenantId,
+      actor: adminActor,
+      klantId: seeded.klantId,
+      status: "active"
+    })
+  ).rejects.toThrow(/geanonimiseerd/u);
+  await expect(
+    t.mutation(api.beheer.customers.createContact, {
+      tenantId: seeded.tenantId,
+      actor: adminActor,
+      klantId: seeded.klantId,
+      type: "note",
+      titel: "Belde toch weer",
+      zichtbaarVoorKlant: false
+    })
+  ).rejects.toThrow(/geanonimiseerd/u);
 });
 
 test("deleteCustomer verwijdert een niet-gefactureerd project ook in de anonimiseer-tak", async () => {
