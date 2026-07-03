@@ -554,6 +554,11 @@
   display: none;
 }
 
+/* Backdrop achter het open mobiele menu — desktop kent geen menu-overlay. */
+.sidebar-menu-backdrop {
+  display: none;
+}
+
 .sidebar-logo-link {
   display: inline-block;
   flex-shrink: 0;

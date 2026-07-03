@@ -15,6 +15,29 @@
     overflow: visible;
   }
 
+  /* Open menu = echte overlay: boven de FAB (z 1400) en de quickbar (z 45),
+     met een dimmende backdrop eronder. Voorheen bleven pagina, FAB en quickbar
+     gewoon zichtbaar en tikbaar naast/onder het open menu — dat oogde als een
+     kapotte, over elkaar heen lopende navigatie. Onder de modals (1450) en
+     toasts (1500). De backdrop is een SIBLING onder de sidebar (1410 < 1420),
+     zodat het menu — inclusief padding en naden — egaal dekkend blijft. */
+  .sidebar.sidebar-menu-open {
+    z-index: 1420;
+  }
+
+  .sidebar-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1410;
+    /* Button-reset: het is een <button> (zelfde a11y-patroon als
+       .field-mobile-overlay), geen visuele knop. */
+    appearance: none;
+    border: 0;
+    background: var(--overlay-scrim);
+    cursor: default;
+  }
+
   .sidebar-mobile-topbar {
     display: flex;
     align-items: center;
@@ -214,7 +237,8 @@
     z-index: 61;
     display: block;
     border: 0;
-    background: rgba(20, 31, 21, 0.48);
+    /* Gedeeld scrim-token met de menu-backdrop van het winkelportaal. */
+    background: var(--overlay-scrim);
     padding: 0;
   }
 
