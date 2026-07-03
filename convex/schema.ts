@@ -249,6 +249,11 @@ export default defineSchema({
       v.literal("inactive"),
       v.literal("archived")
     ),
+    // AVG / recht op vergetelheid: gezet zodra een klant met facturen (7 jaar bewaarplicht)
+    // is geanonimiseerd i.p.v. verwijderd — naam + adres blijven staan (wettelijk vereist op
+    // de factuur), de overige persoonsgegevens zijn dan gewist. Leeg = niet geanonimiseerd.
+    geanonimiseerdOp: v.optional(v.number()),
+    geanonimiseerdDoorExternalUserId: v.optional(v.string()),
     aangemaaktOp: v.number(),
     gewijzigdOp: v.number()
   })
@@ -282,6 +287,22 @@ export default defineSchema({
   })
     .index("by_customer", ["tenantId", "klantId"])
     .index("by_type", ["tenantId", "type"]),
+
+  // AVG-wisregister: minimaal, aantoonbaar spoor van elk recht-op-vergetelheid-verzoek
+  // (verantwoordingsplicht, art. 5 lid 2 AVG). Bewust alleen de weergavenaam als
+  // identificatie — genoeg om "is klant X gewist?" te beantwoorden, zonder de gewiste
+  // persoonsgegevens zelf te bewaren.
+  customerErasures: defineTable({
+    tenantId: v.id("tenants"),
+    klantWeergaveNaam: v.string(),
+    mode: v.union(v.literal("deleted"), v.literal("anonymized")),
+    /** Aantal verwijderde/geschoonde records per tabel. */
+    counts: v.record(v.string(), v.number()),
+    /** storageIds waarvan het fysieke bestand niet verwijderd kon worden (naloop nodig). */
+    storageWaarschuwingen: v.optional(v.array(v.string())),
+    uitgevoerdDoorExternalUserId: v.string(),
+    uitgevoerdOp: v.number()
+  }).index("by_tenant", ["tenantId"]),
 
   dossierAttachments: defineTable({
     tenantId: v.id("tenants"),

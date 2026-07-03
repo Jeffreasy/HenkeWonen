@@ -344,6 +344,14 @@ export const updateCustomer = mutation({
       throw new ConvexError("Klant niet gevonden.");
     }
 
+    // Een geanonimiseerde stub (AVG) is bevroren: opnieuw persoonsgegevens toevoegen of
+    // de status terug op actief zetten zou de wissing ongedaan maken.
+    if (customer.geanonimiseerdOp !== undefined) {
+      throw new ConvexError(
+        "Deze klant is geanonimiseerd (AVG) en kan niet meer worden bewerkt."
+      );
+    }
+
     const patch: Partial<Doc<"customers">> = { gewijzigdOp: Date.now() };
 
     if (args.type !== undefined) patch.type = args.type;
@@ -451,6 +459,13 @@ export const createCustomerContact = mutation({
       throw new ConvexError("Klant niet gevonden.");
     }
 
+    // Geen nieuwe persoonsgegevens vastleggen op een geanonimiseerde stub (AVG).
+    if (customer.geanonimiseerdOp !== undefined) {
+      throw new ConvexError(
+        "Deze klant is geanonimiseerd (AVG); er kunnen geen contactmomenten meer worden vastgelegd."
+      );
+    }
+
     const now = Date.now();
 
     return await ctx.db.insert("customerContacts", {
@@ -466,5 +481,375 @@ export const createCustomerContact = mutation({
       aangemaaktOp: now,
       gewijzigdOp: now
     });
+  }
+});
+
+/**
+ * AVG — recht op vergetelheid: verwijdert of anonimiseert een klant met álle gekoppelde
+ * gegevens. Admin-only + dubbele bevestiging (`bevestigNaam` moet exact de klantnaam zijn,
+ * náást de bevestigingsmodal in de UI).
+ *
+ * Altijd hard verwijderd (persoonsgegevens zonder bewaarplicht):
+ *   dossierstukken (incl. de fysieke bestanden in storage), contactmomenten, inmetingen
+ *   (+ruimtes/regels), projecttaken, workflow-events en tijdlijnitems (ook wees-items via
+ *   de by_customer-index). Inmetingen zijn tevens de agenda-items van de klant.
+ *
+ * Facturen bepalen de uitkomst (wettelijke bewaarplicht 7 jaar):
+ *   - GEEN facturen  → alles wordt verwijderd, inclusief de klant zelf (`mode: "deleted"`).
+ *   - WÉL facturen   → de facturen blijven staan mét de gefactureerde projecten/offertes die
+ *     ze onderbouwen: vrije tekst wordt geschoond, titels worden generiek ("… (geanonimiseerd)"),
+ *     het project gaat op "closed" zodat het niet als actioneel dossier blijft hangen, en de
+ *     ruimtes + leveranciersbestellingen van dat project blijven staan (financiële/fysieke
+ *     onderbouwing van de factuur — geen persoonsgegevens; offerte-regels verwijzen bovendien
+ *     hard naar de ruimtes). De klant wordt een minimale stub: naam + adres blijven (verschijnen
+ *     op de factuur), e-mail/telefoon/notities worden gewist, status → "archived" en
+ *     `geanonimiseerdOp` wordt gezet (`mode: "anonymized"`). Projecten/offertes zónder factuur
+ *     worden ook dan verwijderd.
+ *
+ * Elke wissing schrijft een regel in het AVG-wisregister (`customerErasures`): wie, wanneer,
+ * welke modus en de teller per tabel — aantoonbaarheid zonder de gewiste gegevens te bewaren.
+ *
+ * Per-klant volume is klein (enkele projecten/offertes/regels), dus dit past in één mutation.
+ */
+export const deleteCustomer = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    klantId: v.string(),
+    /** Dubbele bevestiging: moet exact gelijk zijn aan de weergavenaam van de klant. */
+    bevestigNaam: v.string()
+  },
+  handler: async (ctx, args) => {
+    const { tenant, externalUserId } = await requireMutationRole(
+      ctx,
+      args.tenantSlug,
+      args.actor,
+      ["admin"]
+    );
+
+    const customerId = ctx.db.normalizeId("customers", args.klantId);
+    if (!customerId) {
+      throw new ConvexError("Klant niet gevonden.");
+    }
+    const customer = await ctx.db.get(customerId);
+    if (!customer || customer.tenantId !== tenant._id) {
+      throw new ConvexError("Klant niet gevonden.");
+    }
+
+    // Dubbele bevestiging (server-side): de getypte naam moet exact matchen. Voorkomt dat
+    // een verkeerd doorgegeven id de verkeerde klant wist.
+    if (args.bevestigNaam.trim() !== customer.weergaveNaam.trim()) {
+      throw new ConvexError(
+        "Bevestiging klopt niet: typ de klantnaam exact over om te bevestigen."
+      );
+    }
+
+    // Een stub nogmaals "verwijderen" zou opnieuw anonimiseren en de audittrail
+    // (geanonimiseerdOp/-Door) overschrijven; de wissing is al uitgevoerd.
+    if (customer.geanonimiseerdOp !== undefined) {
+      throw new ConvexError(
+        "Deze klant is al geanonimiseerd; de facturen blijven wettelijk 7 jaar bewaard."
+      );
+    }
+
+    const now = Date.now();
+    const counts: Record<string, number> = {};
+    const bump = (key: string, n = 1) => {
+      counts[key] = (counts[key] ?? 0) + n;
+    };
+    // storageIds waarvan het fysieke bestand niet verwijderd kon worden — komen in het
+    // wisregister zodat een naloop mogelijk blijft (anders is het blob-adres definitief kwijt).
+    const storageWaarschuwingen: string[] = [];
+
+    // Facturen bepalen verwijderen vs. anonimiseren (7 jaar bewaarplicht).
+    const invoices = await ctx.db
+      .query("invoices")
+      .withIndex("by_customer", (q: any) => q.eq("tenantId", tenant._id).eq("klantId", customerId))
+      .collect();
+    const hasInvoices = invoices.length > 0;
+    const invoicedProjectIds = new Set(invoices.map((inv: Doc<"invoices">) => String(inv.projectId)));
+
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_customer", (q: any) => q.eq("tenantId", tenant._id).eq("klantId", customerId))
+      .collect();
+    const keptProjectIds = new Set<string>();
+
+    for (const project of projects) {
+      // Een project met factuur onderbouwt die factuur → behouden (geschoond). Overige weg.
+      const keepProject = hasInvoices && invoicedProjectIds.has(String(project._id));
+      if (keepProject) {
+        keptProjectIds.add(String(project._id));
+      }
+
+      // Inmetingen (= agenda-items) + ruimtes + regels — altijd weg.
+      const measurements = await ctx.db
+        .query("measurements")
+        .withIndex("by_project", (q: any) =>
+          q.eq("tenantId", tenant._id).eq("projectId", project._id)
+        )
+        .collect();
+      for (const measurement of measurements) {
+        const mLines = await ctx.db
+          .query("measurementLines")
+          .withIndex("by_measurement", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("inmetingId", measurement._id)
+          )
+          .collect();
+        for (const line of mLines) {
+          await ctx.db.delete(line._id);
+          bump("measurementLines");
+        }
+        const mRooms = await ctx.db
+          .query("measurementRooms")
+          .withIndex("by_measurement", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("inmetingId", measurement._id)
+          )
+          .collect();
+        for (const room of mRooms) {
+          await ctx.db.delete(room._id);
+          bump("measurementRooms");
+        }
+        await ctx.db.delete(measurement._id);
+        bump("measurements");
+      }
+
+      // Projecttaken, workflow-events en tijdlijnitems — altijd weg.
+      for (const [table, index] of [
+        ["projectTasks", "by_project"],
+        ["projectWorkflowEvents", "by_project"],
+        ["timelineEvents", "by_project"]
+      ] as const) {
+        const rows = await ctx.db
+          .query(table)
+          .withIndex(index, (q: any) => q.eq("tenantId", tenant._id).eq("projectId", project._id))
+          .collect();
+        for (const row of rows) {
+          await ctx.db.delete(row._id);
+          bump(table);
+        }
+      }
+
+      // Leveranciersbestellingen + regels: bij een behouden (gefactureerd) project blijven
+      // ze staan — het is de inkoop-/kostprijsonderbouwing van de bewaarde factuur en bevat
+      // geen persoonsgegevens (spiegel van cancelOpenSupplierOrders, dat ontvangen
+      // bestellingen ook bewust bewaart). Bij een verwijderd project gaan ze mee weg.
+      if (!keepProject) {
+        const supplierOrders = await ctx.db
+          .query("supplierOrders")
+          .withIndex("by_project", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("projectId", project._id)
+          )
+          .collect();
+        for (const order of supplierOrders) {
+          const orderLines = await ctx.db
+            .query("supplierOrderLines")
+            .withIndex("by_order", (q: any) =>
+              q.eq("tenantId", tenant._id).eq("bestellingId", order._id)
+            )
+            .collect();
+          for (const line of orderLines) {
+            await ctx.db.delete(line._id);
+            bump("supplierOrderLines");
+          }
+          await ctx.db.delete(order._id);
+          bump("supplierOrders");
+        }
+      }
+
+      // Offertes: bij een behouden (gefactureerd) project blijven ze staan als onderbouwing
+      // van de factuur, met geschoonde vrije tekst; anders volledig weg.
+      const quotes = await ctx.db
+        .query("quotes")
+        .withIndex("by_project", (q: any) =>
+          q.eq("tenantId", tenant._id).eq("projectId", project._id)
+        )
+        .collect();
+      for (const quote of quotes) {
+        if (keepProject) {
+          // Titel is vrije tekst en bevat in de praktijk vaak klantnaam/adres; het
+          // offertenummer blijft de koppeling met de factuur. Regel-omschrijvingen
+          // (vrije tekst met plaatsings-/klantdetails) worden ook geschoond — titel,
+          // aantallen en bedragen blijven als financiële onderbouwing staan.
+          await ctx.db.patch(quote._id, {
+            titel: "Offerte (geanonimiseerd)",
+            inleidingTekst: undefined,
+            afsluitTekst: undefined,
+            gewijzigdOp: now
+          });
+          const keptQuoteLines = await ctx.db
+            .query("quoteLines")
+            .withIndex("by_quote", (q: any) =>
+              q.eq("tenantId", tenant._id).eq("quoteId", quote._id)
+            )
+            .collect();
+          for (const line of keptQuoteLines) {
+            if (line.omschrijving !== undefined) {
+              await ctx.db.patch(line._id, { omschrijving: undefined, gewijzigdOp: now });
+              bump("offerteRegelsGeschoond");
+            }
+          }
+          bump("offertesGeanonimiseerd");
+        } else {
+          const quoteLines = await ctx.db
+            .query("quoteLines")
+            .withIndex("by_quote", (q: any) =>
+              q.eq("tenantId", tenant._id).eq("quoteId", quote._id)
+            )
+            .collect();
+          for (const line of quoteLines) {
+            await ctx.db.delete(line._id);
+            bump("quoteLines");
+          }
+          await ctx.db.delete(quote._id);
+          bump("quotes");
+        }
+      }
+
+      // Ruimtes (dossier-ruimtes): bij een behouden project blijven ze staan — de bewaarde
+      // offerte-regels verwijzen er hard naar (projectRuimteId, dezelfde invariant die
+      // deleteProjectRoom afdwingt) en een ruimtenaam is geen persoonsgegeven.
+      if (!keepProject) {
+        const projectRooms = await ctx.db
+          .query("projectRooms")
+          .withIndex("by_project", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("projectId", project._id)
+          )
+          .collect();
+        for (const room of projectRooms) {
+          await ctx.db.delete(room._id);
+          bump("projectRooms");
+        }
+      }
+
+      if (keepProject) {
+        // Titel is vrije tekst (vaak "Vloer fam. X — straatnaam"); generiek maken. Status
+        // naar closed zodat het geen actioneel dossier blijft waarop iemand per ongeluk
+        // een nieuwe inmeting voor de vergeten klant plant.
+        await ctx.db.patch(project._id, {
+          titel: "Project (geanonimiseerd)",
+          omschrijving: undefined,
+          interneNotities: undefined,
+          klantNotities: undefined,
+          status: "closed",
+          afgeslotenOp: project.afgeslotenOp ?? now,
+          gewijzigdOp: now
+        });
+        bump("projectenGeanonimiseerd");
+      } else {
+        await ctx.db.delete(project._id);
+        bump("projects");
+      }
+    }
+
+    // Sluitveeg via de klant-indexen: offertes en tijdlijnitems die aan deze klant hangen
+    // maar via de projecten-loop niet bereikt zijn (wees-rijen met een verdwenen project —
+    // hetzelfde soort weesrecords als de eerdere eindfase-audit opruimde). Offertes van
+    // behouden projecten blijven uiteraard staan.
+    const klantQuotes = await ctx.db
+      .query("quotes")
+      .withIndex("by_customer", (q: any) => q.eq("tenantId", tenant._id).eq("klantId", customerId))
+      .collect();
+    for (const quote of klantQuotes) {
+      if (keptProjectIds.has(String(quote.projectId))) {
+        continue;
+      }
+      const orphanLines = await ctx.db
+        .query("quoteLines")
+        .withIndex("by_quote", (q: any) => q.eq("tenantId", tenant._id).eq("quoteId", quote._id))
+        .collect();
+      for (const line of orphanLines) {
+        await ctx.db.delete(line._id);
+        bump("quoteLines");
+      }
+      await ctx.db.delete(quote._id);
+      bump("quotes");
+    }
+    const klantTimelineEvents = await ctx.db
+      .query("timelineEvents")
+      .withIndex("by_customer", (q: any) => q.eq("tenantId", tenant._id).eq("klantId", customerId))
+      .collect();
+    for (const event of klantTimelineEvents) {
+      await ctx.db.delete(event._id);
+      bump("timelineEvents");
+    }
+
+    // Contactmomenten — altijd weg.
+    const contacts = await ctx.db
+      .query("customerContacts")
+      .withIndex("by_customer", (q: any) => q.eq("tenantId", tenant._id).eq("klantId", customerId))
+      .collect();
+    for (const contact of contacts) {
+      await ctx.db.delete(contact._id);
+      bump("customerContacts");
+    }
+
+    // Dossierstukken + de fysieke bestanden in storage — altijd weg.
+    const attachments = await ctx.db
+      .query("dossierAttachments")
+      .withIndex("by_customer", (q: any) => q.eq("tenantId", tenant._id).eq("klantId", customerId))
+      .collect();
+    for (const attachment of attachments) {
+      if (attachment.storageId) {
+        try {
+          await ctx.storage.delete(attachment.storageId);
+          bump("bestanden");
+        } catch (storageError) {
+          // Een ontbrekend/al-verwijderd blob mag de rest van de wissing niet blokkeren,
+          // maar het adres mag ook niet stilletjes verdwijnen: registreer het in het
+          // wisregister zodat een naloop mogelijk blijft.
+          console.error("Kon dossierbestand niet uit storage verwijderen.", storageError);
+          storageWaarschuwingen.push(String(attachment.storageId));
+        }
+      }
+      await ctx.db.delete(attachment._id);
+      bump("dossierAttachments");
+    }
+
+    if (hasInvoices) {
+      // Anonimiseer de klant tot een juridische minimum-stub. Naam + adres blijven staan
+      // (verschijnen op de bewaarde factuur); de overige persoonsgegevens worden gewist.
+      await ctx.db.patch(customerId, {
+        voornaam: undefined,
+        achternaam: undefined,
+        bedrijfsnaam: undefined,
+        email: undefined,
+        telefoon: undefined,
+        notities: undefined,
+        status: "archived",
+        geanonimiseerdOp: now,
+        geanonimiseerdDoorExternalUserId: externalUserId,
+        gewijzigdOp: now
+      });
+
+      await ctx.db.insert("customerErasures", {
+        tenantId: tenant._id,
+        klantWeergaveNaam: customer.weergaveNaam,
+        mode: "anonymized",
+        counts,
+        storageWaarschuwingen: storageWaarschuwingen.length > 0 ? storageWaarschuwingen : undefined,
+        uitgevoerdDoorExternalUserId: externalUserId,
+        uitgevoerdOp: now
+      });
+
+      return {
+        mode: "anonymized" as const,
+        facturenBewaard: invoices.length,
+        counts
+      };
+    }
+
+    await ctx.db.delete(customerId);
+    await ctx.db.insert("customerErasures", {
+      tenantId: tenant._id,
+      klantWeergaveNaam: customer.weergaveNaam,
+      mode: "deleted",
+      counts,
+      storageWaarschuwingen: storageWaarschuwingen.length > 0 ? storageWaarschuwingen : undefined,
+      uitgevoerdDoorExternalUserId: externalUserId,
+      uitgevoerdOp: now
+    });
+
+    return { mode: "deleted" as const, counts };
   }
 });

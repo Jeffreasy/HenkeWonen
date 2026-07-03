@@ -287,7 +287,8 @@ export {
   createCustomer,
   updateCustomer,
   customerDetail,
-  createCustomerContact
+  createCustomerContact,
+  deleteCustomer
 } from "./beheer/customers";
 export {
   generateDossierAttachmentUploadUrl,
