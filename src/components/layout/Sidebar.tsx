@@ -4,7 +4,7 @@ import type { AppSession } from "../../lib/auth/session";
 import {
   activePortalNavItem,
   getCurrentPathname,
-  isActivePortalItem,
+  isPortalGroupOpen,
   quickbarPortalItems,
   visiblePortalNavGroups,
   type PortalNavGroup
@@ -42,9 +42,48 @@ export default function Sidebar({ session, pathname }: SidebarProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Sluit het menu zodra het mobiele breekpunt wordt verlaten (rotatie/venster
+  // vergroten): op desktop is het paneel altijd zichtbaar en zou een
+  // achtergebleven scroll-lock de pagina blokkeren. 980px = het CSS-breekpunt
+  // waarop .sidebar-mobile-topbar verschijnt (17-responsive.css).
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 980px)");
+
+    function handleChange(event: MediaQueryListEvent) {
+      if (!event.matches) {
+        setIsMenuOpen(false);
+      }
+    }
+
+    mediaQuery.addEventListener("change", handleChange);
+
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  // Scroll-lock zolang het mobiele menu open is: zonder lock scrolde de pagina
+  // gewoon door onder het (sticky) geopende paneel — op iOS voelde het menu
+  // daardoor kapot zodra het interne paneel-scrollen doorkettte naar de pagina.
+  // De lock hoort op <html>: dat is hier het scrollende element (html heeft
+  // overflow-y: auto, dus body-overflow propageert níet naar de viewport).
+  useEffect(() => {
+    if (!isMenuOpen) {
+      return;
+    }
+    const html = document.documentElement;
+    const vorigeHtml = html.style.overflow;
+    const vorigeBody = document.body.style.overflow;
+    html.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = vorigeHtml;
+      document.body.style.overflow = vorigeBody;
+    };
+  }, [isMenuOpen]);
+
   function toggleGroup(group: PortalNavGroup) {
-    const isGroupActive = group.items.some((item) => isActivePortalItem(currentPathname, item));
-    const isOpen = !group.collapsible || isGroupActive || (openGroups[group.id] ?? false);
+    // Zelfde open-bepaling als de weergave (isPortalGroupOpen), anders kon een
+    // groep met de actieve pagina erin nooit dicht.
+    const isOpen = isPortalGroupOpen(group, currentPathname, openGroups);
 
     setOpenGroups((current) => ({ ...current, [group.id]: !isOpen }));
   }

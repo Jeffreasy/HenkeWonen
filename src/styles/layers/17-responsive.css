@@ -54,6 +54,10 @@
     max-height: min(72vh, 640px);
     margin-top: var(--space-3);
     overflow-y: auto;
+    /* Geen scroll-kettingen naar de pagina: aan het einde van het paneel-scrollen
+       mag de body niet mee gaan scrollen (iOS momentum). Samen met de scroll-lock
+       in Sidebar.tsx blijft de pagina stilstaan zolang het menu open is. */
+    overscroll-behavior: contain;
     border-top: 1px solid var(--sidebar-line);
     padding-top: var(--space-3);
     /* Scroll-indicator: subtiele fade-out aan de onderkant */
