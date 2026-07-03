@@ -16,6 +16,7 @@ import {
   laventeCareApiBaseUrl,
   henkeTenantSlug,
   laventeCareAuthMeUrl,
+  laventeCareAuthTimeoutMs,
   laventeCareTenantId
 } from "./laventeCareConfig";
 
@@ -117,7 +118,8 @@ export async function refreshLaventeCareSession(
         cookie: `refresh_token=${refreshToken}`,
         "X-Tenant-ID": authTenantId
       },
-      redirect: "manual"
+      redirect: "manual",
+      signal: AbortSignal.timeout(laventeCareAuthTimeoutMs())
     });
 
     if (!response.ok) {
