@@ -495,11 +495,17 @@ export const deleteQuoteLine = mutation({
           geconverteerdeOfferteregelId: undefined,
           gewijzigdOp: Date.now()
         });
-        // Er staat weer een vrije meetregel: de inmeting is niet langer volledig
-        // 'verwerkt naar offerte' — terug naar 'gecontroleerd' (spiegel van de
-        // automatische doorzet in importMeasurementLinesToQuote).
+        // De inmeting is pas niet langer 'verwerkt naar offerte' als er ook geen
+        // ándere geconverteerde regels meer op staan — anders zou één verwijderde
+        // offertepost de status onterecht terugzetten (spiegel van de automatische
+        // doorzet in importMeasurementLinesToQuote).
+        const nogGeconverteerd = mLines.some(
+          (ml: any) => ml._id !== linkedLine._id && ml.quotePreparationStatus === "converted"
+        );
         await ctx.db.patch(measurement._id, {
-          ...(measurement.status === "converted_to_quote" ? { status: "reviewed" as const } : {}),
+          ...(measurement.status === "converted_to_quote" && !nogGeconverteerd
+            ? { status: "reviewed" as const }
+            : {}),
           gewijzigdOp: Date.now()
         });
       }

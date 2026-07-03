@@ -865,11 +865,17 @@ export async function restoreMeasurementLinesForQuote(
       }
     }
     if (touched) {
-      // De inmeting is niet langer 'verwerkt naar offerte' zodra haar regels weer
-      // vrijstaan: terug naar 'gecontroleerd', zodat de buitendienst-bucket
-      // 'Conceptofferte maken' het dossier weer oppakt en de status niet liegt.
+      // De inmeting is pas niet langer 'verwerkt naar offerte' als er ook geen regels
+      // meer geconverteerd zijn naar een ÁNDERE (nog levende) offerte — terug naar
+      // 'gecontroleerd', zodat de buitendienst-bucket 'Conceptofferte maken' het
+      // dossier weer oppakt en de status niet liegt.
+      const nogGeconverteerd = mLines.some(
+        (ml) => ml.geconverteerdeOfferteId !== quoteId && ml.quotePreparationStatus === "converted"
+      );
       await ctx.db.patch(measurement._id, {
-        ...(measurement.status === "converted_to_quote" ? { status: "reviewed" as const } : {}),
+        ...(measurement.status === "converted_to_quote" && !nogGeconverteerd
+          ? { status: "reviewed" as const }
+          : {}),
         gewijzigdOp: now
       });
     }

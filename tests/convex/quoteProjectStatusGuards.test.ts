@@ -76,32 +76,43 @@ test("createQuote in de aanloopfase (lead) zet het dossier op quote_draft", asyn
   expect(project?.status).toBe("quote_draft");
 });
 
-test("offerte afwijzen logt een quote_rejected-event in de dossier-tijdlijn", async () => {
+test("offerte afwijzen logt een quote_rejected-event en annuleert open bestellingen (met telling)", async () => {
   stubAuth();
   const t = convexTest(schema, modules);
   const ids = await base(t, "quote_sent");
   const now = Date.now();
-  const quoteId = await t.run(async (ctx) =>
-    ctx.db.insert("quotes", {
+  const { quoteId, orderId } = await t.run(async (ctx) => {
+    const quoteId = await ctx.db.insert("quotes", {
       tenantId: ids.tenantId, projectId: ids.projectId, klantId: ids.customerId,
       offertenummer: "OFF-2026-10", titel: "Offerte", status: "sent",
       subtotaalExBtw: 100, btwTotaal: 21, totaalInclBtw: 121, aangemaaktOp: now, gewijzigdOp: now
-    })
-  );
+    });
+    // Open leveranciersbestelling op deze offerte: moet mee-geannuleerd worden.
+    const orderId = await ctx.db.insert("supplierOrders", {
+      tenantId: ids.tenantId, projectId: ids.projectId, quoteId, status: "ordered",
+      aangemaaktOp: now, gewijzigdOp: now
+    });
+    return { quoteId, orderId };
+  });
 
   await t.mutation(api.portal.updateQuoteStatus, {
     tenantSlug: "henke-wonen", actor, quoteId: String(quoteId), status: "rejected"
   });
 
-  const { project, events } = await t.run(async (ctx) => ({
+  const { project, events, order } = await t.run(async (ctx) => ({
     project: await ctx.db.get(ids.projectId as Id<"projects">),
     events: await ctx.db
       .query("projectWorkflowEvents")
       .withIndex("by_project", (q) => q.eq("tenantId", ids.tenantId).eq("projectId", ids.projectId))
-      .collect()
+      .collect(),
+    order: await ctx.db.get(orderId as Id<"supplierOrders">)
   }));
   expect(project?.status).toBe("quote_rejected");
-  expect(events.some((event) => event.type === "quote_rejected")).toBe(true);
+  expect(order?.status).toBe("cancelled");
+  const rejectedEvent = events.find((event) => event.type === "quote_rejected");
+  expect(rejectedEvent).toBeDefined();
+  // De annulering van bestellingen mag niet onzichtbaar zijn: de telling staat in het event.
+  expect(rejectedEvent?.omschrijving).toContain("1 openstaande leveranciersbestelling");
 });
 
 test("een geaccepteerde (nog niet gefactureerde) offerte kan alleen naar geannuleerd", async () => {
@@ -170,6 +181,16 @@ test("import naar offerte zet de inmeting op converted_to_quote; afwijzen zet 'm
 
   let measurement = await t.run(async (ctx) => ctx.db.get(measurementId as Id<"measurements">));
   expect(measurement?.status).toBe("converted_to_quote");
+
+  // Tussentijdse controle: de import heeft de regel(s) daadwerkelijk geconverteerd —
+  // anders test de restore hieronder per ongeluk alleen de beginstand.
+  const convertedLines = await t.run(async (ctx) =>
+    ctx.db
+      .query("measurementLines")
+      .withIndex("by_measurement", (q) => q.eq("tenantId", ids.tenantId).eq("inmetingId", measurementId))
+      .collect()
+  );
+  expect(convertedLines.every((line) => line.quotePreparationStatus === "converted")).toBe(true);
 
   // Afwijzen bevrijdt de meetregels én zet de inmetingsstatus terug.
   await t.mutation(api.portal.updateQuoteStatus, {
