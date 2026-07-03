@@ -13,8 +13,8 @@ type ProjectEditFormProps = {
   onSave: (data: {
     title: string;
     description?: string;
-    measurementDate?: number;
-    executionDate?: number;
+    measurementDate: number | null;
+    executionDate: number | null;
     internalNotes?: string;
     customerNotes?: string;
   }) => Promise<void>;
@@ -29,9 +29,12 @@ function toDateInputValue(value?: number) {
   return new Date(value).toISOString().slice(0, 10);
 }
 
-function fromDateInputValue(value: string): number | undefined {
+// Leeg veld → null (expliciet afzeggen/wissen). `undefined` zou door de Convex-client
+// uit de request worden gefilterd, waardoor het leegmaken van een datum stil werd
+// genegeerd en een inmeetafspraak nergens afgezegd kon worden.
+function fromDateInputValue(value: string): number | null {
   if (!value) {
-    return undefined;
+    return null;
   }
 
   return new Date(`${value}T12:00:00`).getTime();

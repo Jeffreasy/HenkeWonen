@@ -9,8 +9,12 @@ import {
 } from "../authz";
 import { pilotHiddenReason } from "../catalog/pilot";
 import { isUnitCompatible } from "../catalog/pricingRules";
-import { assertInmeetBoeking } from "../beheer/agenda";
-import { assertValidRoomDimensions } from "../portalUtils";
+import {
+  assertInmeetBoeking,
+  resolveMonteurByNaam,
+  resolveMonteurVoorMeting
+} from "../beheer/agenda";
+import { addProjectEvent, assertValidRoomDimensions, hasProjectEvent } from "../portalUtils";
 import type { Doc, Id } from "../_generated/dataModel";
 
 /** Genormaliseerde ruimtenaam voor dedup (trim + lowercase). */
@@ -417,10 +421,26 @@ export const createForProject = mutation({
       .order("desc")
       .first();
 
+    // Plan-guard óók op dit pad: de invariant is dat ELK pad dat measurement.inmeetdatum
+    // muteert de inmeet-regels toetst (zie assertInmeetBoeking) — dit pad omzeilde ze.
+    const datumGewijzigd = hasArg(args, "inmeetdatum") && existing?.inmeetdatum !== args.inmeetdatum;
+    if (datumGewijzigd && args.inmeetdatum !== undefined) {
+      const monteur = existing
+        ? await resolveMonteurVoorMeting(ctx, args.tenantId, existing)
+        : await resolveMonteurByNaam(ctx, args.tenantId, args.gemetenDoor);
+      await assertInmeetBoeking(ctx, args.tenantId, {
+        datumMs: args.inmeetdatum,
+        monteur,
+        omvang: existing?.omvang,
+        excludeProjectId: args.projectId
+      });
+    }
+
+    let measurementId: Id<"measurements">;
     if (existing) {
       const patch: Record<string, unknown> = {};
 
-      if (hasArg(args, "inmeetdatum") && existing.inmeetdatum !== args.inmeetdatum) {
+      if (datumGewijzigd) {
         patch.inmeetdatum = args.inmeetdatum;
       }
 
@@ -439,21 +459,53 @@ export const createForProject = mutation({
         });
       }
 
-      return existing._id;
+      measurementId = existing._id;
+    } else {
+      measurementId = await ctx.db.insert("measurements", {
+        tenantId: args.tenantId,
+        projectId: args.projectId,
+        klantId: args.klantId,
+        status: "draft",
+        inmeetdatum: args.inmeetdatum,
+        gemetenDoor: args.gemetenDoor,
+        notities: args.notities,
+        createdByExternalUserId: externalUserId,
+        aangemaaktOp: now,
+        gewijzigdOp: now
+      });
     }
 
-    return await ctx.db.insert("measurements", {
-      tenantId: args.tenantId,
-      projectId: args.projectId,
-      klantId: args.klantId,
-      status: "draft",
-      inmeetdatum: args.inmeetdatum,
-      gemetenDoor: args.gemetenDoor,
-      notities: args.notities,
-      createdByExternalUserId: externalUserId,
-      aangemaaktOp: now,
-      gewijzigdOp: now
-    });
+    // Zelfde nawerk als startOrPlanMeasurement, zodat "Inmeting starten" via dit pad niet
+    // stil blijft: dossier-datum in sync, statusovergang vanuit de aanloopfase en een
+    // workflow-event — anders bleef de winkel "Nieuwe aanvraag opvolgen" zien terwijl de
+    // monteur al aan het meten was.
+    const projectPatch: Partial<Doc<"projects">> = { gewijzigdOp: now };
+    if (datumGewijzigd) {
+      projectPatch.inmeetdatum = args.inmeetdatum;
+    }
+    if (project.status === "lead") {
+      projectPatch.status = "measurement_planned";
+    }
+    await ctx.db.patch(project._id, projectPatch);
+
+    const alreadyHasMeasurementEvent = await hasProjectEvent(
+      ctx,
+      args.tenantId,
+      args.projectId,
+      "measurement_planned"
+    );
+    if (!alreadyHasMeasurementEvent) {
+      await addProjectEvent(
+        ctx,
+        args.tenantId,
+        args.projectId,
+        "measurement_planned",
+        args.inmeetdatum ? "Inmeting gepland" : "Inmeting gestart",
+        externalUserId
+      );
+    }
+
+    return measurementId;
   }
 });
 
@@ -463,7 +515,10 @@ export const updateMeasurement = mutation({
     actor: mutationActorValidator,
     inmetingId: v.id("measurements"),
     status: v.optional(measurementStatus),
-    inmeetdatum: v.optional(v.number()),
+    // `null` = het inmeetbezoek expliciet afzeggen (datum wissen). `undefined`
+    // overleeft JSON niet (de Convex-client laat het veld weg), dus zonder
+    // null-sentinel bestond er geen enkel pad om een afspraak af te zeggen.
+    inmeetdatum: v.optional(v.union(v.number(), v.null())),
     gemetenDoor: v.optional(v.string()),
     notities: v.optional(v.string()),
     // Bewust de inmeet-regels overrulen bij het zetten van de inmeetdatum.
@@ -477,16 +532,20 @@ export const updateMeasurement = mutation({
     ]);
     const measurement = await requireMeasurement(ctx, args.tenantId, args.inmetingId);
 
+    const nieuweDatum = args.inmeetdatum ?? undefined; // null → wissen
+    const datumGewijzigd = hasArg(args, "inmeetdatum") && measurement.inmeetdatum !== nieuweDatum;
+
     // Plan-guard ook hier: dit form (office/field 'Inmeting samenvatting') zet de inmeetdatum direct
-    // en synct die naar het dossier. Resolve de eventueel toegewezen monteur van deze inmeting voor
-    // de capaciteits-/afwezigheidscheck, zodat geen schrijfpad de inmeet-regels omzeilt.
-    if (hasArg(args, "inmeetdatum")) {
-      const monteur = (measurement.gemetenDoorUserId
-        ? await ctx.db.get(measurement.gemetenDoorUserId)
-        : null) as Doc<"users"> | null;
+    // en synct die naar het dossier. Alleen toetsen bij een DAADWERKELIJKE datumwijziging: een
+    // ongewijzigde (legacy) datum mag het opslaan van status/notities niet blokkeren — er bestaat
+    // geen UI-pad dat force meestuurt, dus zo'n dossier zat anders muurvast. Resolve de monteur
+    // (userId, anders éénduidige naam) voor de capaciteits-/afwezigheidscheck, zodat ook rijen
+    // zonder userId niet buiten de capaciteit om verzet kunnen worden.
+    if (datumGewijzigd && nieuweDatum !== undefined) {
+      const monteur = await resolveMonteurVoorMeting(ctx, args.tenantId, measurement);
       await assertInmeetBoeking(ctx, args.tenantId, {
-        datumMs: args.inmeetdatum,
-        monteur: monteur && monteur.tenantId === args.tenantId ? monteur : null,
+        datumMs: nieuweDatum,
+        monteur,
         omvang: measurement.omvang,
         excludeProjectId: measurement.projectId as Id<"projects">,
         force: args.force
@@ -501,12 +560,21 @@ export const updateMeasurement = mutation({
       patch.status = args.status;
     }
 
-    if (hasArg(args, "inmeetdatum")) {
-      patch.inmeetdatum = args.inmeetdatum;
+    if (datumGewijzigd) {
+      patch.inmeetdatum = nieuweDatum;
     }
 
+    // Naam en userId blijven synchroon (zelfde semantiek als startOrPlanMeasurement):
+    // leeg = beide wissen, éénduidig teamlid = beide zetten, vrije tekst = naam zetten +
+    // oude userId wissen. Anders blijft de agenda/capaciteit (userId-primair) op de oude
+    // monteur hangen terwijl de kaart de nieuwe naam toont.
     if (hasArg(args, "gemetenDoor")) {
-      patch.gemetenDoor = args.gemetenDoor;
+      const naam = args.gemetenDoor?.trim() ? args.gemetenDoor.trim() : undefined;
+      if (naam !== measurement.gemetenDoor) {
+        patch.gemetenDoor = naam;
+        const matchendeMonteur = await resolveMonteurByNaam(ctx, args.tenantId, naam);
+        patch.gemetenDoorUserId = matchendeMonteur?._id;
+      }
     }
 
     if (hasArg(args, "notities")) {
@@ -517,15 +585,11 @@ export const updateMeasurement = mutation({
 
     // Houd de inmeetdatum op het dossier in sync met de inmeting, zodat winkel en
     // buitendienst dezelfde planningsdatum zien (M5: bidirectionele sync).
-    if (hasArg(args, "inmeetdatum")) {
+    if (datumGewijzigd) {
       const project = await ctx.db.get(measurement.projectId as Id<"projects">);
-      if (
-        project &&
-        project.tenantId === args.tenantId &&
-        project.inmeetdatum !== args.inmeetdatum
-      ) {
+      if (project && project.tenantId === args.tenantId && project.inmeetdatum !== nieuweDatum) {
         await ctx.db.patch(project._id, {
-          inmeetdatum: args.inmeetdatum,
+          inmeetdatum: nieuweDatum,
           gewijzigdOp: Date.now()
         });
       }
