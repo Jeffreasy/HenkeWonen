@@ -2,6 +2,9 @@
   color-scheme: light;
 
   /* Design tokens */
+  /* Scrim achter mobiele overlays (menu-backdrop, veld-overlay): dimt de pagina
+     zonder 'm te verbergen. Warm-donker zodat het bij beide thema's past. */
+  --overlay-scrim: rgba(20, 15, 8, 0.55);
   --color-bg: #e6d7bc;
   --color-bg-subtle: #dbcbac;
   --color-surface: #f3e8d3;

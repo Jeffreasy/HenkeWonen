@@ -90,20 +90,22 @@ export default function Sidebar({ session, pathname }: SidebarProps) {
 
   return (
     <>
+      {/* Backdrop (alleen mobiel, alleen bij open menu): dimt de pagina, FAB en
+          quickbar eronder en sluit het menu bij een tik ernaast — zonder dit
+          liepen menu, paginakop, FAB en quickbar visueel door elkaar. Bewust een
+          SIBLING vóór de sidebar (z 1410 < sidebar 1420), zodat het menu zelf —
+          inclusief padding en naden — egaal dekkend boven de scrim ligt. */}
+      {isMenuOpen ? (
+        <div
+          className="sidebar-menu-backdrop"
+          aria-hidden="true"
+          onClick={() => setIsMenuOpen(false)}
+        />
+      ) : null}
       <aside
         className={isMenuOpen ? "sidebar sidebar-menu-open" : "sidebar"}
         aria-label="Hoofdnavigatie"
       >
-        {/* Backdrop (alleen mobiel, alleen bij open menu): dimt de pagina, FAB en
-            quickbar eronder en sluit het menu bij een tik ernaast — zonder dit
-            liepen menu, paginakop, FAB en quickbar visueel door elkaar. */}
-        {isMenuOpen ? (
-          <div
-            className="sidebar-menu-backdrop"
-            aria-hidden="true"
-            onClick={() => setIsMenuOpen(false)}
-          />
-        ) : null}
         <div className="sidebar-mobile-topbar">
           <a href="/portal" aria-label="Henke Wonen - ga naar dashboard" className="sidebar-logo-link">
             <img

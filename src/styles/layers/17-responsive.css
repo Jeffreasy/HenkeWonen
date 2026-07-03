@@ -19,7 +19,8 @@
      met een dimmende backdrop eronder. Voorheen bleven pagina, FAB en quickbar
      gewoon zichtbaar en tikbaar naast/onder het open menu — dat oogde als een
      kapotte, over elkaar heen lopende navigatie. Onder de modals (1450) en
-     toasts (1500). */
+     toasts (1500). De backdrop is een SIBLING onder de sidebar (1410 < 1420),
+     zodat het menu — inclusief padding en naden — egaal dekkend blijft. */
   .sidebar.sidebar-menu-open {
     z-index: 1420;
   }
@@ -28,22 +29,9 @@
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 0;
-    background: rgba(20, 15, 8, 0.55);
+    z-index: 1410;
+    background: var(--overlay-scrim);
     cursor: default;
-  }
-
-  /* Topbar en paneel boven de backdrop, met een eigen dekkend vlak zodat de
-     dimming niet dóór het menu heen schijnt. */
-  .sidebar-mobile-topbar,
-  .sidebar-nav-panel {
-    position: relative;
-    z-index: 1;
-  }
-
-  .sidebar.sidebar-menu-open .sidebar-mobile-topbar,
-  .sidebar-nav-panel.open {
-    background: var(--sidebar);
   }
 
   .sidebar-mobile-topbar {
@@ -245,7 +233,8 @@
     z-index: 61;
     display: block;
     border: 0;
-    background: rgba(20, 31, 21, 0.48);
+    /* Gedeeld scrim-token met de menu-backdrop van het winkelportaal. */
+    background: var(--overlay-scrim);
     padding: 0;
   }
 
