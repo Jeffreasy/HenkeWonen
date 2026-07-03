@@ -25,7 +25,8 @@ import {
   cancelOtherOpenQuotesAndRestore,
   assertQuoteStatusTransition,
   assertNoOtherAcceptedQuote,
-  cancelOpenSupplierOrders
+  cancelOpenSupplierOrders,
+  applyProjectStatusForNewQuote
 } from "../portalUtils";
 
 const quoteStatus = v.union(
@@ -139,6 +140,11 @@ export const create = mutation({
     }
 
     const now = Date.now();
+
+    // Guard vóór de insert: op een geannuleerd/gesloten dossier hoort geen nieuwe
+    // offerte te ontstaan (gedeeld met createQuote via applyProjectStatusForNewQuote).
+    await applyProjectStatusForNewQuote(ctx, project, now);
+
     const quoteNumber = `OFF-${new Date(now).getFullYear()}-${now}`;
 
     const quoteId = await ctx.db.insert("quotes", {
@@ -157,11 +163,6 @@ export const create = mutation({
       totaalInclBtw: 0,
       createdByExternalUserId: externalUserId,
       aangemaaktOp: now,
-      gewijzigdOp: now
-    });
-
-    await ctx.db.patch(args.projectId, {
-      status: "quote_draft",
       gewijzigdOp: now
     });
 
@@ -494,7 +495,17 @@ export const deleteQuoteLine = mutation({
           geconverteerdeOfferteregelId: undefined,
           gewijzigdOp: Date.now()
         });
+        // De inmeting is pas niet langer 'verwerkt naar offerte' als er ook geen
+        // ándere geconverteerde regels meer op staan — anders zou één verwijderde
+        // offertepost de status onterecht terugzetten (spiegel van de automatische
+        // doorzet in importMeasurementLinesToQuote).
+        const nogGeconverteerd = mLines.some(
+          (ml: any) => ml._id !== linkedLine._id && ml.quotePreparationStatus === "converted"
+        );
         await ctx.db.patch(measurement._id, {
+          ...(measurement.status === "converted_to_quote" && !nogGeconverteerd
+            ? { status: "reviewed" as const }
+            : {}),
           gewijzigdOp: Date.now()
         });
       }
@@ -677,19 +688,11 @@ export const updateQuoteStatus = mutation({
       return quote._id;
     }
 
-    // Bewaak de toegestane overgang: een terminale offerte mag niet herleven naar
-    // verstuurd/akkoord (zou dezelfde inmeting dubbel factureerbaar maken).
-    assertQuoteStatusTransition(quote.status, args.status);
-
-    // Eén leidende geaccepteerde offerte per dossier.
-    if (args.status === "accepted") {
-      await assertNoOtherAcceptedQuote(ctx, tenant._id, project._id, quote._id);
-    }
-
     // Een al-gefactureerde offerte is bevroren op 'akkoord': hij mag niet uit akkoord worden
     // gehaald (terug naar concept, of op afgewezen/geannuleerd/verlopen) — anders wijkt de
     // offerte stil af van de reeds aangemaakte factuur (die de offerteregels live toont). Maak
-    // zo nodig een creditfactuur via de factuur-flow.
+    // zo nodig een creditfactuur via de factuur-flow. Bewust vóór de overgangsguard: deze
+    // melding is specifieker dan de generieke "alleen annuleren"-melding.
     if (args.status !== "accepted") {
       const reedsGefactureerd = await existingInvoiceForQuote(ctx, tenant._id, quote._id);
       if (reedsGefactureerd) {
@@ -697,6 +700,16 @@ export const updateQuoteStatus = mutation({
           "Deze offerte is al gefactureerd en kan niet meer worden gewijzigd. Maak zo nodig een creditfactuur via de factuur-flow."
         );
       }
+    }
+
+    // Bewaak de toegestane overgang: een terminale offerte mag niet herleven naar
+    // verstuurd/akkoord (zou dezelfde inmeting dubbel factureerbaar maken), en een
+    // geaccepteerde offerte gaat alleen nog naar 'geannuleerd'.
+    assertQuoteStatusTransition(quote.status, args.status);
+
+    // Eén leidende geaccepteerde offerte per dossier.
+    if (args.status === "accepted") {
+      await assertNoOtherAcceptedQuote(ctx, tenant._id, project._id, quote._id);
     }
 
     // Prijs-/richtprijs-/leeg-gate vóór 'verstuurd'/'akkoord' — gedeeld met het winkel-
@@ -783,29 +796,51 @@ export const updateQuoteStatus = mutation({
       );
     }
 
-    if (args.status === "cancelled") {
-      await addProjectEvent(ctx, tenant._id, project._id, "closed", "Offerte geannuleerd", externalUserId);
-      await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "dismissed", quote._id);
-      await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, quote._id);
-    }
-
-    if (args.status === "rejected") {
-      await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "dismissed", quote._id);
-      await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, quote._id);
-    }
-
-    // Verlopen = terminale offerte-staat zoals afgewezen/geannuleerd: bevrijd de inmeetregels
-    // zodat ze niet permanent 'converted' blijven en opnieuw geïmporteerd kunnen worden.
-    if (args.status === "expired") {
-      await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "dismissed", quote._id);
-      await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, quote._id);
-    }
-
-    // Een terminale offerte laat geen inkoop doorlopen: annuleer de nog-open
-    // leveranciersbestellingen van déze offerte (een eerder geaccepteerde offerte kan
-    // al bestellingen hebben). Ontvangen bestellingen blijven staan.
+    // Terminale offerte-staat (afgewezen/geannuleerd/verlopen): sluit de opvolgtaak,
+    // bevrijd de inmeetregels (anders blijven ze permanent 'converted' en verdwijnen ze
+    // uit de import-picker) en annuleer de nog-open leveranciersbestellingen van déze
+    // offerte (een eerder geaccepteerde offerte kan al bestellingen hebben; ontvangen
+    // bestellingen blijven staan). De telling gaat mee in het workflow-event, zodat het
+    // annuleren van bestellingen nooit onzichtbaar gebeurt.
     if (args.status === "cancelled" || args.status === "rejected" || args.status === "expired") {
-      await cancelOpenSupplierOrders(ctx, tenant._id, project._id, now, quote._id);
+      await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "dismissed", quote._id);
+      await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, quote._id);
+      const cancelledOrderCount = await cancelOpenSupplierOrders(
+        ctx,
+        tenant._id,
+        project._id,
+        now,
+        quote._id
+      );
+      const orderNote =
+        cancelledOrderCount > 0
+          ? `${cancelledOrderCount} openstaande leveranciersbestelling(en) geannuleerd.`
+          : undefined;
+
+      // Elke terminale overgang laat een spoor na in de dossier-tijdlijn: wie hierna het
+      // dossier opent (winkel óf buitendienst) moet kunnen zien dat en wanneer de offerte
+      // is gestopt — een afwijzing was voorheen onzichtbaar (dood einde).
+      if (args.status === "cancelled") {
+        await addProjectEvent(
+          ctx,
+          tenant._id,
+          project._id,
+          "closed",
+          "Offerte geannuleerd",
+          externalUserId,
+          orderNote
+        );
+      } else {
+        await addProjectEvent(
+          ctx,
+          tenant._id,
+          project._id,
+          "quote_rejected",
+          args.status === "rejected" ? "Offerte afgewezen" : "Offerte verlopen",
+          externalUserId,
+          orderNote
+        );
+      }
     }
 
     return quote._id;
@@ -936,6 +971,12 @@ export const createQuote = mutation({
       .filter((q: any) => q.eq(q.field("status"), "active"))
       .first();
     const now = Date.now();
+
+    // Guard + statuszet vóór de insert: geen nieuwe offerte op een geannuleerd/gesloten
+    // dossier, en geen statusregressie van een dossier dat al voorbij de offerte-fase is
+    // (meerwerk-offerte op een lopend dossier laat de projectstatus staan).
+    await applyProjectStatusForNewQuote(ctx, project, now);
+
     const quoteId = await ctx.db.insert("quotes", {
       tenantId: tenant._id,
       projectId: project._id,
@@ -955,10 +996,6 @@ export const createQuote = mutation({
       gewijzigdOp: now
     });
 
-    await ctx.db.patch(project._id, {
-      status: "quote_draft",
-      gewijzigdOp: now
-    });
     await ctx.db.insert("projectWorkflowEvents", {
       tenantId: tenant._id,
       projectId: project._id,
@@ -1270,7 +1307,16 @@ export const importMeasurementLinesToQuote = mutation({
     }
 
     for (const measurementId of touchedMeasurementIds) {
-      await ctx.db.patch(measurementId, { gewijzigdOp: now });
+      // De import ís de verwerking naar offerte: zet de inmeting door naar
+      // 'converted_to_quote' zodat de buitendienst-kaart niet rood 'achterstallig'
+      // blijft staan en niemand het handmatige status-dropdownnetje hoeft te onthouden.
+      const measurement = await ctx.db.get(measurementId);
+      await ctx.db.patch(measurementId, {
+        ...(measurement && measurement.status !== "converted_to_quote"
+          ? { status: "converted_to_quote" as const }
+          : {}),
+        gewijzigdOp: now
+      });
     }
 
     await recalculateQuote(ctx, tenant._id, quote._id);

@@ -43,6 +43,7 @@ function eventLabel(type: PortalWorkflowEvent["type"]) {
     measurement_completed: "Inmeting afgerond",
     quote_sent: "Offerte verzonden",
     quote_accepted: "Offerte akkoord",
+    quote_rejected: "Offerte afgewezen/verlopen",
     thank_you_letter_sent: "Bedankbrief verzonden",
     execution_planned: "Uitvoering gepland",
     supplier_order_created: "Leveranciersbestelling aangemaakt",
