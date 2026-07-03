@@ -1,7 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { readActorValidator, requireQueryRole } from "../authz";
-import { taskPriority } from "../portalUtils";
+import { taskPriority, toContact, toDossierAttachment } from "../portalUtils";
 import type { Doc, Id } from "../_generated/dataModel";
 import type {
   PortalCustomer,
@@ -575,32 +575,69 @@ export const fieldProjectWorkspace = query({
       return null;
     }
 
-    const [customer, quotes, templates, measurements, projectTasks] = await Promise.all([
-      ctx.db.get(project.klantId),
-      ctx.db
-        .query("quotes")
-        .withIndex("by_project", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("projectId", project._id)
-        )
-        .order("desc")
-        .collect(),
-      ctx.db
-        .query("quoteTemplates")
-        .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-        .collect(),
-      ctx.db
-        .query("measurements")
-        .withIndex("by_project", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("projectId", project._id)
-        )
-        .collect(),
-      ctx.db
-        .query("projectTasks")
-        .withIndex("by_project", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("projectId", project._id)
-        )
-        .collect()
-    ]);
+    const [customer, quotes, templates, measurements, projectTasks, contacts, attachments, orders] =
+      await Promise.all([
+        ctx.db.get(project.klantId),
+        ctx.db
+          .query("quotes")
+          .withIndex("by_project", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("projectId", project._id)
+          )
+          .order("desc")
+          .collect(),
+        ctx.db
+          .query("quoteTemplates")
+          .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+          .collect(),
+        ctx.db
+          .query("measurements")
+          .withIndex("by_project", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("projectId", project._id)
+          )
+          .collect(),
+        ctx.db
+          .query("projectTasks")
+          .withIndex("by_project", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("projectId", project._id)
+          )
+          .collect(),
+        // Winkel-context die de monteur bij de klant nodig heeft: contactmomenten
+        // (bv. "stalenboek uitgeleend, retour bij inmeting") en dossierstukken
+        // (plattegrond, foto's, oude Excel-offerte). Bereikte het veld voorheen niet.
+        ctx.db
+          .query("customerContacts")
+          .withIndex("by_customer", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("klantId", project.klantId)
+          )
+          .order("desc")
+          .collect(),
+        ctx.db
+          .query("dossierAttachments")
+          .withIndex("by_customer", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("klantId", project.klantId)
+          )
+          .order("desc")
+          .collect(),
+        // Bestellingen/leverstatus: relevant voor de montage ("is alles binnen?").
+        // Bewust zonder bedragen (veld-werkplek toont geen inkoopfinanciën).
+        ctx.db
+          .query("supplierOrders")
+          .withIndex("by_project", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("projectId", project._id)
+          )
+          .collect()
+      ]);
+
+    const supplierNames = new Map<string, string>();
+    for (const order of orders as Doc<"supplierOrders">[]) {
+      if (order.leverancierId && !supplierNames.has(String(order.leverancierId))) {
+        const supplier = await ctx.db.get(order.leverancierId);
+        supplierNames.set(
+          String(order.leverancierId),
+          supplier && supplier.tenantId === tenant._id ? supplier.naam : "Leverancier"
+        );
+      }
+    }
     const measurement = latestMeasurement(measurements, project._id);
     const now = Date.now();
     const visitAt = fieldVisitTimestamp(project, measurement, now);
@@ -622,6 +659,27 @@ export const fieldProjectWorkspace = query({
       tasks: sortProjectTasks(projectTasks).map((task: Doc<"projectTasks">) =>
         toProjectTask(tenant.slug, task)
       ),
+      contacts: (contacts as Doc<"customerContacts">[]).map((contact) =>
+        toContact(tenant.slug, contact)
+      ),
+      attachments: await Promise.all(
+        (attachments as Doc<"dossierAttachments">[])
+          .filter((attachment) => attachment.status === "active")
+          .map((attachment) => toDossierAttachment(ctx, tenant.slug, attachment))
+      ),
+      supplierOrders: (orders as Doc<"supplierOrders">[])
+        .sort((left, right) => right.aangemaaktOp - left.aangemaaktOp)
+        .map((order) => ({
+          id: String(order._id),
+          bestelnummer: order.bestelnummer,
+          leverancierNaam: order.leverancierId
+            ? (supplierNames.get(String(order.leverancierId)) ?? "Leverancier")
+            : "Leverancier",
+          status: order.status,
+          besteldOp: order.besteldOp,
+          verwachteLeverdatumOp: order.verwachteLeverdatumOp,
+          ontvangenOp: order.ontvangenOp
+        })),
       visit: {
         status: visitAt ? "Afspraak bekend" : "Nog geen meetmoment",
         visitAt,

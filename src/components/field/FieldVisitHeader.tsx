@@ -31,8 +31,10 @@ type FieldVisitHeaderProps = {
     visitAt?: number;
     measurementStatus?: string;
   };
+  // Veldnamen volgen PortalCustomer (telefoon, niet phone): de workspace geeft de
+  // klant 1-op-1 door — een prop-mismatch liet de belknop nooit verschijnen.
   customer: {
-    phone?: string;
+    telefoon?: string;
     email?: string;
   } | null;
   urgency: FieldUrgency;
@@ -69,8 +71,8 @@ export function FieldVisitHeader({ project, visit, customer, urgency }: FieldVis
         </div>
 
         <div className="field-visit-actions">
-          {customer?.phone ? (
-            <a className="ui-button ui-button-primary ui-button-md" href={`tel:${customer.phone}`}>
+          {customer?.telefoon ? (
+            <a className="ui-button ui-button-primary ui-button-md" href={`tel:${customer.telefoon}`}>
               <Phone size={17} aria-hidden="true" />
               <span>Bellen</span>
             </a>

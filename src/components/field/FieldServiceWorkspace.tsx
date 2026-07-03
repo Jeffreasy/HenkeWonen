@@ -23,6 +23,7 @@ import { FieldCardsSkeleton } from "./FieldCardsSkeleton";
 import { FieldIntakeForm, type IntakeFormValues } from "./FieldIntakeForm";
 import { cardUrgency, type CardActionPreference, type CardUrgency } from "./FieldCard";
 import { FieldWeekStrip } from "./FieldWeekStrip";
+import { useAutoRefresh } from "../../lib/useAutoRefresh";
 
 type FieldServiceWorkspaceProps = {
   session: AppSession;
@@ -266,6 +267,11 @@ export default function FieldServiceWorkspace({
   useEffect(() => {
     void loadWorkspace();
   }, [loadWorkspace]);
+
+  // De winkel kan intussen (her)plannen of annuleren: ververs de werkvoorraad bij
+  // terugkeer naar de tab en periodiek — anders rijdt de monteur op een verouderde
+  // Vandaag-lijst naar een afgezegde klant.
+  useAutoRefresh(loadWorkspace);
 
   /** Retourneert of het vastleggen is gelukt (het intakeformulier wist dan zijn draft). */
   async function handleCreateFieldLead(values: IntakeFormValues): Promise<boolean> {

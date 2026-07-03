@@ -47,7 +47,9 @@ export function FieldFab({ session, pathname }: FieldFabProps) {
     (typeof window !== "undefined" ? window.location.pathname : "/portal/buitendienst");
   const onProject = isProjectPath(path);
 
-  // Probeer adres op te halen na mount (alleen op projectscherm)
+  // Probeer adres op te halen na mount (alleen op projectscherm). Het attribuut
+  // wordt pas gezet nadat de workspace async is geladen, dus dit is een best effort;
+  // handleToggle probeert het bij het openen opnieuw.
   useEffect(() => {
     if (onProject) {
       const found = resolveFieldAddress();
@@ -93,6 +95,12 @@ export function FieldFab({ session, pathname }: FieldFabProps) {
   }
 
   function handleToggle() {
+    // Adres opnieuw resolven op het openmoment: bij mount is de workspace (en dus
+    // het data-field-address-attribuut) meestal nog niet geladen, waardoor de
+    // Route-actie anders nooit verscheen.
+    if (onProject && !isOpen) {
+      setAddress(resolveFieldAddress());
+    }
     setIsOpen((v) => !v);
   }
 

@@ -8,6 +8,13 @@ const session = Astro.locals.session;
 if (!session) {
   return Astro.redirect("/login");
 }
+
+// Facturen zijn in de buitendienst-werkplek server-side geblokkeerd
+// (ensureNotFieldMode): stuur field-sessies terug i.p.v. een pagina te tonen
+// waarvan elke query gegarandeerd faalt.
+if (session.workspaceMode === "field") {
+  return Astro.redirect("/portal/buitendienst/vandaag");
+}
 ---
 
 <PortalLayout title="Facturen" session={session}>
