@@ -111,3 +111,86 @@ test("createInvoiceFromQuote is idempotent: één factuur per offerte met gatloo
   const invoiceCount = await t.run(async (ctx) => (await ctx.db.query("invoices").collect()).length);
   expect(invoiceCount).toBe(1);
 });
+
+test("createInvoice weigert €0-facturen en een ongeldige vervaldatum", async () => {
+  vi.stubEnv("AUTHZ_TOKEN_SECRET", "");
+  vi.stubEnv("ALLOW_DEV_AUTHZ_TOKENS", "true");
+
+  const t = convexTest(schema, modules);
+  const now = Date.now();
+  const externalUserId = "dev-user-1";
+
+  const { tenantId, customerId, projectId } = await t.run(async (ctx) => {
+    const tenantId = await ctx.db.insert("tenants", {
+      slug: "henke-wonen",
+      naam: "Henke Wonen",
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    await ctx.db.insert("users", {
+      tenantId,
+      externalUserId,
+      email: "admin@henke.nl",
+      role: "admin",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    const customerId = await ctx.db.insert("customers", {
+      tenantId,
+      type: "private",
+      weergaveNaam: "Testklant",
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    const projectId = await ctx.db.insert("projects", {
+      tenantId,
+      klantId: customerId,
+      titel: "Testproject",
+      status: "quote_accepted",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    return { tenantId, customerId, projectId };
+  });
+
+  const actor = { externalUserId, authzToken: `dev.actor.henke-wonen.${externalUserId}` };
+  const base = {
+    tenantId,
+    actor,
+    projectId,
+    klantId: customerId,
+    vervaldatum: now + 14 * 24 * 60 * 60 * 1000
+  };
+
+  // €0-factuur (alle bedragen nul zijn onderling consistent, maar altijd een invoerfout).
+  await expect(
+    t.mutation(api.facturen.core.createInvoice, {
+      ...base,
+      subtotaalExBtw: 0,
+      btwTotaal: 0,
+      totaalInclBtw: 0
+    })
+  ).rejects.toThrow(/€0/u);
+
+  // NaN-vervaldatum zou een factuur zonder bruikbare vervaldag opleveren.
+  await expect(
+    t.mutation(api.facturen.core.createInvoice, {
+      ...base,
+      vervaldatum: Number.NaN,
+      subtotaalExBtw: 100,
+      btwTotaal: 21,
+      totaalInclBtw: 121
+    })
+  ).rejects.toThrow(/[Vv]ervaldatum/u);
+
+  // Geldige factuur blijft gewoon werken.
+  const created = await t.mutation(api.facturen.core.createInvoice, {
+    ...base,
+    subtotaalExBtw: 100,
+    btwTotaal: 21,
+    totaalInclBtw: 121
+  });
+  expect(created.invoiceNumber).toMatch(/^FAC-/u);
+});

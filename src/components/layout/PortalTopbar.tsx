@@ -24,6 +24,7 @@ export default function PortalTopbar({ session, pathname }: PortalTopbarProps) {
   
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -35,6 +36,21 @@ export default function PortalTopbar({ session, pathname }: PortalTopbarProps) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Escape sluit de dropdown en zet de focus terug op de knop (toetsenbord/screenreader).
+  useEffect(() => {
+    if (!dropdownOpen) {
+      return;
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setDropdownOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [dropdownOpen]);
 
   const userNameOrEmail = session.name ?? session.email ?? "Gebruiker";
   const userInitial = userNameOrEmail.substring(0, 1).toUpperCase();
@@ -59,6 +75,7 @@ export default function PortalTopbar({ session, pathname }: PortalTopbarProps) {
 
         <div className="portal-topbar-user-menu" ref={dropdownRef}>
           <button
+            ref={triggerRef}
             className={`portal-topbar-user-trigger ${dropdownOpen ? "active" : ""}`}
             onClick={() => setDropdownOpen(!dropdownOpen)}
             aria-expanded={dropdownOpen}
