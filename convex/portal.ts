@@ -126,6 +126,12 @@ export const dashboard = query({
       ];
     });
     const quoteWorkItems = quotes.flatMap((quote: Doc<"quotes">) => {
+      // "Afwijzing opvolgen" hangt aan de dossierstatus (projectWorkItems), niet aan de
+      // losse offerte: anders krijgt elke historisch afgewezen offerte een eigen item,
+      // ook op dossiers die allang met een nieuwe offerte verder zijn.
+      if (quote.status === "rejected") {
+        return [];
+      }
       const meta = projectWorklistItem(`quote_${quote.status}`);
       if (!meta) {
         return [];
