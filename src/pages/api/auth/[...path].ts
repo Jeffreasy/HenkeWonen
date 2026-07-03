@@ -1,5 +1,9 @@
 import type { APIRoute } from "astro";
-import { laventeCareApiBaseUrl, laventeCareTenantId } from "../../../lib/auth/laventeCareConfig";
+import {
+  laventeCareApiBaseUrl,
+  laventeCareAuthTimeoutMs,
+  laventeCareTenantId
+} from "../../../lib/auth/laventeCareConfig";
 import {
   appendLaventeCareCookieHeaders,
   applyLaventeCareJsonTokenCookies,
@@ -109,7 +113,8 @@ async function logout(context: Parameters<APIRoute>[0]) {
     const upstream = await fetch(upstreamUrl, {
       method: context.request.method.toUpperCase(),
       headers,
-      redirect: "manual"
+      redirect: "manual",
+      signal: AbortSignal.timeout(laventeCareAuthTimeoutMs())
     });
 
     appliedCookies.push(...applyLaventeCareSetCookies(upstream, context.cookies, context.request));
@@ -190,12 +195,33 @@ async function proxyAuth(context: Parameters<APIRoute>[0]) {
 
   const method = context.request.method.toUpperCase();
   const body = method === "GET" || method === "HEAD" ? undefined : await context.request.arrayBuffer();
-  const upstream = await fetch(upstreamUrl, {
-    method,
-    headers,
-    body,
-    redirect: "manual"
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetch(upstreamUrl, {
+      method,
+      headers,
+      body,
+      redirect: "manual",
+      signal: AbortSignal.timeout(laventeCareAuthTimeoutMs())
+    });
+  } catch (upstreamError) {
+    // Timeout of netwerkfout richting LaventeCare: geef een duidelijke NL-melding
+    // terug in plaats van een kale 500 — het loginformulier toont deze tekst.
+    console.error("LaventeCare auth-dienst niet bereikbaar via proxy.", upstreamError);
+
+    return new Response(
+      JSON.stringify({
+        error: "De inlogdienst reageert op dit moment niet. Probeer het over een moment opnieuw."
+      }),
+      {
+        status: 504,
+        headers: {
+          "cache-control": "no-store",
+          "content-type": "application/json"
+        }
+      }
+    );
+  }
   const upstreamBody = await upstream.arrayBuffer();
   const upstreamContentType = upstream.headers.get("content-type") ?? "application/json";
   const upstreamJson = parseJsonBody(upstreamContentType, upstreamBody);
