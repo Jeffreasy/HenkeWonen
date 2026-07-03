@@ -115,6 +115,26 @@ test("monteur uitvinken wordt geweigerd zolang er toekomstige inmeetbezoeken gep
   expect(resultaat.toonInAgenda).toBe(false);
 });
 
+test("een historisch inmeetbezoek blokkeert het uitvinken niet", async () => {
+  stubAuth();
+  const t = convexTest(schema, modules);
+  const ids = await base(t);
+  const now = Date.now();
+  await t.run(async (ctx) =>
+    ctx.db.insert("measurements", {
+      tenantId: ids.tenantId, projectId: ids.projectId, klantId: ids.customerId,
+      status: "measured", inmeetdatum: now - 7 * 24 * 60 * 60 * 1000,
+      gemetenDoor: "Wim", gemetenDoorUserId: ids.wimId,
+      aangemaaktOp: now, gewijzigdOp: now
+    })
+  );
+
+  const resultaat = await t.mutation(api.portal.setAgendaZichtbaarheid, {
+    tenantSlug: "henke-wonen", actor, userId: ids.wimId, toonInAgenda: false
+  });
+  expect(resultaat.toonInAgenda).toBe(false);
+});
+
 test("ziek/verlof melden geeft de botsende inmeetbezoeken terug (en legt de afwezigheid vast)", async () => {
   stubAuth();
   const t = convexTest(schema, modules);
