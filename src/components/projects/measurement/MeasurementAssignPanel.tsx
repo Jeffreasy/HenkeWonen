@@ -20,6 +20,7 @@ import { createConvexHttpClient } from "../../../lib/convex/client";
 import { formatEuro } from "../../../lib/money";
 import { formatUnit } from "../../../lib/i18n/statusLabels";
 import { showToast } from "../../../lib/toast";
+import { useFormDraft } from "../../../lib/useFormDraft";
 import type {
   MeasurementCalculationType,
   MeasurementProductGroup,
@@ -301,6 +302,63 @@ export default function MeasurementAssignPanel({
   const [rLengte, setRLengte] = useState("");
   const [rHoogte, setRHoogte] = useState("");
   const [isRoomSaving, setIsRoomSaving] = useState(false);
+
+  // Draft-vangnet voor mobiel (buitendienst): alle maatinvoer leeft in React-state en
+  // was weg zodra de browser de tab weggooide (bv. even naar de camera-app). Spiegel
+  // de vluchtige invoer per inmeting naar localStorage en zet 'm bij mount terug.
+  useFormDraft(
+    `henke-meetinvoer-${measurementId}`,
+    {
+      addType, patternType, rollWidthM, doorOpeningM, rollWidthCm, rollLengthM,
+      patternRepeatCm, wallWidthM, wallHeightM, panelWidthM, panelHeightM,
+      wallPanelWastePercent, curtainRailWidthM, curtainHeightM, curtainFabricWidthM,
+      curtainFullness, curtainMakeUp, curtainRapportM, stairType, treadCount,
+      riserCount, stripLengthM, wcType, wcPriceGroup, wcWidthCm, wcHeightCm,
+      wcQuantity, roomFormOpen, editingRoomId, rNaam, rBreedte, rLengte, rHoogte
+    },
+    (draft) => {
+      const str = (value: unknown, set: (v: string) => void) => {
+        if (typeof value === "string") set(value);
+      };
+      if (typeof draft.addType === "string") setAddType(draft.addType as AddType);
+      if (typeof draft.patternType === "string") setPatternType(draft.patternType as PatternType);
+      str(draft.rollWidthM, setRollWidthM);
+      str(draft.doorOpeningM, setDoorOpeningM);
+      str(draft.rollWidthCm, setRollWidthCm);
+      str(draft.rollLengthM, setRollLengthM);
+      str(draft.patternRepeatCm, setPatternRepeatCm);
+      str(draft.wallWidthM, setWallWidthM);
+      str(draft.wallHeightM, setWallHeightM);
+      str(draft.panelWidthM, setPanelWidthM);
+      str(draft.panelHeightM, setPanelHeightM);
+      str(draft.wallPanelWastePercent, setWallPanelWastePercent);
+      str(draft.curtainRailWidthM, setCurtainRailWidthM);
+      str(draft.curtainHeightM, setCurtainHeightM);
+      str(draft.curtainFabricWidthM, setCurtainFabricWidthM);
+      str(draft.curtainFullness, setCurtainFullness);
+      if (typeof draft.curtainMakeUp === "string") {
+        setCurtainMakeUp(draft.curtainMakeUp as CurtainMakeUp);
+      }
+      str(draft.curtainRapportM, setCurtainRapportM);
+      if (typeof draft.stairType === "string") setStairType(draft.stairType as StairType);
+      str(draft.treadCount, setTreadCount);
+      str(draft.riserCount, setRiserCount);
+      str(draft.stripLengthM, setStripLengthM);
+      str(draft.wcType, setWcType);
+      str(draft.wcPriceGroup, setWcPriceGroup);
+      str(draft.wcWidthCm, setWcWidthCm);
+      str(draft.wcHeightCm, setWcHeightCm);
+      str(draft.wcQuantity, setWcQuantity);
+      if (typeof draft.roomFormOpen === "boolean") setRoomFormOpen(draft.roomFormOpen);
+      if (typeof draft.editingRoomId === "string" || draft.editingRoomId === null) {
+        setEditingRoomId(draft.editingRoomId ?? null);
+      }
+      str(draft.rNaam, setRNaam);
+      str(draft.rBreedte, setRBreedte);
+      str(draft.rLengte, setRLengte);
+      str(draft.rHoogte, setRHoogte);
+    }
+  );
 
   // Diensten/legkosten laden voor de dienst-kiezer + bundel-suggesties.
   useEffect(() => {
@@ -665,7 +723,7 @@ export default function MeasurementAssignPanel({
     setError(null);
     try {
       if (editingRoomId) {
-        await client.mutation(api.projecten.measurements.updateMeasurementRoom, {
+        const result = (await client.mutation(api.projecten.measurements.updateMeasurementRoom, {
           tenantId: tenantConvexId as Id<"tenants">,
           actor: mutationActorFromSession(session),
           ruimteId: editingRoomId as Id<"measurementRooms">,
@@ -675,7 +733,16 @@ export default function MeasurementAssignPanel({
           hoogteM,
           oppervlakteM2,
           omtrekM
-        });
+        })) as { ruimteId: string; herekendeRegels: number };
+        // Maatcorrectie: de automatische meetregels van deze ruimte zijn server-side
+        // mee-herrekend — laat dat expliciet zien, zodat duidelijk is dat de nieuwe
+        // maten ook in de klaarstaande regels (en dus de offerte) landen.
+        if (result.herekendeRegels > 0) {
+          showToast({
+            title: `${result.herekendeRegels} meetregel${result.herekendeRegels === 1 ? "" : "s"} herrekend met de nieuwe maten`,
+            tone: "info"
+          });
+        }
       } else {
         const newId = (await client.mutation(api.projecten.measurements.addMeasurementRoom, {
           tenantId: tenantConvexId as Id<"tenants">,

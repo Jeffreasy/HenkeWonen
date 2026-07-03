@@ -267,14 +267,15 @@ export default function FieldServiceWorkspace({
     void loadWorkspace();
   }, [loadWorkspace]);
 
-  async function handleCreateFieldLead(values: IntakeFormValues) {
+  /** Retourneert of het vastleggen is gelukt (het intakeformulier wist dan zijn draft). */
+  async function handleCreateFieldLead(values: IntakeFormValues): Promise<boolean> {
     const displayName = values.displayName;
 
     const client = createConvexHttpClient(session);
 
     if (!client) {
       setIntakeError("Kan de klant nu niet vastleggen.");
-      return;
+      return false;
     }
 
     setIsSavingLead(true);
@@ -307,12 +308,13 @@ export default function FieldServiceWorkspace({
         });
 
         void navigate(`/portal/buitendienst/projecten/${String(newProjectId)}`);
-        return;
+        return true;
       }
 
       setIsIntakeOpen(false);
       setIntakeNotice(`${displayName} is als lead vastgelegd.`);
       await loadWorkspace();
+      return true;
     } catch (saveError) {
       console.error(saveError);
       // Toon de specifieke (NL) backend-melding als die er is; de modal blijft
@@ -322,6 +324,7 @@ export default function FieldServiceWorkspace({
           ? saveError.data
           : "Klant of dossier kon niet worden vastgelegd.";
       setIntakeError(`${reason} Controleer de gegevens of probeer het opnieuw.`);
+      return false;
     } finally {
       setIsSavingLead(false);
     }
