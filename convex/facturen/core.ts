@@ -61,8 +61,9 @@ export const listInvoices = query({
     actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    // Geen "viewer": een kijker hoort geen financiële data te zien (spiegel van
+    // canViewFinancials, dat voorheen dode code was terwijl de query alles teruggaf).
     const { tenant, workspaceMode } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
-      "viewer",
       "user",
       "editor",
       "admin"
@@ -116,8 +117,8 @@ export const invoiceDetail = query({
     actor: readActorValidator
   },
   handler: async (ctx, args) => {
+    // Geen "viewer": zie listInvoices.
     const { tenant, workspaceMode } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
-      "viewer",
       "user",
       "editor",
       "admin"
