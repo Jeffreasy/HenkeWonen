@@ -249,6 +249,11 @@ export default defineSchema({
       v.literal("inactive"),
       v.literal("archived")
     ),
+    // AVG / recht op vergetelheid: gezet zodra een klant met facturen (7 jaar bewaarplicht)
+    // is geanonimiseerd i.p.v. verwijderd — naam + adres blijven staan (wettelijk vereist op
+    // de factuur), de overige persoonsgegevens zijn dan gewist. Leeg = niet geanonimiseerd.
+    geanonimiseerdOp: v.optional(v.number()),
+    geanonimiseerdDoorExternalUserId: v.optional(v.string()),
     aangemaaktOp: v.number(),
     gewijzigdOp: v.number()
   })

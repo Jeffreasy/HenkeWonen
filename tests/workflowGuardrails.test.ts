@@ -137,6 +137,10 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
       // vervangt het weekrooster (verwijder-dan-invoeg), removeAfwezigheid wist 1 rij.
       "convex/beheer/agenda.ts:removeAfwezigheid",
       "convex/beheer/agenda.ts:setMonteurWerktijden",
+      // AVG / recht op vergetelheid: admin-only + dubbele bevestiging (getypte klantnaam moet
+      // exact matchen). Tenant-gescoped (klant + alle kinderen via tenantId-indexen); facturen
+      // worden bewaard — de klant wordt dan geanonimiseerd i.p.v. verwijderd.
+      "convex/beheer/customers.ts:deleteCustomer",
       "convex/catalog/import.ts:deleteProductsByCategoryChunk",
       "convex/catalog/import.ts:deleteProductsBySupplierChunk",
       "convex/catalog/import.ts:resetCatalogChunk",
@@ -363,6 +367,25 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(customerInfoPanel).toContain("customer-info-value-text");
     expect(featureStyles).toContain(".contact-form-grid");
     expect(responsiveStyles).toContain(".contact-form-footer .ui-button");
+  });
+
+  it("should secure the AVG customer erasure with admin role, name confirmation and tenant scope", () => {
+    const deleteCustomer = exportedMutationBlock("convex/beheer/customers.ts", "deleteCustomer");
+    expect(deleteCustomer).toContain("actor: mutationActorValidator");
+    expect(deleteCustomer).toContain("requireMutationRole");
+    expect(deleteCustomer).toContain('["admin"]');
+    // Dubbele bevestiging: getypte naam moet exact matchen.
+    expect(deleteCustomer).toContain("bevestigNaam: v.string()");
+    expect(deleteCustomer).toContain("args.bevestigNaam.trim() !== customer.weergaveNaam.trim()");
+    // Tenant-scope: klant hoort bij de tenant en de kinderen worden via tenantId opgehaald.
+    expect(deleteCustomer).toContain("customer.tenantId !== tenant._id");
+    expect(deleteCustomer).toContain('q.eq("tenantId", tenant._id)');
+    // Facturen (bewaarplicht) → anonimiseren i.p.v. verwijderen.
+    expect(deleteCustomer).toContain("geanonimiseerdOp: now");
+    expect(deleteCustomer).toContain('mode: "anonymized"');
+    expect(deleteCustomer).toContain('mode: "deleted"');
+    // Fysieke bestanden worden ook uit storage verwijderd.
+    expect(deleteCustomer).toContain("ctx.storage.delete(");
   });
 
   it("should enforce child check constraints before deleting a project room", () => {

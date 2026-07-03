@@ -1,8 +1,9 @@
+import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { navigate } from "astro:transitions/client";
 import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
-import { canEditDossiers, type AppSession } from "../../lib/auth/session";
+import { canEditDossiers, canManage, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import type {
@@ -12,11 +13,14 @@ import type {
   PortalProject
 } from "../../lib/portalTypes";
 import { showErrorToast, showToast } from "../../lib/toast";
+import { Button } from "../ui/forms/Button";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { ErrorState } from "../ui/feedback/ErrorState";
 import { FormModal } from "../ui/overlays/FormModal";
+import { SectionHeader } from "../ui/layout/SectionHeader";
 import { CustomerDetailSkeleton } from "./CustomerDetailSkeleton";
+import { DeleteCustomerDialog } from "./DeleteCustomerDialog";
 
 import { CustomerDetailStats } from "./CustomerDetailStats";
 import { CustomerInfoPanel } from "./CustomerInfoPanel";
@@ -52,8 +56,11 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
   const [pendingCustomerStatus, setPendingCustomerStatus] = useState<
     PortalCustomer["status"] | null
   >(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const customerEditFormRef = useRef<HTMLFormElement>(null);
   const canAddContact = canEditDossiers(session.role);
+  const canDeleteCustomer = canManage(session.role);
 
   useAutoFocusPanel(editingCustomer, customerEditFormRef);
 
@@ -322,6 +329,47 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     }
   }
 
+  async function handleDeleteCustomer() {
+    if (!detail?.customer) {
+      return;
+    }
+
+    const client = createConvexHttpClient(session);
+
+    if (!client) {
+      showToast({
+        title: "Verbinding mislukt",
+        description: "Kan de omgeving niet bereiken.",
+        tone: "error"
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const result = (await client.mutation(api.portal.deleteCustomer, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        klantId: customerId,
+        bevestigNaam: detail.customer.weergaveNaam
+      })) as { mode?: "deleted" | "anonymized" };
+
+      const anonymized = result?.mode === "anonymized";
+      showToast({
+        title: anonymized ? "Klant geanonimiseerd" : "Klant verwijderd",
+        description: anonymized
+          ? "Facturen blijven wettelijk 7 jaar bewaard; de overige gegevens zijn gewist."
+          : "Alle gekoppelde gegevens zijn verwijderd.",
+        tone: anonymized ? "warning" : "success"
+      });
+      // De klant is weg of geanonimiseerd — terug naar de klantenlijst.
+      void navigate("/portal/klanten");
+    } catch (deleteError) {
+      showErrorToast(deleteError, "Verwijderen mislukt");
+      setIsDeleting(false);
+    }
+  }
+
   if (isLoading) {
     return <CustomerDetailSkeleton />;
   }
@@ -423,6 +471,36 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         >
           <AddContactForm onSubmit={handleAddContact} />
         </FormModal>
+      ) : null}
+
+      {canDeleteCustomer ? (
+        <section className="panel customer-detail-panel">
+          <SectionHeader
+            compact
+            title="Klant verwijderen"
+            description="AVG — recht op vergetelheid. Verwijdert de klant en alle gekoppelde gegevens; facturen blijven wettelijk 7 jaar bewaard (de klant wordt dan geanonimiseerd)."
+            actions={
+              <Button
+                variant="danger"
+                size="sm"
+                leftIcon={<Trash2 size={16} aria-hidden="true" />}
+                onClick={() => setIsDeleteOpen(true)}
+              >
+                Klant verwijderen
+              </Button>
+            }
+          />
+        </section>
+      ) : null}
+
+      {canDeleteCustomer ? (
+        <DeleteCustomerDialog
+          open={isDeleteOpen}
+          customerName={customer.weergaveNaam}
+          isBusy={isDeleting}
+          onCancel={() => setIsDeleteOpen(false)}
+          onConfirm={handleDeleteCustomer}
+        />
       ) : null}
     </div>
   );
