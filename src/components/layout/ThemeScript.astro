@@ -8,9 +8,16 @@
 <script is:inline>
   (function () {
     const applyTheme = () => {
+      // Alleen expliciet "dark"/"light" letterlijk overnemen; "system" (en elke
+      // onbekende waarde) resolven naar de OS-voorkeur — de CSS kent alleen
+      // data-theme="dark"/"light", dus een letterlijke "system" zou licht renderen.
       const stored = localStorage.getItem("theme");
       const theme =
-        stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        stored === "dark" || stored === "light"
+          ? stored
+          : window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
       document.documentElement.setAttribute("data-theme", theme);
     };
     applyTheme();

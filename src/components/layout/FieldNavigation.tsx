@@ -208,7 +208,7 @@ export default function FieldNavigation({ session, pathname }: FieldNavigationPr
           </a>
           <button
             aria-controls="field-navigation-drawer"
-            aria-expanded="false"
+            aria-expanded={isMenuOpen}
             aria-label="Menu openen"
             className="field-mobile-menu-button"
             type="button"

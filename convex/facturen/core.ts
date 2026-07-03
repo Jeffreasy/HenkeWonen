@@ -244,8 +244,16 @@ export const createInvoice = mutation({
     if (![subtotaalExBtw, btwTotaal, totaalInclBtw].every((n) => Number.isFinite(n) && n >= 0)) {
       throw new ConvexError("Factuurbedragen moeten eindige, niet-negatieve getallen zijn.");
     }
+    // Zelfde ondergrens als de offerte-flow (die €0-offertes al blokkeert): een
+    // factuur van €0 is altijd een invoerfout en zou een gatloos factuurnummer verbruiken.
+    if (totaalInclBtw <= 0) {
+      throw new ConvexError("Een factuur van €0 is niet toegestaan.");
+    }
     if (Math.abs(totaalInclBtw - (subtotaalExBtw + btwTotaal)) > 0.01) {
       throw new ConvexError("Factuurtotaal is inconsistent (totaal incl. btw moet subtotaal + btw zijn).");
+    }
+    if (!Number.isFinite(args.vervaldatum) || args.vervaldatum <= 0) {
+      throw new ConvexError("Vervaldatum is ongeldig.");
     }
     if (args.quoteId) {
       const linkedQuote = await ctx.db.get(args.quoteId);
@@ -358,6 +366,12 @@ export const createInvoiceFromQuote = mutation({
         invoiceNumber: existing.factuurnummer,
         alreadyExists: true
       };
+    }
+
+    // Pas ná het idempotente "bestaat al"-pad: die tak gebruikt existing.vervaldatum
+    // en mag niet stranden op een parameter die daar nooit wordt geraadpleegd.
+    if (!Number.isFinite(args.vervaldatum) || args.vervaldatum <= 0) {
+      throw new ConvexError("Vervaldatum is ongeldig.");
     }
 
     const invoiceNumber = await nextInvoiceNumber(ctx, tenant._id);
