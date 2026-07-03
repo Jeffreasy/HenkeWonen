@@ -42,6 +42,24 @@ export default function Sidebar({ session, pathname }: SidebarProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Sluit het menu zodra het mobiele breekpunt wordt verlaten (rotatie/venster
+  // vergroten): op desktop is het paneel altijd zichtbaar en zou een
+  // achtergebleven scroll-lock de pagina blokkeren. 980px = het CSS-breekpunt
+  // waarop .sidebar-mobile-topbar verschijnt (17-responsive.css).
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 980px)");
+
+    function handleChange(event: MediaQueryListEvent) {
+      if (!event.matches) {
+        setIsMenuOpen(false);
+      }
+    }
+
+    mediaQuery.addEventListener("change", handleChange);
+
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
   // Scroll-lock zolang het mobiele menu open is: zonder lock scrolde de pagina
   // gewoon door onder het (sticky) geopende paneel — op iOS voelde het menu
   // daardoor kapot zodra het interne paneel-scrollen doorkettte naar de pagina.
