@@ -156,6 +156,7 @@ async function seedCustomer(
       quoteId,
       regelType: "product",
       titel: "PVC vloer",
+      omschrijving: "Leggen bij Jan, sleutel bij de buren",
       aantal: 10,
       eenheid: "m2",
       eenheidsprijsExBtw: 10,
@@ -273,6 +274,13 @@ test("deleteCustomer zonder facturen verwijdert alles inclusief de klant", async
     expect(quoteLines).toHaveLength(0);
     expect(supplierOrders).toHaveLength(0);
     expect(measurementLines).toHaveLength(0);
+
+    // Het AVG-wisregister bevat een aantoonbaar spoor van de wissing.
+    const erasures = await ctx.db.query("customerErasures").collect();
+    expect(erasures).toHaveLength(1);
+    expect(erasures[0].mode).toBe("deleted");
+    expect(erasures[0].klantWeergaveNaam).toBe("Jan Jansen");
+    expect(erasures[0].uitgevoerdDoorExternalUserId).toBe(adminUserId);
   });
 });
 
@@ -307,17 +315,35 @@ test("deleteCustomer mét facturen anonimiseert de klant en bewaart de factuur",
     const invoices = await ctx.db.query("invoices").collect();
     expect(invoices).toHaveLength(1);
 
-    // Het gefactureerde project + offerte blijven bestaan, maar zijn geschoond.
+    // Het gefactureerde project + offerte blijven bestaan, maar zijn geschoond:
+    // vrije tekst weg, titels generiek, project afgesloten (geen actioneel dossier meer).
     const project = await ctx.db.get(seeded.projectId);
     expect(project).not.toBeNull();
+    expect(project?.titel).toBe("Project (geanonimiseerd)");
+    expect(project?.status).toBe("closed");
     expect(project?.omschrijving).toBeUndefined();
     expect(project?.interneNotities).toBeUndefined();
     expect(project?.klantNotities).toBeUndefined();
 
     const quote = await ctx.db.get(seeded.quoteId);
     expect(quote).not.toBeNull();
+    expect(quote?.titel).toBe("Offerte (geanonimiseerd)");
     expect(quote?.inleidingTekst).toBeUndefined();
     expect(quote?.afsluitTekst).toBeUndefined();
+
+    // Regel-omschrijvingen (vrije tekst) zijn geschoond; de financiële onderbouwing
+    // (titel/aantallen/bedragen) blijft staan.
+    const quoteLines = await ctx.db.query("quoteLines").collect();
+    expect(quoteLines).toHaveLength(1);
+    expect(quoteLines[0].titel).toBe("PVC vloer");
+    expect(quoteLines[0].omschrijving).toBeUndefined();
+
+    // Ruimtes + leveranciersbestellingen van het bewaarde project blijven staan
+    // (offerte-regels verwijzen hard naar de ruimtes; bestellingen = kostprijsonderbouwing).
+    const rooms = await ctx.db.query("projectRooms").collect();
+    expect(rooms).toHaveLength(1);
+    const supplierOrders = await ctx.db.query("supplierOrders").collect();
+    expect(supplierOrders).toHaveLength(1);
 
     // Niet-financiële persoonsgegevens + bestand zijn wél weg.
     expect(await ctx.db.get(seeded.attachmentId)).toBeNull();
@@ -325,7 +351,113 @@ test("deleteCustomer mét facturen anonimiseert de klant en bewaart de factuur",
     expect(await ctx.db.get(seeded.measurementId)).toBeNull();
     const contacts = await ctx.db.query("customerContacts").collect();
     expect(contacts).toHaveLength(0);
+
+    // Wisregister: mode anonymized.
+    const erasures = await ctx.db.query("customerErasures").collect();
+    expect(erasures).toHaveLength(1);
+    expect(erasures[0].mode).toBe("anonymized");
   });
+});
+
+test("deleteCustomer veegt wees-offertes en wees-tijdlijnitems (verdwenen project) mee", async () => {
+  const t = convexTest(schema, modules);
+  const seeded = await seedCustomer(t, { withInvoice: false });
+  const now = Date.now();
+
+  // Wees-rijen: klantId wijst naar deze klant, maar het project bestaat niet (meer).
+  const { weesQuoteId, weesEventId } = await t.run(async (ctx) => {
+    const spookProjectId = await ctx.db.insert("projects", {
+      tenantId: seeded.tenantId,
+      klantId: seeded.klantId,
+      titel: "Spookproject",
+      status: "lead",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    const weesQuoteId = await ctx.db.insert("quotes", {
+      tenantId: seeded.tenantId,
+      projectId: spookProjectId,
+      klantId: seeded.klantId,
+      offertenummer: "OF-2026-WEES",
+      titel: "Wees-offerte",
+      status: "draft",
+      inleidingTekst: "Beste Jan",
+      subtotaalExBtw: 0,
+      btwTotaal: 0,
+      totaalInclBtw: 0,
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    const weesEventId = await ctx.db.insert("timelineEvents", {
+      tenantId: seeded.tenantId,
+      projectId: spookProjectId,
+      klantId: seeded.klantId,
+      type: "note",
+      titel: "Jan belde over levering",
+      zichtbaarVoorKlant: false,
+      aangemaaktOp: now
+    });
+    // Het project verdwijnt (het historische weesrecord-scenario).
+    await ctx.db.delete(spookProjectId);
+    return { weesQuoteId, weesEventId };
+  });
+
+  await t.mutation(api.portal.deleteCustomer, {
+    tenantSlug: "henke-wonen",
+    actor: adminActor,
+    klantId: seeded.klantId,
+    bevestigNaam: "Jan Jansen"
+  });
+
+  await t.run(async (ctx) => {
+    expect(await ctx.db.get(weesQuoteId)).toBeNull();
+    expect(await ctx.db.get(weesEventId)).toBeNull();
+  });
+});
+
+test("een geanonimiseerde stub is bevroren: niet opnieuw wissen of bewerken", async () => {
+  const t = convexTest(schema, modules);
+  const seeded = await seedCustomer(t, { withInvoice: true });
+
+  await t.mutation(api.portal.deleteCustomer, {
+    tenantSlug: "henke-wonen",
+    actor: adminActor,
+    klantId: seeded.klantId,
+    bevestigNaam: "Jan Jansen"
+  });
+
+  // Nogmaals wissen: duidelijke weigering i.p.v. een tweede (misleidende) anonimisering.
+  await expect(
+    t.mutation(api.portal.deleteCustomer, {
+      tenantSlug: "henke-wonen",
+      actor: adminActor,
+      klantId: seeded.klantId,
+      bevestigNaam: "Jan Jansen"
+    })
+  ).rejects.toThrow(/geanonimiseerd/u);
+
+  // Bewerken (nieuwe persoonsgegevens of status terug op actief) is geblokkeerd.
+  await expect(
+    t.mutation(api.portal.updateCustomer, {
+      tenantSlug: "henke-wonen",
+      actor: adminActor,
+      klantId: seeded.klantId,
+      email: "jan-weer-terug@example.nl",
+      status: "active"
+    })
+  ).rejects.toThrow(/geanonimiseerd/u);
+
+  // Nieuwe contactmomenten vastleggen ook.
+  await expect(
+    t.mutation(api.portal.createCustomerContact, {
+      tenantSlug: "henke-wonen",
+      actor: adminActor,
+      klantId: seeded.klantId,
+      type: "note",
+      titel: "Belde toch weer",
+      zichtbaarVoorKlant: false
+    })
+  ).rejects.toThrow(/geanonimiseerd/u);
 });
 
 test("deleteCustomer verwijdert een niet-gefactureerd project ook in de anonimiseer-tak", async () => {

@@ -6,6 +6,8 @@ export default getViteConfig({
     globalSetup: "./tests/portalSetup.ts",
     environment: "node",
     // Convex-backend-tests draaien via vitest.convex.config.ts (edge-runtime).
-    exclude: [...configDefaults.exclude, "tests/convex/**"],
+    // .claude/worktrees bevat losse git-worktrees van agent-sessies; hun testkopieën
+    // lezen bronbestanden via cwd en falen dan onterecht tegen deze checkout.
+    exclude: [...configDefaults.exclude, "tests/convex/**", "**/.claude/**"],
   }
 });
