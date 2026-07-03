@@ -140,7 +140,9 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
       return;
     }
 
-    setIsLoading(true);
+    // Bewust geen setIsLoading(true): het skeleton is er alleen voor de eerste lading.
+    // Herladingen (auto-refresh, na een mutatie) verversen stil, anders knippert het
+    // hele scherm elke paar minuten terug naar de laadtekst.
     setError(null);
 
     try {
