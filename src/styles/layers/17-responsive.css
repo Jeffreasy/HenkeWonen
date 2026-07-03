@@ -15,6 +15,37 @@
     overflow: visible;
   }
 
+  /* Open menu = echte overlay: boven de FAB (z 1400) en de quickbar (z 45),
+     met een dimmende backdrop eronder. Voorheen bleven pagina, FAB en quickbar
+     gewoon zichtbaar en tikbaar naast/onder het open menu — dat oogde als een
+     kapotte, over elkaar heen lopende navigatie. Onder de modals (1450) en
+     toasts (1500). */
+  .sidebar.sidebar-menu-open {
+    z-index: 1420;
+  }
+
+  .sidebar-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: rgba(20, 15, 8, 0.55);
+    cursor: default;
+  }
+
+  /* Topbar en paneel boven de backdrop, met een eigen dekkend vlak zodat de
+     dimming niet dóór het menu heen schijnt. */
+  .sidebar-mobile-topbar,
+  .sidebar-nav-panel {
+    position: relative;
+    z-index: 1;
+  }
+
+  .sidebar.sidebar-menu-open .sidebar-mobile-topbar,
+  .sidebar-nav-panel.open {
+    background: var(--sidebar);
+  }
+
   .sidebar-mobile-topbar {
     display: flex;
     align-items: center;
