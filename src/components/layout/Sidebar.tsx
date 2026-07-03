@@ -96,9 +96,11 @@ export default function Sidebar({ session, pathname }: SidebarProps) {
           SIBLING vóór de sidebar (z 1410 < sidebar 1420), zodat het menu zelf —
           inclusief padding en naden — egaal dekkend boven de scrim ligt. */}
       {isMenuOpen ? (
-        <div
-          className="sidebar-menu-backdrop"
+        <button
           aria-hidden="true"
+          className="sidebar-menu-backdrop"
+          tabIndex={-1}
+          type="button"
           onClick={() => setIsMenuOpen(false)}
         />
       ) : null}
