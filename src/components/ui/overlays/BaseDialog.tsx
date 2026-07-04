@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useScrollLock } from "../../../lib/useScrollLock";
 
 type BaseDialogProps = {
@@ -34,6 +35,13 @@ type BaseDialogProps = {
  * krimpt om de inhoud heen; een mousedown die op het element zelf landt is
  * daardoor altijd een druk op de ::backdrop → sluiten. Mousedown (niet click)
  * voorkomt dat tekst selecteren dat buiten het paneel eindigt de dialoog sluit.
+ *
+ * De dialoog wordt via een portal naar <body> gerenderd. Dat is nodig omdat
+ * Chromium een <dialog> die via showModal() de top-layer in wil NIET rendert
+ * wanneer hij binnen een gesloten-of-open <details> staat (o.a. onze
+ * CollapsiblePanel) — en het voorkomt meteen andere ancestor-valkuilen
+ * (overflow-clipping, inert-subtrees). React-events blijven via de React-tree
+ * bubbelen, dus onClose/onSelect werken ongewijzigd.
  */
 export function BaseDialog({
   open,
@@ -47,6 +55,10 @@ export function BaseDialog({
   children
 }: BaseDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  // Portal pas na mount: op de server bestaat document.body niet, en een
+  // gesloten dialoog hoeft server-side niets te renderen.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   // Actuele waarden voor native-event-handlers (die kunnen vuren tussen
   // render en effect in, bv. bij een geforceerde close-request).
   const openRef = useRef(open);
@@ -61,6 +73,10 @@ export function BaseDialog({
     }
     if (open && !dialog.open) {
       dialog.showModal();
+      // showModal() focust standaard het eerste focusbare element (vaak de
+      // sluitknop). Laat een opt-in [data-autofocus]-element (bv. een zoekveld)
+      // dat direct overrulen — deterministisch, in dezelfde tick.
+      dialog.querySelector<HTMLElement>("[data-autofocus]")?.focus();
     } else if (!open && dialog.open) {
       dialog.close();
     }
@@ -87,7 +103,11 @@ export function BaseDialog({
   // zodat gestapelde dialogen elkaars restore niet verstoren).
   useScrollLock(open);
 
-  return (
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
     <dialog
       ref={dialogRef}
       className={className ? `app-dialog ${className}` : "app-dialog"}
@@ -128,6 +148,7 @@ export function BaseDialog({
       }}
     >
       {open ? children : null}
-    </dialog>
+    </dialog>,
+    document.body
   );
 }
