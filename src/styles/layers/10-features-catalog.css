@@ -174,18 +174,13 @@
    Catalogus-productkiezer — triggerknop + zoekdialoog (CatalogProductPicker)
    --------------------------------------------------------------------------- */
 
+/* Bouwt voort op .ui-control (06-ui-components.css) zodat de trigger exact het
+   uiterlijk, de maat en de :focus-visible-rand van de andere formuliercontrols
+   deelt; hier alleen de knop-specifieke flex/ellipsis-extra's. */
 .catalog-picker-trigger {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  width: 100%;
-  min-height: 40px;
-  padding: 9px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface-raised);
-  color: var(--ink);
-  font: inherit;
   text-align: left;
   cursor: pointer;
   transition:
@@ -204,7 +199,7 @@
 
 .catalog-picker-trigger-icon {
   flex: 0 0 auto;
-  color: var(--accent-ink, var(--accent-strong));
+  color: var(--color-accent-ink);
 }
 
 .catalog-picker-trigger-label {
@@ -343,5 +338,5 @@
 
 .catalog-picker-option-check {
   flex: 0 0 auto;
-  color: var(--accent-ink, var(--accent-strong));
+  color: var(--color-accent-ink);
 }

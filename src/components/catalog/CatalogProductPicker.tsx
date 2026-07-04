@@ -142,7 +142,12 @@ export default function CatalogProductPicker({
     return () => {
       isActive = false;
     };
-  }, [open, debouncedSearch, session, productGroupHint]);
+    // session.tenantId (niet het session-object) als dep: voorkomt een onnodige
+    // her-fetch als de ouder een nieuwe session-referentie doorgeeft. De query
+    // hangt alleen van tenantId af; het session-object wordt enkel doorgegeven
+    // aan de client-factory.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, debouncedSearch, session.tenantId, productGroupHint]);
 
   const selectedInResults = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? null,
@@ -173,10 +178,18 @@ export default function CatalogProductPicker({
   }
 
   function openDialog() {
+    // Vorige resultaten wegzetten zodat een heropende dialoog niet even de oude
+    // lijst toont (en Enter dus niet een verouderd product kan kiezen) voordat
+    // de verse zoekopdracht binnen is.
     setSearch("");
     setDebouncedSearch("");
+    setProducts([]);
     setOpen(true);
   }
+
+  // Resultaten horen bij debouncedSearch; zolang de gebruiker nog typt of de
+  // fetch loopt, zijn ze "in beweging" en mag Enter niet de eerste treffer kiezen.
+  const resultsSettled = !isLoading && debouncedSearch === search.trim();
 
   return (
     <Field
@@ -188,7 +201,7 @@ export default function CatalogProductPicker({
       <button
         type="button"
         id={`${idPrefix}-product`}
-        className={`catalog-picker-trigger${triggerText ? "" : " is-placeholder"}`}
+        className={`ui-control catalog-picker-trigger${triggerText ? "" : " is-placeholder"}`}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-describedby={description ? `${idPrefix}-product-desc` : undefined}
@@ -224,9 +237,10 @@ export default function CatalogProductPicker({
               data-autofocus
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
-                  // Geen formulier submitten; Enter kiest de eerste treffer.
+                  // Geen formulier submitten; Enter kiest de eerste treffer —
+                  // maar alleen als de lijst bij de huidige zoekterm hoort.
                   event.preventDefault();
-                  if (products.length > 0) {
+                  if (resultsSettled && products.length > 0) {
                     choose(products[0]);
                   }
                 }
@@ -275,7 +289,7 @@ export default function CatalogProductPicker({
                       <button
                         type="button"
                         className={`catalog-picker-option${isActive ? " is-active" : ""}`}
-                        aria-pressed={isActive}
+                        aria-current={isActive || undefined}
                         onClick={() => choose(product)}
                       >
                         <span className="catalog-picker-option-text">

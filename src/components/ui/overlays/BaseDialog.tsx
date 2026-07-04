@@ -56,7 +56,8 @@ export function BaseDialog({
 }: BaseDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   // Portal pas na mount: op de server bestaat document.body niet, en een
-  // gesloten dialoog hoeft server-side niets te renderen.
+  // gesloten dialoog hoeft server-side niets te renderen. Het <dialog> bestaat
+  // dus pas ná deze eerste mount-cyclus (zie de mounted-dep op het open-effect).
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   // Actuele waarden voor native-event-handlers (die kunnen vuren tussen
@@ -80,7 +81,11 @@ export function BaseDialog({
     } else if (!open && dialog.open) {
       dialog.close();
     }
-  }, [open]);
+    // `mounted` staat bewust in de deps: door de portal-mount-guard bestaat het
+    // <dialog> pas ná de eerste render. Zonder deze dep zou een modal die al
+    // mét open=true mount (bv. {cond && <Modal open .../>}) nooit showModal()
+    // krijgen en onzichtbaar blijven.
+  }, [open, mounted]);
 
   // Focus-vangnet: dialog.close() herstelt de focus zelf, maar wordt de
   // component ge-unmount terwijl de dialoog open is (parent verdwijnt,
