@@ -3,10 +3,16 @@ import { useEffect, useRef, type ReactNode } from "react";
 type BaseDialogProps = {
   open: boolean;
   onClose: () => void;
-  ariaLabel: string;
+  /** Toegankelijke naam; laat weg wanneer ariaLabelledBy wordt gebruikt. */
+  ariaLabel?: string;
+  /** id van het element dat de dialoog benoemt (bv. de modal-titel). */
+  ariaLabelledBy?: string;
+  ariaDescribedBy?: string;
   /** Extra klasse(n) voor het binnenpaneel-formaat, bv. "shortcut-help-modal". */
   className?: string;
   id?: string;
+  /** Blokkeer sluiten via Escape/backdrop (bv. terwijl een actie loopt). */
+  closeDisabled?: boolean;
   children: ReactNode;
 };
 
@@ -20,10 +26,21 @@ type BaseDialogProps = {
  * raakt in plaats van over de hele pagina te liggen.
  *
  * Het <dialog>-element zelf is onzichtbaar (geen rand/achtergrond/padding) en
- * krimpt om de inhoud heen; een klik die op het element zelf landt is daardoor
- * altijd een klik op de ::backdrop → sluiten.
+ * krimpt om de inhoud heen; een mousedown die op het element zelf landt is
+ * daardoor altijd een druk op de ::backdrop → sluiten. Mousedown (niet click)
+ * voorkomt dat tekst selecteren dat buiten het paneel eindigt de dialoog sluit.
  */
-export function BaseDialog({ open, onClose, ariaLabel, className, id, children }: BaseDialogProps) {
+export function BaseDialog({
+  open,
+  onClose,
+  ariaLabel,
+  ariaLabelledBy,
+  ariaDescribedBy,
+  className,
+  id,
+  closeDisabled = false,
+  children
+}: BaseDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -56,13 +73,17 @@ export function BaseDialog({ open, onClose, ariaLabel, className, id, children }
       className={className ? `app-dialog ${className}` : "app-dialog"}
       id={id}
       aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
+      aria-describedby={ariaDescribedBy}
       onCancel={(event) => {
         // Escape: laat React de status bepalen, zodat state en DOM gelijk lopen.
         // NB: in de portal onderschept KeyboardShortcutController Escape met
         // preventDefault en klikt die op [data-modal-close]; dit pad dekt de
         // omgevingen zonder die controller (buitendienst).
         event.preventDefault();
-        onClose();
+        if (!closeDisabled) {
+          onClose();
+        }
       }}
       onClose={() => {
         // Vangnet: sluit de dialoog buiten React om (bv. door de browser),
@@ -71,8 +92,8 @@ export function BaseDialog({ open, onClose, ariaLabel, className, id, children }
           onClose();
         }
       }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) {
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !closeDisabled) {
           onClose();
         }
       }}

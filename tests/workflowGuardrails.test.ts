@@ -330,19 +330,25 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(featureStyles).not.toContain(".field-intake-panel");
   });
 
-  it("should keep mobile modals above quick actions and touch-scrollable", () => {
+  it("should keep modals in the top layer and touch-scrollable", () => {
+    // Modals draaien op BaseDialog (native <dialog> + showModal): de top-layer
+    // tekent per definitie boven de quick actions, dus z-index-afspraken voor
+    // modal-backdrops zijn vervallen. Dit bewaakt de nieuwe invariant.
     const overlayStyles = read("src/styles/layers/07-overlays.css");
     const responsiveStyles = read("src/styles/layers/17-responsive.css");
     const componentStyles = read("src/styles/layers/06-ui-components.css");
+    const formModal = read("src/components/ui/overlays/FormModal.tsx");
+    const confirmDialog = read("src/components/ui/overlays/ConfirmDialog.tsx");
 
-    expect(overlayStyles).toContain(".form-modal-backdrop");
-    expect(overlayStyles).toContain("z-index: 1450");
-    expect(overlayStyles).toContain("touch-action: pan-y");
-    expect(overlayStyles).toContain("-webkit-overflow-scrolling: touch");
+    expect(formModal).toContain("BaseDialog");
+    expect(confirmDialog).toContain("BaseDialog");
+    expect(overlayStyles).toContain(".app-dialog::backdrop");
+    expect(overlayStyles).toContain("overscroll-behavior: contain");
     expect(overlayStyles).toContain(".quick-action-fab-container");
     expect(overlayStyles).toContain("z-index: 1400");
-    expect(componentStyles).toContain(".confirm-dialog-backdrop");
-    expect(componentStyles).toContain("z-index: 1460");
+    expect(componentStyles).toContain("touch-action: pan-y");
+    expect(componentStyles).toContain("-webkit-overflow-scrolling: touch");
+    expect(responsiveStyles).toContain(".form-modal-host");
     expect(responsiveStyles).toContain("height: min(90dvh");
     expect(responsiveStyles).toContain("env(safe-area-inset-bottom");
   });

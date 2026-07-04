@@ -769,24 +769,13 @@ html[data-theme="dark"] select.ui-control {
   font-weight: 700;
 }
 
-.confirm-dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1460;
-  display: grid;
-  place-items: center;
-  padding: var(--space-4);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  touch-action: pan-y;
-  background: rgba(18, 24, 21, 0.48);
-  backdrop-filter: blur(2px);
-}
-
+/* De vroegere .confirm-dialog-backdrop is vervangen door de gedeelde
+   .app-dialog::backdrop (BaseDialog, 07-overlays.css). Breedte is
+   viewport-gebaseerd: percentages lossen niet op in de krimpende wrapper. */
 .confirm-dialog {
   display: grid;
   gap: var(--space-3);
-  width: min(100%, 540px);
+  width: min(calc(100vw - 2 * var(--space-4)), 540px);
   max-height: calc(100dvh - var(--space-6)); /* dvh = dynamic viewport height, correct op mobiel */
   max-width: 100%;
   min-height: 0;
@@ -816,9 +805,11 @@ html[data-theme="dark"] select.ui-control {
 
 /* Bottom-sheet stijl op kleine smartphones (480px) */
 @media (max-width: 480px) {
-  .confirm-dialog-backdrop {
-    padding: 0;
-    align-items: flex-end;
+  .confirm-dialog-host {
+    width: 100%;
+    max-width: 100vw;
+    max-height: 100dvh;
+    margin: auto 0 0;
   }
 
   .confirm-dialog {
