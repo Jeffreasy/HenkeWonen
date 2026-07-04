@@ -25,10 +25,9 @@ export function KeyboardShortcutController() {
           setHelpOpen(false);
           return;
         }
-        // Trigger close on open modals / confirm dialogs
-        const closeBtn = document.querySelector<HTMLElement>(
-          "[data-modal-close], .shortcut-help-overlay"
-        );
+        // Trigger close on open modals / confirm dialogs. Native <dialog>-modals
+        // (BaseDialog) sluiten zelf al via het cancel-event.
+        const closeBtn = document.querySelector<HTMLElement>("[data-modal-close]");
         closeBtn?.click();
       }
     },

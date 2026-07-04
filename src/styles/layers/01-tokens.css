@@ -23,6 +23,9 @@
   --color-success: #166534;
   --color-success-bg: #dcfce7;
   --color-warning: #9a6507;
+  /* Urgentie-oranje van de prioriteitsbalken (veldkaarten, quotes) — de-facto al
+     in gebruik als hardcoded #d97706; bewust gelijk in licht en donker thema. */
+  --color-warning-strong: #d97706;
   --color-warning-bg: #fef3c7;
   --color-danger: #b91c1c;
   --color-danger-bg: #fee2e2;

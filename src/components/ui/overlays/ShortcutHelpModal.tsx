@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
-import { useEffect } from "react";
 import { formatShortcutKeys, type Shortcut } from "../../../lib/keyboard";
+import { BaseDialog } from "./BaseDialog";
 
 type ShortcutGroup = {
   title: string;
@@ -51,31 +51,8 @@ function KbdKey({ label }: { label: string }) {
 }
 
 export function ShortcutHelpModal({ open, onClose }: ShortcutHelpModalProps) {
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-      }
-    }
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   return (
-    <div
-      className="shortcut-help-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Toetscombinaties"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
+    <BaseDialog open={open} onClose={onClose} ariaLabel="Toetscombinaties">
       <div className="shortcut-help-modal">
         <div className="shortcut-help-header">
           <h2>Toetscombinaties</h2>
@@ -83,6 +60,7 @@ export function ShortcutHelpModal({ open, onClose }: ShortcutHelpModalProps) {
             type="button"
             className="icon-btn"
             aria-label="Sluiten"
+            data-modal-close
             onClick={onClose}
           >
             <X size={18} aria-hidden="true" />
@@ -114,6 +92,6 @@ export function ShortcutHelpModal({ open, onClose }: ShortcutHelpModalProps) {
           <p>Druk op <kbd className="kbd">?</kbd> om dit scherm te openen of sluiten.</p>
         </div>
       </div>
-    </div>
+    </BaseDialog>
   );
 }

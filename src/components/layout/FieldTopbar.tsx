@@ -2,6 +2,7 @@ import { LayoutDashboard } from "lucide-react";
 import type { AppSession } from "../../lib/auth/session";
 import { LogoutButton } from "./LogoutButton";
 import { ThemeToggle } from "../ui/ThemeToggle";
+import { HelpGuideButton } from "../help/HelpGuideButton";
 
 type FieldTopbarProps = {
   activeTitle: string;
@@ -21,6 +22,7 @@ export function FieldTopbar({ activeTitle, session, roleLabel }: FieldTopbarProp
           <LayoutDashboard size={17} aria-hidden="true" />
           <span>Winkel</span>
         </a>
+        <HelpGuideButton mode="buitendienst" className="field-workspace-link" />
         <ThemeToggle />
         <div className="field-topbar-session">
           <strong>{session.name ?? session.email}</strong>
