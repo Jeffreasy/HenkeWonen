@@ -402,6 +402,156 @@
   color: var(--color-text-subtle);
 }
 
+/* Sluitknop in de modal-header (gedeeld door sneltoetsen- en hulpgids-modal). */
+.shortcut-help-header .icon-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.shortcut-help-header .icon-btn:hover,
+.shortcut-help-header .icon-btn:focus-visible {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+/* ---------------------------------------------------------------------------
+   Hulpgids — [?] "Uitleg" in de topbar: compacte werkgids per onderwerp
+   --------------------------------------------------------------------------- */
+
+.help-guide-modal {
+  max-width: 640px;
+}
+
+.help-guide-intro {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.help-guide-topics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.help-guide-topic {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.help-guide-topic summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 650;
+  list-style: none;
+  border-radius: var(--radius-md);
+}
+
+.help-guide-topic summary::-webkit-details-marker {
+  display: none;
+}
+
+.help-guide-topic-icon {
+  display: grid;
+  place-items: center;
+  color: var(--color-accent-strong);
+}
+
+html[data-theme="dark"] .help-guide-topic-icon {
+  color: var(--color-accent);
+}
+
+.help-guide-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--color-text-subtle);
+  transition: transform 0.15s ease;
+}
+
+.help-guide-topic[open] > summary .help-guide-chevron {
+  transform: rotate(180deg);
+}
+
+.help-guide-topic-body {
+  padding: 0 var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.help-guide-topic-body p {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.help-guide-steps {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.help-guide-steps li::marker {
+  font-weight: 700;
+  color: var(--color-accent-strong);
+}
+
+html[data-theme="dark"] .help-guide-steps li::marker {
+  color: var(--color-accent);
+}
+
+.help-guide-colors {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.help-guide-colors li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.help-guide-dot {
+  flex-shrink: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  margin-top: 4px;
+}
+
+.help-guide-dot-rood {
+  background: var(--color-danger);
+}
+
+.help-guide-dot-oranje {
+  background: #d97706; /* zelfde oranje als de urgentiebalken op de veldkaarten */
+}
+
+.help-guide-dot-groen {
+  background: var(--color-success);
+}
+
 /* ---------------------------------------------------------------------------
    Toast Notifications
    --------------------------------------------------------------------------- */

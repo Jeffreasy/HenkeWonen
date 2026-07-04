@@ -3,6 +3,7 @@ import { ChevronDown, Ruler } from "lucide-react";
 import type { AppSession } from "../../lib/auth/session";
 import { LogoutButton } from "./LogoutButton";
 import { ThemeToggle } from "../ui/ThemeToggle";
+import { HelpGuideButton } from "../help/HelpGuideButton";
 import {
   activePortalNavGroup,
   activePortalNavItem,
@@ -70,6 +71,8 @@ export default function PortalTopbar({ session, pathname }: PortalTopbarProps) {
           <Ruler size={16} aria-hidden="true" />
           <span>Buitendienst</span>
         </a>
+
+        <HelpGuideButton mode="winkel" className="portal-topbar-link" pathname={currentPathname} />
 
         <ThemeToggle />
 
