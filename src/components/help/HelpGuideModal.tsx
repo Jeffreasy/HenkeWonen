@@ -268,14 +268,22 @@ type HelpGuideModalProps = {
   open: boolean;
   pathname: string;
   onClose: () => void;
+  /** id van de dialoog; uniek per pagina (zie HelpGuideButton). */
+  id?: string;
 };
 
-export function HelpGuideModal({ mode, open, pathname, onClose }: HelpGuideModalProps) {
+export function HelpGuideModal({
+  mode,
+  open,
+  pathname,
+  onClose,
+  id = "help-guide-dialog"
+}: HelpGuideModalProps) {
   const topics = mode === "buitendienst" ? BUITENDIENST_TOPICS : WINKEL_TOPICS;
   const openTopicId = defaultTopicId(mode, pathname);
 
   return (
-    <BaseDialog open={open} onClose={onClose} ariaLabel="Uitleg en hulp" id="help-guide-dialog">
+    <BaseDialog open={open} onClose={onClose} ariaLabel="Uitleg en hulp" id={id}>
       <div className="shortcut-help-modal help-guide-modal">
         <div className="shortcut-help-header">
           <h2>Zo werkt het — in het kort</h2>

@@ -16,6 +16,7 @@ import {
 } from "./FieldSidebar";
 import { FieldTopbar } from "./FieldTopbar";
 import { FieldQuickbar } from "./FieldQuickbar";
+import { HelpGuideButton } from "../help/HelpGuideButton";
 
 type FieldNavigationProps = {
   session: AppSession;
@@ -206,17 +207,27 @@ export default function FieldNavigation({ session, pathname }: FieldNavigationPr
             <span>Henke Wonen</span>
             <strong>{activeTitle}</strong>
           </a>
-          <button
-            aria-controls="field-navigation-drawer"
-            aria-expanded={isMenuOpen}
-            aria-label="Menu openen"
-            className="field-mobile-menu-button"
-            type="button"
-            onClick={() => setIsMenuOpen(true)}
-          >
-            <Menu size={20} aria-hidden="true" />
-            <span>Menu</span>
-          </button>
+          <div className="field-mobile-actions">
+            {/* De desktop field-topbar (met de Uitleg-knop) is op dit breekpunt
+                verborgen; hier blijft de hulpknop op de tablet zichtbaar. Eigen
+                dialog-id naast de gelijktijdig gerenderde desktop-instantie. */}
+            <HelpGuideButton
+              mode="buitendienst"
+              className="mobile-help-trigger field-mobile-help"
+              dialogId="help-guide-dialog-mobile"
+            />
+            <button
+              aria-controls="field-navigation-drawer"
+              aria-expanded={isMenuOpen}
+              aria-label="Menu openen"
+              className="field-mobile-menu-button"
+              type="button"
+              onClick={() => setIsMenuOpen(true)}
+            >
+              <Menu size={20} aria-hidden="true" />
+              <span>Menu</span>
+            </button>
+          </div>
         </header>
       ) : null}
 
