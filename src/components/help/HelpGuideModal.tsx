@@ -1,5 +1,6 @@
 import { ChevronDown, Flag, Paperclip, Receipt, ShieldCheck, Store, Tablet, X } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
+import { BaseDialog } from "../ui/overlays/BaseDialog";
 
 /**
  * Compacte, ingebouwde versie van de werkgids: per onderwerp een kort
@@ -168,44 +169,15 @@ type HelpGuideModalProps = {
 };
 
 export function HelpGuideModal({ mode, open, pathname, onClose }: HelpGuideModalProps) {
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    function handleKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-      }
-    }
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
-
-  if (!open) {
-    return null;
-  }
-
   const topics = mode === "buitendienst" ? BUITENDIENST_TOPICS : WINKEL_TOPICS;
   const openTopicId = defaultTopicId(mode, pathname);
 
   return (
-    <div
-      className="shortcut-help-overlay"
-      id="help-guide-dialog"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Uitleg en hulp"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
-    >
+    <BaseDialog open={open} onClose={onClose} ariaLabel="Uitleg en hulp" id="help-guide-dialog">
       <div className="shortcut-help-modal help-guide-modal">
         <div className="shortcut-help-header">
           <h2>Zo werkt het — in het kort</h2>
-          <button type="button" className="icon-btn" aria-label="Sluiten" onClick={onClose}>
+          <button type="button" className="icon-btn" aria-label="Sluiten" data-modal-close onClick={onClose}>
             <X size={18} aria-hidden="true" />
           </button>
         </div>
@@ -240,6 +212,6 @@ export function HelpGuideModal({ mode, open, pathname, onClose }: HelpGuideModal
           </p>
         </div>
       </div>
-    </div>
+    </BaseDialog>
   );
 }

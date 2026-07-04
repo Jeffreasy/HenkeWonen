@@ -27,10 +27,11 @@ export function HelpGuideButton({ mode, className, pathname }: HelpGuideButtonPr
     <>
       <button
         type="button"
-        className={className}
+        className={`${className} help-guide-trigger`}
+        title="Uitleg en hulp"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-controls={open ? "help-guide-dialog" : undefined}
+        aria-controls="help-guide-dialog"
         onClick={() => setOpen(true)}
       >
         <HelpCircle size={16} aria-hidden="true" />
