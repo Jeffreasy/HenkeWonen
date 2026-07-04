@@ -199,15 +199,15 @@
 }
 
 .field-priority-pill-red {
-  border-left-color: #b91c1c;
+  border-left-color: var(--color-urgency-red);
 }
 
 .field-priority-pill-orange {
-  border-left-color: var(--color-warning-strong);
+  border-left-color: var(--color-urgency-orange);
 }
 
 .field-priority-pill-green {
-  border-left-color: #15803d;
+  border-left-color: var(--color-urgency-green);
 }
 
 .field-search-feedback {
@@ -338,15 +338,15 @@
 }
 
 .field-work-card-red {
-  border-left-color: #b91c1c;
+  border-left-color: var(--color-urgency-red);
 }
 
 .field-work-card-orange {
-  border-left-color: var(--color-warning-strong);
+  border-left-color: var(--color-urgency-orange);
 }
 
 .field-work-card-green {
-  border-left-color: #15803d;
+  border-left-color: var(--color-urgency-green);
 }
 
 .field-work-card-main {
@@ -381,15 +381,15 @@
 }
 
 .field-card-priority-red {
-  background: #b91c1c;
+  background: var(--color-urgency-red);
 }
 
 .field-card-priority-orange {
-  background: var(--color-warning-strong);
+  background: var(--color-urgency-orange);
 }
 
 .field-card-priority-green {
-  background: #15803d;
+  background: var(--color-urgency-green);
 }
 
 .field-work-card h3 {

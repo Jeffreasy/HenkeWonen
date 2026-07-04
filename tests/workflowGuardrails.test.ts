@@ -232,14 +232,20 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     const fieldServiceSource = read("convex/projecten/fieldService.ts");
     const portalUtils = read("convex/portalUtils.ts");
 
+    // De buitendienst-kaart en het winkel-dashboard delen één bezoekdatum-bron
+    // (fieldVisitTimestamp in portalUtils), zodat beide schermen exact dezelfde
+    // datum-urgentie tonen; de field workspace roept die gedeelde bron aan.
+    expect(fieldServiceSource).toContain("fieldVisitTimestamp(project, measurement, now)");
     expect(fieldServiceSource).toContain('project.status === "execution_planned"');
-    // De uitvoer-/montagedatum telt in de hele uitvoerfase mee als komend bezoek
-    // (niet alleen bij de legacy-statussen execution_planned/in_progress).
-    expect(fieldServiceSource).toContain("UITVOER_FASEN.includes(project.status)");
-    expect(fieldServiceSource).toContain('quote.status === "accepted"');
+    expect(fieldServiceSource).toContain('quote?.status === "accepted"');
     expect(fieldServiceSource).not.toContain('["lead", "quote_accepted", "measurement_planned"]');
+    // De uitvoer-/montagedatum telt in de hele uitvoerfase mee als komend bezoek en valt
+    // bewust NIET terug op de (mogelijk al gedane) inmeetdatum — anders wordt een afgeronde
+    // inmeting vals rood "achterstallig".
+    expect(portalUtils).toContain("UITVOER_FASEN.includes(project.status) ? project.uitvoerdatum");
+    // Een afgeronde inmeting van (voor) vandaag is geen komend bezoek meer (geen vals rood).
+    expect(portalUtils).toContain("measurementDone(measurement) && isDueTodayOrEarlier(inmeet, now)");
     expect(portalUtils).toContain('quote.status === "accepted"');
-    expect(portalUtils).toContain("project.uitvoerdatum ?? project.inmeetdatum");
     expect(portalUtils).not.toContain('["lead", "quote_accepted", "measurement_planned"]');
   });
 

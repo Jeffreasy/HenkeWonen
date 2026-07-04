@@ -2,12 +2,20 @@ import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { formatDate } from "../../lib/dates";
 import { Badge, type BadgeVariant } from "../ui/data-display/Badge";
+import { PriorityCountStrip, type PriorityCounts } from "../ui/data-display/PriorityCountStrip";
 import { Button } from "../ui/forms/Button";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { Skeleton } from "../ui/feedback/Skeleton";
 
 /** Aantal werkitems dat standaard zichtbaar is; de rest komt achter "Toon alles". */
 const VISIBLE_LIMIT = 6;
+
+/** Winkel-formulering van de urgentiestrip (mix van deadlines en dossierstatussen). */
+const WORK_PRIORITY_LABELS = {
+  red: "vandaag of morgen",
+  orange: "actie nodig",
+  green: "op schema"
+};
 
 export type DashboardWorkItem = {
   id: string;
@@ -16,12 +24,14 @@ export type DashboardWorkItem = {
   href: string;
   label: string;
   tone: BadgeVariant;
+  level: "red" | "orange" | "green";
   updatedAt: number;
 };
 
 type DashboardWorkOverviewProps = {
   isLoading: boolean;
   workItems: DashboardWorkItem[];
+  priorityCounts: PriorityCounts;
   /** Totale werkvoorraad (server-telling); kan hoger zijn dan de meegestuurde lijst. */
   totalCount?: number;
 };
@@ -29,6 +39,7 @@ type DashboardWorkOverviewProps = {
 export function DashboardWorkOverview({
   isLoading,
   workItems,
+  priorityCounts,
   totalCount
 }: DashboardWorkOverviewProps) {
   const [showAll, setShowAll] = useState(false);
@@ -53,6 +64,15 @@ export function DashboardWorkOverview({
         </a>
       </div>
 
+      {isLoading || workItems.length > 0 ? (
+        <PriorityCountStrip
+          counts={priorityCounts}
+          labels={WORK_PRIORITY_LABELS}
+          loading={isLoading}
+          ariaLabel="Wat heeft haast — rood, oranje, groen"
+        />
+      ) : null}
+
       {isLoading ? (
         <div className="dashboard-work-list" aria-busy="true" aria-label="Werkvoorraad laden">
           {Array.from({ length: 3 }).map((_, index) => (
@@ -69,7 +89,11 @@ export function DashboardWorkOverview({
         <>
           <div className="dashboard-work-list" id="werkoverzicht-lijst">
             {visibleItems.map((item) => (
-              <a className="dashboard-work-item" href={item.href} key={item.id}>
+              <a
+                className={`dashboard-work-item dashboard-work-item-${item.level}`}
+                href={item.href}
+                key={item.id}
+              >
                 <span className="dashboard-work-copy">
                   <Badge variant={item.tone}>{item.label}</Badge>
                   <strong>{item.title}</strong>

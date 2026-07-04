@@ -15,6 +15,7 @@ import { Alert } from "../ui/feedback/Alert";
 import { DashboardFocusCards } from "./DashboardFocusCards";
 import { DashboardInvoiceStrip } from "./DashboardInvoiceStrip";
 import { DashboardWorkOverview, type DashboardWorkItem } from "./DashboardWorkOverview";
+import type { PriorityCounts } from "../ui/data-display/PriorityCountStrip";
 import { DashboardQuoteFollowUps, type DashboardQuoteFollowUp } from "./DashboardQuoteFollowUps";
 import { DashboardRecentProjects } from "./DashboardRecentProjects";
 import { DashboardAgendaWidget, type DashboardAgenda } from "./DashboardAgendaWidget";
@@ -28,6 +29,7 @@ type DashboardData = {
   openQuoteCount: number;
   plannedWorkCount: number;
   workItemCount: number;
+  priorityCounts: PriorityCounts;
   workItems: DashboardWorkItem[];
   quoteFollowUps: DashboardQuoteFollowUp[];
   projects: PortalProject[];
@@ -39,6 +41,7 @@ const emptyDashboard: DashboardData = {
   openQuoteCount: 0,
   plannedWorkCount: 0,
   workItemCount: 0,
+  priorityCounts: { red: 0, orange: 0, green: 0 },
   workItems: [],
   quoteFollowUps: [],
   projects: [],
@@ -55,6 +58,11 @@ function normalizeDashboardData(result: Partial<DashboardData> | null | undefine
     plannedWorkCount: typeof result?.plannedWorkCount === "number" ? result.plannedWorkCount : 0,
     workItemCount:
       typeof result?.workItemCount === "number" ? result.workItemCount : workItems.length,
+    priorityCounts: {
+      red: typeof result?.priorityCounts?.red === "number" ? result.priorityCounts.red : 0,
+      orange: typeof result?.priorityCounts?.orange === "number" ? result.priorityCounts.orange : 0,
+      green: typeof result?.priorityCounts?.green === "number" ? result.priorityCounts.green : 0
+    },
     workItems,
     quoteFollowUps: Array.isArray(result?.quoteFollowUps) ? result.quoteFollowUps : [],
     projects: Array.isArray(result?.projects) ? result.projects : [],
@@ -231,6 +239,7 @@ export default function DashboardShell({ session }: DashboardShellProps) {
       <DashboardWorkOverview
         isLoading={isLoading}
         workItems={dashboard.workItems}
+        priorityCounts={dashboard.priorityCounts}
         totalCount={dashboard.workItemCount}
       />
 

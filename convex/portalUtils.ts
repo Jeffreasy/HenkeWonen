@@ -180,6 +180,56 @@ export async function nextInvoiceNumber(ctx: any, tenantId: Id<"tenants">): Prom
   return `${prefix}${String(nextSequence).padStart(3, "0")}`;
 }
 
+/**
+ * Vertaalt de badge-tone van een werklijst-item naar het gedeelde
+ * rood/oranje/groen-urgentieniveau, zodat het winkel-dashboard dezelfde
+ * verkeerslicht-taal spreekt als de buitendienst:
+ *   danger  → rood   (haast: vandaag/morgen of een probleem)
+ *   warning → oranje (actie nodig: nieuwe aanvraag, concept, deze week, ...)
+ *   overig  → groen  (loopt / op schema: verzonden, akkoord, bestellen, ...)
+ */
+export function workItemUrgency(tone: string): "red" | "orange" | "green" {
+  if (tone === "danger") {
+    return "red";
+  }
+  if (tone === "warning") {
+    return "orange";
+  }
+  return "green";
+}
+
+/** Sorteer-/urgentievolgorde van een verkeerslicht-niveau (lager = urgenter). */
+const URGENCY_RANK = { red: 0, orange: 1, green: 2 } as const;
+
+export function urgencyRank(level: "red" | "orange" | "green"): number {
+  return URGENCY_RANK[level];
+}
+
+/**
+ * Urgentieniveau van een dossier-werklijstitem, consistent met de buitendienst-tablet.
+ * De tablet (cardUrgency) kleurt een gepland bezoek op DATUM: een inmeting/uitvoering van
+ * vandaag of te laat is rood, deze week oranje. Het dashboard keek alleen naar de status-tone,
+ * waardoor een geplande inmeting van vandaag ten onrechte groen ("op schema") was terwijl de
+ * tablet 'm rood toonde — dezelfde kleur moet overal hetzelfde betekenen.
+ *
+ * Daarom nemen we het URGENTSTE van (a) de status-tone en (b) de bezoekdatum. `visitAt` hoort
+ * alléén de nog-openstaande bezoekdatum te zijn (inmeting nog te doen of uitvoering gepland);
+ * bij latere statussen is de inmeetdatum historie en moet de aanroeper `undefined` meegeven,
+ * zodat een al uitgevoerd bezoek het item niet vals rood kleurt.
+ */
+export function workItemLevel(
+  tone: string,
+  visitAt?: number | null,
+  now = Date.now()
+): "red" | "orange" | "green" {
+  const statusLevel = workItemUrgency(tone);
+  if (visitAt == null) {
+    return statusLevel;
+  }
+  const dateLevel = taskPriority(visitAt, now).level;
+  return urgencyRank(dateLevel) < urgencyRank(statusLevel) ? dateLevel : statusLevel;
+}
+
 export function taskPriority(dueAt: number, now = Date.now()) {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
@@ -568,15 +618,61 @@ export function latestMeasurement(measurements: Doc<"measurements">[], projectId
     .sort((left, right) => right.gewijzigdOp - left.gewijzigdOp)[0];
 }
 
+/** Dossierfasen waarin een geplande uitvoer-/montagedatum nog een komend bezoek is. */
+const UITVOER_FASEN = ["quote_accepted", "ordering", "execution_planned", "in_progress"];
+
+/** De inmeting is fysiek gedaan (gemeten/gecontroleerd/verwerkt) — geen komend bezoek meer. */
+export function measurementDone(measurement: Doc<"measurements"> | undefined) {
+  return (
+    measurement?.status === "measured" ||
+    measurement?.status === "reviewed" ||
+    measurement?.status === "converted_to_quote"
+  );
+}
+
+/**
+ * Het nog relevante inmeetbezoek: een afgeronde inmeting is geen komend bezoek meer
+ * (het werk is gedaan), tenzij er een nieuwe, toekomstige afspraak staat (na-meting).
+ * Voorheen bleef een al ingemeten bezoek van (voor) vandaag eeuwig "achterstallig" (vals rood).
+ */
+export function fieldInmeetTimestamp(
+  project: Doc<"projects">,
+  measurement: Doc<"measurements"> | undefined,
+  now: number
+) {
+  const inmeet = project.inmeetdatum ?? measurement?.inmeetdatum;
+  if (inmeet !== undefined && measurementDone(measurement) && isDueTodayOrEarlier(inmeet, now)) {
+    return undefined;
+  }
+  return inmeet;
+}
+
+/**
+ * De uitvoerdatum telt mee zodra het dossier in de uitvoerfase zit (montage wordt doorgaans
+ * ná akkoord/bij het bestellen gepland). Ná facturatie is de montage geweest en is de datum
+ * historie. Bewust GEEN terugval op de inmeetdatum: dat zou een al gedane inmeting als een
+ * "achterstallig" uitvoerbezoek tonen.
+ */
+export function fieldUitvoerTimestamp(project: Doc<"projects">) {
+  return UITVOER_FASEN.includes(project.status) ? project.uitvoerdatum : undefined;
+}
+
+/**
+ * Het eerstvolgende relevante bezoek (inmeting of uitvoering) voor een dossier — de gedeelde
+ * bron van waarheid voor zowel de buitendienst-kaart (cardUrgency) als het winkel-dashboard,
+ * zodat beide schermen exact dezelfde datum-urgentie tonen.
+ */
 export function fieldVisitTimestamp(
   project: Doc<"projects">,
-  measurement: Doc<"measurements"> | undefined
+  measurement: Doc<"measurements"> | undefined,
+  now: number
 ) {
-  if (project.status === "execution_planned" || project.status === "in_progress") {
-    return project.uitvoerdatum ?? project.inmeetdatum ?? measurement?.inmeetdatum;
+  const inmeet = fieldInmeetTimestamp(project, measurement, now);
+  const uitvoer = fieldUitvoerTimestamp(project);
+  if (inmeet !== undefined && uitvoer !== undefined) {
+    return Math.min(inmeet, uitvoer);
   }
-
-  return project.inmeetdatum ?? measurement?.inmeetdatum;
+  return inmeet ?? uitvoer;
 }
 
 export function isDueTodayOrEarlier(timestamp: number | undefined, now: number) {
@@ -600,66 +696,6 @@ export function sortProjectTasks(tasks: Doc<"projectTasks">[]) {
   });
 }
 
-export function fieldBucket(
-  project: Doc<"projects">,
-  quote: Doc<"quotes"> | undefined,
-  measurement: Doc<"measurements"> | undefined,
-  now: number,
-  tasks: Doc<"projectTasks">[] = []
-) {
-  const firstOpenTask = sortProjectTasks(tasks).find((task) => task.status === "open");
-
-  if (isDueTodayOrEarlier(firstOpenTask?.vervaltOp, now)) {
-    return "today";
-  }
-
-  if (firstOpenTask) {
-    return "followUp";
-  }
-
-  if (isDueTodayOrEarlier(fieldVisitTimestamp(project, measurement), now)) {
-    return "today";
-  }
-
-  if (project.status === "execution_planned" || project.status === "in_progress") {
-    return "followUp";
-  }
-
-  if (
-    quote?.status === "draft" ||
-    project.status === "quote_draft" ||
-    measurement?.status === "measured" ||
-    measurement?.status === "reviewed"
-  ) {
-    return "quote";
-  }
-
-  if (
-    quote?.status === "sent" ||
-    quote?.status === "accepted" ||
-    project.status === "quote_sent" ||
-    project.status === "quote_accepted"
-  ) {
-    return "followUp";
-  }
-
-  if (["lead", "measurement_planned"].includes(project.status)) {
-    return "measure";
-  }
-
-  return "followUp";
-}
-
-export function fieldNextAction(bucket: "today" | "measure" | "quote" | "followUp") {
-  const labels = {
-    today: "Vandaag bezoeken",
-    measure: "Inmeten",
-    quote: "Conceptofferte maken",
-    followUp: "Opvolgen"
-  };
-
-  return labels[bucket];
-}
 
 export function toSupplier(
   tenantSlug: string,

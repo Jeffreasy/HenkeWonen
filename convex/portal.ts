@@ -2,7 +2,15 @@ import { query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { readActorValidator, requireQueryRole } from "./authz";
-import { taskPriority, toProject, toQuoteSummary } from "./portalUtils";
+import {
+  fieldVisitTimestamp,
+  taskPriority,
+  toProject,
+  toQuoteSummary,
+  urgencyRank,
+  workItemLevel,
+  workItemUrgency
+} from "./portalUtils";
 import { isMeasurementCompleted, projectWorklistItem } from "./projecten/nextStep";
 import {
   DAG_MS,
@@ -92,7 +100,7 @@ export const dashboard = query({
     );
     const taskWorkItems = projectTasks.map((task: Doc<"projectTasks">) => {
       const project = projectById.get(String(task.projectId));
-      const priority = taskPriority(task.vervaltOp);
+      const priority = taskPriority(task.vervaltOp, now);
 
       return {
         id: `project-task-${task._id}`,
@@ -101,6 +109,8 @@ export const dashboard = query({
         href: `/portal/projecten/${task.projectId}`,
         label: priority.label,
         tone: priority.tone,
+        // Een taak is al deadline-gedreven: het niveau is de urgentie van de vervaldatum.
+        level: priority.level,
         updatedAt: task.vervaltOp,
         priorityRank: priority.rank
       };
@@ -124,14 +134,19 @@ export const dashboard = query({
       if (project.status === "quote_accepted" && openTaskProjectIds.has(String(project._id))) {
         return [];
       }
-      const meta = projectWorklistItem(project.status, {
-        measurementCompleted: isMeasurementCompleted(
-          laatsteMetingPerProject.get(String(project._id))?.status ?? null
-        )
-      });
+      const meting = laatsteMetingPerProject.get(String(project._id));
+      const measurementCompleted = isMeasurementCompleted(meting?.status ?? null);
+      const meta = projectWorklistItem(project.status, { measurementCompleted });
       if (!meta) {
         return [];
       }
+      // Bezoekdatum uit exact dezelfde gedeelde bron als de buitendienst-tablet
+      // (fieldVisitTimestamp): een nog te doen inmeting of een geplande uitvoering/montage.
+      // De functie geeft zélf undefined terug als er geen komend bezoek is (een al afgeronde
+      // inmeting van (voor) vandaag, of een fase zonder uitvoerdatum), dus we hoeven de status
+      // hier niet zelf te filteren — zo tonen dashboard en tablet dezelfde datum-urgentie,
+      // óók in de akkoord-/bestelfase waar de montage doorgaans wordt gepland.
+      const visitAt = fieldVisitTimestamp(project, meting, now);
       return [
         {
           id: `project-${project._id}`,
@@ -140,6 +155,7 @@ export const dashboard = query({
           href: `/portal/projecten/${project._id}`,
           label: meta.badge,
           tone: meta.tone,
+          level: workItemLevel(meta.tone, visitAt, now),
           updatedAt: project.gewijzigdOp,
           priorityRank: meta.rank
         }
@@ -165,13 +181,31 @@ export const dashboard = query({
           href: `/portal/offertes/${quote._id}`,
           label: meta.badge,
           tone: meta.tone,
+          // Een offerte-item wacht op de klant (geen eigen bezoekdatum): niveau uit de tone.
+          level: workItemUrgency(meta.tone),
           updatedAt: quote.gewijzigdOp,
           priorityRank: meta.rank
         }
       ];
     });
+    // Verkeerslicht-eerst sorteren: een rood item (bv. een inmeting van vandaag) hoort
+    // bovenaan, ongeacht de statusrang — anders staat een rode rand onder oranje items.
+    // Binnen hetzelfde niveau blijft de bestaande statusrang + ouderdom leidend.
     const workItems = [...taskWorkItems, ...projectWorkItems, ...quoteWorkItems].sort(
-      (left, right) => left.priorityRank - right.priorityRank || left.updatedAt - right.updatedAt
+      (left, right) =>
+        urgencyRank(left.level) - urgencyRank(right.level) ||
+        left.priorityRank - right.priorityRank ||
+        left.updatedAt - right.updatedAt
+    );
+
+    // Verkeerslicht-telling over de héle werkvoorraad (niet alleen de zichtbare 50),
+    // net als de buitendienst-samenvatting.
+    const priorityCounts = workItems.reduce(
+      (acc: { red: number; orange: number; green: number }, item) => {
+        acc[item.level] += 1;
+        return acc;
+      },
+      { red: 0, orange: 0, green: 0 }
     );
 
     const visibleProjects = await Promise.all(
@@ -190,8 +224,7 @@ export const dashboard = query({
     // Geen volledige agendaWeek-payload; alleen per inmeetdag (di/wo/do) de geboekte
     // en vrije capaciteit over de zichtbare monteurs + het aantal niet-toegewezen
     // inmetingen. inmeetdata bevat geen bedragen, dus niet field-gemaskeerd.
-    const nu = Date.now();
-    const agendaWeekStart = startVanWeekMs(nu);
+    const agendaWeekStart = startVanWeekMs(now);
     const agendaWeekEnd = agendaWeekStart + 7 * DAG_MS;
     const [weekMetingen, agendaUsers] = await Promise.all([
       ctx.db
@@ -252,6 +285,7 @@ export const dashboard = query({
       openQuoteCount: openQuotes.length,
       plannedWorkCount: plannedWorkProjects.length,
       workItemCount: workItems.length,
+      priorityCounts,
       // Ruime bovengrens i.p.v. 8 zodat "Toon alles" in de praktijk alles toont.
       // Boven de grens benoemt DashboardWorkOverview het verschil expliciet
       // ("x van y") o.b.v. workItemCount, zodat pill en lijst nooit stil uiteenlopen.
