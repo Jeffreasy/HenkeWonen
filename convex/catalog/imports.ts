@@ -8,6 +8,11 @@ import {
   requireQueryRoleForTenantId
 } from "../authz";
 import type { Doc, Id } from "../_generated/dataModel";
+import type {
+  ImportWarning,
+  ProductImportBatch,
+  ProductImportRow
+} from "../../src/lib/portalTypes";
 
 const batchStatus = v.union(
   v.literal("uploaded"),
@@ -51,30 +56,30 @@ async function tenantBySlug(ctx: any, tenantSlug: string) {
   return tenant;
 }
 
-function batchWarnings(batch: Doc<"productImportBatches">) {
-  const warnings = [];
+function batchWarnings(batch: Doc<"productImportBatches">): ImportWarning[] {
+  const warnings: ImportWarning[] = [];
 
   if ((batch.onbekendeBtwModusRijen ?? 0) > 0) {
     warnings.push({
-      rowNumber: 0,
+      rijNummer: 0,
       message: `${batch.onbekendeBtwModusRijen} prijsregels hebben vatMode=unknown.`,
-      severity: "warning" as const
+      ernst: "warning"
     });
   }
 
   if ((batch.nulPrijsRijen ?? 0) > 0) {
     warnings.push({
-      rowNumber: 0,
+      rijNummer: 0,
       message: `${batch.nulPrijsRijen} nulprijsregels zijn of worden overgeslagen.`,
-      severity: "warning" as const
+      ernst: "warning"
     });
   }
 
   if ((batch.dubbeleBronSleutels ?? 0) > 0) {
     warnings.push({
-      rowNumber: 0,
+      rijNummer: 0,
       message: `${batch.dubbeleBronSleutels} duplicate sourceKeys gevonden.`,
-      severity: "error" as const
+      ernst: "error"
     });
   }
 
@@ -86,46 +91,46 @@ function toPortalBatch(
   batch: Doc<"productImportBatches">,
   supplier?: Doc<"suppliers"> | null,
   profile?: Doc<"importProfiles"> | null
-) {
+): ProductImportBatch {
   return {
     id: String(batch._id),
     tenantId: tenantSlug,
-    fileName: batch.bestandsnaam,
-    supplierName: supplier?.naam ?? "Onbekend",
+    bestandsnaam: batch.bestandsnaam,
+    leverancierNaam: supplier?.naam ?? "Onbekend",
     status: batch.status,
-    archivedFromStatus: batch.gearchiveerdVanafStatus,
-    archivedAt: batch.gearchiveerdOp,
+    gearchiveerdVanafStatus: batch.gearchiveerdVanafStatus,
+    gearchiveerdOp: batch.gearchiveerdOp,
     archivedByExternalUserId: batch.archivedByExternalUserId,
-    sourcePath: batch.bronPad,
-    fileHash: batch.bestandHash,
+    bronPad: batch.bronPad,
+    bestandHash: batch.bestandHash,
     profileName: profile?.naam,
-    totalRows: batch.totaalRijen,
-    previewRows: batch.voorbeeldRijen ?? batch.totaalRijen,
-    productRows: batch.productRijen ?? 0,
-    validRows: batch.geldigeRijen,
-    warningRows: batch.waarschuwingRijen,
-    errorRows: batch.foutRijen,
-    ignoredRows: batch.genegeerdeRijen ?? 0,
-    importedProducts: batch.geimporteerdeProducten ?? 0,
-    updatedProducts: batch.bijgewerkteProducten ?? 0,
-    skippedProducts: batch.overgeslagenProducten ?? 0,
-    importedPrices: batch.geimporteerdePrijzen ?? 0,
-    skippedPrices: batch.overgeslagenPrijzen ?? 0,
-    duplicateProductMatches: batch.dubbeleProductMatches ?? 0,
-    zeroPriceRows: batch.nulPrijsRijen ?? 0,
-    unknownVatModeRows: batch.onbekendeBtwModusRijen ?? 0,
-    productsWithoutSupplierCode: batch.productenZonderLeverancierCode ?? 0,
-    orphanPriceRules: batch.weesPrijsRegels ?? 0,
-    duplicateSourceKeys: batch.dubbeleBronSleutels ?? 0,
-    allowUnknownVatMode: batch.staBtwModusOnbekendToe ?? false,
-    importedAt: batch.geimporteerdOp,
-    committedAt: batch.vastgelegdOp,
-    failedAt: batch.misluktOp,
-    errorMessage: batch.foutmelding,
-    reconciliation: batch.reconciliatie,
-    warnings: batchWarnings(batch),
-    createdAt: batch.aangemaaktOp,
-    updatedAt: batch.gewijzigdOp
+    totaalRijen: batch.totaalRijen,
+    voorbeeldRijen: batch.voorbeeldRijen ?? batch.totaalRijen,
+    productRijen: batch.productRijen ?? 0,
+    geldigeRijen: batch.geldigeRijen,
+    waarschuwingRijen: batch.waarschuwingRijen,
+    foutRijen: batch.foutRijen,
+    genegeerdeRijen: batch.genegeerdeRijen ?? 0,
+    geimporteerdeProducten: batch.geimporteerdeProducten ?? 0,
+    bijgewerkteProducten: batch.bijgewerkteProducten ?? 0,
+    overgeslagenProducten: batch.overgeslagenProducten ?? 0,
+    geimporteerdePrijzen: batch.geimporteerdePrijzen ?? 0,
+    overgeslagenPrijzen: batch.overgeslagenPrijzen ?? 0,
+    dubbeleProductMatches: batch.dubbeleProductMatches ?? 0,
+    nulPrijsRijen: batch.nulPrijsRijen ?? 0,
+    onbekendeBtwModusRijen: batch.onbekendeBtwModusRijen ?? 0,
+    productenZonderLeverancierCode: batch.productenZonderLeverancierCode ?? 0,
+    weesPrijsRegels: batch.weesPrijsRegels ?? 0,
+    dubbeleBronSleutels: batch.dubbeleBronSleutels ?? 0,
+    staBtwModusOnbekendToe: batch.staBtwModusOnbekendToe ?? false,
+    geimporteerdOp: batch.geimporteerdOp,
+    vastgelegdOp: batch.vastgelegdOp,
+    misluktOp: batch.misluktOp,
+    foutmelding: batch.foutmelding,
+    reconciliatie: batch.reconciliatie,
+    waarschuwingen: batchWarnings(batch),
+    aangemaaktOp: batch.aangemaaktOp,
+    gewijzigdOp: batch.gewijzigdOp
   };
 }
 
@@ -490,21 +495,21 @@ export const getBatchForPortal = query({
       batch: toPortalBatch(tenant.slug, batch, supplier, profile),
       rows: rows
         .sort((left: any, right: any) => left.rijNummer - right.rijNummer)
-        .map((row: any) => ({
+        .map((row: any): ProductImportRow => ({
           id: String(row._id),
-          sourceFileName: row.bronBestandsnaam,
-          sourceSheetName: row.bronBladNaam,
-          rowNumber: row.rijNummer,
-          rowKind: row.rijSoort,
+          bronBestandsnaam: row.bronBestandsnaam,
+          bronBladNaam: row.bronBladNaam,
+          rijNummer: row.rijNummer,
+          rijSoort: row.rijSoort,
           status: row.status,
-          importKey: row.importSleutel,
-          sourceKey: row.bronSleutel,
-          sectionLabel: row.sectieLabel,
-          normalized: row.genormaliseerd,
-          warnings: row.waarschuwingen,
-          errors: row.fouten,
-          importedProductId: row.geimporteerdProductId ? String(row.geimporteerdProductId) : undefined,
-          importedPriceIds: row.geimporteerdePrijsIds?.map((id: any) => String(id)) ?? []
+          importSleutel: row.importSleutel,
+          bronSleutel: row.bronSleutel,
+          sectieLabel: row.sectieLabel,
+          genormaliseerd: row.genormaliseerd,
+          waarschuwingen: row.waarschuwingen,
+          fouten: row.fouten,
+          geimporteerdProductId: row.geimporteerdProductId ? String(row.geimporteerdProductId) : undefined,
+          geimporteerdePrijsIds: row.geimporteerdePrijsIds?.map((id: any) => String(id)) ?? []
         }))
     };
   }
