@@ -192,6 +192,7 @@ export function HelpGuideModal({ mode, open, pathname, onClose }: HelpGuideModal
   return (
     <div
       className="shortcut-help-overlay"
+      id="help-guide-dialog"
       role="dialog"
       aria-modal="true"
       aria-label="Uitleg en hulp"

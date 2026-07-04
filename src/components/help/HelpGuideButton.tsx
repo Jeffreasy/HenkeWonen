@@ -30,6 +30,7 @@ export function HelpGuideButton({ mode, className, pathname }: HelpGuideButtonPr
         className={className}
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-controls={open ? "help-guide-dialog" : undefined}
         onClick={() => setOpen(true)}
       >
         <HelpCircle size={16} aria-hidden="true" />

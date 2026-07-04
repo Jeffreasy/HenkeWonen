@@ -402,7 +402,8 @@
   color: var(--color-text-subtle);
 }
 
-/* Sluitknop in de modal-header (gedeeld door sneltoetsen- en hulpgids-modal). */
+/* Sluitknop in de modal-header (gedeeld door sneltoetsen- en hulpgids-modal).
+   34px volgt de .ui-icon-button-sm-maat uit 06-ui-components.css. */
 .shortcut-help-header .icon-btn {
   display: grid;
   place-items: center;
@@ -532,12 +533,13 @@ html[data-theme="dark"] .help-guide-steps li::marker {
   gap: var(--space-2);
 }
 
+/* Kleurstip: intrinsieke maat, uitgelijnd op de eerste tekstregel. */
 .help-guide-dot {
   flex-shrink: 0;
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .help-guide-dot-rood {
@@ -545,7 +547,7 @@ html[data-theme="dark"] .help-guide-steps li::marker {
 }
 
 .help-guide-dot-oranje {
-  background: #d97706; /* zelfde oranje als de urgentiebalken op de veldkaarten */
+  background: var(--color-warning-strong);
 }
 
 .help-guide-dot-groen {
