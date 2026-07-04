@@ -468,15 +468,15 @@ a.stat-pill:hover,
    buitendienst-kaarten, o.b.v. het server-berekende urgentieniveau. */
 .dashboard-work-item-red {
   border-left-width: 5px;
-  border-left-color: #b91c1c;
+  border-left-color: var(--color-urgency-red);
 }
 
 .dashboard-work-item-orange {
   border-left-width: 5px;
-  border-left-color: var(--color-warning-strong);
+  border-left-color: var(--color-urgency-orange);
 }
 
 .dashboard-work-item-green {
   border-left-width: 5px;
-  border-left-color: #15803d;
+  border-left-color: var(--color-urgency-green);
 }

@@ -37,6 +37,15 @@
   --color-info: #1d4e89;
   --color-info-bg: #dbeafe;
 
+  /* Urgentie-verkeerslicht van de prioriteitsbalken — één bron voor zowel de
+     buitendienst-kaarten als het winkel-dashboard, bewust gelijk in licht én donker
+     thema (net als --color-warning-strong). Rood/groen zijn dedicated: --color-danger
+     en --color-success worden in het donker thema juist lichter, en #15803d wijkt af
+     van --color-success. Oranje hergebruikt --color-warning-strong. */
+  --color-urgency-red: #b91c1c;
+  --color-urgency-orange: var(--color-warning-strong);
+  --color-urgency-green: #15803d;
+
   /* Focus-ring: opaak genoeg voor duidelijke zichtbaarheid (WCAG 2.4.7). */
   --focus-ring: rgba(122, 67, 16, 0.85);
 
