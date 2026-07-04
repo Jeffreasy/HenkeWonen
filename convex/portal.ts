@@ -140,16 +140,13 @@ export const dashboard = query({
       if (!meta) {
         return [];
       }
-      // Nog-openstaande bezoekdatum, uit dezelfde bron als de tablet (fieldVisitTimestamp):
-      // een inmeting die nog moet gebeuren, of een geplande uitvoering. Bij latere statussen
-      // of een al afgeronde inmeting is de datum historie en telt 'ie NIET mee — anders zou
-      // een al uitgevoerd bezoek het item vals rood kleuren. Zo deelt het dashboard exact de
-      // datum-urgentie van de buitendienst-tablet.
-      const heeftOpenstaandBezoek =
-        (project.status === "measurement_planned" && !measurementCompleted) ||
-        project.status === "execution_planned" ||
-        project.status === "in_progress";
-      const visitAt = heeftOpenstaandBezoek ? fieldVisitTimestamp(project, meting, now) : undefined;
+      // Bezoekdatum uit exact dezelfde gedeelde bron als de buitendienst-tablet
+      // (fieldVisitTimestamp): een nog te doen inmeting of een geplande uitvoering/montage.
+      // De functie geeft zélf undefined terug als er geen komend bezoek is (een al afgeronde
+      // inmeting van (voor) vandaag, of een fase zonder uitvoerdatum), dus we hoeven de status
+      // hier niet zelf te filteren — zo tonen dashboard en tablet dezelfde datum-urgentie,
+      // óók in de akkoord-/bestelfase waar de montage doorgaans wordt gepland.
+      const visitAt = fieldVisitTimestamp(project, meting, now);
       return [
         {
           id: `project-${project._id}`,

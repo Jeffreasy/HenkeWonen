@@ -110,6 +110,18 @@ describe("Convex Portal Utilities", () => {
     const teMeten = { status: "measurement_planned", inmeetdatum: vandaag } as any;
     expect(fieldVisitTimestamp(teMeten, undefined, now)).toBe(vandaag);
     expect(workItemLevel("info", fieldVisitTimestamp(teMeten, undefined, now), now)).toBe("red");
+
+    // De montage wordt doorgaans ná akkoord/bij het bestellen gepland: een uitvoerdatum
+    // van vandaag telt in die fasen óók mee, zodat het dashboard net als de tablet rood
+    // toont i.p.v. groen ("op schema") op de status-tone.
+    for (const status of ["quote_accepted", "ordering"]) {
+      const montageVandaag = { status, uitvoerdatum: vandaag } as any;
+      expect(fieldVisitTimestamp(montageVandaag, undefined, now)).toBe(vandaag);
+      const statusTone = status === "quote_accepted" ? "info" : "success"; // beide op zichzelf groen
+      expect(workItemLevel(statusTone, fieldVisitTimestamp(montageVandaag, undefined, now), now)).toBe(
+        "red"
+      );
+    }
   });
 
   it("should calculate correct task priority levels", () => {
