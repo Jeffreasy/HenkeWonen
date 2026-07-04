@@ -169,3 +169,174 @@
   display: grid;
   gap: var(--space-4);
 }
+
+/* ---------------------------------------------------------------------------
+   Catalogus-productkiezer — triggerknop + zoekdialoog (CatalogProductPicker)
+   --------------------------------------------------------------------------- */
+
+/* Bouwt voort op .ui-control (06-ui-components.css) zodat de trigger exact het
+   uiterlijk, de maat en de :focus-visible-rand van de andere formuliercontrols
+   deelt; hier alleen de knop-specifieke flex/ellipsis-extra's. */
+.catalog-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.catalog-picker-trigger:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-muted);
+}
+
+.catalog-picker-trigger.is-placeholder .catalog-picker-trigger-label {
+  color: var(--muted);
+}
+
+.catalog-picker-trigger-icon {
+  flex: 0 0 auto;
+  color: var(--color-accent-ink);
+}
+
+.catalog-picker-trigger-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-picker-trigger-chevron {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+/* Dialoog-paneel: zelfde viewport-goot als de andere modals (--dialog-max-w). */
+.catalog-picker-dialog .catalog-picker-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--dialog-max-w), 560px);
+  max-height: min(80dvh, 640px);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  animation: modalSlideIn 0.2s ease;
+}
+
+.catalog-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.catalog-picker-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 800;
+}
+
+.catalog-picker-search {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.catalog-picker-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--space-3) var(--space-3) var(--space-4);
+}
+
+.catalog-picker-status {
+  margin: 0;
+  padding: var(--space-5) var(--space-3);
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.catalog-picker-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.catalog-picker-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.catalog-picker-option:hover {
+  background: var(--surface-muted);
+}
+
+.catalog-picker-option.is-active {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--accent-soft);
+}
+
+.catalog-picker-option-clear {
+  min-height: 44px;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.catalog-picker-option-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.catalog-picker-option-main {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.catalog-picker-option-meta {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.catalog-picker-option-price {
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.catalog-picker-option-check {
+  flex: 0 0 auto;
+  color: var(--color-accent-ink);
+}
