@@ -589,6 +589,70 @@
   background: var(--color-success);
 }
 
+/* Mobiel/tablet: de desktop-topbars (met de Uitleg-knop) zijn ≤980px verborgen,
+   dus de hulpknop verhuist naar de altijd-zichtbare mobiele bars. Rechts naast
+   de Menu-knop, gegroepeerd in een eigen actie-rij. */
+.sidebar-mobile-actions,
+.field-mobile-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* Accent-pill die opvalt tussen de neutrale bar-knoppen. Kleuren komen van de
+   meegegeven .help-guide-trigger; hier alleen de vorm + een basisrand zodat de
+   accent-border-color van de trigger zichtbaar is (border-style anders 'none'). */
+.mobile-help-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mobile-help-trigger svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Krappe telefoons: enkel het ?-icoon (naam blijft via aria-label). De bredere
+   winkel-tablet (≤980px maar >420px) houdt het label "Uitleg". */
+@media (max-width: 420px) {
+  .mobile-help-trigger span {
+    display: none;
+  }
+
+  .mobile-help-trigger {
+    width: 40px;
+    padding: 0;
+  }
+}
+
+/* Werkgids-dialoog op smalle schermen: minder zijpadding en de wegwijs-lijst
+   stapelt (de vaste 136px-chipkolom laat anders te weinig ruimte voor de uitleg). */
+@media (max-width: 560px) {
+  .help-guide-modal .shortcut-help-header,
+  .help-guide-modal .shortcut-help-body,
+  .help-guide-modal .shortcut-help-footer {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+  }
+
+  .help-guide-modal .help-guide-map li {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
 /* ---------------------------------------------------------------------------
    Toast Notifications
    --------------------------------------------------------------------------- */

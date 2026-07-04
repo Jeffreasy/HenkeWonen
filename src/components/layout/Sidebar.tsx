@@ -13,6 +13,7 @@ import {
 import { SidebarNav } from "./SidebarNav";
 import { SidebarSessionCard } from "./SidebarSessionCard";
 import { PortalQuickbar } from "./PortalQuickbar";
+import { HelpGuideButton } from "../help/HelpGuideButton";
 
 type SidebarProps = {
   session: AppSession;
@@ -107,17 +108,28 @@ export default function Sidebar({ session, pathname }: SidebarProps) {
             />
           </a>
           <p className="mobile-active-route">{activeItem?.label ?? "Start"}</p>
-          <button
-            aria-controls="portal-mobile-navigation"
-            aria-expanded={isMenuOpen}
-            aria-label={isMenuOpen ? "Menu sluiten" : "Menu openen"}
-            className="sidebar-menu-button"
-            type="button"
-            onClick={() => setIsMenuOpen((current) => !current)}
-          >
-            {isMenuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
-            <span>{isMenuOpen ? "Sluiten" : "Menu"}</span>
-          </button>
+          <div className="sidebar-mobile-actions">
+            {/* De desktop-topbar (met de Uitleg-knop) is op dit breekpunt verborgen;
+                daarom staat de hulpknop hier zodat hij op mobiel/tablet zichtbaar blijft.
+                Eigen dialog-id: de desktop-instantie leeft gelijktijdig in de DOM. */}
+            <HelpGuideButton
+              mode="winkel"
+              className="mobile-help-trigger"
+              pathname={currentPathname}
+              dialogId="help-guide-dialog-mobile"
+            />
+            <button
+              aria-controls="portal-mobile-navigation"
+              aria-expanded={isMenuOpen}
+              aria-label={isMenuOpen ? "Menu sluiten" : "Menu openen"}
+              className="sidebar-menu-button"
+              type="button"
+              onClick={() => setIsMenuOpen((current) => !current)}
+            >
+              {isMenuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+              <span>{isMenuOpen ? "Sluiten" : "Menu"}</span>
+            </button>
+          </div>
         </div>
 
         <div
