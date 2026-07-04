@@ -1,4 +1,4 @@
-import { ChevronDown, Flag, Paperclip, Receipt, ShieldCheck, Store, Tablet, X } from "lucide-react";
+import { ChevronDown, Compass, Flag, Paperclip, Receipt, ShieldCheck, Store, Tablet, X } from "lucide-react";
 import { type ReactNode } from "react";
 import { BaseDialog } from "../ui/overlays/BaseDialog";
 
@@ -20,6 +20,87 @@ type HelpTopic = {
 function Kbd({ children }: { children: ReactNode }) {
   return <kbd className="kbd">{children}</kbd>;
 }
+
+/** Navigatie-chip: brengt je direct naar de juiste pagina (kbd = knop dáár). */
+function HelpLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a className="help-guide-link" href={href}>
+      {children}
+    </a>
+  );
+}
+
+const TOPIC_WAAR_VIND_IK: HelpTopic = {
+  id: "waar-vind-ik",
+  icon: <Compass size={17} aria-hidden="true" />,
+  title: "Waar vind ik wat?",
+  body: (
+    <>
+      <ul className="help-guide-map">
+        <li>
+          <HelpLink href="/portal">Start</HelpLink>
+          <span>Je werkoverzicht: wat vandaag aandacht vraagt.</span>
+        </li>
+        <li>
+          <HelpLink href="/portal/dossiers">Dossiers</HelpLink>
+          <span>
+            Alle klanten en klussen. Hier begint een nieuwe aanvraag, via <Kbd>Klant vastleggen</Kbd>.
+          </span>
+        </li>
+        <li>
+          <HelpLink href="/portal/offertes">Offertes</HelpLink>
+          <span>Alle offertes: concepten, verzonden en akkoord.</span>
+        </li>
+        <li>
+          <HelpLink href="/portal/facturen">Facturen</HelpLink>
+          <span>Facturen maken, versturen en bijhouden.</span>
+        </li>
+        <li>
+          <HelpLink href="/portal/catalogus">Catalogus</HelpLink>
+          <span>Alle producten en prijzen van de leveranciers.</span>
+        </li>
+        <li>
+          <HelpLink href="/portal/buitendienst/vandaag">Buitendienst</HelpLink>
+          <span>Het werkscherm van de monteur — hetzelfde als op de tablet.</span>
+        </li>
+        <li>
+          <HelpLink href="/portal/agenda">Agenda</HelpLink>
+          <span>De inmeetplanning: welke monteur wanneer waar langsgaat.</span>
+        </li>
+      </ul>
+      <p>
+        Snel iets starten kan overal: rechtsonder staat altijd <Kbd>+ Actie</Kbd> — voor{" "}
+        <b>Nieuwe aanvraag</b> (klant vastleggen) en <b>Werk starten</b> (project aanmaken).
+      </p>
+    </>
+  )
+};
+
+const TOPIC_WAAR_VIND_IK_VELD: HelpTopic = {
+  id: "waar-vind-ik-veld",
+  icon: <Compass size={17} aria-hidden="true" />,
+  title: "Waar vind ik wat op de tablet?",
+  body: (
+    <ul className="help-guide-map">
+      <li>
+        <HelpLink href="/portal/buitendienst/vandaag">Vandaag</HelpLink>
+        <span>Je route en klantbezoeken van vandaag.</span>
+      </li>
+      <li>
+        <HelpLink href="/portal/buitendienst/inmeten">Inmeten</HelpLink>
+        <span>Alle dossiers waar nog gemeten moet worden.</span>
+      </li>
+      <li>
+        <HelpLink href="/portal/buitendienst/conceptoffertes">Conceptoffertes</HelpLink>
+        <span>Meetregels omzetten naar een nette Klantversie voor de klant.</span>
+      </li>
+      <li>
+        <HelpLink href="/portal/agenda">Agenda</HelpLink>
+        <span>De inmeetplanning van de week.</span>
+      </li>
+    </ul>
+  )
+};
 
 const TOPIC_KLEUREN: HelpTopic = {
   id: "kleuren",
@@ -52,10 +133,22 @@ const TOPIC_WINKEL_FLOW: HelpTopic = {
   title: "Van klant tot offerte (winkel)",
   body: (
     <ol className="help-guide-steps">
-      <li>Ga naar <Kbd>Klanten</Kbd> en klik op <Kbd>Nieuwe klant</Kbd>. Naam, adres en telefoonnummer zijn genoeg.</li>
-      <li>Plan het inmeetbezoek in: kies monteur en dag (inmeten kan op dinsdag, woensdag of donderdag). Het systeem bewaakt zelf of er nog plek is. Klik op <Kbd>Inplannen</Kbd>.</li>
-      <li>Na het bezoek staan de maten al in het tabblad <Kbd>Inmeting</Kbd> — niets overtypen.</li>
-      <li>Maak de offerte met <Kbd>Inmeting overnemen</Kbd>, voeg prijzen toe en klik op <Kbd>Markeer verzonden</Kbd>. Later zet je 'm op <Kbd>Akkoord</Kbd> of <Kbd>Afwijzen</Kbd>.</li>
+      <li>
+        Nieuwe klant? Open <HelpLink href="/portal/dossiers">Dossiers</HelpLink> en kies{" "}
+        <Kbd>Klant vastleggen</Kbd> — of klik rechtsonder op <Kbd>+ Actie</Kbd> →{" "}
+        <Kbd>Nieuwe aanvraag</Kbd>. Naam, adres en telefoonnummer zijn genoeg.
+      </li>
+      <li>
+        Plan het inmeetbezoek in vanuit het dossier: kies monteur en dag (inmeten kan op dinsdag,
+        woensdag of donderdag) en klik op <Kbd>Inplannen</Kbd>. Het systeem bewaakt zelf of er nog
+        plek is; de planning zie je terug in <HelpLink href="/portal/agenda">Agenda</HelpLink>.
+      </li>
+      <li>Na het bezoek staan de maten al in het tabblad <Kbd>Inmeting</Kbd> van het dossier — niets overtypen.</li>
+      <li>
+        Maak de offerte met <Kbd>Inmeting overnemen</Kbd>, voeg prijzen toe en klik op{" "}
+        <Kbd>Markeer verzonden</Kbd>. Later zet je 'm op <Kbd>Akkoord</Kbd> of <Kbd>Afwijzen</Kbd> —
+        alles staat onder <HelpLink href="/portal/offertes">Offertes</HelpLink>.
+      </li>
     </ol>
   )
 };
@@ -67,7 +160,11 @@ const TOPIC_NA_AKKOORD: HelpTopic = {
   body: (
     <ol className="help-guide-steps">
       <li>Maak vanuit de akkoord-offerte de leveranciersbestellingen met <Kbd>Bestellingen genereren</Kbd> (tabblad <Kbd>Bestellingen</Kbd>).</li>
-      <li>Maak daarna de factuur in hetzelfde dossier. Een lege of € 0-factuur versturen blokkeert het systeem vanzelf.</li>
+      <li>
+        Maak daarna de factuur in hetzelfde dossier — terug te vinden onder{" "}
+        <HelpLink href="/portal/facturen">Facturen</HelpLink>. Een lege of € 0-factuur versturen
+        blokkeert het systeem vanzelf.
+      </li>
       <li>Versturen naar de klant: klik op <Kbd>Klantversie printen</Kbd> en kies “Opslaan als PDF”. Die PDF mail of app je zelf — automatisch e-mailen volgt zodra het domein klaar is.</li>
     </ol>
   )
@@ -95,9 +192,10 @@ const TOPIC_DOSSIERSTUKKEN: HelpTopic = {
   body: (
     <>
       <p>
-        Onder <Kbd>Dossierstukken</Kbd> op de klantkaart bewaar je plattegronden, foto's en oude
-        offertes. De monteur ziet ze op de tablet en kan er met <Kbd>Foto toevoegen</Kbd> zelf een
-        foto van de situatie bij zetten.
+        Onder <Kbd>Dossierstukken</Kbd> op de klantkaart (via{" "}
+        <HelpLink href="/portal/dossiers">Dossiers</HelpLink>) bewaar je plattegronden, foto's en
+        oude offertes. De monteur ziet ze op de tablet en kan er met <Kbd>Foto toevoegen</Kbd> zelf
+        een foto van de situatie bij zetten.
       </p>
       <p>Alles is alleen zichtbaar voor ingelogde medewerkers — er bestaan geen open linkjes.</p>
     </>
@@ -123,6 +221,7 @@ const TOPIC_PRIVACY: HelpTopic = {
 };
 
 const WINKEL_TOPICS: HelpTopic[] = [
+  TOPIC_WAAR_VIND_IK,
   TOPIC_KLEUREN,
   TOPIC_WINKEL_FLOW,
   TOPIC_NA_AKKOORD,
@@ -133,6 +232,7 @@ const WINKEL_TOPICS: HelpTopic[] = [
 
 const BUITENDIENST_TOPICS: HelpTopic[] = [
   TOPIC_TABLET,
+  TOPIC_WAAR_VIND_IK_VELD,
   TOPIC_KLEUREN,
   TOPIC_DOSSIERSTUKKEN
 ];
@@ -158,7 +258,8 @@ export function defaultTopicId(mode: HelpGuideMode, pathname: string): string {
   ) {
     return "winkel-flow";
   }
-  return "kleuren";
+  // Start en overige pagina's: eerst wegwijs maken.
+  return "waar-vind-ik";
 }
 
 type HelpGuideModalProps = {
@@ -182,10 +283,19 @@ export function HelpGuideModal({ mode, open, pathname, onClose }: HelpGuideModal
           </button>
         </div>
 
-        <div className="shortcut-help-body">
+        <div
+          className="shortcut-help-body"
+          onClick={(event) => {
+            // Navigatie-chip aangeklikt → dialoog sluiten; de link navigeert zelf.
+            if ((event.target as HTMLElement).closest?.("a[href]")) {
+              onClose();
+            }
+          }}
+        >
           <p className="help-guide-intro">
-            De belangrijkste stappen in gewone taal. Alle knopteksten hieronder zien er precies zo
-            uit in het systeem.
+            De belangrijkste stappen in gewone taal. Knopteksten zien er precies zo uit in het
+            systeem; de <span className="help-guide-link help-guide-link-demo">gekleurde chips</span>{" "}
+            brengen je direct naar de juiste pagina.
           </p>
           <div className="help-guide-topics">
             {topics.map((topic) => (

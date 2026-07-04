@@ -26,9 +26,9 @@ describe("defaultTopicId", () => {
     expect(defaultTopicId("winkel", "/portal/buitendienst/vandaag")).toBe("tablet");
   });
 
-  test("overige portalpaginas → kleuren", () => {
-    expect(defaultTopicId("winkel", "/portal")).toBe("kleuren");
-    expect(defaultTopicId("winkel", "/portal/imports")).toBe("kleuren");
-    expect(defaultTopicId("winkel", "/portal/catalogus")).toBe("kleuren");
+  test("Start en overige portalpaginas → wegwijs (waar-vind-ik)", () => {
+    expect(defaultTopicId("winkel", "/portal")).toBe("waar-vind-ik");
+    expect(defaultTopicId("winkel", "/portal/imports")).toBe("waar-vind-ik");
+    expect(defaultTopicId("winkel", "/portal/catalogus")).toBe("waar-vind-ik");
   });
 });
