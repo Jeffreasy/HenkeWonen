@@ -1,5 +1,5 @@
 import { CheckCircle, Info, AlertTriangle, XCircle, X } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { ToastMessage, ToastTone } from "../../../lib/toast";
 
 const ICONS: Record<ToastTone, React.ReactElement> = {
@@ -55,6 +55,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
  */
 export function ToastContainer() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const dismiss = useCallback((id: string) => {
     setToasts((current) => current.filter((t) => t.id !== id));
@@ -70,10 +71,32 @@ export function ToastContainer() {
     return () => window.removeEventListener("portal:toast", handler);
   }, []);
 
+  // Toasts moeten óók zichtbaar zijn boven open modals. Modals leven in de
+  // browser-top-layer (BaseDialog/showModal), waar geen enkele z-index
+  // bovenuit komt — behalve een láter getoonde top-layer-genoot. Daarom is de
+  // container een manual popover die bij elke nieuwe toast opnieuw bovenaan de
+  // top-layer wordt gezet (bv. de foutmelding terwijl een bevestigingsdialoog
+  // bewust open blijft staan).
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || toasts.length === 0 || typeof container.showPopover !== "function") {
+      return;
+    }
+    try {
+      if (container.matches(":popover-open")) {
+        container.hidePopover();
+      }
+      container.showPopover();
+    } catch {
+      // Popover niet beschikbaar/geblokkeerd: val terug op gewone rendering
+      // (z-index 1500) — dan is alleen de boven-modal-garantie weg.
+    }
+  }, [toasts]);
+
   if (toasts.length === 0) return null;
 
   return (
-    <div className="toast-container" aria-label="Meldingen">
+    <div className="toast-container" aria-label="Meldingen" popover="manual" ref={containerRef}>
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onDismiss={dismiss} />
       ))}

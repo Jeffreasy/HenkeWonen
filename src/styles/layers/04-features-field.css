@@ -203,7 +203,7 @@
 }
 
 .field-priority-pill-orange {
-  border-left-color: #d97706;
+  border-left-color: var(--color-warning-strong);
 }
 
 .field-priority-pill-green {
@@ -342,7 +342,7 @@
 }
 
 .field-work-card-orange {
-  border-left-color: #d97706;
+  border-left-color: var(--color-warning-strong);
 }
 
 .field-work-card-green {
@@ -385,7 +385,7 @@
 }
 
 .field-card-priority-orange {
-  background: #d97706;
+  background: var(--color-warning-strong);
 }
 
 .field-card-priority-green {

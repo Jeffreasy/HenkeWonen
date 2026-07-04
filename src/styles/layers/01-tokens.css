@@ -20,6 +20,10 @@
   --color-accent-strong: #7a4310;
   --color-accent-hover: #68380e; /* Primary knop hover */
   --color-accent-soft: #f4e6cf;
+  /* Accentkleurige tekst/iconen op zachte vlakken: licht thema wil de donkere
+     variant, donker thema juist de lichtere — één token i.p.v. per component
+     een eigen dark-override. */
+  --color-accent-ink: var(--color-accent-strong);
   --color-success: #166534;
   --color-success-bg: #dcfce7;
   --color-warning: #9a6507;
@@ -133,6 +137,7 @@ html[data-theme="dark"] {
   --color-accent-strong: #f6b566;
   --color-accent-hover: #e8b270; /* Primary knop hover dark */
   --color-accent-soft: #2d2417;
+  --color-accent-ink: var(--color-accent);
 
   /* Systeemsignalen */
   --color-success: #4ade80;

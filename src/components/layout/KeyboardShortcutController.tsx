@@ -17,20 +17,11 @@ export function KeyboardShortcutController() {
       description: "Toetscombinaties tonen",
       handler: () => setHelpOpen((prev) => !prev)
     },
-    {
-      key: "Escape",
-      description: "Sluiten",
-      handler: () => {
-        if (helpOpen) {
-          setHelpOpen(false);
-          return;
-        }
-        // Trigger close on open modals / confirm dialogs. Native <dialog>-modals
-        // (BaseDialog) sluiten zelf al via het cancel-event.
-        const closeBtn = document.querySelector<HTMLElement>("[data-modal-close]");
-        closeBtn?.click();
-      }
-    },
+    // Bewust géén Escape-sneltoets: alle modals draaien op het native
+    // <dialog>-element (BaseDialog). De browser stuurt Escape als cancel-event
+    // naar de bovenste dialoog in de top-layer — precies goed, ook gestapeld.
+    // Een globale handler zou de keydown preventDefault'en waardoor dat
+    // cancel-event nooit vuurt.
     {
       key: "k",
       ctrl: true,

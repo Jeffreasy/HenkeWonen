@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, type MouseEvent, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Alert } from "../feedback/Alert";
 import { Button } from "../forms/Button";
+import { BaseDialog } from "./BaseDialog";
 
 type ConfirmDialogProps = {
   open: boolean;
@@ -15,6 +16,12 @@ type ConfirmDialogProps = {
   onCancel: () => void;
 };
 
+/**
+ * Bevestigingsdialoog op de gedeelde BaseDialog (native <dialog> in de
+ * top-layer): focus-trap, Escape en backdrop-sluiten komen daarvandaan;
+ * zolang isBusy aanstaat blokkeert closeDisabled het wegsluiten. De browser
+ * focust bij openen het eerste focusbare element — de annuleerknop.
+ */
 export function ConfirmDialog({
   open,
   title,
@@ -29,98 +36,17 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
-  const cancelButtonRef = useRef<HTMLButtonElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        if (!isBusy) {
-          onCancel();
-        }
-        return;
-      }
-
-      if (event.key !== "Tab") {
-        return;
-      }
-
-      const focusable = Array.from(
-        dialogRef.current?.querySelectorAll<HTMLElement>(
-          [
-            "a[href]",
-            "button:not([disabled])",
-            "input:not([disabled])",
-            "select:not([disabled])",
-            "textarea:not([disabled])",
-            "[tabindex]:not([tabindex='-1'])"
-          ].join(", ")
-        ) ?? []
-      ).filter((element) => !element.hasAttribute("hidden"));
-
-      if (focusable.length === 0) {
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isBusy, onCancel, open]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    const previouslyFocusedElement =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-
-    document.body.style.overflow = "hidden";
-    window.setTimeout(() => cancelButtonRef.current?.focus(), 0);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      previouslyFocusedElement?.focus();
-    };
-  }, [open]);
-
-  if (!open) {
-    return null;
-  }
-
-  function cancelFromBackdrop(event: MouseEvent<HTMLDivElement>) {
-    if (event.target === event.currentTarget && !isBusy) {
-      onCancel();
-    }
-  }
 
   return (
-    <div className="confirm-dialog-backdrop" onMouseDown={cancelFromBackdrop}>
-      <div
-        className="confirm-dialog"
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-      >
+    <BaseDialog
+      open={open}
+      onClose={onCancel}
+      ariaLabelledBy={titleId}
+      ariaDescribedBy={descriptionId}
+      closeDisabled={isBusy}
+      className="confirm-dialog-host"
+    >
+      <div className="confirm-dialog">
         <Alert
           variant={tone}
           title={<span id={titleId}>{title}</span>}
@@ -128,7 +54,10 @@ export function ConfirmDialog({
         />
         {children ? <div className="confirm-dialog-body">{children}</div> : null}
         <div className="confirm-dialog-actions">
-          <Button ref={cancelButtonRef} variant="secondary" disabled={isBusy} onClick={onCancel}>
+          {/* autoFocus: de focus-delegate van showModal() honoreert [autofocus],
+              zodat de focus ALTIJD veilig op Annuleren start — ook wanneer
+              children (bv. een bevestigingsveld) eerder in de DOM staan. */}
+          <Button variant="secondary" disabled={isBusy} autoFocus onClick={onCancel}>
             {cancelLabel}
           </Button>
           <Button
@@ -140,6 +69,6 @@ export function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </BaseDialog>
   );
 }

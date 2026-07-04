@@ -821,10 +821,13 @@
     grid-template-columns: 1fr;
   }
 
-  /* Modal als bottom-sheet op kleine telefoons */
-  .form-modal-backdrop {
-    padding: 0;
-    align-items: flex-end;
+  /* Modal als bottom-sheet op kleine telefoons: de <dialog>-wrapper
+     (top-layer, auto-marges) onderaan plakken en volle breedte geven. */
+  .form-modal-host {
+    width: 100%;
+    max-width: 100vw;
+    max-height: 100dvh;
+    margin: auto 0 0;
   }
 
   .form-modal,
