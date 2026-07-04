@@ -6,21 +6,12 @@ type HelpGuideButtonProps = {
   mode: HelpGuideMode;
   /** Stijlklasse van de trigger; volgt de knopstijl van de omringende topbar. */
   className: string;
+  /** Huidige pad voor het route-bewuste standaard-onderwerp (buitendienst negeert dit). */
   pathname?: string;
 };
 
-function currentPathname(pathname?: string): string {
-  if (pathname) {
-    return pathname;
-  }
-  if (typeof window !== "undefined") {
-    return window.location.pathname;
-  }
-  return "/portal";
-}
-
 /** [?]-knop in de topbar die de compacte werkgids opent. */
-export function HelpGuideButton({ mode, className, pathname }: HelpGuideButtonProps) {
+export function HelpGuideButton({ mode, className, pathname = "/portal" }: HelpGuideButtonProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -40,7 +31,7 @@ export function HelpGuideButton({ mode, className, pathname }: HelpGuideButtonPr
       <HelpGuideModal
         mode={mode}
         open={open}
-        pathname={currentPathname(pathname)}
+        pathname={pathname}
         onClose={() => setOpen(false)}
       />
     </>

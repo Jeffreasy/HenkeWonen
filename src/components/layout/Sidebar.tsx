@@ -1,6 +1,7 @@
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
+import { useScrollLock } from "../../lib/useScrollLock";
 import {
   activePortalNavItem,
   getCurrentPathname,
@@ -63,22 +64,9 @@ export default function Sidebar({ session, pathname }: SidebarProps) {
   // Scroll-lock zolang het mobiele menu open is: zonder lock scrolde de pagina
   // gewoon door onder het (sticky) geopende paneel — op iOS voelde het menu
   // daardoor kapot zodra het interne paneel-scrollen doorkettte naar de pagina.
-  // De lock hoort op <html>: dat is hier het scrollende element (html heeft
-  // overflow-y: auto, dus body-overflow propageert níet naar de viewport).
-  useEffect(() => {
-    if (!isMenuOpen) {
-      return;
-    }
-    const html = document.documentElement;
-    const vorigeHtml = html.style.overflow;
-    const vorigeBody = document.body.style.overflow;
-    html.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-    return () => {
-      html.style.overflow = vorigeHtml;
-      document.body.style.overflow = vorigeBody;
-    };
-  }, [isMenuOpen]);
+  // Gedeeld met BaseDialog (refcounted; lockt <html> + body — html is hier het
+  // scrollende element).
+  useScrollLock(isMenuOpen);
 
   function toggleGroup(group: PortalNavGroup) {
     // Zelfde open-bepaling als de weergave (isPortalGroupOpen), anders kon een

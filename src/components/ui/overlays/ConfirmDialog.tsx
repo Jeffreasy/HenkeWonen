@@ -54,7 +54,10 @@ export function ConfirmDialog({
         />
         {children ? <div className="confirm-dialog-body">{children}</div> : null}
         <div className="confirm-dialog-actions">
-          <Button variant="secondary" disabled={isBusy} onClick={onCancel}>
+          {/* autoFocus: de focus-delegate van showModal() honoreert [autofocus],
+              zodat de focus ALTIJD veilig op Annuleren start — ook wanneer
+              children (bv. een bevestigingsveld) eerder in de DOM staan. */}
+          <Button variant="secondary" disabled={isBusy} autoFocus onClick={onCancel}>
             {cancelLabel}
           </Button>
           <Button

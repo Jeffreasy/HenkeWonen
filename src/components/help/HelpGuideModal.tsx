@@ -1,6 +1,7 @@
 import { ChevronDown, Compass, Flag, Paperclip, Receipt, ShieldCheck, Store, Tablet, X } from "lucide-react";
 import { type ReactNode } from "react";
 import { BaseDialog } from "../ui/overlays/BaseDialog";
+import { IconButton } from "../ui/forms/IconButton";
 
 /**
  * Compacte, ingebouwde versie van de werkgids: per onderwerp een kort
@@ -278,9 +279,9 @@ export function HelpGuideModal({ mode, open, pathname, onClose }: HelpGuideModal
       <div className="shortcut-help-modal help-guide-modal">
         <div className="shortcut-help-header">
           <h2>Zo werkt het — in het kort</h2>
-          <button type="button" className="icon-btn" aria-label="Sluiten" data-modal-close onClick={onClose}>
+          <IconButton aria-label="Sluiten" variant="ghost" size="sm" onClick={onClose}>
             <X size={18} aria-hidden="true" />
-          </button>
+          </IconButton>
         </div>
 
         <div
@@ -294,8 +295,8 @@ export function HelpGuideModal({ mode, open, pathname, onClose }: HelpGuideModal
         >
           <p className="help-guide-intro">
             De belangrijkste stappen in gewone taal. Knopteksten zien er precies zo uit in het
-            systeem; de <span className="help-guide-link help-guide-link-demo">gekleurde chips</span>{" "}
-            brengen je direct naar de juiste pagina.
+            systeem; de <b>gekleurde chips met een pijltje</b> brengen je direct naar de juiste
+            pagina.
           </p>
           <div className="help-guide-topics">
             {topics.map((topic) => (
@@ -316,10 +317,15 @@ export function HelpGuideModal({ mode, open, pathname, onClose }: HelpGuideModal
         </div>
 
         <div className="shortcut-help-footer">
-          <p>
-            Twijfel je ergens over? Bel even de winkel — en druk op <kbd className="kbd">?</kbd>{" "}
-            voor de toetscombinaties.
-          </p>
+          {mode === "winkel" ? (
+            <p>
+              Twijfel je ergens over? Bel even de winkel — en druk op <kbd className="kbd">?</kbd>{" "}
+              voor de toetscombinaties.
+            </p>
+          ) : (
+            // Geen ?-verwijzing: de sneltoetsen-hulp bestaat alleen in de portal.
+            <p>Twijfel je ergens over? Bel even de winkel — zij kijken live mee in hetzelfde dossier.</p>
+          )}
         </div>
       </div>
     </BaseDialog>

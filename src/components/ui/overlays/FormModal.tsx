@@ -44,7 +44,6 @@ export function FormModal({
           <button
             className="form-modal-close"
             aria-label="Sluiten"
-            data-modal-close
             onClick={onClose}
             type="button"
           >

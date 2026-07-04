@@ -27,6 +27,15 @@
     display: none !important;
   }
 
+  /* Klantversie printen kan vanuit een open top-layer <dialog> gebeuren
+     (FormModal met de voorbeeldweergave). Top-layer-rendering bij printen
+     verschilt per browser-engine; verberg de dialoog en zijn scrim daarom
+     expliciet zodat de PDF-uitvoer nooit verdonkert of dubbellaagt. */
+  body.quote-print-active .app-dialog,
+  body.quote-print-active .app-dialog::backdrop {
+    display: none !important;
+  }
+
   body.quote-print-active .quote-print-root {
     display: block !important;
     width: auto !important;

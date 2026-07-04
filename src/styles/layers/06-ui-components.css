@@ -775,7 +775,7 @@ html[data-theme="dark"] select.ui-control {
 .confirm-dialog {
   display: grid;
   gap: var(--space-3);
-  width: min(calc(100vw - 2 * var(--space-4)), 540px);
+  width: min(var(--dialog-max-w, calc(100vw - 2 * var(--space-4))), 540px);
   max-height: calc(100dvh - var(--space-6)); /* dvh = dynamic viewport height, correct op mobiel */
   max-width: 100%;
   min-height: 0;

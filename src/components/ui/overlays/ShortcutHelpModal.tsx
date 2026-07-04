@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { formatShortcutKeys, type Shortcut } from "../../../lib/keyboard";
 import { BaseDialog } from "./BaseDialog";
+import { IconButton } from "../forms/IconButton";
 
 type ShortcutGroup = {
   title: string;
@@ -56,15 +57,9 @@ export function ShortcutHelpModal({ open, onClose }: ShortcutHelpModalProps) {
       <div className="shortcut-help-modal">
         <div className="shortcut-help-header">
           <h2>Toetscombinaties</h2>
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Sluiten"
-            data-modal-close
-            onClick={onClose}
-          >
+          <IconButton aria-label="Sluiten" variant="ghost" size="sm" onClick={onClose}>
             <X size={18} aria-hidden="true" />
-          </button>
+          </IconButton>
         </div>
 
         <div className="shortcut-help-body">

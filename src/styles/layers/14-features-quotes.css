@@ -536,7 +536,7 @@
 }
 
 .quote-document-snapshot .needs-review {
-  border-left-color: #d97706;
+  border-left-color: var(--color-warning-strong);
 }
 
 .quote-document-snapshot .is-ready {
