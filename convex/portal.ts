@@ -149,7 +149,7 @@ export const dashboard = query({
         (project.status === "measurement_planned" && !measurementCompleted) ||
         project.status === "execution_planned" ||
         project.status === "in_progress";
-      const visitAt = heeftOpenstaandBezoek ? fieldVisitTimestamp(project, meting) : undefined;
+      const visitAt = heeftOpenstaandBezoek ? fieldVisitTimestamp(project, meting, now) : undefined;
       return [
         {
           id: `project-${project._id}`,

@@ -4,6 +4,7 @@ import {
   workItemUrgency,
   workItemLevel,
   urgencyRank,
+  fieldVisitTimestamp,
   invoicePaymentTermDays,
   calculateLineTotals,
   isDueTodayOrEarlier,
@@ -74,6 +75,41 @@ describe("Convex Portal Utilities", () => {
   it("rangschikt urgentie rood < oranje < groen (rood sorteert bovenaan)", () => {
     expect(urgencyRank("red")).toBeLessThan(urgencyRank("orange"));
     expect(urgencyRank("orange")).toBeLessThan(urgencyRank("green"));
+  });
+
+  it("gebruikt dezelfde guarded bezoekdatum als de tablet — geen vals rood op een gedaan bezoek", () => {
+    const now = Date.UTC(2026, 5, 6, 12, 0, 0);
+    const tienDagenGeleden = Date.UTC(2026, 4, 27, 12, 0, 0);
+    const vandaag = Date.UTC(2026, 5, 6, 16, 0, 0);
+    const overVijfDagen = Date.UTC(2026, 5, 11, 12, 0, 0);
+    const gemeten = { status: "measured", inmeetdatum: tienDagenGeleden } as any;
+
+    // Uitvoerfase zónder uitvoerdatum, met een al afgeronde inmeting in het verleden: de
+    // inmeetdatum is historie (bezoek gedaan) en telt NIET mee → geen bezoekdatum, dus het
+    // item blijft groen ("op schema"), niet vals rood — precies wat de tablet toont.
+    const zonderUitvoer = {
+      status: "execution_planned",
+      uitvoerdatum: undefined,
+      inmeetdatum: tienDagenGeleden
+    } as any;
+    expect(fieldVisitTimestamp(zonderUitvoer, gemeten, now)).toBeUndefined();
+    expect(workItemLevel("success", fieldVisitTimestamp(zonderUitvoer, gemeten, now), now)).toBe(
+      "green"
+    );
+
+    // Wél een geplande uitvoerdatum in de uitvoerfase → die telt mee (valt niet terug op de
+    // gedane inmeetdatum).
+    const metUitvoer = {
+      status: "execution_planned",
+      uitvoerdatum: overVijfDagen,
+      inmeetdatum: tienDagenGeleden
+    } as any;
+    expect(fieldVisitTimestamp(metUitvoer, gemeten, now)).toBe(overVijfDagen);
+
+    // Een nog te doen inmeting van vandaag telt wél mee → rood (de oorspronkelijke fix).
+    const teMeten = { status: "measurement_planned", inmeetdatum: vandaag } as any;
+    expect(fieldVisitTimestamp(teMeten, undefined, now)).toBe(vandaag);
+    expect(workItemLevel("info", fieldVisitTimestamp(teMeten, undefined, now), now)).toBe("red");
   });
 
   it("should calculate correct task priority levels", () => {

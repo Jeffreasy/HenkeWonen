@@ -1,7 +1,13 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { readActorValidator, requireQueryRole } from "../authz";
-import { taskPriority, toContact, toDossierAttachment } from "../portalUtils";
+import {
+  fieldInmeetTimestamp,
+  fieldVisitTimestamp,
+  taskPriority,
+  toContact,
+  toDossierAttachment
+} from "../portalUtils";
 import type { Doc, Id } from "../_generated/dataModel";
 import type {
   PortalCustomer,
@@ -230,57 +236,6 @@ function latestMeasurement(measurements: Doc<"measurements">[], projectId: Id<"p
   return measurements
     .filter((measurement) => measurement.projectId === projectId)
     .sort((left, right) => right.gewijzigdOp - left.gewijzigdOp)[0];
-}
-
-/** Projectfases waarin een geplande uitvoer-/montagedatum een echt komend bezoek is. */
-const UITVOER_FASEN = ["quote_accepted", "ordering", "execution_planned", "in_progress"];
-
-function measurementDone(measurement: Doc<"measurements"> | undefined) {
-  return (
-    measurement?.status === "measured" ||
-    measurement?.status === "reviewed" ||
-    measurement?.status === "converted_to_quote"
-  );
-}
-
-/**
- * Het nog relevante inmeetbezoek: een afgeronde inmeting is geen komend bezoek meer
- * (het werk is gedaan), tenzij er een nieuwe, toekomstige afspraak staat (na-meting).
- * Voorheen bleef een al ingemeten bezoek van (voor) vandaag eeuwig in de bucket
- * "Vandaag" hangen, met een vals rood "achterstallig" als gevolg.
- */
-function fieldInmeetTimestamp(
-  project: Doc<"projects">,
-  measurement: Doc<"measurements"> | undefined,
-  now: number
-) {
-  const inmeet = project.inmeetdatum ?? measurement?.inmeetdatum;
-  if (inmeet !== undefined && measurementDone(measurement) && isDueTodayOrEarlier(inmeet, now)) {
-    return undefined;
-  }
-  return inmeet;
-}
-
-function fieldUitvoerTimestamp(project: Doc<"projects">) {
-  // De uitvoerdatum telt mee zodra het dossier in de uitvoerfase zit — de winkel plant
-  // de montage doorgaans ná akkoord/bij het bestellen. Voorheen telde hij alleen bij de
-  // legacy-statussen execution_planned/in_progress (die geen enkele UI-flow nog zet),
-  // waardoor de geplande montage de buitendienst nergens bereikte. Ná facturatie is de
-  // montage geweest en is de datum historie.
-  return UITVOER_FASEN.includes(project.status) ? project.uitvoerdatum : undefined;
-}
-
-function fieldVisitTimestamp(
-  project: Doc<"projects">,
-  measurement: Doc<"measurements"> | undefined,
-  now: number
-) {
-  const inmeet = fieldInmeetTimestamp(project, measurement, now);
-  const uitvoer = fieldUitvoerTimestamp(project);
-  if (inmeet !== undefined && uitvoer !== undefined) {
-    return Math.min(inmeet, uitvoer);
-  }
-  return inmeet ?? uitvoer;
 }
 
 function isDueTodayOrEarlier(timestamp: number | undefined, now: number) {
