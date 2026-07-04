@@ -213,7 +213,7 @@
 }
 
 .priority-pill-orange {
-  border-left-color: #d97706;
+  border-left-color: var(--color-warning-strong);
 }
 
 .priority-pill-green {

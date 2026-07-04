@@ -473,7 +473,7 @@ a.stat-pill:hover,
 
 .dashboard-work-item-orange {
   border-left-width: 5px;
-  border-left-color: #d97706;
+  border-left-color: var(--color-warning-strong);
 }
 
 .dashboard-work-item-green {

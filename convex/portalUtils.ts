@@ -198,6 +198,38 @@ export function workItemUrgency(tone: string): "red" | "orange" | "green" {
   return "green";
 }
 
+/** Sorteer-/urgentievolgorde van een verkeerslicht-niveau (lager = urgenter). */
+const URGENCY_RANK = { red: 0, orange: 1, green: 2 } as const;
+
+export function urgencyRank(level: "red" | "orange" | "green"): number {
+  return URGENCY_RANK[level];
+}
+
+/**
+ * Urgentieniveau van een dossier-werklijstitem, consistent met de buitendienst-tablet.
+ * De tablet (cardUrgency) kleurt een gepland bezoek op DATUM: een inmeting/uitvoering van
+ * vandaag of te laat is rood, deze week oranje. Het dashboard keek alleen naar de status-tone,
+ * waardoor een geplande inmeting van vandaag ten onrechte groen ("op schema") was terwijl de
+ * tablet 'm rood toonde — dezelfde kleur moet overal hetzelfde betekenen.
+ *
+ * Daarom nemen we het URGENTSTE van (a) de status-tone en (b) de bezoekdatum. `visitAt` hoort
+ * alléén de nog-openstaande bezoekdatum te zijn (inmeting nog te doen of uitvoering gepland);
+ * bij latere statussen is de inmeetdatum historie en moet de aanroeper `undefined` meegeven,
+ * zodat een al uitgevoerd bezoek het item niet vals rood kleurt.
+ */
+export function workItemLevel(
+  tone: string,
+  visitAt?: number | null,
+  now = Date.now()
+): "red" | "orange" | "green" {
+  const statusLevel = workItemUrgency(tone);
+  if (visitAt == null) {
+    return statusLevel;
+  }
+  const dateLevel = taskPriority(visitAt, now).level;
+  return urgencyRank(dateLevel) < urgencyRank(statusLevel) ? dateLevel : statusLevel;
+}
+
 export function taskPriority(dueAt: number, now = Date.now()) {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);

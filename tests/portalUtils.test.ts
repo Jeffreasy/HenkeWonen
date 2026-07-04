@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   taskPriority,
   workItemUrgency,
+  workItemLevel,
+  urgencyRank,
   invoicePaymentTermDays,
   calculateLineTotals,
   isDueTodayOrEarlier,
@@ -33,6 +35,45 @@ describe("Convex Portal Utilities", () => {
       const p = taskPriority(dueAt, now);
       expect(workItemUrgency(p.tone)).toBe(p.level);
     }
+  });
+
+  it("weegt de bezoekdatum mee zodat een inmeting van vandaag rood is (winkel = tablet)", () => {
+    const now = Date.UTC(2026, 5, 6, 12, 0, 0);
+    const vandaag = Date.UTC(2026, 5, 6, 16, 0, 0);
+    const dezeWeek = Date.UTC(2026, 5, 11, 12, 0, 0);
+    const verWeg = Date.UTC(2026, 6, 1, 12, 0, 0);
+
+    // "measurement_planned" heeft status-tone "info" (op zichzelf groen). Met een geplande
+    // inmeting van vandaag/te laat moet het item rood zijn — precies wat cardUrgency op de
+    // tablet toont; voorheen bleef het dashboard ten onrechte groen ("op schema").
+    expect(workItemLevel("info", vandaag, now)).toBe("red");
+    expect(workItemLevel("info", dezeWeek, now)).toBe("orange");
+    expect(workItemLevel("info", verWeg, now)).toBe("green");
+
+    // De datum-tak van workItemLevel moet exact de tablet-drempels volgen (taskPriority).
+    for (const visitAt of [vandaag, dezeWeek, verWeg]) {
+      expect(workItemLevel("info", visitAt, now)).toBe(taskPriority(visitAt, now).level);
+    }
+  });
+
+  it("valt zonder bezoekdatum terug op de status-tone en verlaagt nooit onder de status", () => {
+    const now = Date.UTC(2026, 5, 6, 12, 0, 0);
+    const verWeg = Date.UTC(2026, 6, 1, 12, 0, 0);
+
+    // Geen bezoekdatum → puur de status-tone (zoals offerte-/leaditems zonder bezoek).
+    expect(workItemLevel("danger")).toBe("red");
+    expect(workItemLevel("warning")).toBe("orange");
+    expect(workItemLevel("info")).toBe("green");
+
+    // We nemen het URGENTSTE van status en datum: een probleem-item (danger) met een
+    // verre bezoekdatum blijft rood, niet groen.
+    expect(workItemLevel("danger", verWeg, now)).toBe("red");
+    expect(workItemLevel("warning", verWeg, now)).toBe("orange");
+  });
+
+  it("rangschikt urgentie rood < oranje < groen (rood sorteert bovenaan)", () => {
+    expect(urgencyRank("red")).toBeLessThan(urgencyRank("orange"));
+    expect(urgencyRank("orange")).toBeLessThan(urgencyRank("green"));
   });
 
   it("should calculate correct task priority levels", () => {
