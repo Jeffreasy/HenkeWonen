@@ -463,3 +463,20 @@ a.stat-pill:hover,
   color: var(--accent);
 }
 /* .text-muted al aanwezig via .muted alias */
+
+/* Verkeerslicht-rand op werkitems: dezelfde rood/oranje/groen-taal als de
+   buitendienst-kaarten, o.b.v. het server-berekende urgentieniveau. */
+.dashboard-work-item-red {
+  border-left-width: 5px;
+  border-left-color: #b91c1c;
+}
+
+.dashboard-work-item-orange {
+  border-left-width: 5px;
+  border-left-color: #d97706;
+}
+
+.dashboard-work-item-green {
+  border-left-width: 5px;
+  border-left-color: #15803d;
+}

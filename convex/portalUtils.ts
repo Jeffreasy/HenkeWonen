@@ -180,6 +180,24 @@ export async function nextInvoiceNumber(ctx: any, tenantId: Id<"tenants">): Prom
   return `${prefix}${String(nextSequence).padStart(3, "0")}`;
 }
 
+/**
+ * Vertaalt de badge-tone van een werklijst-item naar het gedeelde
+ * rood/oranje/groen-urgentieniveau, zodat het winkel-dashboard dezelfde
+ * verkeerslicht-taal spreekt als de buitendienst:
+ *   danger  → rood   (haast: vandaag/morgen of een probleem)
+ *   warning → oranje (actie nodig: nieuwe aanvraag, concept, deze week, ...)
+ *   overig  → groen  (loopt / op schema: verzonden, akkoord, bestellen, ...)
+ */
+export function workItemUrgency(tone: string): "red" | "orange" | "green" {
+  if (tone === "danger") {
+    return "red";
+  }
+  if (tone === "warning") {
+    return "orange";
+  }
+  return "green";
+}
+
 export function taskPriority(dueAt: number, now = Date.now()) {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   taskPriority,
+  workItemUrgency,
   invoicePaymentTermDays,
   calculateLineTotals,
   isDueTodayOrEarlier,
@@ -9,6 +10,31 @@ import {
 } from "../convex/portalUtils";
 
 describe("Convex Portal Utilities", () => {
+  it("mapt de werklijst-tone naar het gedeelde rood/oranje/groen-niveau", () => {
+    // danger = haast (vandaag/morgen of probleem) → rood
+    expect(workItemUrgency("danger")).toBe("red");
+    // warning = actie nodig (nieuwe aanvraag, concept, deze week) → oranje
+    expect(workItemUrgency("warning")).toBe("orange");
+    // info/success = loopt / op schema → groen
+    expect(workItemUrgency("info")).toBe("green");
+    expect(workItemUrgency("success")).toBe("green");
+    // onbekende/neutrale tones vallen veilig terug op groen (geen valse urgentie)
+    expect(workItemUrgency("neutral")).toBe("green");
+    expect(workItemUrgency("accent")).toBe("green");
+  });
+
+  it("houdt taskPriority.tone consistent met workItemUrgency (winkel = tablet)", () => {
+    const now = Date.UTC(2026, 5, 6, 12, 0, 0);
+    for (const dueAt of [
+      Date.UTC(2026, 5, 6, 17, 0, 0), // vandaag → rood/danger
+      Date.UTC(2026, 5, 11, 12, 0, 0), // deze week → oranje/warning
+      Date.UTC(2026, 6, 1, 12, 0, 0) // ver weg → groen/success
+    ]) {
+      const p = taskPriority(dueAt, now);
+      expect(workItemUrgency(p.tone)).toBe(p.level);
+    }
+  });
+
   it("should calculate correct task priority levels", () => {
     const now = Date.UTC(2026, 5, 6, 12, 0, 0); // June 6, 2026
     

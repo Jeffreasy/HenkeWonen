@@ -2,7 +2,7 @@ import { query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { readActorValidator, requireQueryRole } from "./authz";
-import { taskPriority, toProject, toQuoteSummary } from "./portalUtils";
+import { taskPriority, toProject, toQuoteSummary, workItemUrgency } from "./portalUtils";
 import { isMeasurementCompleted, projectWorklistItem } from "./projecten/nextStep";
 import {
   DAG_MS,
@@ -170,8 +170,22 @@ export const dashboard = query({
         }
       ];
     });
-    const workItems = [...taskWorkItems, ...projectWorkItems, ...quoteWorkItems].sort(
-      (left, right) => left.priorityRank - right.priorityRank || left.updatedAt - right.updatedAt
+    const workItems = [...taskWorkItems, ...projectWorkItems, ...quoteWorkItems]
+      // Eén gedeeld urgentieniveau per item (rood/oranje/groen) uit de bestaande
+      // tone — voedt zowel de gekleurde rand per rij als de teller hieronder.
+      .map((item) => ({ ...item, level: workItemUrgency(item.tone) }))
+      .sort(
+        (left, right) => left.priorityRank - right.priorityRank || left.updatedAt - right.updatedAt
+      );
+
+    // Verkeerslicht-telling over de héle werkvoorraad (niet alleen de zichtbare 50),
+    // net als de buitendienst-samenvatting.
+    const priorityCounts = workItems.reduce(
+      (acc: { red: number; orange: number; green: number }, item) => {
+        acc[item.level] += 1;
+        return acc;
+      },
+      { red: 0, orange: 0, green: 0 }
     );
 
     const visibleProjects = await Promise.all(
@@ -252,6 +266,7 @@ export const dashboard = query({
       openQuoteCount: openQuotes.length,
       plannedWorkCount: plannedWorkProjects.length,
       workItemCount: workItems.length,
+      priorityCounts,
       // Ruime bovengrens i.p.v. 8 zodat "Toon alles" in de praktijk alles toont.
       // Boven de grens benoemt DashboardWorkOverview het verschil expliciet
       // ("x van y") o.b.v. workItemCount, zodat pill en lijst nooit stil uiteenlopen.
