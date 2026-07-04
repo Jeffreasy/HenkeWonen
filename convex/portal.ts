@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { readActorValidator, requireQueryRole } from "./authz";
 import {
+  fieldVisitTimestamp,
   taskPriority,
   toProject,
   toQuoteSummary,
@@ -139,16 +140,16 @@ export const dashboard = query({
       if (!meta) {
         return [];
       }
-      // Nog-openstaande bezoekdatum: een inmeting die nog moet gebeuren, of een geplande
-      // uitvoering. Bij latere statussen (of een al afgeronde inmeting) is de datum historie
-      // en telt 'ie NIET mee — anders zou een al uitgevoerd bezoek het item vals rood kleuren.
-      // Zo krijgt het dashboard dezelfde datum-urgentie als de buitendienst-tablet.
-      const visitAt =
-        project.status === "measurement_planned" && !measurementCompleted
-          ? project.inmeetdatum ?? meting?.inmeetdatum
-          : project.status === "execution_planned" || project.status === "in_progress"
-            ? project.uitvoerdatum ?? project.inmeetdatum ?? meting?.inmeetdatum
-            : undefined;
+      // Nog-openstaande bezoekdatum, uit dezelfde bron als de tablet (fieldVisitTimestamp):
+      // een inmeting die nog moet gebeuren, of een geplande uitvoering. Bij latere statussen
+      // of een al afgeronde inmeting is de datum historie en telt 'ie NIET mee — anders zou
+      // een al uitgevoerd bezoek het item vals rood kleuren. Zo deelt het dashboard exact de
+      // datum-urgentie van de buitendienst-tablet.
+      const heeftOpenstaandBezoek =
+        (project.status === "measurement_planned" && !measurementCompleted) ||
+        project.status === "execution_planned" ||
+        project.status === "in_progress";
+      const visitAt = heeftOpenstaandBezoek ? fieldVisitTimestamp(project, meting) : undefined;
       return [
         {
           id: `project-${project._id}`,
