@@ -484,7 +484,11 @@ export default function QuoteBuilder({
   );
 
   const lineEditor = (
+    // key={quote.id}: remount de editor bij een offertewissel, zodat useFormDraft (dat maar één
+    // keer per instance herstelt) het concept van de nieuwe offerte inlaadt en de state van de
+    // vorige niet blijft hangen of naar de nieuwe sleutel weglekt.
     <QuoteLineEditor
+      key={quote.id}
       mode={mode}
       surface="plain"
       hideHeader={!isFieldMode}

@@ -84,6 +84,16 @@ describe("readQuoteLineDraft (offerteregel overleeft tab-eviction)", () => {
     expect(restored.selectedProduct).toBeUndefined();
   });
 
+  it("herstelt alleen een geldig regeltype en negeert een onbekende/corrupte lineType", () => {
+    // Geldige typen komen door.
+    expect(readQuoteLineDraft(throughDraft({ lineType: "service" })).lineType).toBe("service");
+    expect(readQuoteLineDraft(throughDraft({ lineType: "text" })).lineType).toBe("text");
+    // Onbekende of niet-string waarden worden niet teruggezet (select houdt zijn begininstelling,
+    // en er lekt geen ongeldige waarde naar onAdd).
+    expect(readQuoteLineDraft(throughDraft({ lineType: "bogus" })).lineType).toBeUndefined();
+    expect(readQuoteLineDraft({ lineType: 7 }).lineType).toBeUndefined();
+  });
+
   it("negeert niet-string velden en een corrupt product uit een kapot concept", () => {
     const restored = readQuoteLineDraft({
       title: 123,

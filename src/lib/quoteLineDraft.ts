@@ -33,6 +33,27 @@ export function quoteLineDraftKey(quoteId: string): string {
 }
 
 /**
+ * Volledige set geldige regeltypen. De `Record<QuoteLineType, true>` dwingt via het typesysteem
+ * af dat deze lijst mee-groeit als `QuoteLineType` verandert (anders een compilefout hier), zodat
+ * het geen fragiele handmatige subset wordt.
+ */
+const QUOTE_LINE_TYPES: Record<QuoteLineType, true> = {
+  product: true,
+  service: true,
+  labor: true,
+  material: true,
+  discount: true,
+  text: true,
+  manual: true
+};
+const QUOTE_LINE_TYPE_SET = new Set<string>(Object.keys(QUOTE_LINE_TYPES));
+
+/** Alleen een echt bestaand regeltype telt — een corrupt concept mag geen onbekende waarde terugzetten. */
+function isQuoteLineType(value: unknown): value is QuoteLineType {
+  return typeof value === "string" && QUOTE_LINE_TYPE_SET.has(value);
+}
+
+/**
  * Is dit teruggehaalde concept-veld een bruikbaar catalogusproduct? We eisen de velden die de
  * picker-trigger (id + naam/weergaveNaam) en de regel-metadata (category) nodig hebben. Een oud
  * of corrupt concept valt zo netjes terug op "geen product". (Bewust lokaal gehouden i.p.v.
@@ -72,7 +93,7 @@ export function readQuoteLineDraft(draft: {
   const restored: Partial<QuoteLineDraftState> = {};
   const str = (value: unknown): value is string => typeof value === "string";
 
-  if (str(draft.lineType)) restored.lineType = draft.lineType as QuoteLineType;
+  if (isQuoteLineType(draft.lineType)) restored.lineType = draft.lineType;
   if (str(draft.title)) restored.title = draft.title;
   if (str(draft.description)) restored.description = draft.description;
   if (str(draft.quantity)) restored.quantity = draft.quantity;
