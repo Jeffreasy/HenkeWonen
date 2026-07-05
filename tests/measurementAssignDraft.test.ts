@@ -51,6 +51,16 @@ describe("restoreMeasurementProductSelection (productselectie overleeft tab-evic
     expect(restoreMeasurementProductSelection(draft).serviceRuleId).toBe("svc_9");
   });
 
+  it("negeert een niet-string serviceRuleId uit een corrupt concept", () => {
+    // Zet niet terug -> de state houdt zijn begininstelling ("") i.p.v. rommel.
+    expect(
+      restoreMeasurementProductSelection({ serviceRuleId: 123 }).serviceRuleId
+    ).toBeUndefined();
+    expect(
+      restoreMeasurementProductSelection({ serviceRuleId: null }).serviceRuleId
+    ).toBeUndefined();
+  });
+
   it("laat de keuze leeg als er nog niets gekozen was", () => {
     const restored = restoreMeasurementProductSelection(
       throughDraft({ product: null, serviceRuleId: "" })
