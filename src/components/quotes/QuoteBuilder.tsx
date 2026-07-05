@@ -493,6 +493,7 @@ export default function QuoteBuilder({
       session={session}
       projectRooms={project?.rooms ?? []}
       productGroupHint={activeProductGroup}
+      draftScopeId={quote.id}
       onAdd={onAddLine}
     />
   );
