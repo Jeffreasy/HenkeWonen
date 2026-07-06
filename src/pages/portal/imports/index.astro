@@ -19,8 +19,8 @@ if (!canManage(session.role)) {
 <PortalLayout title="Prijslijsten" session={session}>
   <PageHeader
     eyebrow="Beheer"
-    title="Prijslijsten verwerken"
-    description="Start veilige previews, beoordeel meldingen en verwerk leverancierbestanden pas definitief als de poort vrij is."
+    title="Prijslijsten controleren"
+    description="Bekijk aangeleverde leverancierbestanden en de controle-meldingen. Het verwerken naar de catalogus gebeurt buiten de portal (via de importscripts van de beheerder)."
   />
   <ProductionReadiness client:load session={session} />
   <ImportPreview client:load session={session} />

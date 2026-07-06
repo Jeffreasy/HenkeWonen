@@ -5,10 +5,9 @@ import { canManage, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatImportStatus } from "../../lib/i18n/statusLabels";
 import type { ProductImportBatch, ProductImportRow } from "../../lib/portalTypes";
-import type { SubmitEventLike } from "../../lib/events";
+import { Alert } from "../ui/feedback/Alert";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
 import { ImportWorkbench } from "./ImportWorkbench";
-import { StartImportForm } from "./StartImportForm";
 import { ImportBatchesTable } from "./ImportBatchesTable";
 import { ImportDetailPanel } from "./ImportDetailPanel";
 import { type BatchStatusFilter, type DetailTab, type RowKindFilter, type RowStatusFilter } from "./import/importTypes";
@@ -24,30 +23,6 @@ type BatchDetail = {
   rows: ProductImportRow[];
 };
 
-const sourceFiles = [
-  "Advies Verkoop Gordijnen Complete Collectie (Incl. MV) 2026 PRIJZEN Headlam.xlsx",
-  "henke-swifterbant-artikeloverzicht-24-04-2026 Interfloor.xls",
-  "Prijslijst PVC 11-2025 click dryback apart.xlsx",
-  "PVC 11-2025 click dryback apart floorlife.xlsx",
-  "Prijslijst EVC 2025 click en dryback apart.xlsx",
-  "Prijslijst vtwonen pvc 11-2023 click en dryback apart.xlsx",
-  "Roots collectie NL 2026 incl. adviesverkoopprijs per pak vanaf 1.05.2026 - A.xlsx",
-  "Co-pro Entreematten 2025.xlsx",
-  "Co-pro prijslijst lijm kit en egaline 2025-04.xlsx",
-  "Co-pro prijslijst Plinten 2025-07.xlsx",
-  "Prijslijst Ambiant Tapijt 2025-04.xlsx",
-  "Prijslijst Ambiant Vinyl 07-2024.xlsx",
-  "Prijslijst Traprenovatie Floorlife 2025.xlsx",
-  "Prijslijst Douchepanelen en tegels 2025-04.xlsx",
-  "Prijslijst Wandpanelen 2025-05.xlsx",
-  "PVC - palletcollectie op palletafname_2025 2025-06-11 07_31_31 (005).xlsx",
-  "Prijslijst VT Wonen Karpetten 2024.xlsx"
-];
-
-function fileTypeFor(fileName: string) {
-  return fileName.toLowerCase().endsWith(".xls") ? "xls" : "xlsx";
-}
-
 function batchMatchesSearch(batch: ProductImportBatch, searchQuery: string) {
   if (!searchQuery) {
     return true;
@@ -60,23 +35,6 @@ function batchMatchesSearch(batch: ProductImportBatch, searchQuery: string) {
     formatImportStatus(batch.status),
     batch.foutmelding
   ].some((value) => normalizedText(value).includes(searchQuery));
-}
-
-function batchBlockers(batch: ProductImportBatch, allowUnknownVatMode: boolean) {
-  const blockers: string[] = [];
-  if (batch.totaalRijen <= 0) {
-    blockers.push("geen regels gevonden");
-  }
-  if (batch.foutRijen > 0) {
-    blockers.push(`${numberText(batch.foutRijen)} foutregels`);
-  }
-  if (batch.dubbeleBronSleutels > 0) {
-    blockers.push(`${numberText(batch.dubbeleBronSleutels)} dubbele prijslijstregels`);
-  }
-  if (batch.onbekendeBtwModusRijen > 0 && !allowUnknownVatMode) {
-    blockers.push(`${numberText(batch.onbekendeBtwModusRijen)} ontbrekende btw-keuzes`);
-  }
-  return blockers;
 }
 
 function countBatchesForFilter(batches: ProductImportBatch[], filter: BatchStatusFilter) {
@@ -104,11 +62,15 @@ function sortBatches(left: ProductImportBatch, right: ProductImportBatch) {
   return (right.gewijzigdOp ?? right.aangemaaktOp) - (left.gewijzigdOp ?? left.aangemaaktOp);
 }
 
+/**
+ * Prijslijsten = controle- en overzichtsscherm. Het daadwerkelijk verwerken van
+ * leverancierbestanden naar producten/prijzen gebeurt buiten de portal (via de
+ * importscripts van de beheerder). Dit scherm toont de aangeleverde bestanden en
+ * de controle-meldingen per batch; het staat GEEN import/verwerk-actie in de UI.
+ */
 export default function ImportPreview({ session, batchId }: ImportPreviewProps) {
   const [batches, setBatches] = useState<ProductImportBatch[]>([]);
   const [detail, setDetail] = useState<BatchDetail | null>(null);
-  const [fileName, setFileName] = useState(sourceFiles[0]);
-  const [supplierName, setSupplierName] = useState("Headlam");
   const [selectedBatchId, setSelectedBatchId] = useState(batchId ?? "");
   const [batchSearchQuery, setBatchSearchQuery] = useState("");
   const [batchStatusFilter, setBatchStatusFilter] = useState<BatchStatusFilter>("all");
@@ -116,15 +78,12 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
   const [rowKindFilter, setRowKindFilter] = useState<RowKindFilter>("all");
   const [rowStatusFilter, setRowStatusFilter] = useState<RowStatusFilter>("all");
   const [rowPage, setRowPage] = useState(1);
-  const [allowUnknownVatMode, setAllowUnknownVatMode] = useState(false);
-  const [pendingCommitBatch, setPendingCommitBatch] = useState<ProductImportBatch | null>(null);
   const [pendingBatchStatus, setPendingBatchStatus] = useState<{
     batch: ProductImportBatch;
     nextStatus: ProductImportBatch["status"];
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
-  const [isCreatingBatch, setIsCreatingBatch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canManageImports = canManage(session.role);
   const batchSearch = batchSearchQuery.trim().toLocaleLowerCase("nl-NL");
@@ -175,7 +134,6 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       })) as BatchDetail | null;
 
       setDetail(result);
-      setAllowUnknownVatMode(result?.batch.staBtwModusOnbekendToe ?? false);
     } catch (loadError) {
       console.error(loadError);
       setError("De controle van deze prijslijst kon niet worden geladen.");
@@ -197,113 +155,6 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
   useEffect(() => {
     setRowPage(1);
   }, [rowKindFilter, rowStatusFilter]);
-
-  async function createBatch(event: SubmitEventLike) {
-    event.preventDefault();
-    const client = createConvexHttpClient(session);
-    if (!client) {
-      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
-      return;
-    }
-
-    setIsBusy(true);
-    setIsCreatingBatch(true);
-    setError(null);
-
-    try {
-      const newBatchId = await client.mutation(api.catalog.import.createPreviewBatch, {
-        tenantSlug: session.tenantId,
-        actor: mutationActorFromSession(session),
-        bestandsnaam: fileName,
-        bestandsType: fileTypeFor(fileName),
-        bronBestandsnaam: fileName,
-        leverancierNaam: supplierName,
-        staBtwModusOnbekendToe: false,
-        createdByExternalUserId: session.userId
-      });
-
-      setSelectedBatchId(String(newBatchId));
-      await loadBatches();
-    } catch (createError) {
-      console.error(createError);
-      setError("De prijslijstcontrole kon niet worden gestart.");
-    } finally {
-      setIsBusy(false);
-      setIsCreatingBatch(false);
-    }
-  }
-
-  async function saveMapping(batch: ProductImportBatch) {
-    const client = createConvexHttpClient(session);
-    if (!client) {
-      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
-      return;
-    }
-
-    setIsBusy(true);
-    setError(null);
-
-    try {
-      await client.mutation(api.catalog.import.savePreviewMapping, {
-        tenantSlug: session.tenantId,
-        actor: mutationActorFromSession(session),
-        batchId: batch.id,
-        staBtwModusOnbekendToe: allowUnknownVatMode,
-        mapping: {
-          mode: "portal-preview",
-          requiresExplicitVatMapping: true,
-          allowUnknownVatMode
-        }
-      });
-      await loadBatches();
-      await loadDetail();
-    } catch (mappingError) {
-      console.error(mappingError);
-      setError("De btw-keuze kon niet worden opgeslagen.");
-    } finally {
-      setIsBusy(false);
-    }
-  }
-
-  async function commitBatch(batch: ProductImportBatch) {
-    const client = createConvexHttpClient(session);
-    if (!client) {
-      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
-      return;
-    }
-
-    setIsBusy(true);
-    setError(null);
-
-    try {
-      for (let index = 0; index < 500; index += 1) {
-        const result = await client.mutation(api.catalog.import.commitPreviewBatchChunk, {
-          tenantSlug: session.tenantId,
-          actor: mutationActorFromSession(session),
-          batchId: batch.id,
-          staBtwModusOnbekendToe: allowUnknownVatMode,
-          importedByExternalUserId: session.userId,
-          limit: 75
-        });
-
-        if (result.done) {
-          break;
-        }
-      }
-
-      await loadBatches();
-      await loadDetail();
-    } catch (commitError) {
-      console.error(commitError);
-      setError(
-        commitError instanceof Error
-          ? commitError.message
-          : "De prijslijst kon niet definitief worden verwerkt."
-      );
-    } finally {
-      setIsBusy(false);
-    }
-  }
 
   async function updateBatchStatus() {
     if (!pendingBatchStatus || !canManageImports) {
@@ -405,22 +256,6 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
     [batches]
   );
 
-  const canCommit = useMemo(
-    () =>
-      selectedBatch
-        ? selectedBatch.totaalRijen > 0 &&
-          selectedBatch.foutRijen === 0 &&
-          selectedBatch.dubbeleBronSleutels === 0 &&
-          (selectedBatch.onbekendeBtwModusRijen === 0 || allowUnknownVatMode)
-        : false,
-    [selectedBatch, allowUnknownVatMode]
-  );
-
-  const selectedBlockers = useMemo(
-    () => (selectedBatch ? batchBlockers(selectedBatch, allowUnknownVatMode) : []),
-    [selectedBatch, allowUnknownVatMode]
-  );
-
   const rowKindOptions = useMemo(
     () => [...new Set(rows.map((row) => row.rijSoort))].sort(),
     [rows]
@@ -433,27 +268,6 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
 
   return (
     <>
-      <ConfirmDialog
-        open={Boolean(pendingCommitBatch)}
-        title="Prijslijst definitief verwerken?"
-        description={
-          pendingCommitBatch
-            ? `Je verwerkt "${pendingCommitBatch.bestandsnaam}" naar producten en verkoopprijzen. Controleer de meldingen voordat je doorgaat; fouten, dubbele prijslijstregels en ontbrekende btw-keuzes blokkeren dit.`
-            : ""
-        }
-        confirmLabel="Definitief verwerken"
-        tone="danger"
-        isBusy={isBusy}
-        onCancel={() => setPendingCommitBatch(null)}
-        onConfirm={() => {
-          const batch = pendingCommitBatch;
-          setPendingCommitBatch(null);
-          if (batch) {
-            void commitBatch(batch);
-          }
-        }}
-      />
-
       <ConfirmDialog
         open={Boolean(pendingBatchStatus)}
         title={
@@ -478,6 +292,12 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
       />
 
       <div className="grid">
+        <Alert
+          variant="info"
+          title="Controle- en overzichtsscherm"
+          description="Hier bekijk en beoordeel je aangeleverde leverancier-prijslijsten en de controle-meldingen per bestand. Het daadwerkelijk verwerken naar de catalogus (producten en prijzen) doet de beheerder buiten de portal via de importscripts."
+        />
+
         <ImportWorkbench
           batchSummary={batchSummary}
           nextAttentionBatch={nextAttentionBatch}
@@ -485,17 +305,6 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
           isLoading={isLoading}
           visibleCount={filteredBatches.length}
           numberText={numberText}
-        />
-
-        <StartImportForm
-          sourceFiles={sourceFiles}
-          fileName={fileName}
-          supplierName={supplierName}
-          setFileName={setFileName}
-          setSupplierName={setSupplierName}
-          onSubmit={createBatch}
-          isBusy={isBusy}
-          isCreatingBatch={isCreatingBatch}
         />
 
         <div className="import-layout">
@@ -519,11 +328,7 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
               rows={rows}
               detailTab={detailTab}
               setDetailTab={setDetailTab}
-              allowUnknownVatMode={allowUnknownVatMode}
-              setAllowUnknownVatMode={setAllowUnknownVatMode}
-              canCommit={canCommit}
               isBusy={isBusy}
-              selectedBlockers={selectedBlockers}
               rowKindFilter={rowKindFilter}
               setRowKindFilter={setRowKindFilter}
               rowStatusFilter={rowStatusFilter}
@@ -533,8 +338,6 @@ export default function ImportPreview({ session, batchId }: ImportPreviewProps) 
               totalRowPages={totalRowPages}
               pagedRows={pagedRows}
               rowPageSize={rowPageSize}
-              onSaveMapping={() => saveMapping(selectedBatch)}
-              onCommitBatch={() => setPendingCommitBatch(selectedBatch)}
               onUpdateBatchStatus={(nextStatus) => setPendingBatchStatus({ batch: selectedBatch, nextStatus })}
               canManageImports={canManageImports}
               rowKindOptions={rowKindOptions}

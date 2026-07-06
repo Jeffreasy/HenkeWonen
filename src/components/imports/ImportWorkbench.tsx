@@ -52,7 +52,7 @@ export function ImportWorkbench({
                 : "Prijslijstcontroles zijn bijgewerkt"}
           </h2>
           <p className="muted import-workbench-copy">
-            Start controles, bekijk meldingen en verwerk pas definitief als de poort vrij is.
+            Bekijk aangeleverde prijslijsten en de controle-meldingen per bestand.
           </p>
         </div>
         <div className="toolbar">
@@ -102,7 +102,7 @@ export function ImportWorkbench({
               ? nextAttentionBatch.status === "failed"
                 ? "Deze controle is mislukt. Bekijk de melding voordat je opnieuw verwerkt."
                 : "Deze controle heeft nog een btw-keuze of mapping nodig."
-              : "Gebruik de lijst hieronder voor detailcontrole of om een nieuwe prijslijstcontrole te starten."}
+              : "Gebruik de lijst hieronder voor detailcontrole per prijslijst."}
           </p>
         </div>
         <div className="import-focus-block">
