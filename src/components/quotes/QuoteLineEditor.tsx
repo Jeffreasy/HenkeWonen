@@ -11,7 +11,10 @@ import type {
   QuoteTemplateLine
 } from "../../lib/portalTypes";
 import { polishQuoteTemplateText } from "../../lib/quotes/quoteTemplateCopy";
+import type { ServiceRuleRow } from "../settings/settings/settingsTypes";
 import CatalogProductPicker from "../catalog/CatalogProductPicker";
+import ServiceRulePicker from "../catalog/ServiceRulePicker";
+import { calculationTypeToUnit } from "../catalog/serviceRuleCatalog";
 import { Alert } from "../ui/feedback/Alert";
 import { Button } from "../ui/forms/Button";
 import { Field } from "../ui/forms/Field";
@@ -66,12 +69,18 @@ export default function QuoteLineEditor({
   const [projectRoomId, setProjectRoomId] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<PortalProduct | null>(null);
   const [productError, setProductError] = useState<string | null>(null);
+  const [selectedServiceRule, setSelectedServiceRule] = useState<ServiceRuleRow | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const showServicePicker = lineType === "service" || lineType === "labor";
 
   useEffect(() => {
     if (lineType !== "product") {
       setSelectedProduct(null);
       setProductError(null);
+    }
+    if (lineType !== "service" && lineType !== "labor") {
+      setSelectedServiceRule(null);
     }
   }, [lineType]);
 
@@ -94,6 +103,21 @@ export default function QuoteLineEditor({
           .filter(Boolean)
           .join(" - ")
     );
+  }
+
+  function applyServiceRule(rule: ServiceRuleRow | null) {
+    setSelectedServiceRule(rule);
+
+    if (!rule) {
+      return;
+    }
+
+    // Naam, prijs, btw en eenheid overnemen; beschrijving alleen als die nog leeg is.
+    setTitle(rule.name);
+    setUnit(calculationTypeToUnit(rule.calculationType));
+    setUnitPriceExVat(String(rule.priceExVat));
+    setVatRate(String(rule.vatRate));
+    setDescription((current) => current || rule.description || "");
   }
 
   function applyTemplateLine(templateKey: string) {
@@ -156,11 +180,20 @@ export default function QuoteLineEditor({
           commercialCode: selectedProduct.commercieleCode
         }
       : undefined;
+    const serviceMetadata =
+      showServicePicker && selectedServiceRule
+        ? {
+            source: "serviceRule",
+            serviceRuleId: selectedServiceRule.id,
+            calculationType: selectedServiceRule.calculationType
+          }
+        : undefined;
     const metadata =
-      templateMetadata || productMetadata
+      templateMetadata || productMetadata || serviceMetadata
         ? {
             ...(templateMetadata ?? {}),
-            ...(productMetadata ?? {})
+            ...(productMetadata ?? {}),
+            ...(serviceMetadata ?? {})
           }
         : undefined;
 
@@ -188,6 +221,7 @@ export default function QuoteLineEditor({
       setSelectedTemplateKey("");
       setSelectedTemplateLine(null);
       setSelectedProduct(null);
+      setSelectedServiceRule(null);
       setProjectRoomId("");
     } catch {
       // Fout is al gemeld via toast in de workspace; behoud de ingevoerde regel.
@@ -298,6 +332,23 @@ export default function QuoteLineEditor({
             showPriceInLabel
           />
           {productError ? <Alert variant="warning" description={productError} /> : null}
+        </section>
+      ) : null}
+      {showServicePicker ? (
+        <section className="quote-product-picker">
+          <SectionHeader
+            compact
+            title="Werkzaamheid uit de lijst"
+            description="Kies een vaste werkzaamheid; naam, prijs, btw en eenheid worden overgenomen. Zelf typen mag ook."
+          />
+          <ServiceRulePicker
+            session={session}
+            idPrefix="service-rule"
+            selectedRuleId={selectedServiceRule?.id ?? ""}
+            onSelect={applyServiceRule}
+            label="Werkzaamheid kiezen"
+            showPriceInLabel
+          />
         </section>
       ) : null}
       <Field htmlFor="line-description" label="Beschrijving">
