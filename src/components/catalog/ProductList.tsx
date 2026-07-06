@@ -63,6 +63,7 @@ export default function ProductList({ session }: ProductListProps) {
     nextStatus: ProductStatus;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [suppliers, setSuppliers] = useState<Array<{ id: string; naam: string }>>([]);
   const productEditPanelRef = useRef<HTMLElement>(null);
   const canManageProducts = canManage(session.role);
 
@@ -91,6 +92,33 @@ export default function ProductList({ session }: ProductListProps) {
     void loadCategoryStats();
     return () => { isActive = false; };
   }, [session.tenantId, statusFilter]);
+
+  // Leveranciers voor de koppel-keuzelijst in het bewerkpaneel (alleen beheerders bewerken).
+  useEffect(() => {
+    if (!canManageProducts) return;
+    let isActive = true;
+
+    async function loadSuppliers() {
+      const client = createConvexHttpClient(session);
+      if (!client) return;
+
+      try {
+        const result = (await client.query(api.portal.listSuppliers, {
+          tenantSlug: session.tenantId
+        })) as Array<{ id: string; naam: string }>;
+        if (isActive) {
+          setSuppliers(result.map((supplier) => ({ id: supplier.id, naam: supplier.naam })));
+        }
+      } catch {
+        // Stille fout: het bewerkpaneel valt terug op alleen "Geen leverancier".
+      }
+    }
+
+    void loadSuppliers();
+    return () => { isActive = false; };
+    // Alleen tenantId/rol als dep; session gaat enkel naar de client-factory.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.tenantId, canManageProducts]);
 
   useEffect(() => {
     let isActive = true;
@@ -200,6 +228,8 @@ export default function ProductList({ session }: ProductListProps) {
         productId: editingProduct.id,
         naam: draft.name.trim(),
         artikelnummer: draft.articleNumber.trim() || undefined,
+        // Altijd meesturen ("" = ontkoppelen) zodat een wijziging van de leverancier landt.
+        leverancierId: draft.leverancierId,
         leverancierCode: draft.supplierCode.trim() || undefined,
         commercieleCode: draft.commercialCode.trim() || undefined,
         kleurnaam: draft.colorName.trim() || undefined,
@@ -268,6 +298,7 @@ export default function ProductList({ session }: ProductListProps) {
     ? {
         name: editingProduct.naam,
         articleNumber: editingProduct.artikelnummer ?? "",
+        leverancierId: editingProduct.leverancierId ?? "",
         supplierCode: editingProduct.leverancierCode ?? "",
         commercialCode: editingProduct.commercieleCode ?? "",
         colorName: editingProduct.kleurnaam ?? "",
@@ -343,6 +374,7 @@ export default function ProductList({ session }: ProductListProps) {
         <ProductEditPanel
           displayName={editingProduct.weergaveNaam ?? editingProduct.naam}
           initialDraft={initialDraft}
+          suppliers={suppliers}
           onSave={handleSaveProduct}
           onCancel={() => setEditingProduct(null)}
           formRef={productEditPanelRef}
