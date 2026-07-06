@@ -20,6 +20,7 @@ import { createConvexHttpClient } from "../../../lib/convex/client";
 import { formatEuro } from "../../../lib/money";
 import { formatUnit } from "../../../lib/i18n/statusLabels";
 import { showToast } from "../../../lib/toast";
+import { restoreMeasurementProductSelection } from "../../../lib/measurementAssignDraft";
 import { useFormDraft } from "../../../lib/useFormDraft";
 import type {
   MeasurementCalculationType,
@@ -309,7 +310,8 @@ export default function MeasurementAssignPanel({
   useFormDraft(
     `henke-meetinvoer-${measurementId}`,
     {
-      addType, patternType, rollWidthM, doorOpeningM, rollWidthCm, rollLengthM,
+      addType, product, serviceRuleId,
+      patternType, rollWidthM, doorOpeningM, rollWidthCm, rollLengthM,
       patternRepeatCm, wallWidthM, wallHeightM, panelWidthM, panelHeightM,
       wallPanelWastePercent, curtainRailWidthM, curtainHeightM, curtainFabricWidthM,
       curtainFullness, curtainMakeUp, curtainRapportM, stairType, treadCount,
@@ -321,6 +323,13 @@ export default function MeasurementAssignPanel({
         if (typeof value === "string") set(value);
       };
       if (typeof draft.addType === "string") setAddType(draft.addType as AddType);
+      // De productselectie: het hele product (voor picker-trigger én rekenmachine) plus de
+      // losse dienstkeuze. De richtprijs volgt vanzelf uit het herstelde product (re-fetch).
+      const productSelection = restoreMeasurementProductSelection(draft);
+      if (productSelection.product !== undefined) setProduct(productSelection.product);
+      if (productSelection.serviceRuleId !== undefined) {
+        setServiceRuleId(productSelection.serviceRuleId);
+      }
       if (typeof draft.patternType === "string") setPatternType(draft.patternType as PatternType);
       str(draft.rollWidthM, setRollWidthM);
       str(draft.doorOpeningM, setDoorOpeningM);

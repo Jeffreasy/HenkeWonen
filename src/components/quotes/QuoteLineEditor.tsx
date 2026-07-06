@@ -12,6 +12,8 @@ import type {
 } from "../../lib/portalTypes";
 import { polishQuoteTemplateText } from "../../lib/quotes/quoteTemplateCopy";
 import type { ServiceRuleRow } from "../settings/settings/settingsTypes";
+import { useFormDraft } from "../../lib/useFormDraft";
+import { quoteLineDraftKey, readQuoteLineDraft } from "../../lib/quoteLineDraft";
 import CatalogProductPicker from "../catalog/CatalogProductPicker";
 import ServiceRulePicker from "../catalog/ServiceRulePicker";
 import { calculationTypeToUnit } from "../catalog/serviceRuleCatalog";
@@ -42,6 +44,11 @@ type QuoteLineEditorProps = {
   hideHeader?: boolean;
   /** Hint vanuit de meetcontext — filtert de catalogus op bijbehorende categorieën. */
   productGroupHint?: MeasurementProductGroup | null;
+  /**
+   * Unieke offerte-id. Scope't het concept-vangnet (localStorage) per offerte, zodat een half
+   * getypte regel na een mobiele tab-eviction herstelt zonder in een andere offerte te lekken.
+   */
+  draftScopeId: string;
 };
 
 export default function QuoteLineEditor({
@@ -53,7 +60,8 @@ export default function QuoteLineEditor({
   mode = "full",
   surface = "panel",
   hideHeader = false,
-  productGroupHint = null
+  productGroupHint = null,
+  draftScopeId
 }: QuoteLineEditorProps) {
   const isFieldMode = mode === "field";
   const [lineType, setLineType] = useState<QuoteLineType>("product");
@@ -73,6 +81,32 @@ export default function QuoteLineEditor({
   const [isSaving, setIsSaving] = useState(false);
 
   const showServicePicker = isServiceRuleLineType(lineType);
+
+  // Concept-vangnet tegen mobiele tab-eviction: spiegel de nog niet toegevoegde regelinvoer
+  // per offerte naar localStorage en zet 'm bij (re)mount terug. De sleutel is uniek per
+  // offerte (quoteLineDraftKey) zodat regels niet tussen offertes lekken. Het product wordt in
+  // z'n geheel bewaard; de richtprijsvelden staan als tekst al in de invoer. Zie
+  // src/lib/quoteLineDraft.ts.
+  useFormDraft(
+    quoteLineDraftKey(draftScopeId),
+    {
+      lineType, title, description, quantity, unit,
+      unitPriceExVat, vatRate, discountExVat, projectRoomId, selectedProduct
+    },
+    (draft) => {
+      const restored = readQuoteLineDraft(draft);
+      if (restored.lineType !== undefined) setLineType(restored.lineType);
+      if (restored.title !== undefined) setTitle(restored.title);
+      if (restored.description !== undefined) setDescription(restored.description);
+      if (restored.quantity !== undefined) setQuantity(restored.quantity);
+      if (restored.unit !== undefined) setUnit(restored.unit);
+      if (restored.unitPriceExVat !== undefined) setUnitPriceExVat(restored.unitPriceExVat);
+      if (restored.vatRate !== undefined) setVatRate(restored.vatRate);
+      if (restored.discountExVat !== undefined) setDiscountExVat(restored.discountExVat);
+      if (restored.projectRoomId !== undefined) setProjectRoomId(restored.projectRoomId);
+      if (restored.selectedProduct !== undefined) setSelectedProduct(restored.selectedProduct);
+    }
+  );
 
   useEffect(() => {
     if (lineType !== "product") {
