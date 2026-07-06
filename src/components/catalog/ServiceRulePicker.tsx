@@ -3,7 +3,6 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
-import { formatStatusLabel } from "../../lib/i18n/statusLabels";
 import { formatEuro } from "../../lib/money";
 import type { ServiceRuleRow } from "../settings/settings/settingsTypes";
 import { Alert } from "../ui/feedback/Alert";
@@ -14,6 +13,7 @@ import { BaseDialog } from "../ui/overlays/BaseDialog";
 import {
   type ServiceRuleDoc,
   filterServiceRules,
+  formatCalculationType,
   toActiveServiceRuleRows
 } from "./serviceRuleCatalog";
 
@@ -235,7 +235,7 @@ export default function ServiceRulePicker({
                         <span className="catalog-picker-option-text">
                           <span className="catalog-picker-option-main">{rule.name}</span>
                           <span className="catalog-picker-option-meta">
-                            {formatStatusLabel(rule.calculationType)}
+                            {formatCalculationType(rule.calculationType)}
                           </span>
                         </span>
                         {price ? <span className="catalog-picker-option-price">{price}</span> : null}

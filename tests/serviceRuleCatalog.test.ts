@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   calculationTypeToUnit,
   filterServiceRules,
+  formatCalculationType,
+  normalizeCalculationType,
   serviceRuleDocToRow,
   toActiveServiceRuleRows,
   type ServiceRuleDoc
@@ -32,6 +34,30 @@ describe("calculationTypeToUnit", () => {
     expect(calculationTypeToUnit("manual")).toBe("piece");
     expect(calculationTypeToUnit("per_side")).toBe("piece");
     expect(calculationTypeToUnit("iets-onbekends")).toBe("piece");
+  });
+});
+
+describe("normalizeCalculationType", () => {
+  it("laat geldige types ongemoeid", () => {
+    expect(normalizeCalculationType("per_m2")).toBe("per_m2");
+    expect(normalizeCalculationType("manual")).toBe("manual");
+  });
+
+  it("valt bij een onbekende/lege waarde veilig terug op manual", () => {
+    expect(normalizeCalculationType("")).toBe("manual");
+    expect(normalizeCalculationType("iets-onbekends")).toBe("manual");
+  });
+});
+
+describe("formatCalculationType", () => {
+  it("geeft een Nederlands label — óók voor manual (dat statusLabels niet vertaalt)", () => {
+    expect(formatCalculationType("manual")).toBe("Handmatig");
+    expect(formatCalculationType("fixed")).toBe("Vast bedrag");
+    expect(formatCalculationType("per_m2")).toBe("Per m²");
+  });
+
+  it("valt voor onbekende waarden terug op Handmatig", () => {
+    expect(formatCalculationType("kapot")).toBe("Handmatig");
   });
 });
 
