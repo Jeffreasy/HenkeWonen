@@ -520,6 +520,7 @@ export default function QuoteBuilder({
         line={editingLine}
         projectRooms={project?.rooms ?? []}
         isSaving={isSavingLine}
+        session={session}
         onSave={saveLine}
         onCancel={() => setEditingLine(null)}
       />

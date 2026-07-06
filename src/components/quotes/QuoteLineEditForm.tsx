@@ -1,9 +1,13 @@
 import { Save , X} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { AppSession } from "../../lib/auth/session";
 import type { SubmitEventLike } from "../../lib/events";
 import { formatLineType } from "../../lib/i18n/statusLabels";
 import type { PortalQuoteLine, PortalRoom, QuoteLineType } from "../../lib/portalTypes";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
+import type { ServiceRuleRow } from "../settings/settings/settingsTypes";
+import ServiceRulePicker from "../catalog/ServiceRulePicker";
+import { calculationTypeToUnit } from "../catalog/serviceRuleCatalog";
 import { Button } from "../ui/forms/Button";
 import { Field } from "../ui/forms/Field";
 import { Input } from "../ui/forms/Input";
@@ -11,13 +15,14 @@ import { SectionHeader } from "../ui/layout/SectionHeader";
 import { Select } from "../ui/forms/Select";
 import { Textarea } from "../ui/forms/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
-import { LINE_TYPE_OPTIONS, parseDecimal } from "./quote/quoteConstants";
+import { LINE_TYPE_OPTIONS, isServiceRuleLineType, parseDecimal } from "./quote/quoteConstants";
 import type { QuoteLineFormValues } from "./quote/quoteTypes";
 
 type QuoteLineEditFormProps = {
   line: PortalQuoteLine;
   projectRooms: PortalRoom[];
   isSaving: boolean;
+  session: AppSession;
   onSave: (data: QuoteLineFormValues) => Promise<void>;
   onCancel: () => void;
 };
@@ -35,6 +40,7 @@ export function QuoteLineEditForm({
   line,
   projectRooms,
   isSaving,
+  session,
   onSave,
   onCancel
 }: QuoteLineEditFormProps) {
@@ -48,6 +54,9 @@ export function QuoteLineEditForm({
   const [discountExVat, setDiscountExVat] = useState("");
   const [sortOrder, setSortOrder] = useState("");
   const [projectRoomId, setProjectRoomId] = useState("");
+  const [selectedServiceRule, setSelectedServiceRule] = useState<ServiceRuleRow | null>(null);
+
+  const showServicePicker = isServiceRuleLineType(lineType);
 
   const formRef = useRef<HTMLFormElement>(null);
   useAutoFocusPanel(true, formRef);
@@ -65,7 +74,28 @@ export function QuoteLineEditForm({
     );
     setSortOrder(String(line.sortOrder));
     setProjectRoomId(line.projectRuimteId ?? "");
+    setSelectedServiceRule(null);
   }, [line]);
+
+  useEffect(() => {
+    if (!isServiceRuleLineType(lineType)) {
+      setSelectedServiceRule(null);
+    }
+  }, [lineType]);
+
+  function applyServiceRule(rule: ServiceRuleRow | null) {
+    setSelectedServiceRule(rule);
+
+    if (!rule) {
+      return;
+    }
+
+    setTitle(rule.name);
+    setUnit(calculationTypeToUnit(rule.calculationType));
+    setUnitPriceExVat(String(rule.priceExVat));
+    setVatRate(String(rule.vatRate));
+    setDescription((current) => current || rule.description || "");
+  }
 
   async function handleSubmit(event: SubmitEventLike) {
     event.preventDefault();
@@ -84,7 +114,17 @@ export function QuoteLineEditForm({
       vatRate: isTextLine ? 0 : (parseDecimal(vatRate) ?? 0),
       discountExVat: optionalDecimal(discountExVat),
       sortOrder: Math.max(1, Math.round((parseDecimal(sortOrder) ?? 0) || line.sortOrder)),
-      metadata: line.metadata
+      // Bestaande metadata behouden; bij een (nieuw) gekozen werkzaamheid de
+      // herkomst overschrijven naar de service rule.
+      metadata:
+        showServicePicker && selectedServiceRule
+          ? {
+              ...((line.metadata as Record<string, unknown> | undefined) ?? {}),
+              source: "serviceRule",
+              serviceRuleId: selectedServiceRule.id,
+              calculationType: selectedServiceRule.calculationType
+            }
+          : line.metadata
     });
   }
 
@@ -135,6 +175,23 @@ export function QuoteLineEditForm({
               ))}
             </Select>
           </Field>
+        ) : null}
+        {showServicePicker ? (
+          <section className="quote-product-picker">
+            <SectionHeader
+              compact
+              title="Werkzaamheid uit de lijst"
+              description="Kies een vaste werkzaamheid; naam, prijs, btw en eenheid worden overgenomen. Zelf typen mag ook."
+            />
+            <ServiceRulePicker
+              session={session}
+              idPrefix="quote-line-edit-service"
+              selectedRuleId={selectedServiceRule?.id ?? ""}
+              onSelect={applyServiceRule}
+              label="Werkzaamheid kiezen"
+              showPriceInLabel
+            />
+          </section>
         ) : null}
         <Field htmlFor="quote-line-edit-description" label="Beschrijving">
           <Textarea
