@@ -24,7 +24,7 @@ import { Select } from "../ui/forms/Select";
 import { Textarea } from "../ui/forms/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
 import WallpaperCalculator from "./WallpaperCalculator";
-import { LINE_TYPE_OPTIONS } from "./quote/quoteConstants";
+import { LINE_TYPE_OPTIONS, isServiceRuleLineType } from "./quote/quoteConstants";
 import type { QuoteLineFormValues } from "./quote/quoteTypes";
 
 // Re-export voor backwards compatibiliteit — importeer liever direct van ./quote/quoteTypes
@@ -72,14 +72,14 @@ export default function QuoteLineEditor({
   const [selectedServiceRule, setSelectedServiceRule] = useState<ServiceRuleRow | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const showServicePicker = lineType === "service" || lineType === "labor";
+  const showServicePicker = isServiceRuleLineType(lineType);
 
   useEffect(() => {
     if (lineType !== "product") {
       setSelectedProduct(null);
       setProductError(null);
     }
-    if (lineType !== "service" && lineType !== "labor") {
+    if (!isServiceRuleLineType(lineType)) {
       setSelectedServiceRule(null);
     }
   }, [lineType]);
