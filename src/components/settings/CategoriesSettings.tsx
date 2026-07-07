@@ -3,6 +3,7 @@ import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canManage, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
+import type { MeasurementProductGroup } from "../../lib/portalTypes";
 import { showErrorToast, showToast } from "../../lib/toast";
 import { Alert } from "../ui/feedback/Alert";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
@@ -76,6 +77,7 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
   async function handleSaveCategory(data: {
     name: string;
     slug: string;
+    productGroep?: MeasurementProductGroup;
     sortOrder: number;
     status: "active" | "inactive";
   }) {
@@ -99,6 +101,7 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
         categorieId: editingCategory?.id,
         naam: data.name,
         slug: data.slug,
+        productGroep: data.productGroep,
         sortOrder: data.sortOrder,
         status: data.status
       });
@@ -136,6 +139,8 @@ export default function CategoriesSettings({ session }: CategoriesSettingsProps)
         categorieId: category.id,
         naam: category.name,
         slug: category.slug,
+        // Productgroep meesturen zodat archiveren/herstellen de koppeling behoudt.
+        productGroep: category.productGroep,
         sortOrder: category.sortOrder,
         status: nextStatus
       });

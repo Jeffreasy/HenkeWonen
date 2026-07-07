@@ -1,5 +1,5 @@
 import { Archive, Pencil, RotateCcw } from "lucide-react";
-import { formatStatusLabel } from "../../lib/i18n/statusLabels";
+import { formatMeasurementProductGroup, formatStatusLabel } from "../../lib/i18n/statusLabels";
 import { Button } from "../ui/forms/Button";
 import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
 import { StatusBadge } from "../ui/data-display/StatusBadge";
@@ -35,6 +35,17 @@ export function CategoriesTable({
           <small className="muted">{category.slug}</small>
         </div>
       )
+    },
+    {
+      key: "group",
+      header: "Meetgroep",
+      width: "150px",
+      render: (category) =>
+        category.productGroep ? (
+          formatMeasurementProductGroup(category.productGroep)
+        ) : (
+          <span className="muted">Geen</span>
+        )
     },
     {
       key: "sortOrder",
@@ -111,6 +122,11 @@ export function CategoriesTable({
             <StatusBadge status={category.status} label={formatStatusLabel(category.status)} />
           </div>
           <div className="mobile-card-meta">
+            <span>
+              {category.productGroep
+                ? formatMeasurementProductGroup(category.productGroep)
+                : "Geen meetgroep"}
+            </span>
             <span>Volgorde {category.sortOrder}</span>
           </div>
           {canManage ? (

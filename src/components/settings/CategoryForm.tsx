@@ -1,7 +1,8 @@
 import { Save , X} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { SubmitEventLike } from "../../lib/events";
-import { formatStatusLabel } from "../../lib/i18n/statusLabels";
+import { formatMeasurementProductGroup, formatStatusLabel } from "../../lib/i18n/statusLabels";
+import type { MeasurementProductGroup } from "../../lib/portalTypes";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import { Button } from "../ui/forms/Button";
 import { Field } from "../ui/forms/Field";
@@ -11,6 +12,18 @@ import { Select } from "../ui/forms/Select";
 import { StatusBadge } from "../ui/data-display/StatusBadge";
 import { type CategoryRow } from "./settings/settingsTypes";
 
+// Lokaal gehouden i.p.v. import uit measurementTypes (dat de calculator-tree meesleept).
+const PRODUCT_GROUP_OPTIONS: MeasurementProductGroup[] = [
+  "flooring",
+  "plinths",
+  "wallpaper",
+  "wall_panels",
+  "curtains",
+  "rails",
+  "stairs",
+  "other"
+];
+
 type CategoryFormProps = {
   category: CategoryRow | null;
   defaultSortOrder: string;
@@ -18,6 +31,7 @@ type CategoryFormProps = {
   onSave: (data: {
     name: string;
     slug: string;
+    productGroep?: MeasurementProductGroup;
     sortOrder: number;
     status: "active" | "inactive";
   }) => Promise<void>;
@@ -41,6 +55,7 @@ export function CategoryForm({
 }: CategoryFormProps) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [productGroep, setProductGroep] = useState<MeasurementProductGroup | "">("");
   const [sortOrder, setSortOrder] = useState("10");
   const [status, setStatus] = useState<CategoryRow["status"]>("active");
 
@@ -51,11 +66,13 @@ export function CategoryForm({
     if (category) {
       setName(category.name);
       setSlug(category.slug);
+      setProductGroep(category.productGroep ?? "");
       setSortOrder(String(category.sortOrder));
       setStatus(category.status);
     } else {
       setName("");
       setSlug("");
+      setProductGroep("");
       setSortOrder(defaultSortOrder);
       setStatus("active");
     }
@@ -69,6 +86,7 @@ export function CategoryForm({
       await onSave({
         name: name.trim(),
         slug: slug.trim() || slugFromName(name),
+        productGroep: productGroep || undefined,
         sortOrder: Number(sortOrder) || 0,
         status
       });
@@ -76,11 +94,12 @@ export function CategoryForm({
       if (!category) {
         setName("");
         setSlug("");
+        setProductGroep("");
         setSortOrder(defaultSortOrder);
         setStatus("active");
       }
-    } catch (err) {
-      // Keep state so user doesn't lose inputs on failure
+    } catch {
+      // Fout is al gemeld via toast; behoud de invoer.
     }
   }
 
@@ -132,6 +151,24 @@ export function CategoryForm({
             />
           </Field>
         </div>
+        <Field
+          htmlFor="category-productgroep"
+          label="Meetgroep"
+          description="Koppelt deze categorie aan een inmeet-/offertegroep (Vloeren, Gordijnen, …). Bepaalt waarop de catalogus- en offertekiezer filtert. 'Geen' = niet gekoppeld."
+        >
+          <Select
+            id="category-productgroep"
+            value={productGroep}
+            onChange={(event) => setProductGroep(event.target.value as MeasurementProductGroup | "")}
+          >
+            <option value="">Geen productgroep</option>
+            {PRODUCT_GROUP_OPTIONS.map((group) => (
+              <option value={group} key={group}>
+                {formatMeasurementProductGroup(group)}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <Field htmlFor="category-status" label="Status">
           <Select
             id="category-status"

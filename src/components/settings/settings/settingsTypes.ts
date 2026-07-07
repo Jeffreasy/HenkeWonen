@@ -1,6 +1,7 @@
 /**
  * Gedeelde types voor de settings-modules.
  */
+import type { MeasurementProductGroup } from "../../../lib/portalTypes";
 
 // ─── Categorie ─────────────────────────────────────────────────────────────────
 
@@ -12,6 +13,8 @@ export type CategoryRow = {
   tenantId: string;
   name: string;
   slug: string;
+  /** Gekoppelde productgroep; bepaalt waarop de catalogus-/offertekiezer filtert. */
+  productGroep?: MeasurementProductGroup;
   sortOrder: number;
   status: "active" | "inactive";
 };
