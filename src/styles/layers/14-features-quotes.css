@@ -864,3 +864,106 @@
   overflow-wrap: anywhere;
 }
 
+/* ── Geleide "Offertepost toevoegen"-composer ─────────────────────────────── */
+.quote-composer {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.quote-composer-methods {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: var(--space-3);
+}
+
+.quote-composer-method {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  text-align: left;
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.quote-composer-method:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-muted);
+}
+
+.quote-composer-method.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: var(--accent-soft);
+}
+
+.quote-composer-method-icon {
+  color: var(--accent);
+}
+
+.quote-composer-method-title {
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.quote-composer-method-desc {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.quote-composer-flow {
+  min-width: 0;
+}
+
+/* ── Soort offertepost als knoppenrij (op klantverzoek) ───────────────────── */
+.line-type-buttons-field {
+  display: grid;
+  gap: 6px;
+}
+
+.line-type-buttons-label {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.line-type-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.line-type-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.line-type-button:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-muted);
+}
+
+.line-type-button.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: var(--accent-soft);
+}
+
+.line-type-button.is-selected svg {
+  color: var(--accent);
+}
+

@@ -2,7 +2,6 @@ import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
 import type { SubmitEventLike } from "../../lib/events";
-import { formatLineType } from "../../lib/i18n/statusLabels";
 import type {
   MeasurementProductGroup,
   PortalProduct,
@@ -25,6 +24,7 @@ import { SectionHeader } from "../ui/layout/SectionHeader";
 import { Select } from "../ui/forms/Select";
 import { Textarea } from "../ui/forms/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
+import { LineTypeButtons } from "./LineTypeButtons";
 import WallpaperCalculator from "./WallpaperCalculator";
 import { LINE_TYPE_OPTIONS, isServiceRuleLineType } from "./quote/quoteConstants";
 import type { QuoteLineFormValues } from "./quote/quoteTypes";
@@ -45,6 +45,11 @@ type QuoteLineEditorProps = {
   /** Hint vanuit de meetcontext — filtert de catalogus op bijbehorende categorieën. */
   productGroupHint?: MeasurementProductGroup | null;
   /**
+   * Beperk de posttypen die de editor aanbiedt (voor de geleide composer):
+   * "product" = alleen catalogusproduct, "manual" = alles behalve product, "all" = alles.
+   */
+  scope?: "all" | "product" | "manual";
+  /**
    * Unieke offerte-id. Scope't het concept-vangnet (localStorage) per offerte, zodat een half
    * getypte regel na een mobiele tab-eviction herstelt zonder in een andere offerte te lekken.
    */
@@ -61,10 +66,19 @@ export default function QuoteLineEditor({
   surface = "panel",
   hideHeader = false,
   productGroupHint = null,
+  scope = "all",
   draftScopeId
 }: QuoteLineEditorProps) {
   const isFieldMode = mode === "field";
-  const [lineType, setLineType] = useState<QuoteLineType>("product");
+  const availableLineTypes: QuoteLineType[] =
+    scope === "product"
+      ? ["product"]
+      : scope === "manual"
+        ? LINE_TYPE_OPTIONS.filter((type) => type !== "product")
+        : LINE_TYPE_OPTIONS;
+  const [lineType, setLineType] = useState<QuoteLineType>(
+    scope === "manual" ? "service" : "product"
+  );
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [quantity, setQuantity] = useState("1");
@@ -304,30 +318,18 @@ export default function QuoteLineEditor({
           </Select>
         </Field>
       ) : null}
-      <div className="grid two-column-even">
-        <Field htmlFor="line-type" label="Soort post">
-          <Select
-            id="line-type"
-            value={lineType}
-            onChange={(event) => setLineType(event.target.value as QuoteLineType)}
-          >
-            {LINE_TYPE_OPTIONS.map((type) => (
-              <option value={type} key={type}>
-                {formatLineType(type)}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field htmlFor="line-title" label="Omschrijving" required>
-          <Input
-            id="line-title"
-            readOnly={lineType === "product"}
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            required
-          />
-        </Field>
-      </div>
+      {availableLineTypes.length > 1 ? (
+        <LineTypeButtons value={lineType} options={availableLineTypes} onChange={setLineType} />
+      ) : null}
+      <Field htmlFor="line-title" label="Omschrijving" required>
+        <Input
+          id="line-title"
+          readOnly={lineType === "product"}
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          required
+        />
+      </Field>
       {projectRooms.length > 0 ? (
         <Field
           htmlFor="line-room"
@@ -451,20 +453,22 @@ export default function QuoteLineEditor({
           </Button>
         </div>
       </div>
-      <details className="wallpaper-calculator-details">
-        <summary>Behangcalculator openen</summary>
-        <WallpaperCalculator
-          onUseResult={(result) => {
-            setLineType("product");
-            setTitle((current) => current || "Behang merk, kleur");
-            setDescription(
-              (current) => current || "Aantal rollen indicatief berekend met de behangcalculator."
-            );
-            setQuantity(String(result.rollsNeeded));
-            setUnit("roll");
-          }}
-        />
-      </details>
+      {scope !== "manual" ? (
+        <details className="wallpaper-calculator-details">
+          <summary>Behangcalculator openen</summary>
+          <WallpaperCalculator
+            onUseResult={(result) => {
+              setLineType("product");
+              setTitle((current) => current || "Behang merk, kleur");
+              setDescription(
+                (current) => current || "Aantal rollen indicatief berekend met de behangcalculator."
+              );
+              setQuantity(String(result.rollsNeeded));
+              setUnit("roll");
+            }}
+          />
+        </details>
+      ) : null}
     </form>
   );
 }

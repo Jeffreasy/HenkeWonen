@@ -2,7 +2,6 @@ import { Save , X} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
 import type { SubmitEventLike } from "../../lib/events";
-import { formatLineType } from "../../lib/i18n/statusLabels";
 import type { PortalQuoteLine, PortalRoom, QuoteLineType } from "../../lib/portalTypes";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import type { ServiceRuleRow } from "../settings/settings/settingsTypes";
@@ -15,6 +14,7 @@ import { SectionHeader } from "../ui/layout/SectionHeader";
 import { Select } from "../ui/forms/Select";
 import { Textarea } from "../ui/forms/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
+import { LineTypeButtons } from "./LineTypeButtons";
 import { LINE_TYPE_OPTIONS, isServiceRuleLineType, parseDecimal } from "./quote/quoteConstants";
 import type { QuoteLineFormValues } from "./quote/quoteTypes";
 
@@ -137,29 +137,19 @@ export function QuoteLineEditForm({
         actions={<LineTypeBadge lineType={lineType} />}
       />
       <form className="form-grid" onSubmit={handleSubmit}>
-        <div className="grid two-column-even">
-          <Field htmlFor="quote-line-edit-type" label="Soort post">
-            <Select
-              id="quote-line-edit-type"
-              value={lineType}
-              onChange={(event) => setLineType(event.target.value as QuoteLineType)}
-            >
-              {LINE_TYPE_OPTIONS.map((type) => (
-                <option key={type} value={type}>
-                  {formatLineType(type)}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field htmlFor="quote-line-edit-title" label="Omschrijving" required>
-            <Input
-              id="quote-line-edit-title"
-              required
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-            />
-          </Field>
-        </div>
+        <LineTypeButtons
+          value={lineType}
+          options={LINE_TYPE_OPTIONS}
+          onChange={setLineType}
+        />
+        <Field htmlFor="quote-line-edit-title" label="Omschrijving" required>
+          <Input
+            id="quote-line-edit-title"
+            required
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+        </Field>
         {projectRooms.length > 0 ? (
           <Field htmlFor="quote-line-edit-room" label="Ruimte">
             <Select
