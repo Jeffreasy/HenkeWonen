@@ -335,6 +335,10 @@ export default defineSchema({
     naam: v.string(),
     slug: v.string(),
     bovenliggendeCategorieId: v.optional(v.id("categories")),
+    // Koppeling naar de measurement-/offerte-productgroep. Data-driven: bepaalt
+    // op welke productgroep de catalogus-/offertekiezer filtert (i.p.v. een
+    // hardgecodeerde naam-lijst). In beheer instelbaar per productgroep.
+    productGroep: v.optional(measurementProductGroup),
     sortOrder: v.number(),
     status: statusActive,
     aangemaaktOp: v.number(),

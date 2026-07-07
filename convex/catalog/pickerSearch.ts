@@ -124,15 +124,26 @@ export const searchPickerProducts = query({
     const categoryById = new Map(categories.map((category) => [String(category._id), category]));
     const supplierById = new Map(suppliers.map((supplier) => [String(supplier._id), supplier]));
 
-    const allowedCategoryNames =
-      args.productGroep && PRODUCT_GROUP_CATEGORIES[args.productGroep]?.length
-        ? PRODUCT_GROUP_CATEGORIES[args.productGroep]
-        : null;
-    const allowedCategoryIds = allowedCategoryNames
-      ? categories
-          .filter((category) => allowedCategoryNames.includes(category.naam))
-          .map((category) => category._id)
-      : null;
+    // Data-driven filter: categorieën waarvan de beheerde `productGroep` matcht met
+    // de hint (beheer bestuurt dit via /instellingen/categorieen). Zolang nog niet
+    // elke categorie een productgroep heeft, valt hij terug op de hardgecodeerde
+    // naam-map (veilig vóór de eenmalige backfill). "other" = geen filter (alles).
+    let allowedCategoryIds: Array<Doc<"categories">["_id"]> | null = null;
+    if (args.productGroep && args.productGroep !== "other") {
+      const byField = categories
+        .filter((category) => category.productGroep === args.productGroep)
+        .map((category) => category._id);
+      if (byField.length > 0) {
+        allowedCategoryIds = byField;
+      } else {
+        const fallbackNames = PRODUCT_GROUP_CATEGORIES[args.productGroep];
+        if (fallbackNames?.length) {
+          allowedCategoryIds = categories
+            .filter((category) => fallbackNames.includes(category.naam))
+            .map((category) => category._id);
+        }
+      }
+    }
 
     const candidates = new Map<string, Doc<"products">>();
 
