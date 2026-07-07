@@ -115,7 +115,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
     void loadWorkspace();
   }, [loadWorkspace]);
 
-  async function handleCreateQuote(projectId: string, title: string) {
+  async function handleCreateQuote(projectId: string, title: string, templateId: string) {
     const client = createConvexHttpClient(session);
 
     if (!client) {
@@ -134,6 +134,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
           actor: mutationActorFromSession(session),
           projectId,
           titel: title.trim(),
+          templateId: templateId || undefined,
           createdByExternalUserId: session.userId
         })
       );
@@ -453,6 +454,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
             >
               <CreateQuoteForm
                 projects={projects}
+                templates={templates}
                 defaultProjectId={newQuoteProjectFromUrl()}
                 onCreateQuote={handleCreateQuote}
               />
