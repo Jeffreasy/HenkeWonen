@@ -1,6 +1,7 @@
 import { Check, ChevronDown, Package, X } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatEuro } from "../../lib/money";
@@ -31,6 +32,14 @@ type CatalogProductPickerProps = {
 };
 
 const SEARCH_DEBOUNCE_MS = 300;
+
+/** Categorie voor het menu in de zoekdialoog (data-driven uit /instellingen/categorieen). */
+type PickerCategory = {
+  id: string;
+  name: string;
+  productGroep: MeasurementProductGroup | null;
+  sortOrder: number;
+};
 
 /** Korte, éénregelige samenvatting van een product (voor de triggerknop). */
 function productSummaryText(product: PortalProduct): string {
@@ -87,6 +96,9 @@ export default function CatalogProductPicker({
   // Onthoud het label van de laatst gekozen keuze, zodat de trigger ook klopt
   // wanneer het product buiten de (weer opgevraagde) zoekresultaten valt.
   const [lastSelected, setLastSelected] = useState<{ id: string; label: string } | null>(null);
+  // Categorie-menu (data-driven): éénmalig geladen bij openen; null = "Alles".
+  const [categories, setCategories] = useState<PickerCategory[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
@@ -118,7 +130,8 @@ export default function CatalogProductPicker({
           tenantSlug: session.tenantId,
           search: debouncedSearch || undefined,
           limit: 30,
-          ...(productGroupHint ? { productGroep: productGroupHint } : {})
+          ...(productGroupHint ? { productGroep: productGroupHint } : {}),
+          ...(selectedCategoryId ? { categorieId: selectedCategoryId as Id<"categories"> } : {})
         })) as { items: PortalProduct[] };
 
         if (isActive) {
@@ -147,12 +160,64 @@ export default function CatalogProductPicker({
     // hangt alleen van tenantId af; het session-object wordt enkel doorgegeven
     // aan de client-factory.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, debouncedSearch, session.tenantId, productGroupHint]);
+  }, [open, debouncedSearch, session.tenantId, productGroupHint, selectedCategoryId]);
+
+  // Categorieën voor het menu éénmalig laden bij openen (los van de zoekterm). Degradeert
+  // netjes: bestaat de query nog niet op de backend (vóór de deploy), dan blijft het menu leeg
+  // en werkt zoeken precies zoals voorheen.
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadCategories() {
+      const client = createConvexHttpClient(session);
+
+      if (!client) {
+        return;
+      }
+
+      try {
+        const result = (await client.query(api.catalog.pickerSearch.pickerCategories, {
+          tenantSlug: session.tenantId
+        })) as PickerCategory[];
+
+        if (isActive) {
+          setCategories(result ?? []);
+        }
+      } catch (loadError) {
+        console.error(loadError);
+        if (isActive) {
+          setCategories([]);
+        }
+      }
+    }
+
+    void loadCategories();
+
+    return () => {
+      isActive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, session.tenantId]);
 
   const selectedInResults = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? null,
     [products, selectedProductId]
   );
+
+  // In de meetcontext (productGroupHint gezet) tonen we alleen de categorieën van díé werksoort;
+  // in de winkel (geen hint) de hele catalogus. Menu pas tonen als er echt iets te kiezen valt.
+  const menuCategories = useMemo(
+    () =>
+      productGroupHint
+        ? categories.filter((category) => category.productGroep === productGroupHint)
+        : categories,
+    [categories, productGroupHint]
+  );
+  const showCategoryMenu = menuCategories.length >= 2;
 
   // Triggertekst: eerst het product uit de resultaten, dan het onthouden label,
   // dan het door de ouder meegegeven label, dan een generieke terugval.
@@ -184,6 +249,7 @@ export default function CatalogProductPicker({
     setSearch("");
     setDebouncedSearch("");
     setProducts([]);
+    setSelectedCategoryId(null);
     setOpen(true);
   }
 
@@ -218,7 +284,7 @@ export default function CatalogProductPicker({
         ariaLabelledBy={titleId}
         className="catalog-picker-dialog"
       >
-        <div className="catalog-picker-panel">
+        <div className={`catalog-picker-panel${showCategoryMenu ? " has-categories" : ""}`}>
           <div className="catalog-picker-header">
             <h2 id={titleId} className="catalog-picker-title">
               {label}
@@ -248,7 +314,32 @@ export default function CatalogProductPicker({
             />
           </div>
 
-          <div className="catalog-picker-body">
+          <div className="catalog-picker-layout">
+            {showCategoryMenu ? (
+              <nav className="catalog-picker-categories" aria-label="Filter op categorie">
+                <button
+                  type="button"
+                  className={`catalog-picker-category${selectedCategoryId === null ? " is-active" : ""}`}
+                  aria-pressed={selectedCategoryId === null}
+                  onClick={() => setSelectedCategoryId(null)}
+                >
+                  Alles
+                </button>
+                {menuCategories.map((category) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    className={`catalog-picker-category${selectedCategoryId === category.id ? " is-active" : ""}`}
+                    aria-pressed={selectedCategoryId === category.id}
+                    onClick={() => setSelectedCategoryId(category.id)}
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </nav>
+            ) : null}
+
+            <div className="catalog-picker-body">
             {error ? <Alert variant="warning" description={error} /> : null}
 
             {!required && selectedProductId ? (
@@ -306,6 +397,7 @@ export default function CatalogProductPicker({
                 })}
               </ul>
             )}
+            </div>
           </div>
         </div>
       </BaseDialog>

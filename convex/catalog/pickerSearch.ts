@@ -98,6 +98,7 @@ export const searchPickerProducts = query({
     tenantSlug: v.string(),
     actor: readActorValidator,
     productGroep: v.optional(measurementProductGroup),
+    categorieId: v.optional(v.id("categories")),
     search: v.optional(v.string()),
     limit: v.optional(v.number())
   },
@@ -143,6 +144,13 @@ export const searchPickerProducts = query({
             .map((category) => category._id);
         }
       }
+    }
+
+    // Expliciete categoriekeuze uit het categorie-menu van de picker: filter strak op die ene
+    // categorie (mits die bij deze tenant hoort). Wint van de grovere productgroep-hint en
+    // combineert gewoon met de zoekterm. Onbekende id → genegeerd (valt terug op het overige filter).
+    if (args.categorieId && categoryById.has(String(args.categorieId))) {
+      allowedCategoryIds = [args.categorieId];
     }
 
     const candidates = new Map<string, Doc<"products">>();
@@ -314,5 +322,41 @@ export const searchPickerProducts = query({
     );
 
     return { items, total: items.length, limit };
+  }
+});
+
+/**
+ * Categorieën voor het categorie-menu van de productkiezer. Data-driven: dezelfde
+ * catalogus-categorieën als /instellingen/categorieen, mét hun productgroep zodat het menu
+ * ze per werksoort kan groeperen. Bewust viewer+ (elke portalgebruiker mag de picker openen),
+ * anders dan de admin-only beheerlijst. Alleen actieve categorieën, op beheer-sortering.
+ */
+export const pickerCategories = query({
+  args: {
+    tenantSlug: v.string(),
+    actor: readActorValidator
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
+
+    const categories = await ctx.db
+      .query("categories")
+      .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
+      .collect();
+
+    return categories
+      .filter((category) => (category.status ?? "active") === "active")
+      .sort((left, right) => left.sortOrder - right.sortOrder)
+      .map((category) => ({
+        id: String(category._id),
+        name: category.naam,
+        productGroep: category.productGroep ?? null,
+        sortOrder: category.sortOrder
+      }));
   }
 });
