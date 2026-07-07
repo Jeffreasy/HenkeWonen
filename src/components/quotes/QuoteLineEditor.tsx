@@ -2,7 +2,6 @@ import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
 import type { SubmitEventLike } from "../../lib/events";
-import { formatLineType } from "../../lib/i18n/statusLabels";
 import type {
   MeasurementProductGroup,
   PortalProduct,
@@ -25,6 +24,7 @@ import { SectionHeader } from "../ui/layout/SectionHeader";
 import { Select } from "../ui/forms/Select";
 import { Textarea } from "../ui/forms/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
+import { LineTypeButtons } from "./LineTypeButtons";
 import WallpaperCalculator from "./WallpaperCalculator";
 import { LINE_TYPE_OPTIONS, isServiceRuleLineType } from "./quote/quoteConstants";
 import type { QuoteLineFormValues } from "./quote/quoteTypes";
@@ -319,41 +319,17 @@ export default function QuoteLineEditor({
         </Field>
       ) : null}
       {availableLineTypes.length > 1 ? (
-        <div className="grid two-column-even">
-          <Field htmlFor="line-type" label="Soort post">
-            <Select
-              id="line-type"
-              value={lineType}
-              onChange={(event) => setLineType(event.target.value as QuoteLineType)}
-            >
-              {availableLineTypes.map((type) => (
-                <option value={type} key={type}>
-                  {formatLineType(type)}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field htmlFor="line-title" label="Omschrijving" required>
-            <Input
-              id="line-title"
-              readOnly={lineType === "product"}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              required
-            />
-          </Field>
-        </div>
-      ) : (
-        <Field htmlFor="line-title" label="Omschrijving" required>
-          <Input
-            id="line-title"
-            readOnly={lineType === "product"}
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            required
-          />
-        </Field>
-      )}
+        <LineTypeButtons value={lineType} options={availableLineTypes} onChange={setLineType} />
+      ) : null}
+      <Field htmlFor="line-title" label="Omschrijving" required>
+        <Input
+          id="line-title"
+          readOnly={lineType === "product"}
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          required
+        />
+      </Field>
       {projectRooms.length > 0 ? (
         <Field
           htmlFor="line-room"

@@ -920,3 +920,50 @@
   min-width: 0;
 }
 
+/* ── Soort offertepost als knoppenrij (op klantverzoek) ───────────────────── */
+.line-type-buttons-field {
+  display: grid;
+  gap: 6px;
+}
+
+.line-type-buttons-label {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.line-type-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.line-type-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.line-type-button:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-muted);
+}
+
+.line-type-button.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: var(--accent-soft);
+}
+
+.line-type-button.is-selected svg {
+  color: var(--accent);
+}
+
