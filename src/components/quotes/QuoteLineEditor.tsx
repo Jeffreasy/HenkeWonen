@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
 import type { SubmitEventLike } from "../../lib/events";
 import type {
@@ -70,12 +70,15 @@ export default function QuoteLineEditor({
   draftScopeId
 }: QuoteLineEditorProps) {
   const isFieldMode = mode === "field";
-  const availableLineTypes: QuoteLineType[] =
-    scope === "product"
-      ? ["product"]
-      : scope === "manual"
-        ? LINE_TYPE_OPTIONS.filter((type) => type !== "product")
-        : LINE_TYPE_OPTIONS;
+  const availableLineTypes = useMemo<QuoteLineType[]>(
+    () =>
+      scope === "product"
+        ? ["product"]
+        : scope === "manual"
+          ? LINE_TYPE_OPTIONS.filter((type) => type !== "product")
+          : LINE_TYPE_OPTIONS,
+    [scope]
+  );
   const [lineType, setLineType] = useState<QuoteLineType>(
     scope === "manual" ? "service" : "product"
   );
@@ -109,6 +112,13 @@ export default function QuoteLineEditor({
     },
     (draft) => {
       const restored = readQuoteLineDraft(draft);
+      // Een concept met een regeltype buiten deze scope hoort bij een andere kaart
+      // (bv. een oude gedeelde draft van vóór de per-scope-keys). Zo'n concept mag deze
+      // kaart niet kapen — anders toont de catalogus-kaart de werkzaamheid-kiezer i.p.v.
+      // de productkiezer. Negeer het volledig.
+      if (restored.lineType !== undefined && !availableLineTypes.includes(restored.lineType)) {
+        return;
+      }
       if (restored.lineType !== undefined) setLineType(restored.lineType);
       if (restored.title !== undefined) setTitle(restored.title);
       if (restored.description !== undefined) setDescription(restored.description);
@@ -131,6 +141,15 @@ export default function QuoteLineEditor({
       setSelectedServiceRule(null);
     }
   }, [lineType]);
+
+  // Vangnet-invariant: het regeltype blijft altijd binnen de scope. Vangt een corrupt of
+  // cross-scope concept én een theoretische scope-wissel zonder remount af, zodat de kaart
+  // altijd de juiste kiezer toont (productkiezer bij scope "product").
+  useEffect(() => {
+    setLineType((current) =>
+      availableLineTypes.includes(current) ? current : availableLineTypes[0]
+    );
+  }, [availableLineTypes]);
 
   function applyProduct(product: PortalProduct | null) {
     setSelectedProduct(product);

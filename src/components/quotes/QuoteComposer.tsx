@@ -107,6 +107,7 @@ export default function QuoteComposer({
       <div className="quote-composer-flow">
         {method === "catalog" ? (
           <QuoteLineEditor
+            key="composer-catalog"
             mode={mode}
             surface="plain"
             hideHeader
@@ -120,6 +121,7 @@ export default function QuoteComposer({
           />
         ) : method === "manual" ? (
           <QuoteLineEditor
+            key="composer-manual"
             mode={mode}
             surface="plain"
             hideHeader
