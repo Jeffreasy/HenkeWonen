@@ -5,7 +5,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatEuro } from "../../lib/money";
-import { formatUnit } from "../../lib/i18n/statusLabels";
+import { formatMeasurementProductGroup, formatUnit } from "../../lib/i18n/statusLabels";
 import type { MeasurementProductGroup, PortalProduct } from "../../lib/portalTypes";
 import { Alert } from "../ui/feedback/Alert";
 import { Field } from "../ui/forms/Field";
@@ -219,6 +219,26 @@ export default function CatalogProductPicker({
   );
   const showCategoryMenu = menuCategories.length >= 2;
 
+  // Groepeer de categorieën per werksoort (Vloeren, Behang, …) voor koppen in de rail.
+  // Insertievolgorde = beheer-sortering; categorieën zonder groep landen onder "Overig".
+  const categoryGroups = useMemo(() => {
+    const groups = new Map<string, { key: string; label: string; items: PickerCategory[] }>();
+    for (const category of menuCategories) {
+      const key = category.productGroep ?? "overig";
+      let group = groups.get(key);
+      if (!group) {
+        group = {
+          key,
+          label: category.productGroep ? formatMeasurementProductGroup(category.productGroep) : "Overig",
+          items: []
+        };
+        groups.set(key, group);
+      }
+      group.items.push(category);
+    }
+    return [...groups.values()];
+  }, [menuCategories]);
+
   // Triggertekst: eerst het product uit de resultaten, dan het onthouden label,
   // dan het door de ouder meegegeven label, dan een generieke terugval.
   const triggerText = (() => {
@@ -325,17 +345,26 @@ export default function CatalogProductPicker({
                 >
                   Alles
                 </button>
-                {menuCategories.map((category) => (
-                  <button
-                    key={category.id}
-                    type="button"
-                    className={`catalog-picker-category${selectedCategoryId === category.id ? " is-active" : ""}`}
-                    aria-pressed={selectedCategoryId === category.id}
-                    onClick={() => setSelectedCategoryId(category.id)}
+                {categoryGroups.flatMap((group) => [
+                  <span
+                    key={`heading-${group.key}`}
+                    className="catalog-picker-category-heading"
+                    aria-hidden="true"
                   >
-                    {category.name}
-                  </button>
-                ))}
+                    {group.label}
+                  </span>,
+                  ...group.items.map((category) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      className={`catalog-picker-category${selectedCategoryId === category.id ? " is-active" : ""}`}
+                      aria-pressed={selectedCategoryId === category.id}
+                      onClick={() => setSelectedCategoryId(category.id)}
+                    >
+                      {category.name}
+                    </button>
+                  ))
+                ])}
               </nav>
             ) : null}
 

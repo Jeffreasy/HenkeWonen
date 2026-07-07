@@ -301,7 +301,21 @@
   color: var(--color-accent-ink);
 }
 
-/* Smal (telefoon): rail wordt een horizontale chip-rij boven de lijst. */
+/* Werksoort-kop in de rail (Vloeren, Behang, …). */
+.catalog-picker-category-heading {
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.catalog-picker-categories > .catalog-picker-category-heading:first-of-type {
+  padding-top: var(--space-2);
+}
+
+/* Smal (telefoon): rail wordt een horizontale chip-rij boven de lijst; koppen weg. */
 @media (max-width: 560px) {
   .catalog-picker-layout {
     flex-direction: column;
@@ -314,6 +328,15 @@
     overflow-y: hidden;
     border-right: none;
     border-bottom: 1px solid var(--line);
+  }
+
+  .catalog-picker-category {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .catalog-picker-category-heading {
+    display: none;
   }
 }
 

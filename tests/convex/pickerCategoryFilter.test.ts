@@ -77,6 +77,17 @@ async function seed(t: ReturnType<typeof convexTest>) {
       aangemaaktOp: now,
       gewijzigdOp: now
     });
+    // Actief, maar zonder producten → hoort niet in het menu.
+    await ctx.db.insert("categories", {
+      tenantId,
+      naam: "Lege categorie",
+      slug: "lege-categorie",
+      productGroep: "wallpaper",
+      sortOrder: 4,
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
 
     async function product(naam: string, categorieId: typeof pvcCat) {
       const id = await ctx.db.insert("products", {
@@ -178,7 +189,8 @@ test("pickerCategories geeft actieve categorieën met productgroep terug, ook vo
   expect(names).toContain("PVC Vloeren");
   expect(names).toContain("Tapijt");
   expect(names).not.toContain("Oude groep"); // inactief → weggefilterd
+  expect(names).not.toContain("Lege categorie"); // actief maar zonder producten → weggefilterd
   expect(cats.find((category) => category.name === "PVC Vloeren")?.productGroep).toBe("flooring");
-  // Beheer-sortering gerespecteerd.
+  // Alleen de categorieën mét producten, op beheer-sortering.
   expect(cats.map((category) => category.name)).toEqual(["PVC Vloeren", "Tapijt"]);
 });

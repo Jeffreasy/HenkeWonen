@@ -349,14 +349,38 @@ export const pickerCategories = query({
       .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
       .collect();
 
-    return categories
+    const active = categories
       .filter((category) => (category.status ?? "active") === "active")
-      .sort((left, right) => left.sortOrder - right.sortOrder)
-      .map((category) => ({
-        id: String(category._id),
-        name: category.naam,
-        productGroep: category.productGroep ?? null,
-        sortOrder: category.sortOrder
-      }));
+      .sort((left, right) => left.sortOrder - right.sortOrder);
+
+    // Alleen categorieën met minstens één actief product tonen — lege categorieën
+    // (bv. Horren, Verlichting) horen niet in het keuzemenu. Eén indexed .first() per
+    // categorie is goedkoop.
+    const result: Array<{
+      id: string;
+      name: string;
+      productGroep: string | null;
+      sortOrder: number;
+    }> = [];
+
+    for (const category of active) {
+      const firstProduct = await ctx.db
+        .query("products")
+        .withIndex("by_category_status", (q) =>
+          q.eq("tenantId", tenant._id).eq("categorieId", category._id).eq("status", "active")
+        )
+        .first();
+
+      if (firstProduct) {
+        result.push({
+          id: String(category._id),
+          name: category.naam,
+          productGroep: category.productGroep ?? null,
+          sortOrder: category.sortOrder
+        });
+      }
+    }
+
+    return result;
   }
 });
