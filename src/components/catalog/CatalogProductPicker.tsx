@@ -147,9 +147,11 @@ export default function CatalogProductPicker({
       setError(null);
 
       try {
+        // Bewust géén `cursor` meesturen op de eerste pagina: dan werkt de picker ook nog tegen
+        // een prod-backend die de nieuwe args nog niet kent (valt terug op de eerste 30, zonder
+        // menu/scroll) i.p.v. te breken. `cursor` gaat alleen mee bij "meer laden" hieronder.
         const result = (await client.query(api.catalog.pickerSearch.searchPickerProducts, {
-          ...queryArgs,
-          cursor: null
+          ...queryArgs
         })) as { items: PortalProduct[]; isDone?: boolean; nextCursor?: string | null };
 
         if (cancelled || gen !== loadGenRef.current) {
