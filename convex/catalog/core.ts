@@ -512,6 +512,7 @@ export const listProductsForPortal = query({
           category: categoryName,
           supplier: supplierName,
           displaySupplierName: displaySupplierName(supplierName),
+          leverancierId: product.leverancierId ? String(product.leverancierId) : undefined,
           artikelnummer: product.artikelnummer,
           leverancierCode: product.leverancierCode,
           commercieleCode: product.commercieleCode,
@@ -556,6 +557,8 @@ export const updateProductForPortal = mutation({
     productId: v.string(),
     naam: v.string(),
     artikelnummer: v.optional(v.string()),
+    // Lege string = koppeling wissen; een id = koppelen aan die leverancier.
+    leverancierId: v.optional(v.string()),
     leverancierCode: v.optional(v.string()),
     commercieleCode: v.optional(v.string()),
     kleurnaam: v.optional(v.string()),
@@ -579,6 +582,18 @@ export const updateProductForPortal = mutation({
     };
 
     if (hasArg(args, "artikelnummer")) patch.artikelnummer = args.artikelnummer;
+    if (hasArg(args, "leverancierId")) {
+      if (args.leverancierId) {
+        const supplier = await ctx.db.get(args.leverancierId as Id<"suppliers">);
+        if (!supplier || supplier.tenantId !== tenant._id) {
+          throw new ConvexError("Leverancier niet gevonden.");
+        }
+        patch.leverancierId = supplier._id;
+      } else {
+        // Expliciet ontkoppelen (product belandt dan onder "Leverancier onbekend" bij bestellen).
+        patch.leverancierId = undefined;
+      }
+    }
     if (hasArg(args, "leverancierCode")) patch.leverancierCode = args.leverancierCode;
     if (hasArg(args, "commercieleCode")) patch.commercieleCode = args.commercieleCode;
     if (hasArg(args, "kleurnaam")) patch.kleurnaam = args.kleurnaam;

@@ -13,6 +13,8 @@ import { type ProductStatus, PRODUCT_STATUSES } from "./catalog/catalogTypes";
 export type ProductDraft = {
   name: string;
   articleNumber: string;
+  /** FK-id van de gekoppelde leverancier, of "" voor geen. */
+  leverancierId: string;
   supplierCode: string;
   commercialCode: string;
   colorName: string;
@@ -22,9 +24,15 @@ export type ProductDraft = {
   status: ProductStatus;
 };
 
+export type SupplierOption = {
+  id: string;
+  naam: string;
+};
+
 type ProductEditPanelProps = {
   displayName: string;
   initialDraft: ProductDraft;
+  suppliers: SupplierOption[];
   onSave: (draft: ProductDraft) => Promise<void> | void;
   onCancel: () => void;
   formRef: React.RefObject<HTMLElement | null>;
@@ -33,6 +41,7 @@ type ProductEditPanelProps = {
 export function ProductEditPanel({
   displayName,
   initialDraft,
+  suppliers,
   onSave,
   onCancel,
   formRef
@@ -93,6 +102,26 @@ export function ProductEditPanel({
             </Select>
           </Field>
         </div>
+        <Field
+          htmlFor="product-edit-supplier"
+          label="Leverancier"
+          description="Bepaalt onder welke leverancier dit product wordt besteld. Zonder leverancier valt het bij bestellen onder 'Leverancier onbekend'."
+        >
+          <Select
+            id="product-edit-supplier"
+            value={draft.leverancierId}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, leverancierId: event.target.value }))
+            }
+          >
+            <option value="">Geen leverancier</option>
+            {suppliers.map((supplier) => (
+              <option value={supplier.id} key={supplier.id}>
+                {supplier.naam}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <div className="grid three-column">
           <Field htmlFor="product-edit-article" label="Artikelnummer">
             <Input

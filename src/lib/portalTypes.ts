@@ -397,6 +397,8 @@ export type PortalProduct = {
   category: string;
   supplier: string;
   displaySupplierName: string;
+  /** FK naar de leverancier; bepaalt onder wie het product wordt besteld (inkoop groepeert hierop). */
+  leverancierId?: string;
   brand?: string;
   collection?: string;
   artikelnummer?: string;
