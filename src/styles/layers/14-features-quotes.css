@@ -864,3 +864,59 @@
   overflow-wrap: anywhere;
 }
 
+/* ── Geleide "Offertepost toevoegen"-composer ─────────────────────────────── */
+.quote-composer {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.quote-composer-methods {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: var(--space-3);
+}
+
+.quote-composer-method {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  text-align: left;
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.quote-composer-method:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-muted);
+}
+
+.quote-composer-method.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: var(--accent-soft);
+}
+
+.quote-composer-method-icon {
+  color: var(--accent);
+}
+
+.quote-composer-method-title {
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.quote-composer-method-desc {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.quote-composer-flow {
+  min-width: 0;
+}
+

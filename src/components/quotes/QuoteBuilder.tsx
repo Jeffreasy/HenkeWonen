@@ -50,7 +50,7 @@ import { Textarea } from "../ui/forms/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
 import MeasurementLinePicker from "./MeasurementLinePicker";
 import QuoteDocumentPreview from "./QuoteDocumentPreview";
-import QuoteLineEditor from "./QuoteLineEditor";
+import QuoteComposer from "./QuoteComposer";
 import { QuoteLineEditForm } from "./QuoteLineEditForm";
 import QuoteTotals from "./QuoteTotals";
 import type { QuoteLineFormValues } from "./quote/quoteTypes";
@@ -483,22 +483,23 @@ export default function QuoteBuilder({
     }
   );
 
-  const lineEditor = (
-    // key={quote.id}: remount de editor bij een offertewissel, zodat useFormDraft (dat maar één
-    // keer per instance herstelt) het concept van de nieuwe offerte inlaadt en de state van de
-    // vorige niet blijft hangen of naar de nieuwe sleutel weglekt.
-    <QuoteLineEditor
+  const composer = (
+    // key={quote.id}: remount bij een offertewissel, zodat useFormDraft (dat maar één keer per
+    // instance herstelt) het concept van de nieuwe offerte inlaadt en niet weglekt.
+    <QuoteComposer
       key={quote.id}
       mode={mode}
-      surface="plain"
-      hideHeader={!isFieldMode}
+      session={session}
       sortOrder={quote.lines.length + 1}
       templateLines={defaultTemplate?.standaardRegels ?? []}
-      session={session}
       projectRooms={project?.rooms ?? []}
       productGroupHint={activeProductGroup}
-      draftScopeId={quote.id}
-      onAdd={onAddLine}
+      quoteId={quote.id}
+      projectId={quote.projectId}
+      tenantSlug={quote.tenantId}
+      onAddLine={onAddLine}
+      onMeasurementLinesImported={onMeasurementLinesImported}
+      showMeasurement={!isFieldMode}
     />
   );
 
@@ -1014,7 +1015,7 @@ export default function QuoteBuilder({
                   </select>
                 </div>
               ) : null}
-              {lineEditor}
+              {composer}
             </div>
           </details>
         ) : null}
@@ -1086,12 +1087,9 @@ export default function QuoteBuilder({
         <CollapsiblePanel
           eyebrow="Toevoegen"
           title="Offertepost toevoegen"
-          description="Catalogusproduct, handmatige post of inmeting overnemen."
+          description="Kies hoe je een post toevoegt: catalogusproduct, werkzaamheid of inmeting overnemen."
         >
-          <div className="grid quote-composer-panel">
-            {measurementPicker}
-            {lineEditor}
-          </div>
+          {composer}
         </CollapsiblePanel>
       ) : null}
 
