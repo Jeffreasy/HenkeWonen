@@ -194,3 +194,107 @@ test("pickerCategories geeft actieve categorieën met productgroep terug, ook vo
   // Alleen de categorieën mét producten, op beheer-sortering.
   expect(cats.map((category) => category.name)).toEqual(["PVC Vloeren", "Tapijt"]);
 });
+
+async function seedManyPvc(t: ReturnType<typeof convexTest>, tenantId: string, pvcCat: string, count: number) {
+  await t.run(async (ctx) => {
+    const now = Date.now();
+    for (let i = 1; i <= count; i += 1) {
+      const naam = `PVC ${String(i).padStart(3, "0")}`;
+      const id = await ctx.db.insert("products", {
+        tenantId: tenantId as never,
+        categorieId: pvcCat as never,
+        naam,
+        productAard: "standard",
+        eenheid: "m2",
+        status: "active",
+        aangemaaktOp: now,
+        gewijzigdOp: now
+      });
+      await ctx.db.insert("productPrices", {
+        tenantId: tenantId as never,
+        productId: id,
+        prijsSoort: "retail",
+        prijsEenheid: "m2",
+        bedrag: 20,
+        btwTarief: 21,
+        btwModus: "exclusive",
+        currency: "EUR",
+        aangemaaktOp: now,
+        gewijzigdOp: now
+      });
+    }
+  });
+}
+
+type PickerPage = { items: Array<{ naam: string }>; isDone: boolean; nextCursor: string | null };
+
+test("searchPickerProducts pagineert cursor-gewijs door een volle categorie en dekt álles zonder duplicaten", async () => {
+  const t = convexTest(schema, modules);
+  const { tenantId, pvcCat } = await seed(t);
+  await seedManyPvc(t, String(tenantId), String(pvcCat), 12); // + "Ambiant PVC" uit seed = 13 actief
+
+  const seen = new Set<string>();
+  let totalReturned = 0;
+  let pages = 0;
+  let cursor: string | null = null;
+
+  for (let guard = 0; guard < 8; guard += 1) {
+    const result = (await t.query(api.catalog.pickerSearch.searchPickerProducts, {
+      tenantSlug: "henke-wonen",
+      actor: adminActor,
+      categorieId: pvcCat,
+      limit: 10,
+      cursor
+    })) as PickerPage;
+
+    pages += 1;
+    for (const item of result.items) {
+      seen.add(item.naam);
+      totalReturned += 1;
+    }
+    if (result.isDone) {
+      break;
+    }
+    cursor = result.nextCursor;
+  }
+
+  expect(seen.size).toBe(13); // alle PVC-producten bereikt
+  expect(totalReturned).toBe(13); // geen product dubbel over pagina's
+  expect(pages).toBeGreaterThanOrEqual(2); // meer dan één pagina (min-limit is 10)
+  // Alfabetisch (index-)volgorde: "Ambiant PVC" (A) vóór "PVC 001" (P).
+  const first = (await t.query(api.catalog.pickerSearch.searchPickerProducts, {
+    tenantSlug: "henke-wonen",
+    actor: adminActor,
+    categorieId: pvcCat,
+    cursor: null
+  })) as PickerPage;
+  expect(first.items[0].naam).toBe("Ambiant PVC");
+});
+
+test("searchPickerProducts pagineert ook 'Alles' (geen filter) over categorieën heen", async () => {
+  const t = convexTest(schema, modules);
+  const { tenantId, pvcCat } = await seed(t);
+  await seedManyPvc(t, String(tenantId), String(pvcCat), 12); // 13 PVC + 1 Tapijt = 14 actief
+
+  const seen = new Set<string>();
+  let cursor: string | null = null;
+
+  for (let guard = 0; guard < 8; guard += 1) {
+    const result = (await t.query(api.catalog.pickerSearch.searchPickerProducts, {
+      tenantSlug: "henke-wonen",
+      actor: adminActor,
+      limit: 10,
+      cursor
+    })) as PickerPage;
+    for (const item of result.items) {
+      seen.add(item.naam);
+    }
+    if (result.isDone) {
+      break;
+    }
+    cursor = result.nextCursor;
+  }
+
+  expect(seen.size).toBe(14); // 13 PVC + Berber tapijt, over de categoriegrens heen
+  expect(seen.has("Berber tapijt")).toBe(true);
+});

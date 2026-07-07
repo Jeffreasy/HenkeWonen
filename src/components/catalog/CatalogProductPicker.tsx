@@ -1,5 +1,5 @@
 import { Check, ChevronDown, Package, X } from "lucide-react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { AppSession } from "../../lib/auth/session";
@@ -99,22 +99,43 @@ export default function CatalogProductPicker({
   // Categorie-menu (data-driven): éénmalig geladen bij openen; null = "Alles".
   const [categories, setCategories] = useState<PickerCategory[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  // Oneindig scrollen door de catalogus (10.000+ producten): cursor + einde-vlag.
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [isDone, setIsDone] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Generatieteller: een lopende "meer laden" die van een oude filter is, wordt genegeerd.
+  const loadGenRef = useRef(0);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Alleen laden zolang de dialoog open is: gesloten pickers doen geen
-  // netwerkverkeer (meerdere pickers per pagina bij offerteregels/inmeten).
+  // Query-argumenten voor de picker: zoekterm + gekozen categorie/werksoort. Bepalen samen de
+  // "filtercontext"; wijzigen ze, dan begint het bladeren opnieuw op pagina 1.
+  const queryArgs = useMemo(
+    () => ({
+      tenantSlug: session.tenantId,
+      search: debouncedSearch || undefined,
+      limit: 40,
+      ...(productGroupHint ? { productGroep: productGroupHint } : {}),
+      ...(selectedCategoryId ? { categorieId: selectedCategoryId as Id<"categories"> } : {})
+    }),
+    [session.tenantId, debouncedSearch, productGroupHint, selectedCategoryId]
+  );
+
+  // Eerste pagina (her)laden zodra de dialoog opent of de filtercontext wijzigt. Gesloten
+  // pickers doen geen netwerkverkeer (meerdere pickers per pagina bij offerteregels/inmeten).
   useEffect(() => {
     if (!open) {
       return;
     }
 
-    let isActive = true;
+    const gen = (loadGenRef.current += 1);
+    let cancelled = false;
 
-    async function loadProducts() {
+    async function loadFirstPage() {
       const client = createConvexHttpClient(session);
 
       if (!client) {
@@ -127,40 +148,86 @@ export default function CatalogProductPicker({
 
       try {
         const result = (await client.query(api.catalog.pickerSearch.searchPickerProducts, {
-          tenantSlug: session.tenantId,
-          search: debouncedSearch || undefined,
-          limit: 30,
-          ...(productGroupHint ? { productGroep: productGroupHint } : {}),
-          ...(selectedCategoryId ? { categorieId: selectedCategoryId as Id<"categories"> } : {})
-        })) as { items: PortalProduct[] };
+          ...queryArgs,
+          cursor: null
+        })) as { items: PortalProduct[]; isDone?: boolean; nextCursor?: string | null };
 
-        if (isActive) {
-          setProducts(result.items ?? []);
+        if (cancelled || gen !== loadGenRef.current) {
+          return;
         }
+        setProducts(result.items ?? []);
+        setNextCursor(result.nextCursor ?? null);
+        setIsDone(result.isDone ?? true);
       } catch (loadError) {
         console.error(loadError);
-        if (isActive) {
+        if (!cancelled) {
           setProducts([]);
+          setNextCursor(null);
+          setIsDone(true);
           setError("Catalogusproducten konden niet worden opgehaald.");
         }
       } finally {
-        if (isActive) {
+        if (!cancelled) {
           setIsLoading(false);
         }
       }
     }
 
-    void loadProducts();
+    void loadFirstPage();
 
     return () => {
-      isActive = false;
+      cancelled = true;
     };
-    // session.tenantId (niet het session-object) als dep: voorkomt een onnodige
-    // her-fetch als de ouder een nieuwe session-referentie doorgeeft. De query
-    // hangt alleen van tenantId af; het session-object wordt enkel doorgegeven
-    // aan de client-factory.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, debouncedSearch, session.tenantId, productGroupHint, selectedCategoryId]);
+  }, [open, queryArgs]);
+
+  // Volgende pagina bijladen (oneindig scrollen). De generatiecheck negeert een antwoord dat
+  // binnenkomt nadat de gebruiker de filter alweer heeft gewijzigd.
+  const loadMore = useCallback(async () => {
+    if (isDone || isLoadingMore || isLoading || !nextCursor) {
+      return;
+    }
+
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      return;
+    }
+
+    const gen = loadGenRef.current;
+    setIsLoadingMore(true);
+
+    try {
+      const result = (await client.query(api.catalog.pickerSearch.searchPickerProducts, {
+        ...queryArgs,
+        cursor: nextCursor
+      })) as { items: PortalProduct[]; isDone?: boolean; nextCursor?: string | null };
+
+      if (gen !== loadGenRef.current) {
+        return;
+      }
+      setProducts((prev) => [...prev, ...(result.items ?? [])]);
+      setNextCursor(result.nextCursor ?? null);
+      setIsDone(result.isDone ?? true);
+    } catch (loadError) {
+      console.error(loadError);
+    } finally {
+      if (gen === loadGenRef.current) {
+        setIsLoadingMore(false);
+      }
+    }
+  }, [session, queryArgs, nextCursor, isDone, isLoadingMore, isLoading]);
+
+  // Vult de lijst tot de scrollruimte gevuld is: als een (deels gefilterde) pagina de hoogte
+  // niet vult, is er niets om naar te scrollen — dan laden we automatisch door tot het einde.
+  useEffect(() => {
+    if (!open || isDone || isLoading || isLoadingMore || !nextCursor) {
+      return;
+    }
+    const el = bodyRef.current;
+    if (el && el.scrollHeight <= el.clientHeight + 8) {
+      void loadMore();
+    }
+  }, [open, products, isDone, isLoading, isLoadingMore, nextCursor, loadMore]);
 
   // Categorieën voor het menu éénmalig laden bij openen (los van de zoekterm). Degradeert
   // netjes: bestaat de query nog niet op de backend (vóór de deploy), dan blijft het menu leeg
@@ -270,6 +337,8 @@ export default function CatalogProductPicker({
     setDebouncedSearch("");
     setProducts([]);
     setSelectedCategoryId(null);
+    setNextCursor(null);
+    setIsDone(false);
     setOpen(true);
   }
 
@@ -368,7 +437,16 @@ export default function CatalogProductPicker({
               </nav>
             ) : null}
 
-            <div className="catalog-picker-body">
+            <div
+              className="catalog-picker-body"
+              ref={bodyRef}
+              onScroll={(event) => {
+                const el = event.currentTarget;
+                if (el.scrollHeight - el.scrollTop - el.clientHeight < 160) {
+                  void loadMore();
+                }
+              }}
+            >
             {error ? <Alert variant="warning" description={error} /> : null}
 
             {!required && selectedProductId ? (
@@ -387,7 +465,7 @@ export default function CatalogProductPicker({
               <p className="catalog-picker-status">
                 {debouncedSearch
                   ? "Geen producten gevonden — pas de zoekterm aan."
-                  : "Begin met typen om te zoeken in de catalogus."}
+                  : "Geen producten in deze selectie."}
               </p>
             ) : (
               <ul className="catalog-picker-list">
@@ -426,6 +504,10 @@ export default function CatalogProductPicker({
                 })}
               </ul>
             )}
+
+            {isLoadingMore ? (
+              <p className="catalog-picker-status catalog-picker-status-more">Meer laden…</p>
+            ) : null}
             </div>
           </div>
         </div>

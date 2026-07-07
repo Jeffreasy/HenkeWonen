@@ -100,7 +100,9 @@ export const searchPickerProducts = query({
     productGroep: v.optional(measurementProductGroup),
     categorieId: v.optional(v.id("categories")),
     search: v.optional(v.string()),
-    limit: v.optional(v.number())
+    limit: v.optional(v.number()),
+    // Cursor voor het bladeren (oneindig scrollen). null/leeg = eerste pagina.
+    cursor: v.optional(v.union(v.string(), v.null()))
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
@@ -153,6 +155,98 @@ export const searchPickerProducts = query({
       allowedCategoryIds = [args.categorieId];
     }
 
+    const now = Date.now();
+
+    async function toPortalProduct(product: Doc<"products">): Promise<PortalProduct> {
+      const prices = await ctx.db
+        .query("productPrices")
+        .withIndex("by_product", (q) =>
+          q.eq("tenantId", tenant._id).eq("productId", product._id as Id<"products">)
+        )
+        .collect();
+      const preferredPrice = selectCustomerFacingPrice(
+        prices.map((price) => ({
+          id: String(price._id),
+          priceType: price.prijsSoort,
+          priceUnit: price.prijsEenheid,
+          amount: price.bedrag,
+          vatRate: price.btwTarief,
+          vatMode: price.btwModus,
+          validFrom: price.geldigVanaf,
+          updatedAt: price.gewijzigdOp,
+          creationTime: price._creationTime
+        })),
+        now
+      );
+      const categoryName = categoryById.get(String(product.categorieId))?.naam ?? "Overig";
+      const supplierName = product.leverancierId
+        ? (supplierById.get(String(product.leverancierId))?.naam ?? "Onbekend")
+        : "Onbekend";
+
+      return {
+        id: String(product._id),
+        tenantId: tenant.slug,
+        category: categoryName,
+        supplier: supplierName,
+        displaySupplierName: displaySupplierName(supplierName),
+        artikelnummer: product.artikelnummer,
+        leverancierCode: product.leverancierCode,
+        commercieleCode: product.commercieleCode,
+        leverancierProductGroep: product.leverancierProductGroep,
+        naam: product.naam,
+        weergaveNaam: cleanProductDisplayName(product, categoryName, supplierName),
+        kleurnaam: product.kleurnaam,
+        productSoort: product.productSoort,
+        commercialNames: visibleCommercialNames(product, categoryName),
+        eenheid: product.eenheid,
+        pakinhoudM2: product.pakinhoudM2,
+        stuksPerPak: product.stuksPerPak,
+        pakkenPerPallet: product.pakkenPerPallet,
+        palletAantal: product.palletAantal,
+        vrachtwagenAantal: product.vrachtwagenAantal,
+        bundelGrootte: product.bundelGrootte,
+        prijsExBtw: preferredPrice?.unitPriceExVat ?? 0,
+        prijsEenheid: preferredPrice?.priceUnit,
+        btwTarief: preferredPrice?.vatRate ?? 21,
+        status: normalizedStatus(product.status)
+      };
+    }
+
+    const singleCategoryId =
+      allowedCategoryIds && allowedCategoryIds.length === 1 ? allowedCategoryIds[0] : null;
+
+    // ── Bladeren zonder zoekterm, op de hele catalogus of één categorie: cursor-paginering,
+    //    alfabetisch op naam. Zo bereik je ÁLLE producten (niet alleen de eerste pagina),
+    //    ook met 10.000+ in de catalogus. Meetgroepen met meerdere categorieën en zoeken
+    //    vallen hier bewust buiten (die versmallen al genoeg → top-N hieronder).
+    if (!search && (allowedCategoryIds === null || singleCategoryId)) {
+      const page = singleCategoryId
+        ? await ctx.db
+            .query("products")
+            .withIndex("by_category_status_naam", (q) =>
+              q
+                .eq("tenantId", tenant._id)
+                .eq("categorieId", singleCategoryId)
+                .eq("status", "active")
+            )
+            .paginate({ numItems: limit, cursor: args.cursor ?? null })
+        : await ctx.db
+            .query("products")
+            .withIndex("by_status_naam", (q) =>
+              q.eq("tenantId", tenant._id).eq("status", "active")
+            )
+            .paginate({ numItems: limit, cursor: args.cursor ?? null });
+
+      const visible = page.page.filter((product) => {
+        const categoryName = categoryById.get(String(product.categorieId))?.naam ?? "Overig";
+        return !pilotHiddenReason(product, categoryName);
+      });
+
+      const items = await Promise.all(visible.map((product) => toPortalProduct(product)));
+      return { items, isDone: page.isDone, nextCursor: page.isDone ? null : page.continueCursor };
+    }
+
+    // ── Zoeken, of een meetgroep met meerdere categorieën bladeren: top-N (geen paginering). ──
     const candidates = new Map<string, Doc<"products">>();
 
     function consider(product: Doc<"products">) {
@@ -225,9 +319,11 @@ export const searchPickerProducts = query({
           consider(product);
         }
       }
-    } else if (allowedCategoryIds) {
-      // Browsen zonder zoekterm: per categorie van de productgroep vullen.
-      for (const categoryId of allowedCategoryIds) {
+    } else {
+      // Meetgroep met meerdere categorieën bladeren (bv. inmeten "hele werksoort"): per
+      // categorie top-N vullen. Eén categorie of de hele catalogus is hierboven al afgevangen
+      // door de pagineer-tak.
+      for (const categoryId of allowedCategoryIds ?? []) {
         if (candidates.size >= limit * 2) {
           break;
         }
@@ -243,19 +339,8 @@ export const searchPickerProducts = query({
           consider(product);
         }
       }
-    } else {
-      // Geen groep en geen zoekterm: eerste pagina actieve producten.
-      const page = await ctx.db
-        .query("products")
-        .withIndex("by_status", (q) => q.eq("tenantId", tenant._id).eq("status", "active"))
-        .take(limit);
-
-      for (const product of page) {
-        consider(product);
-      }
     }
 
-    const now = Date.now();
     const selected = [...candidates.values()]
       .sort((left, right) => {
         const leftCategory = categoryById.get(String(left.categorieId))?.naam ?? "";
@@ -264,64 +349,9 @@ export const searchPickerProducts = query({
       })
       .slice(0, limit);
 
-    const items = await Promise.all(
-      selected.map(async (product): Promise<PortalProduct> => {
-        const prices = await ctx.db
-          .query("productPrices")
-          .withIndex("by_product", (q) =>
-            q.eq("tenantId", tenant._id).eq("productId", product._id as Id<"products">)
-          )
-          .collect();
-        const preferredPrice = selectCustomerFacingPrice(
-          prices.map((price) => ({
-            id: String(price._id),
-            priceType: price.prijsSoort,
-            priceUnit: price.prijsEenheid,
-            amount: price.bedrag,
-            vatRate: price.btwTarief,
-            vatMode: price.btwModus,
-            validFrom: price.geldigVanaf,
-            updatedAt: price.gewijzigdOp,
-            creationTime: price._creationTime
-          })),
-          now
-        );
-        const categoryName = categoryById.get(String(product.categorieId))?.naam ?? "Overig";
-        const supplierName = product.leverancierId
-          ? (supplierById.get(String(product.leverancierId))?.naam ?? "Onbekend")
-          : "Onbekend";
+    const items = await Promise.all(selected.map((product) => toPortalProduct(product)));
 
-        return {
-          id: String(product._id),
-          tenantId: tenant.slug,
-          category: categoryName,
-          supplier: supplierName,
-          displaySupplierName: displaySupplierName(supplierName),
-          artikelnummer: product.artikelnummer,
-          leverancierCode: product.leverancierCode,
-          commercieleCode: product.commercieleCode,
-          leverancierProductGroep: product.leverancierProductGroep,
-          naam: product.naam,
-          weergaveNaam: cleanProductDisplayName(product, categoryName, supplierName),
-          kleurnaam: product.kleurnaam,
-          productSoort: product.productSoort,
-          commercialNames: visibleCommercialNames(product, categoryName),
-          eenheid: product.eenheid,
-          pakinhoudM2: product.pakinhoudM2,
-          stuksPerPak: product.stuksPerPak,
-          pakkenPerPallet: product.pakkenPerPallet,
-          palletAantal: product.palletAantal,
-          vrachtwagenAantal: product.vrachtwagenAantal,
-          bundelGrootte: product.bundelGrootte,
-          prijsExBtw: preferredPrice?.unitPriceExVat ?? 0,
-          prijsEenheid: preferredPrice?.priceUnit,
-          btwTarief: preferredPrice?.vatRate ?? 21,
-          status: normalizedStatus(product.status)
-        };
-      })
-    );
-
-    return { items, total: items.length, limit };
+    return { items, isDone: true, nextCursor: null };
   }
 });
 
@@ -351,6 +381,9 @@ export const pickerCategories = query({
 
     const active = categories
       .filter((category) => (category.status ?? "active") === "active")
+      // Pilot-verborgen categorieën (PVC Click) horen niet in het menu — anders kies je een
+      // categorie die in de picker leeg blijkt.
+      .filter((category) => !pilotHiddenReason({ naam: category.naam }, category.naam))
       .sort((left, right) => left.sortOrder - right.sortOrder);
 
     // Alleen categorieën met minstens één actief product tonen — lege categorieën
