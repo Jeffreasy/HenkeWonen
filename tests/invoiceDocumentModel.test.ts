@@ -90,7 +90,11 @@ describe("buildInvoiceDocumentModel", () => {
       subtotalExVat: 2000,
       vatTotal: 420,
       totalIncVat: 2420,
-      vatBreakdown: [{ rate: 21, base: 2000, amount: 420 }]
+      vatBreakdown: [{ rate: 21, base: 2000, amount: 420 }],
+      costBreakdown: [
+        { category: "materiaal", label: "Materiaal", amount: 1560 },
+        { category: "arbeid", label: "Arbeid", amount: 440 }
+      ]
     });
   });
 
