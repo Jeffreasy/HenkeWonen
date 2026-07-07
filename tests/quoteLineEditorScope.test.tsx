@@ -1,23 +1,20 @@
 // @vitest-environment jsdom
 //
-// Regressietest voor de "geleide composer"-scopes van QuoteLineEditor. Op de Catalogusproduct-
-// kaart (scope "product") hoort ALTIJD de productkiezer te verschijnen. Er zijn twee manieren
-// waarop dat eerder faalde:
+// Regressietest voor de "geleide composer"-scopes. Op de Catalogusproduct-kaart (scope "product")
+// hoort ALTIJD de productkiezer te verschijnen. Dat faalde eerder op twee manieren:
 //   1. React hergebruikte de editor-instance bij het wisselen van kaart (opgelost met per-kaart
-//      keys in QuoteComposer).
+//      keys in QuoteComposer) → getest via de QuoteComposer-kaartwissel hieronder.
 //   2. Een corrupt/cross-scope concept in localStorage (bv. een half getypte Werkzaamheid onder
-//      de :product-sleutel, uit een sessie van vóór de per-scope-keys) zette lineType terug op
-//      "service" → de werkzaamheid-kiezer kaapte de kaart en de productkiezer verdween.
-// Deze test dekt (2): het corrupte concept mag de scope niet kapen, terwijl een geldig in-scope
-// concept nog wél netjes herstelt. Echte mount/unmount vereist jsdom (per-bestand).
+//      de :product-sleutel) zette lineType terug op "service" en lekte bovendien de titel naar de
+//      productkaart → getest via de guarded restore + "titel lekt niet"-assert.
+// Echte mount/unmount vereist jsdom (per-bestand).
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, createElement as h } from "react";
 import { createRoot } from "react-dom/client";
 
 // lucide-react resolvet in de jsdom-omgeving z'n eigen React-kopie (dubbele dispatcher →
-// "useContext of null"). De iconen zijn puur decoratief en irrelevant voor deze test (we
-// toetsen sectiekop-tekst). We laden het echte module alleen om de export-namen te kennen
-// en vervangen elke export door een lege stub, zodat geen enkel lucide-icoon ooit rendert.
+// "useContext of null"). De iconen zijn puur decoratief; we laden het echte module alleen om de
+// export-namen te kennen en vervangen elke export door een lege stub.
 vi.mock("lucide-react", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   const Stub = () => null;
@@ -28,14 +25,15 @@ vi.mock("lucide-react", async (importOriginal) => {
   return mocked;
 });
 
-// De twee kiezers doen Convex-calls (ServiceRulePicker zelfs meteen bij mount). Deze test gaat
-// niet over de kiezer-inhoud maar over WELKE sectie QuoteLineEditor toont op basis van lineType/
-// scope — die sectiekoppen ("Catalogusproduct" / "Werkzaamheid uit de lijst") leeft in
-// QuoteLineEditor zelf, niet in de kiezers. Dus stubben we de kiezers weg (geen netwerk, geen ruis).
+// De kiezers doen Convex-calls (ServiceRulePicker meteen bij mount). Deze test gaat over WELKE
+// sectie er toont (die koppen leven in QuoteLineEditor zelf, niet in de kiezers), dus stubben we
+// de kiezers + de inmeet-picker weg (geen netwerk, geen ruis).
 vi.mock("../src/components/catalog/CatalogProductPicker", () => ({ default: () => null }));
 vi.mock("../src/components/catalog/ServiceRulePicker", () => ({ default: () => null }));
+vi.mock("../src/components/quotes/MeasurementLinePicker", () => ({ default: () => null }));
 
 import QuoteLineEditor from "../src/components/quotes/QuoteLineEditor";
+import QuoteComposer from "../src/components/quotes/QuoteComposer";
 import { quoteLineDraftKey } from "../src/lib/quoteLineDraft";
 import type { AppSession } from "../src/lib/auth/session";
 
@@ -92,7 +90,13 @@ async function mountEditor(scope: "product" | "manual", draftScopeId: string) {
   });
   // Flush de async load van ServiceRulePicker (setState na mount) binnen act.
   await act(async () => {});
-  return { root, text: () => container.textContent ?? "" };
+  return {
+    root,
+    text: () => container.textContent ?? "",
+    // Waarde van het (read-only bij product) omschrijvingsveld — zo zien we of een concept lekte.
+    titleValue: () =>
+      (container.querySelector("#line-title") as HTMLInputElement | null)?.value ?? ""
+  };
 }
 
 afterEach(() => {
@@ -108,7 +112,7 @@ describe("QuoteLineEditor scope-invariant", () => {
     expect(view.text()).not.toContain("Werkzaamheid uit de lijst");
   });
 
-  it("negeert een corrupt cross-scope concept: catalogus-kaart blijft de productkiezer tonen", async () => {
+  it("negeert een corrupt cross-scope concept: productkiezer blijft én de titel lekt niet", async () => {
     memory.clear();
     // Een half getypte Werkzaamheid, per ongeluk opgeslagen onder de :product-sleutel.
     seedDraft("quote-1:product", {
@@ -128,13 +132,18 @@ describe("QuoteLineEditor scope-invariant", () => {
     // De productkiezer hoort te staan; de werkzaamheid-kiezer mag de kaart niet gekaapt hebben.
     expect(view.text()).toContain("Catalogusproduct");
     expect(view.text()).not.toContain("Werkzaamheid uit de lijst");
+    // Cruciaal (isoleert de guard, niet de clamp): het cross-scope concept lekt géén enkel veld.
+    // Zonder de guarded restore zou "Ondervloer voor PVC" in het omschrijvingsveld belanden.
+    expect(view.titleValue()).toBe("");
+    expect(view.text()).not.toContain("Ondervloer voor PVC");
   });
 
-  it("herstelt een geldig in-scope werkzaamheid-concept wél op de handmatig-kaart", async () => {
+  it("herstelt een geldig in-scope concept wél op de handmatig-kaart (incl. de titel)", async () => {
     memory.clear();
-    // Zelfde soort concept, maar nu op de handmatig-kaart waar "service" gewoon geldig is.
+    // Bewust een NIET-default type ("material"; de default van scope manual is "service") met een
+    // eigen titel, zodat een geslaagde restore aantoonbaar is — niet tautologisch.
     seedDraft("quote-1:manual", {
-      lineType: "service",
+      lineType: "material",
       title: "Ondervloer voor PVC",
       description: "hoeveelheid per m² invullen",
       quantity: "1",
@@ -147,8 +156,67 @@ describe("QuoteLineEditor scope-invariant", () => {
     });
 
     const view = await mountEditor("manual", "quote-1:manual");
-    // Hier hoort de werkzaamheid-kiezer wél te herstellen (guard blokkeert alleen buiten scope).
+    // In-scope concept → werkzaamheid-kiezer toont, en de titel is echt hersteld (bewijst restore).
     expect(view.text()).toContain("Werkzaamheid uit de lijst");
     expect(view.text()).not.toContain("Catalogusproduct");
+    expect(view.titleValue()).toBe("Ondervloer voor PVC");
+  });
+});
+
+describe("QuoteComposer kaartwissel (pad 1: remount)", () => {
+  const PRODUCT_MARKER = "Kies een product uit de catalogus"; // uniek voor de productsectie
+  const SERVICE_MARKER = "Werkzaamheid uit de lijst"; // uniek voor de werkzaamheidsectie
+
+  async function mountComposer() {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        h(QuoteComposer, {
+          mode: "full",
+          session,
+          sortOrder: 1,
+          templateLines: [],
+          projectRooms: [],
+          productGroupHint: null,
+          quoteId: "quote-9",
+          projectId: "project-9",
+          tenantSlug: "henke-wonen",
+          onAddLine: () => undefined,
+          showMeasurement: false
+        })
+      );
+    });
+    await act(async () => {});
+    function clickMethod(titleText: string) {
+      const button = [...container.querySelectorAll<HTMLButtonElement>("button.quote-composer-method")].find(
+        (candidate) => candidate.textContent?.includes(titleText)
+      );
+      if (!button) {
+        throw new Error(`methode-knop niet gevonden: ${titleText}`);
+      }
+      act(() => button.click());
+    }
+    return { text: () => container.textContent ?? "", clickMethod };
+  }
+
+  it("toont weer de productkiezer op Catalogusproduct ná een wissel naar Werkzaamheid en terug", async () => {
+    memory.clear();
+    const view = await mountComposer();
+
+    // Start: catalogus-kaart → productsectie.
+    expect(view.text()).toContain(PRODUCT_MARKER);
+    expect(view.text()).not.toContain(SERVICE_MARKER);
+
+    // Naar de handmatig-kaart → werkzaamheidsectie.
+    view.clickMethod("Werkzaamheid of handmatig");
+    expect(view.text()).toContain(SERVICE_MARKER);
+    expect(view.text()).not.toContain(PRODUCT_MARKER);
+
+    // Terug naar de catalogus-kaart → productsectie hoort terug te komen (dit faalde vóór de fix).
+    view.clickMethod("Catalogusproduct");
+    expect(view.text()).toContain(PRODUCT_MARKER);
+    expect(view.text()).not.toContain(SERVICE_MARKER);
   });
 });
