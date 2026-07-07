@@ -7,9 +7,9 @@ describe("defaultTopicId", () => {
     expect(defaultTopicId("buitendienst", "/portal/buitendienst/projecten/x")).toBe("tablet");
   });
 
-  test("offertes → winkel-flow", () => {
-    expect(defaultTopicId("winkel", "/portal/offertes")).toBe("winkel-flow");
-    expect(defaultTopicId("winkel", "/portal/offertes/abc")).toBe("winkel-flow");
+  test("offertes → offerte-samenstellen", () => {
+    expect(defaultTopicId("winkel", "/portal/offertes")).toBe("offerte-samenstellen");
+    expect(defaultTopicId("winkel", "/portal/offertes/abc")).toBe("offerte-samenstellen");
   });
 
   test("facturen → na-akkoord", () => {

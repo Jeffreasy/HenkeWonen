@@ -1,4 +1,4 @@
-import { ChevronDown, Compass, Flag, Paperclip, Receipt, ShieldCheck, Store, Tablet, X } from "lucide-react";
+import { ChevronDown, Compass, FileText, Flag, Paperclip, Receipt, ShieldCheck, Store, Tablet, X } from "lucide-react";
 import { type ReactNode } from "react";
 import { BaseDialog } from "../ui/overlays/BaseDialog";
 import { IconButton } from "../ui/forms/IconButton";
@@ -154,6 +154,68 @@ const TOPIC_WINKEL_FLOW: HelpTopic = {
   )
 };
 
+const TOPIC_OFFERTE_SAMENSTELLEN: HelpTopic = {
+  id: "offerte-samenstellen",
+  icon: <FileText size={17} aria-hidden="true" />,
+  title: "Offerte samenstellen",
+  body: (
+    <ol className="help-guide-steps">
+      <li>
+        <b>Open de offerte.</b> Vanuit een dossier klik je op <Kbd>Offerte / verkoop maken</Kbd>; net
+        ingemeten? Dan staat er <Kbd>Maak offerte van deze inmeting</Kbd>. Los kan ook via{" "}
+        <HelpLink href="/portal/offertes">Offertes</HelpLink> → <Kbd>Nieuwe offerte</Kbd> →{" "}
+        <Kbd>Offerte starten</Kbd>. Je komt op het scherm <b>Offerte samenstellen</b>.
+      </li>
+      <li>
+        <b>Voeg een post toe.</b> Klap <Kbd>Offertepost toevoegen</Kbd> open en kies hoe:{" "}
+        <Kbd>Catalogusproduct</Kbd>, <Kbd>Werkzaamheid of handmatig</Kbd>, of{" "}
+        <Kbd>Inmeting overnemen</Kbd> (de meetregels van de monteur).
+      </li>
+      <li>
+        <b>Kies de soort post.</b> In de rij <Kbd>Soort post</Kbd> staan <Kbd>Product</Kbd>,{" "}
+        <Kbd>Werkzaamheid</Kbd>, <Kbd>Arbeid</Kbd>, <Kbd>Materiaal</Kbd>, <Kbd>Korting</Kbd>,{" "}
+        <Kbd>Tekst</Kbd> en <Kbd>Handmatig</Kbd>. <b>Werkzaamheid, Arbeid en Materiaal doen hetzelfde</b>{" "}
+        — het zijn ordeningslabels, kies gewoon wat het beste past.
+      </li>
+      <li>
+        <b>Een product uit de catalogus.</b> Klik op <Kbd>Kies een product…</Kbd> en zoek of blader per
+        categorie door <HelpLink href="/portal/catalogus">de catalogus</HelpLink>. Prijs, eenheid en btw
+        komen automatisch mee — dat is een <b>richtprijs</b>, controleer 'm bij <Kbd>Prijs excl. btw</Kbd>.
+        Btw staat standaard op 21%; bij een verlaagd tarief zet je <Kbd>Btw %</Kbd> zelf op 9.
+      </li>
+      <li>
+        <b>Werkzaamheid, arbeid of materiaal.</b> Klik op <Kbd>Kies een werkzaamheid…</Kbd> voor een vaste
+        werkzaamheid uit{" "}
+        <HelpLink href="/portal/instellingen/werkzaamheden">Instellingen</HelpLink>, of typ zelf. Vul{" "}
+        <Kbd>Aantal</Kbd>, <Kbd>Eenheid</Kbd> en <Kbd>Prijs excl. btw</Kbd> in; <Kbd>Omschrijving</Kbd> is
+        verplicht.
+      </li>
+      <li>
+        <b>Behang uitrekenen?</b> Klap <Kbd>Behangcalculator openen</Kbd> uit, vul de maten in en klik{" "}
+        <Kbd>Gebruik aantal rollen</Kbd> — dat zet meteen een productregel klaar. De uitkomst is{" "}
+        <b>indicatief</b>: controleer altijd maatvoering en snijverlies.
+      </li>
+      <li>
+        <b>Zet de post erop.</b> Klik <Kbd>Offertepost toevoegen</Kbd> en herhaal voor de volgende. Een
+        regel aanpassen (potlood, dan <Kbd>Offertepost opslaan</Kbd>) of verwijderen kan{" "}
+        <b>alleen zolang de offerte nog Concept is</b>.
+      </li>
+      <li>
+        <b>Controleer en bekijk als klant.</b> Kijk de <Kbd>Totalen</Kbd> na en open de{" "}
+        <Kbd>Klantversie</Kbd>. Los eerst eventuele <Kbd>Controle nodig</Kbd>-punten op (bijvoorbeeld een
+        regel zonder prijs). Versturen doe je met <Kbd>Klantversie printen</Kbd> → “Opslaan als PDF”; die
+        mail of app je zelf.
+      </li>
+      <li>
+        <b>Zet 'm door.</b> Klik <Kbd>Markeer verzonden</Kbd>, later <Kbd>Akkoord</Kbd> of{" "}
+        <Kbd>Afwijzen</Kbd>. Na akkoord maak je hier de factuur met <Kbd>Factuur aanmaken</Kbd> (terug te
+        vinden onder <HelpLink href="/portal/facturen">Facturen</HelpLink>); de leveranciersbestellingen
+        maak je met <Kbd>Bestellingen genereren</Kbd> op het <b>dossier</b>, tabblad <Kbd>Bestellingen</Kbd>.
+      </li>
+    </ol>
+  )
+};
+
 const TOPIC_NA_AKKOORD: HelpTopic = {
   id: "na-akkoord",
   icon: <Receipt size={17} aria-hidden="true" />,
@@ -225,6 +287,7 @@ const WINKEL_TOPICS: HelpTopic[] = [
   TOPIC_WAAR_VIND_IK,
   TOPIC_KLEUREN,
   TOPIC_WINKEL_FLOW,
+  TOPIC_OFFERTE_SAMENSTELLEN,
   TOPIC_NA_AKKOORD,
   TOPIC_DOSSIERSTUKKEN,
   TOPIC_TABLET,
@@ -244,7 +307,7 @@ export function defaultTopicId(mode: HelpGuideMode, pathname: string): string {
     return "tablet";
   }
   if (pathname.startsWith("/portal/offertes")) {
-    return "winkel-flow";
+    return "offerte-samenstellen";
   }
   if (pathname.startsWith("/portal/facturen")) {
     return "na-akkoord";
