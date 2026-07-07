@@ -950,6 +950,9 @@ export const createQuote = mutation({
     actor: mutationActorValidator,
     projectId: v.string(),
     titel: v.string(),
+    // Optioneel gekozen offertesjabloon; zonder keuze valt hij terug op het
+    // sjabloon van type "default" (het vorige, vaste gedrag).
+    templateId: v.optional(v.string()),
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
@@ -965,11 +968,20 @@ export const createQuote = mutation({
       throw new ConvexError("Project niet gevonden.");
     }
 
-    const template = await ctx.db
-      .query("quoteTemplates")
-      .withIndex("by_type", (q: any) => q.eq("tenantId", tenant._id).eq("type", "default"))
-      .filter((q: any) => q.eq(q.field("status"), "active"))
-      .first();
+    let template;
+    if (args.templateId) {
+      const chosen = await ctx.db.get(args.templateId as Id<"quoteTemplates">);
+      if (!chosen || chosen.tenantId !== tenant._id || chosen.status !== "active") {
+        throw new ConvexError("Offertesjabloon niet gevonden.");
+      }
+      template = chosen;
+    } else {
+      template = await ctx.db
+        .query("quoteTemplates")
+        .withIndex("by_type", (q: any) => q.eq("tenantId", tenant._id).eq("type", "default"))
+        .filter((q: any) => q.eq(q.field("status"), "active"))
+        .first();
+    }
     const now = Date.now();
 
     // Guard + statuszet vóór de insert: geen nieuwe offerte op een geannuleerd/gesloten
