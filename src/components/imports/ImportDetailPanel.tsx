@@ -1,11 +1,8 @@
-import { CheckCircle2, Save, ShieldAlert } from "lucide-react";
 import { useMemo } from "react";
 import type { ProductImportBatch, ProductImportRow } from "../../lib/portalTypes";
 import { formatImportStatus, formatRowKind, formatRowStatus } from "../../lib/i18n/statusLabels";
 import { Alert } from "../ui/feedback/Alert";
-import { Badge } from "../ui/data-display/Badge";
 import { Button } from "../ui/forms/Button";
-import { Checkbox } from "../ui/forms/Checkbox";
 import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
 import { Field } from "../ui/forms/Field";
 import { FilterBar } from "../ui/layout/FilterBar";
@@ -22,11 +19,7 @@ type ImportDetailPanelProps = {
   rows: ProductImportRow[];
   detailTab: DetailTab;
   setDetailTab: (value: DetailTab) => void;
-  allowUnknownVatMode: boolean;
-  setAllowUnknownVatMode: (value: boolean) => void;
-  canCommit: boolean;
   isBusy: boolean;
-  selectedBlockers: string[];
   rowKindFilter: RowKindFilter;
   setRowKindFilter: (value: RowKindFilter) => void;
   rowStatusFilter: RowStatusFilter;
@@ -36,8 +29,6 @@ type ImportDetailPanelProps = {
   totalRowPages: number;
   pagedRows: ProductImportRow[];
   rowPageSize: number;
-  onSaveMapping: () => void;
-  onCommitBatch: () => void;
   onUpdateBatchStatus: (nextStatus: ProductImportBatch["status"]) => void;
   canManageImports: boolean;
   rowKindOptions: string[];
@@ -49,11 +40,7 @@ export function ImportDetailPanel({
   rows,
   detailTab,
   setDetailTab,
-  allowUnknownVatMode,
-  setAllowUnknownVatMode,
-  canCommit,
   isBusy,
-  selectedBlockers,
   rowKindFilter,
   setRowKindFilter,
   rowStatusFilter,
@@ -63,8 +50,6 @@ export function ImportDetailPanel({
   totalRowPages,
   pagedRows,
   rowPageSize,
-  onSaveMapping,
-  onCommitBatch,
   onUpdateBatchStatus,
   canManageImports,
   rowKindOptions,
@@ -225,68 +210,6 @@ export function ImportDetailPanel({
               <strong>{numberText(selectedBatch.genegeerdeRijen)}</strong>
             </div>
           </div>
-
-          <div className={canCommit ? "import-gate import-gate-ready" : "import-gate import-gate-blocked"}>
-            <div>
-              <p className="eyebrow">Verwerkingspoort</p>
-              <h3>{canCommit ? "Klaar voor definitieve verwerking" : "Nog niet definitief verwerken"}</h3>
-              <p className="muted">
-                {canCommit
-                  ? "Er zijn geen blokkerende fouten voor deze controle."
-                  : selectedBlockers.length > 0
-                    ? selectedBlockers.join(", ")
-                    : "Controleer de meldingen voordat je verwerkt."}
-              </p>
-            </div>
-            <div className="import-gate-actions">
-              <label className="vat-exception-toggle import-vat-toggle">
-                <Checkbox
-                  aria-label="Sta ontbrekende btw-keuze toe voor deze prijslijst"
-                  checked={allowUnknownVatMode}
-                  onChange={(event) => setAllowUnknownVatMode(event.target.checked)}
-                />
-                <span>Onbekende btw toestaan</span>
-              </label>
-              <Badge variant={selectedBatch.onbekendeBtwModusRijen > 0 ? "warning" : "success"}>
-                Btw onbekend {numberText(selectedBatch.onbekendeBtwModusRijen)}
-              </Badge>
-              <Button
-                variant="secondary"
-                onClick={onSaveMapping}
-                disabled={isBusy}
-                leftIcon={<Save size={17} aria-hidden="true" />}
-              >
-                Btw-instelling bewaren
-              </Button>
-              <Button
-                variant="primary"
-                onClick={onCommitBatch}
-                disabled={isBusy || !canCommit}
-                leftIcon={
-                  canCommit ? (
-                    <CheckCircle2 size={17} aria-hidden="true" />
-                  ) : (
-                    <ShieldAlert size={17} aria-hidden="true" />
-                  )
-                }
-              >
-                Definitief verwerken
-              </Button>
-            </div>
-          </div>
-
-          {!canCommit ? (
-            <Alert
-              variant="warning"
-              title="Nog niet klaar om te verwerken"
-              description={
-                selectedBlockers.length > 0
-                  ? `Los eerst op: ${selectedBlockers.join(", ")}.`
-                  : "Verwerken blijft geblokkeerd zolang er fouten, dubbele prijslijstregels of ontbrekende btw-keuzes zijn."
-              }
-              style={{ marginTop: 16 }}
-            />
-          ) : null}
         </>
       ) : null}
 
