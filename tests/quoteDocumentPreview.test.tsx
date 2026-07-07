@@ -110,7 +110,8 @@ const model: QuoteDocumentModel = {
     vatTotal: 431.16,
     totalIncVat: 2484.29,
     vatLabel: "Btw wordt berekend op basis van de offerteregels.",
-    vatBreakdown: [{ rate: 21, base: 2053.13, amount: 431.16 }]
+    vatBreakdown: [{ rate: 21, base: 2053.13, amount: 431.16 }],
+    costBreakdown: []
   },
   terms: [
     "Ruimtes leeg en bezemschoon opleveren.",

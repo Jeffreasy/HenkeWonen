@@ -6,6 +6,7 @@ import type {
   QuoteTemplate,
   QuoteTemplateSection
 } from "../portalTypes";
+import { buildCostBreakdown, type CostBreakdownRow } from "../documents/costBreakdown";
 import { buildVatBreakdown, type VatBreakdownRow } from "../documents/vatBreakdown";
 import { henkeCompanyProfile, type QuoteCompanyProfile } from "./henkeCompanyProfile";
 
@@ -56,6 +57,8 @@ export type QuoteDocumentModel = {
     vatLabel: string;
     /** Btw uitgesplitst per tarief (grondslag + btw-bedrag), zoals op een nette NL-factuur. */
     vatBreakdown: VatBreakdownRow[];
+    /** Informatieve materiaal/arbeid-splitsing van het subtotaal (excl. btw). */
+    costBreakdown: CostBreakdownRow[];
   };
   terms: string[];
   paymentTerms: string[];
@@ -294,7 +297,8 @@ export function buildQuoteDocumentModel({
       vatTotal: quote.btwTotaal,
       totalIncVat: quote.totaalInclBtw,
       vatLabel: buildVatLabel(),
-      vatBreakdown: buildVatBreakdown(quote.lines)
+      vatBreakdown: buildVatBreakdown(quote.lines),
+      costBreakdown: buildCostBreakdown(quote.lines)
     },
     terms: normalizeLines(quote.voorwaarden),
     paymentTerms: normalizeLines(quote.betalingsvoorwaarden)

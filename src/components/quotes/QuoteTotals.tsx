@@ -1,3 +1,4 @@
+import { buildCostBreakdown, shouldShowCostBreakdown } from "../../lib/documents/costBreakdown";
 import { buildVatBreakdown } from "../../lib/documents/vatBreakdown";
 import { formatEuro } from "../../lib/money";
 import type { PortalQuoteLine } from "../../lib/portalTypes";
@@ -32,6 +33,10 @@ export default function QuoteTotals({ lines }: QuoteTotalsProps) {
   // hier exact controleert wat de klant straks op het document ziet.
   const vatBreakdown = buildVatBreakdown(lines);
 
+  // Informatieve materiaal/arbeid-splitsing (telt op tot het subtotaal).
+  const costBreakdown = buildCostBreakdown(lines);
+  const showCost = shouldShowCostBreakdown(costBreakdown);
+
   return (
     <aside className="panel quote-totals-panel">
       <SectionHeader compact title="Totalen" description={`${lines.length} offerteregels`} />
@@ -56,6 +61,13 @@ export default function QuoteTotals({ lines }: QuoteTotalsProps) {
             label: "Subtotaal excl. btw",
             value: formatEuro(totals.subtotalExVat)
           },
+          ...(showCost
+            ? costBreakdown.map((row) => ({
+                id: `cost-${row.category}`,
+                label: `waarvan ${row.label.toLowerCase()}`,
+                value: formatEuro(row.amount)
+              }))
+            : []),
           ...(vatBreakdown.length > 0
             ? vatBreakdown.map((row) => ({
                 id: `vat-${row.rate}`,

@@ -1,4 +1,5 @@
 import { FileText, Printer } from "lucide-react";
+import { shouldShowCostBreakdown } from "../../lib/documents/costBreakdown";
 import type { InvoiceDocumentModel } from "../../lib/invoices/invoiceDocumentModel";
 import {
   formatCurrencyEUR,
@@ -184,6 +185,14 @@ export default function InvoiceDocumentPreview({ model }: InvoiceDocumentPreview
             <span>Subtotaal excl. btw</span>
             <strong>{formatCurrencyEUR(model.totals.subtotalExVat)}</strong>
           </div>
+          {shouldShowCostBreakdown(model.totals.costBreakdown)
+            ? model.totals.costBreakdown.map((row) => (
+                <div key={row.category} className="quote-document-cost-row">
+                  <span>waarvan {row.label.toLowerCase()}</span>
+                  <strong>{formatCurrencyEUR(row.amount)}</strong>
+                </div>
+              ))
+            : null}
           {model.totals.vatBreakdown.length > 0 ? (
             // Verplicht factuurelement: btw per tarief met grondslag.
             model.totals.vatBreakdown.map((row) => (

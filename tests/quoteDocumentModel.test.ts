@@ -86,7 +86,8 @@ describe("Quote Document Model", () => {
       vatTotal: 259.26,
       totalIncVat: 1493.82,
       vatLabel: "Btw wordt berekend op basis van de offerteregels.",
-      vatBreakdown: [{ rate: 21, base: 200, amount: 42 }]
+      vatBreakdown: [{ rate: 21, base: 200, amount: 42 }],
+      costBreakdown: [{ category: "materiaal", label: "Materiaal", amount: 200 }]
     });
     expect(model.sections[0].key).toBe("vloeren");
     expect(model.sections[0].title).toBe("Vloeren");
