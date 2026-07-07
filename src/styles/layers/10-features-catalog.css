@@ -249,6 +249,101 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* Categorie-menu: extra breedte zodat de rail links naast de lijst past. */
+.catalog-picker-panel.has-categories {
+  width: min(var(--dialog-max-w), 680px);
+}
+
+.catalog-picker-layout {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.catalog-picker-categories {
+  flex: 0 0 172px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--space-2);
+  border-right: 1px solid var(--line);
+}
+
+.catalog-picker-category {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  flex: 0 0 auto;
+  text-align: left;
+  padding: 7px var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.catalog-picker-category:hover {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+.catalog-picker-category.is-active {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--accent-soft);
+  color: var(--color-accent-ink);
+}
+
+/* Werksoort-kop in de rail (Vloeren, Behang, …). */
+.catalog-picker-category-heading {
+  flex: 0 0 auto;
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.catalog-picker-categories > .catalog-picker-category-heading:first-of-type {
+  padding-top: var(--space-2);
+}
+
+/* Smal (telefoon): rail wordt een horizontale chip-rij boven de lijst; koppen weg. */
+@media (max-width: 560px) {
+  .catalog-picker-layout {
+    flex-direction: column;
+  }
+
+  .catalog-picker-categories {
+    flex: 0 0 auto;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .catalog-picker-category {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .catalog-picker-category-heading {
+    display: none;
+  }
+}
+
 .catalog-picker-body {
   flex: 1 1 auto;
   min-height: 0;

@@ -1,10 +1,11 @@
 import { Check, ChevronDown, Package, X } from "lucide-react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatEuro } from "../../lib/money";
-import { formatUnit } from "../../lib/i18n/statusLabels";
+import { formatMeasurementProductGroup, formatUnit } from "../../lib/i18n/statusLabels";
 import type { MeasurementProductGroup, PortalProduct } from "../../lib/portalTypes";
 import { Alert } from "../ui/feedback/Alert";
 import { Field } from "../ui/forms/Field";
@@ -31,6 +32,14 @@ type CatalogProductPickerProps = {
 };
 
 const SEARCH_DEBOUNCE_MS = 300;
+
+/** Categorie voor het menu in de zoekdialoog (data-driven uit /instellingen/categorieen). */
+type PickerCategory = {
+  id: string;
+  name: string;
+  productGroep: MeasurementProductGroup | null;
+  sortOrder: number;
+};
 
 /** Korte, éénregelige samenvatting van een product (voor de triggerknop). */
 function productSummaryText(product: PortalProduct): string {
@@ -87,22 +96,46 @@ export default function CatalogProductPicker({
   // Onthoud het label van de laatst gekozen keuze, zodat de trigger ook klopt
   // wanneer het product buiten de (weer opgevraagde) zoekresultaten valt.
   const [lastSelected, setLastSelected] = useState<{ id: string; label: string } | null>(null);
+  // Categorie-menu (data-driven): éénmalig geladen bij openen; null = "Alles".
+  const [categories, setCategories] = useState<PickerCategory[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  // Oneindig scrollen door de catalogus (10.000+ producten): cursor + einde-vlag.
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [isDone, setIsDone] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Generatieteller: een lopende "meer laden" die van een oude filter is, wordt genegeerd.
+  const loadGenRef = useRef(0);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Alleen laden zolang de dialoog open is: gesloten pickers doen geen
-  // netwerkverkeer (meerdere pickers per pagina bij offerteregels/inmeten).
+  // Query-argumenten voor de picker: zoekterm + gekozen categorie/werksoort. Bepalen samen de
+  // "filtercontext"; wijzigen ze, dan begint het bladeren opnieuw op pagina 1.
+  const queryArgs = useMemo(
+    () => ({
+      tenantSlug: session.tenantId,
+      search: debouncedSearch || undefined,
+      limit: 40,
+      ...(productGroupHint ? { productGroep: productGroupHint } : {}),
+      ...(selectedCategoryId ? { categorieId: selectedCategoryId as Id<"categories"> } : {})
+    }),
+    [session.tenantId, debouncedSearch, productGroupHint, selectedCategoryId]
+  );
+
+  // Eerste pagina (her)laden zodra de dialoog opent of de filtercontext wijzigt. Gesloten
+  // pickers doen geen netwerkverkeer (meerdere pickers per pagina bij offerteregels/inmeten).
   useEffect(() => {
     if (!open) {
       return;
     }
 
-    let isActive = true;
+    const gen = (loadGenRef.current += 1);
+    let cancelled = false;
 
-    async function loadProducts() {
+    async function loadFirstPage() {
       const client = createConvexHttpClient(session);
 
       if (!client) {
@@ -114,45 +147,166 @@ export default function CatalogProductPicker({
       setError(null);
 
       try {
+        // Bewust géén `cursor` meesturen op de eerste pagina: dan werkt de picker ook nog tegen
+        // een prod-backend die de nieuwe args nog niet kent (valt terug op de eerste 30, zonder
+        // menu/scroll) i.p.v. te breken. `cursor` gaat alleen mee bij "meer laden" hieronder.
         const result = (await client.query(api.catalog.pickerSearch.searchPickerProducts, {
-          tenantSlug: session.tenantId,
-          search: debouncedSearch || undefined,
-          limit: 30,
-          ...(productGroupHint ? { productGroep: productGroupHint } : {})
-        })) as { items: PortalProduct[] };
+          ...queryArgs
+        })) as { items: PortalProduct[]; isDone?: boolean; nextCursor?: string | null };
 
-        if (isActive) {
-          setProducts(result.items ?? []);
+        if (cancelled || gen !== loadGenRef.current) {
+          return;
         }
+        setProducts(result.items ?? []);
+        setNextCursor(result.nextCursor ?? null);
+        setIsDone(result.isDone ?? true);
       } catch (loadError) {
         console.error(loadError);
-        if (isActive) {
+        if (!cancelled) {
           setProducts([]);
+          setNextCursor(null);
+          setIsDone(true);
           setError("Catalogusproducten konden niet worden opgehaald.");
         }
       } finally {
-        if (isActive) {
+        if (!cancelled) {
           setIsLoading(false);
         }
       }
     }
 
-    void loadProducts();
+    void loadFirstPage();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, queryArgs]);
+
+  // Volgende pagina bijladen (oneindig scrollen). De generatiecheck negeert een antwoord dat
+  // binnenkomt nadat de gebruiker de filter alweer heeft gewijzigd.
+  const loadMore = useCallback(async () => {
+    if (isDone || isLoadingMore || isLoading || !nextCursor) {
+      return;
+    }
+
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      return;
+    }
+
+    const gen = loadGenRef.current;
+    setIsLoadingMore(true);
+
+    try {
+      const result = (await client.query(api.catalog.pickerSearch.searchPickerProducts, {
+        ...queryArgs,
+        cursor: nextCursor
+      })) as { items: PortalProduct[]; isDone?: boolean; nextCursor?: string | null };
+
+      if (gen !== loadGenRef.current) {
+        return;
+      }
+      setProducts((prev) => [...prev, ...(result.items ?? [])]);
+      setNextCursor(result.nextCursor ?? null);
+      setIsDone(result.isDone ?? true);
+    } catch (loadError) {
+      console.error(loadError);
+    } finally {
+      if (gen === loadGenRef.current) {
+        setIsLoadingMore(false);
+      }
+    }
+  }, [session, queryArgs, nextCursor, isDone, isLoadingMore, isLoading]);
+
+  // Vult de lijst tot de scrollruimte gevuld is: als een (deels gefilterde) pagina de hoogte
+  // niet vult, is er niets om naar te scrollen — dan laden we automatisch door tot het einde.
+  useEffect(() => {
+    if (!open || isDone || isLoading || isLoadingMore || !nextCursor) {
+      return;
+    }
+    const el = bodyRef.current;
+    if (el && el.scrollHeight <= el.clientHeight + 8) {
+      void loadMore();
+    }
+  }, [open, products, isDone, isLoading, isLoadingMore, nextCursor, loadMore]);
+
+  // Categorieën voor het menu éénmalig laden bij openen (los van de zoekterm). Degradeert
+  // netjes: bestaat de query nog niet op de backend (vóór de deploy), dan blijft het menu leeg
+  // en werkt zoeken precies zoals voorheen.
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadCategories() {
+      const client = createConvexHttpClient(session);
+
+      if (!client) {
+        return;
+      }
+
+      try {
+        const result = (await client.query(api.catalog.pickerSearch.pickerCategories, {
+          tenantSlug: session.tenantId
+        })) as PickerCategory[];
+
+        if (isActive) {
+          setCategories(result ?? []);
+        }
+      } catch (loadError) {
+        console.error(loadError);
+        if (isActive) {
+          setCategories([]);
+        }
+      }
+    }
+
+    void loadCategories();
 
     return () => {
       isActive = false;
     };
-    // session.tenantId (niet het session-object) als dep: voorkomt een onnodige
-    // her-fetch als de ouder een nieuwe session-referentie doorgeeft. De query
-    // hangt alleen van tenantId af; het session-object wordt enkel doorgegeven
-    // aan de client-factory.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, debouncedSearch, session.tenantId, productGroupHint]);
+  }, [open, session.tenantId]);
 
   const selectedInResults = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? null,
     [products, selectedProductId]
   );
+
+  // In de meetcontext (productGroupHint gezet) tonen we alleen de categorieën van díé werksoort;
+  // in de winkel (geen hint) de hele catalogus. Menu pas tonen als er echt iets te kiezen valt.
+  const menuCategories = useMemo(
+    () =>
+      productGroupHint
+        ? categories.filter((category) => category.productGroep === productGroupHint)
+        : categories,
+    [categories, productGroupHint]
+  );
+  const showCategoryMenu = menuCategories.length >= 2;
+
+  // Groepeer de categorieën per werksoort (Vloeren, Behang, …) voor koppen in de rail.
+  // Insertievolgorde = beheer-sortering; categorieën zonder groep landen onder "Overig".
+  const categoryGroups = useMemo(() => {
+    const groups = new Map<string, { key: string; label: string; items: PickerCategory[] }>();
+    for (const category of menuCategories) {
+      const key = category.productGroep ?? "overig";
+      let group = groups.get(key);
+      if (!group) {
+        group = {
+          key,
+          label: category.productGroep ? formatMeasurementProductGroup(category.productGroep) : "Overig",
+          items: []
+        };
+        groups.set(key, group);
+      }
+      group.items.push(category);
+    }
+    return [...groups.values()];
+  }, [menuCategories]);
 
   // Triggertekst: eerst het product uit de resultaten, dan het onthouden label,
   // dan het door de ouder meegegeven label, dan een generieke terugval.
@@ -184,6 +338,9 @@ export default function CatalogProductPicker({
     setSearch("");
     setDebouncedSearch("");
     setProducts([]);
+    setSelectedCategoryId(null);
+    setNextCursor(null);
+    setIsDone(false);
     setOpen(true);
   }
 
@@ -218,7 +375,7 @@ export default function CatalogProductPicker({
         ariaLabelledBy={titleId}
         className="catalog-picker-dialog"
       >
-        <div className="catalog-picker-panel">
+        <div className={`catalog-picker-panel${showCategoryMenu ? " has-categories" : ""}`}>
           <div className="catalog-picker-header">
             <h2 id={titleId} className="catalog-picker-title">
               {label}
@@ -248,7 +405,50 @@ export default function CatalogProductPicker({
             />
           </div>
 
-          <div className="catalog-picker-body">
+          <div className="catalog-picker-layout">
+            {showCategoryMenu ? (
+              <nav className="catalog-picker-categories" aria-label="Filter op categorie">
+                <button
+                  type="button"
+                  className={`catalog-picker-category${selectedCategoryId === null ? " is-active" : ""}`}
+                  aria-pressed={selectedCategoryId === null}
+                  onClick={() => setSelectedCategoryId(null)}
+                >
+                  Alles
+                </button>
+                {categoryGroups.flatMap((group) => [
+                  <span
+                    key={`heading-${group.key}`}
+                    className="catalog-picker-category-heading"
+                    aria-hidden="true"
+                  >
+                    {group.label}
+                  </span>,
+                  ...group.items.map((category) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      className={`catalog-picker-category${selectedCategoryId === category.id ? " is-active" : ""}`}
+                      aria-pressed={selectedCategoryId === category.id}
+                      onClick={() => setSelectedCategoryId(category.id)}
+                    >
+                      {category.name}
+                    </button>
+                  ))
+                ])}
+              </nav>
+            ) : null}
+
+            <div
+              className="catalog-picker-body"
+              ref={bodyRef}
+              onScroll={(event) => {
+                const el = event.currentTarget;
+                if (el.scrollHeight - el.scrollTop - el.clientHeight < 160) {
+                  void loadMore();
+                }
+              }}
+            >
             {error ? <Alert variant="warning" description={error} /> : null}
 
             {!required && selectedProductId ? (
@@ -267,7 +467,7 @@ export default function CatalogProductPicker({
               <p className="catalog-picker-status">
                 {debouncedSearch
                   ? "Geen producten gevonden — pas de zoekterm aan."
-                  : "Begin met typen om te zoeken in de catalogus."}
+                  : "Geen producten in deze selectie."}
               </p>
             ) : (
               <ul className="catalog-picker-list">
@@ -306,6 +506,11 @@ export default function CatalogProductPicker({
                 })}
               </ul>
             )}
+
+            {isLoadingMore ? (
+              <p className="catalog-picker-status catalog-picker-status-more">Meer laden…</p>
+            ) : null}
+            </div>
           </div>
         </div>
       </BaseDialog>
