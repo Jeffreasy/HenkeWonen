@@ -1,4 +1,4 @@
-import { CalendarClock, FileText, Pencil, Ruler, XCircle } from "lucide-react";
+import { CalendarClock, FileText, Pencil, XCircle } from "lucide-react";
 import type { PortalCustomer, PortalProject } from "../../lib/portalTypes";
 import { formatDate } from "../../lib/dates";
 import { Badge } from "../ui/data-display/Badge";
@@ -9,8 +9,10 @@ type ProjectOverviewPanelProps = {
   project: PortalProject;
   customer: PortalCustomer | null;
   workflowEventsCount: number;
-  isStartingMeasurement: boolean;
-  onStartMeasurement: () => void;
+  /** Offerte-snelkoppeling tonen (alleen zolang een (nieuwe) offerte logisch is). */
+  showQuoteShortcut: boolean;
+  /** Inmeetbezoek-plannen tonen (alleen in de vroege fases, niet bij directe verkoop). */
+  showPlanMeasurement: boolean;
   onPlanMeasurement: () => void;
   onEditProject: () => void;
   onCancelProject: () => void;
@@ -21,8 +23,8 @@ export function ProjectOverviewPanel({
   project,
   customer,
   workflowEventsCount,
-  isStartingMeasurement,
-  onStartMeasurement,
+  showQuoteShortcut,
+  showPlanMeasurement,
   onPlanMeasurement,
   onEditProject,
   onCancelProject,
@@ -83,33 +85,30 @@ export function ProjectOverviewPanel({
         ))}
       </dl>
 
-      {canEdit ? (
-        // Twee gelijkwaardige paden voor een dossier: direct verkopen (offerte met
-        // catalogus) óf inmeten. Beide primair zodat "verkopen" net zo vindbaar is als
-        // inmeten; het inplannen van een inmeetbezoek is de secundaire variant.
+      {canEdit && (showQuoteShortcut || showPlanMeasurement) ? (
+        // Snelkoppelingen naast de "Volgende stap"-banner (die blijft de gids):
+        // de offerte-route voor als de winkel tóch direct wil verkopen, en het
+        // inplannen van een inmeetbezoek. "Inmeting starten" staat hier bewust
+        // niet meer — die actie leeft in de banner en op de Inmeting-tab.
         <div className="project-primary-actions">
-          <a
-            className="ui-button ui-button-primary ui-button-md"
-            href={`/portal/offertes?open=nieuw&project=${project.id}`}
-          >
-            <FileText size={17} aria-hidden="true" />
-            Offerte / verkoop maken
-          </a>
-          <Button
-            isLoading={isStartingMeasurement}
-            leftIcon={<Ruler size={17} aria-hidden="true" />}
-            onClick={onStartMeasurement}
-            variant="primary"
-          >
-            Inmeting starten
-          </Button>
-          <Button
-            leftIcon={<CalendarClock size={17} aria-hidden="true" />}
-            onClick={onPlanMeasurement}
-            variant="secondary"
-          >
-            Inmeetbezoek inplannen
-          </Button>
+          {showQuoteShortcut ? (
+            <a
+              className="ui-button ui-button-secondary ui-button-md"
+              href={`/portal/offertes?open=nieuw&project=${project.id}`}
+            >
+              <FileText size={17} aria-hidden="true" />
+              Offerte / verkoop maken
+            </a>
+          ) : null}
+          {showPlanMeasurement ? (
+            <Button
+              leftIcon={<CalendarClock size={17} aria-hidden="true" />}
+              onClick={onPlanMeasurement}
+              variant="secondary"
+            >
+              Inmeetbezoek inplannen
+            </Button>
+          ) : null}
         </div>
       ) : null}
 

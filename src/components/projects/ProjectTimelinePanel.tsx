@@ -20,6 +20,8 @@ type ProjectTimelinePanelProps = {
   /** Contactmomenten die aan dit project zijn gekoppeld: samengevoegd in de tijdlijn. */
   klantContacten?: PortalCustomerContact[];
   latestQuote?: Omit<PortalQuote, "lines"> | null;
+  /** Dossierstatus: bepaalt welke statusacties nú aan de beurt zijn. */
+  projectStatus: string;
   canEdit: boolean;
   onProcessAction: (action: ProjectAction) => void;
 };
@@ -72,6 +74,7 @@ export function ProjectTimelinePanel({
   workflowEvents,
   klantContacten = [],
   latestQuote,
+  projectStatus,
   canEdit,
   onProcessAction
 }: ProjectTimelinePanelProps) {
@@ -104,6 +107,22 @@ export function ProjectTimelinePanel({
     ? `${latestQuote.offertenummer} - ${formatQuoteStatus(latestQuote.status)}`
     : undefined;
 
+  // Statusacties fase-gebonden: een verse aanvraag toonde voorheen ook
+  // "Leverancier bestellen", "Export boekhouder" en "Project afsluiten" — een
+  // muur van knoppen die pas weken later relevant zijn. Elke actie verschijnt
+  // nu pas als hij aan de beurt is; de "Volgende stap"-banner blijft de gids.
+  const showAcceptQuote =
+    hasQuote && ["lead", "measurement_planned", "quote_draft", "quote_sent"].includes(projectStatus);
+  const showCreateOrder = projectStatus === "quote_accepted";
+  const showCreateInvoice =
+    canCreateInvoice &&
+    ["quote_accepted", "ordering", "execution_planned", "in_progress"].includes(projectStatus);
+  const showBookkeeperExport = ["invoiced", "paid"].includes(projectStatus);
+  const showCloseProject = ["invoiced", "paid"].includes(projectStatus);
+  const hasActions =
+    canEdit &&
+    (showAcceptQuote || showCreateOrder || showCreateInvoice || showBookkeeperExport || showCloseProject);
+
   return (
     <section className="panel project-timeline-panel">
       <SectionHeader
@@ -111,59 +130,60 @@ export function ProjectTimelinePanel({
         title="Dossiermomenten"
         description="Statusacties en klantcontact bij elkaar."
         actions={
-          canEdit ? (
+          hasActions ? (
             <div className="project-action-row">
-              <Button
-                onClick={() => onProcessAction("quote_accepted")}
-                disabled={!hasQuote}
-                size="sm"
-                variant="secondary"
-                leftIcon={<CheckCircle size={14} aria-hidden="true" />}
-                title={
-                  quoteContext ??
-                  "Maak eerst een offerte aan voordat je akkoord verwerkt."
-                }
-              >
-                Offerte akkoord
-              </Button>
-              <Button
-                onClick={() => onProcessAction("supplier_order_created")}
-                size="sm"
-                variant="secondary"
-                leftIcon={<ShoppingCart size={14} aria-hidden="true" />}
-              >
-                Leverancier bestellen
-              </Button>
-              <Button
-                onClick={() => onProcessAction("invoice_created")}
-                disabled={!canCreateInvoice}
-                size="sm"
-                variant="secondary"
-                leftIcon={<FileText size={14} aria-hidden="true" />}
-                title={
-                  latestQuote
-                    ? `Laatste offerte: ${quoteContext}`
-                    : "Maak of accepteer eerst een offerte voordat je een factuur aanmaakt."
-                }
-              >
-                Factuur aanmaken
-              </Button>
-              <Button
-                onClick={() => onProcessAction("bookkeeper_export_sent")}
-                size="sm"
-                variant="secondary"
-                leftIcon={<Send size={14} aria-hidden="true" />}
-              >
-                Export boekhouder
-              </Button>
-              <Button
-                onClick={() => onProcessAction("closed")}
-                size="sm"
-                variant="ghost"
-                leftIcon={<Archive size={14} aria-hidden="true" />}
-              >
-                Project afsluiten
-              </Button>
+              {showAcceptQuote ? (
+                <Button
+                  onClick={() => onProcessAction("quote_accepted")}
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={<CheckCircle size={14} aria-hidden="true" />}
+                  title={quoteContext}
+                >
+                  Offerte akkoord
+                </Button>
+              ) : null}
+              {showCreateOrder ? (
+                <Button
+                  onClick={() => onProcessAction("supplier_order_created")}
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={<ShoppingCart size={14} aria-hidden="true" />}
+                >
+                  Leverancier bestellen
+                </Button>
+              ) : null}
+              {showCreateInvoice ? (
+                <Button
+                  onClick={() => onProcessAction("invoice_created")}
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={<FileText size={14} aria-hidden="true" />}
+                  title={quoteContext ? `Laatste offerte: ${quoteContext}` : undefined}
+                >
+                  Factuur aanmaken
+                </Button>
+              ) : null}
+              {showBookkeeperExport ? (
+                <Button
+                  onClick={() => onProcessAction("bookkeeper_export_sent")}
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={<Send size={14} aria-hidden="true" />}
+                >
+                  Export boekhouder
+                </Button>
+              ) : null}
+              {showCloseProject ? (
+                <Button
+                  onClick={() => onProcessAction("closed")}
+                  size="sm"
+                  variant="ghost"
+                  leftIcon={<Archive size={14} aria-hidden="true" />}
+                >
+                  Project afsluiten
+                </Button>
+              ) : null}
             </div>
           ) : null
         }
@@ -172,7 +192,7 @@ export function ProjectTimelinePanel({
         emptyState={
           <EmptyState
             title="Nog geen dossiermomenten"
-            description="Gebruik de acties hierboven om opvolging vast te leggen."
+            description="Elke stap (inmeting, offerte, akkoord, factuur) verschijnt hier vanzelf in de tijdlijn."
           />
         }
         items={timelineItems.map(({ sortKey: _sortKey, ...item }) => item)}

@@ -457,6 +457,20 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
   const pendingProjectActionDetails = pendingProjectAction
     ? projectActionCopy[pendingProjectAction]
     : null;
+  // Fase-bewuste snelkoppelingen op de projectkaart: een nieuwe offerte is alleen
+  // zinvol tot (en met) de offertefase, en een inmeetbezoek plannen alleen in de
+  // vroege fases. Een directe-verkoopdossier (lead met "Offerte maken" als
+  // banneractie) krijgt geen inmeet-planknop — daar wordt niet gemeten.
+  const isDirectSaleLead = project.status === "lead" && detail.nextStep?.kind === "make_quote";
+  const showQuoteShortcut = [
+    "lead",
+    "measurement_planned",
+    "quote_draft",
+    "quote_sent",
+    "quote_rejected"
+  ].includes(project.status);
+  const showPlanMeasurement =
+    ["lead", "measurement_planned"].includes(project.status) && !isDirectSaleLead;
 
   return (
     <div className="grid">
@@ -514,8 +528,8 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
           project={project}
           customer={customer}
           workflowEventsCount={workflowEvents.length}
-          isStartingMeasurement={isStartingMeasurement}
-          onStartMeasurement={startMeasurementWorkflow}
+          showQuoteShortcut={showQuoteShortcut}
+          showPlanMeasurement={showPlanMeasurement}
           onPlanMeasurement={() => setIsPlanModalOpen(true)}
           onEditProject={() => setEditingProject((current) => !current)}
           onCancelProject={() => openProjectAction("cancelled")}
@@ -594,6 +608,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
                     workflowEvents={workflowEvents}
                     klantContacten={detail.klantContacten ?? []}
                     latestQuote={detail.latestQuote ?? null}
+                    projectStatus={project.status}
                     canEdit={canEditProject}
                     onProcessAction={openProjectAction}
                   />
