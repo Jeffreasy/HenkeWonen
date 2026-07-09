@@ -54,6 +54,9 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
   const [error, setError] = useState<string | null>(null);
   const [editingCustomer, setEditingCustomer] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  // Route "Gesprek of oriëntatie" uit het intakemenu vult het type alvast op
+  // "Bezoek"; de losse Toevoegen-knop houdt de gewone standaard (Notitie).
+  const [contactPrefillType, setContactPrefillType] = useState<"note" | "visit">("note");
   const [editingContact, setEditingContact] = useState<PortalCustomerContact | null>(null);
   const [pendingDeleteContact, setPendingDeleteContact] = useState<PortalCustomerContact | null>(null);
   const [pendingCustomerStatus, setPendingCustomerStatus] = useState<
@@ -536,7 +539,14 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       <div className="grid two-column customer-support-grid">
         <ContactListTable
           contacts={contacts}
-          onNew={canAddContact ? () => setIsContactModalOpen(true) : undefined}
+          onNew={
+            canAddContact
+              ? () => {
+                  setContactPrefillType("note");
+                  setIsContactModalOpen(true);
+                }
+              : undefined
+          }
           onEdit={canAddContact ? (contact) => setEditingContact(contact) : undefined}
           onDelete={canManage(session.role) ? (contact) => setPendingDeleteContact(contact) : undefined}
         />
@@ -546,7 +556,15 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         />
       </div>
 
-      {canAddContact ? <CustomerIntakePanel onStartProject={handleStartProject} /> : null}
+      {canAddContact ? (
+        <CustomerIntakePanel
+          onStartProject={handleStartProject}
+          onLogVisit={() => {
+            setContactPrefillType("visit");
+            setIsContactModalOpen(true);
+          }}
+        />
+      ) : null}
 
       <CustomerDossierAttachmentsPanel
         attachments={attachments}
@@ -565,6 +583,8 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
           onClose={() => setIsContactModalOpen(false)}
         >
           <AddContactForm
+            key={contactPrefillType}
+            initialValues={contactPrefillType === "visit" ? { type: "visit", title: "" } : undefined}
             onSubmit={handleAddContact}
             projectOptions={projects.map((project) => ({ id: project.id, titel: project.titel }))}
           />

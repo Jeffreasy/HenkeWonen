@@ -1,4 +1,4 @@
-import { ClipboardList } from "lucide-react";
+import { MessageSquareText, Ruler, ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import type { MeasurementWorktype } from "../../lib/measurementIntent";
 import { Button } from "../ui/forms/Button";
@@ -20,8 +20,14 @@ export type CustomerScopeOption = {
 
 type CustomerIntakePanelProps = {
   onStartProject: (scope: CustomerScopeOption) => Promise<void> | void;
+  /** Opent het contactmoment-formulier (route "gesprek / oriëntatie"). */
+  onLogVisit: () => void;
 };
 
+/**
+ * Werksoorten voor een inmeettraject. Deze lijst voedt óók de
+ * buitendienst-intake (FieldIntakeForm) — daar kiest de monteur één scope.
+ */
 export const customerScopeOptions: CustomerScopeOption[] = [
   {
     id: "verkoop",
@@ -112,21 +118,73 @@ export const customerScopeOptions: CustomerScopeOption[] = [
   }
 ];
 
-export function CustomerIntakePanel({ onStartProject }: CustomerIntakePanelProps) {
-  const [startingId, setStartingId] = useState<string | null>(null);
+const verkoopScope = customerScopeOptions.find((scope) => scope.id === "verkoop")!;
+const inmeetScopes = customerScopeOptions.filter((scope) => scope.id !== "verkoop");
 
-  async function handleStart(scope: CustomerScopeOption) {
-    if (startingId) {
+/**
+ * Combineert meerdere gekozen werksoorten tot één dossier: de klant die de
+ * woonkamer laat inrichten (vloer + gordijnen + behang) krijgt één traject,
+ * geen drie losse projecten. De eerste keuze bepaalt de inmeet-tab-hint.
+ */
+function combinedScope(selected: CustomerScopeOption[]): CustomerScopeOption {
+  if (selected.length === 1) {
+    return selected[0];
+  }
+  const labels = selected.map((scope) => scope.label);
+  return {
+    id: selected.map((scope) => scope.id).join("+"),
+    label: labels.join(" + "),
+    description: "",
+    projectTitle: labels.join(" + "),
+    projectDescription: `Aanvraag gestart vanuit klantdossier: ${labels.join(", ").toLowerCase()}.`,
+    werksoort: selected[0].werksoort
+  };
+}
+
+/**
+ * Winkel-intake in drie routes, in de volgorde van een echt winkelgesprek:
+ * de meeste klanten komen práten over hun inrichting (gesprek vastleggen,
+ * staalboek mee, opvolgen), een deel plant een inmeettraject (vaak meerdere
+ * werksoorten tegelijk), en soms rekent iemand direct iets af.
+ */
+export function CustomerIntakePanel({ onStartProject, onLogVisit }: CustomerIntakePanelProps) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isStarting, setIsStarting] = useState(false);
+
+  function toggleWorktype(id: string) {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    );
+  }
+
+  async function startSelected() {
+    // Volgorde van aanklikken bewaren: de eerste keuze bepaalt de inmeet-tab.
+    const selected = selectedIds
+      .map((id) => inmeetScopes.find((scope) => scope.id === id))
+      .filter((scope): scope is CustomerScopeOption => Boolean(scope));
+    if (selected.length === 0 || isStarting) {
       return;
     }
 
-    setStartingId(scope.id);
+    setIsStarting(true);
     try {
       // Bij succes navigeert de aanroeper weg (component unmount); bij een fout
       // wordt de knop in finally weer vrijgegeven zodat de gebruiker opnieuw kan.
-      await onStartProject(scope);
+      await onStartProject(combinedScope(selected));
     } finally {
-      setStartingId(null);
+      setIsStarting(false);
+    }
+  }
+
+  async function startDirectSale() {
+    if (isStarting) {
+      return;
+    }
+    setIsStarting(true);
+    try {
+      await onStartProject(verkoopScope);
+    } finally {
+      setIsStarting(false);
     }
   }
 
@@ -134,30 +192,82 @@ export function CustomerIntakePanel({ onStartProject }: CustomerIntakePanelProps
     <section className="panel customer-detail-panel">
       <SectionHeader
         compact
-        title="Aanvraag intake"
-        description="Verkoop direct een product, of kies een werksoort om in te meten."
+        title="Wat komt de klant doen?"
+        description="Leg een gesprek vast, start een inmeettraject of verkoop direct een product."
       />
-      <div className="customer-scope-list">
-        {customerScopeOptions.map((scope) => (
-          <details className="customer-scope-disclosure" key={scope.id}>
-            <summary>
-              <span>{scope.label}</span>
-              <small className="muted">{scope.description}</small>
-            </summary>
-            <div className="customer-scope-content">
-              <Button
-                leftIcon={<ClipboardList size={16} aria-hidden="true" />}
-                onClick={() => void handleStart(scope)}
-                disabled={startingId !== null}
-                isLoading={startingId === scope.id}
-                size="sm"
-                variant="primary"
-              >
-                Aanvraag starten
-              </Button>
-            </div>
-          </details>
-        ))}
+      <div className="customer-route-grid">
+        <div className="customer-route-card">
+          <div className="customer-route-heading">
+            <MessageSquareText size={18} aria-hidden="true" />
+            <strong>Gesprek of oriëntatie</strong>
+          </div>
+          <p className="muted">
+            Klant kijkt rond of praat over de inrichting. Leg het gesprek vast, geef eventueel een
+            staalboek mee en zet een opvolgdatum.
+          </p>
+          <div className="customer-route-action">
+            <Button variant="primary" size="sm" onClick={onLogVisit} disabled={isStarting}>
+              Gesprek vastleggen
+            </Button>
+          </div>
+        </div>
+
+        <div className="customer-route-card">
+          <div className="customer-route-heading">
+            <Ruler size={18} aria-hidden="true" />
+            <strong>Inmeettraject starten</strong>
+          </div>
+          <p className="muted">
+            Klant wil een offerte met inmeten. Kies wat er speelt — meerdere werksoorten mag, dat
+            wordt één dossier. De maten vul je pas in bij de inmeting.
+          </p>
+          <div className="customer-route-chips" role="group" aria-label="Werksoorten voor het inmeettraject">
+            {inmeetScopes.map((scope) => {
+              const isSelected = selectedIds.includes(scope.id);
+              return (
+                <button
+                  className={isSelected ? "customer-route-chip selected" : "customer-route-chip"}
+                  key={scope.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  title={scope.description}
+                  onClick={() => toggleWorktype(scope.id)}
+                >
+                  {scope.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="customer-route-action">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => void startSelected()}
+              disabled={selectedIds.length === 0 || isStarting}
+              isLoading={isStarting && selectedIds.length > 0}
+            >
+              {selectedIds.length > 1
+                ? `Inmeettraject starten (${selectedIds.length} werksoorten)`
+                : "Inmeettraject starten"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="customer-route-card">
+          <div className="customer-route-heading">
+            <ShoppingBag size={18} aria-hidden="true" />
+            <strong>Directe verkoop</strong>
+          </div>
+          <p className="muted">
+            Klant koopt nu een product — bijvoorbeeld een lamp of karpet. Meteen door naar de
+            offerte met de catalogus.
+          </p>
+          <div className="customer-route-action">
+            <Button variant="secondary" size="sm" onClick={() => void startDirectSale()} disabled={isStarting}>
+              Verkoop starten
+            </Button>
+          </div>
+        </div>
       </div>
     </section>
   );
