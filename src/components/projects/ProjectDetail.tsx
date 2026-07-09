@@ -12,6 +12,7 @@ import { showErrorToast, showToast } from "../../lib/toast";
 import type {
   InvoiceStatus,
   PortalCustomer,
+  PortalCustomerContact,
   PortalProject,
   PortalProjectTask,
   PortalQuote,
@@ -51,6 +52,8 @@ type ProjectDetailResult = {
   inmeetMonteur?: string | null;
   customer: PortalCustomer | null;
   workflowEvents?: PortalWorkflowEvent[];
+  /** Contactmomenten gekoppeld aan dit project (samengevoegde tijdlijn). */
+  klantContacten?: PortalCustomerContact[];
   projectTasks?: PortalProjectTask[];
   latestQuote?: Omit<PortalQuote, "lines"> | null;
   invoice?: {
@@ -589,6 +592,7 @@ export default function ProjectDetail({ session, projectId }: ProjectDetailProps
 
                   <ProjectTimelinePanel
                     workflowEvents={workflowEvents}
+                    klantContacten={detail.klantContacten ?? []}
                     latestQuote={detail.latestQuote ?? null}
                     canEdit={canEditProject}
                     onProcessAction={openProjectAction}

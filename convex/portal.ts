@@ -322,6 +322,10 @@ export {
   updateCustomer,
   customerDetail,
   createCustomerContact,
+  updateCustomerContact,
+  deleteCustomerContact,
+  markCustomerLoanedItemReturned,
+  customerFollowUps,
   deleteCustomer
 } from "./beheer/customers";
 export {
@@ -373,7 +377,7 @@ export {
 } from "./beheer/suppliers";
 export { listQuoteTemplates, updateQuoteTemplateContent } from "./offertes/templates";
 export { listCategories, upsertCategory } from "./beheer/categories";
-export { listServiceRules, upsertServiceRule } from "./beheer/serviceCostRules";
+export { listServiceRules } from "./beheer/serviceCostRules";
 export { fieldServiceWorkspace, fieldProjectWorkspace } from "./projecten/fieldService";
 export {
   listInvoices,

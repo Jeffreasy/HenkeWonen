@@ -166,8 +166,14 @@ export function ImportProfilesTable({
         getRowKey={(profile) => profile.id}
         loading={isLoading}
         error={error}
-        emptyTitle="Geen importprofielen gevonden"
-        emptyDescription="Pas filters of zoekterm aan."
+        emptyTitle={
+          profileCounts.total === 0 ? "Nog geen importprofielen" : "Geen importprofielen gevonden"
+        }
+        emptyDescription={
+          profileCounts.total === 0
+            ? "De V2-catalogusimport gebruikt geen importprofielen. De btw-modus per leverancier beheer je op de Leveranciers-pagina; profielen verschijnen hier pas weer bij een Excel-prijslijstimport."
+            : "Pas filters of zoekterm aan."
+        }
         density="compact"
         mobileMode="cards"
         renderMobileCard={(profile) => (

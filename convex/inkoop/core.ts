@@ -22,6 +22,15 @@ function roundCents(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+function ensureNotFieldMode(workspaceMode: string) {
+  // Buitendienst-werkplek (field) krijgt geen inkoopfinanciën: de veld-UI stript
+  // bedragen bewust (fieldService), maar zonder deze server-side grens kon een
+  // monteur de inkoopprijzen via een directe API-aanroep alsnog opvragen.
+  if (workspaceMode === "field") {
+    throw new ConvexError("Leveranciersbestellingen zijn niet beschikbaar in de buitendienst-werkplek.");
+  }
+}
+
 /**
  * Kiest de inkoopprijs uit de productPrices: voorkeur net_purchase boven purchase,
  * daarna de nieuwste geldige. Nooit klant-/adviesprijzen — die zijn bewust gescheiden.
@@ -279,12 +288,13 @@ export const listSupplierOrders = query({
     projectId: v.string()
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+    const { tenant, workspaceMode } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
       "viewer",
       "user",
       "editor",
       "admin"
     ]);
+    ensureNotFieldMode(workspaceMode);
 
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
@@ -336,12 +346,13 @@ export const supplierOrderDetail = query({
     bestellingId: v.string()
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+    const { tenant, workspaceMode } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
       "viewer",
       "user",
       "editor",
       "admin"
     ]);
+    ensureNotFieldMode(workspaceMode);
 
     const order = await ctx.db.get(args.bestellingId as Id<"supplierOrders">);
 

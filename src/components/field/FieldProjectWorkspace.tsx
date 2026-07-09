@@ -73,7 +73,14 @@ function visitUrgency(workspace: FieldProjectWorkspaceResult): FieldUrgency {
 
   const measurementStatus = workspace.visit.measurementStatus;
 
-  if (measurementStatus === "reviewed" || measurementStatus === "converted_to_quote") {
+  // "measured" telt ook als afgerond: de monteur is klaar en de bal ligt bij de
+  // winkel. Zonder deze tak viel een net-afgeronde inmeting terug op de oranje
+  // "Meetmoment ontbreekt"-melding (de backend geeft dan geen visitAt meer terug).
+  if (
+    measurementStatus === "measured" ||
+    measurementStatus === "reviewed" ||
+    measurementStatus === "converted_to_quote"
+  ) {
     return {
       level: "green",
       label: "Groen",
@@ -255,7 +262,10 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
   // beschikbaar zijn — de opvolgtaak stuurt de monteur naar de klant en die
   // moet het akkoord aan de deur kunnen vastleggen.
   const canEditSelectedQuote = canEditQuote;
-  const canCreateConceptQuote = canEditQuote && !draftQuote && !selectedQuote;
+  // Alleen blokkeren zolang er al een concept bestaat. Een verstuurde/geaccepteerde
+  // offerte mag een nieuw concept niet tegenhouden (meerwerk aan de deur): de
+  // monteur meet dan opnieuw in en moet de regels in een nieuw concept kwijt kunnen.
+  const canCreateConceptQuote = canEditQuote && !draftQuote;
 
   async function createConceptQuote() {
     if (!workspace || isCreatingQuote) {

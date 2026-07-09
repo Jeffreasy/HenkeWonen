@@ -69,8 +69,71 @@ export function FieldDossierPanel({
   onChanged
 }: FieldDossierPanelProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [isNoteOpen, setIsNoteOpen] = useState(false);
+  const [isSavingNote, setIsSavingNote] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canUpload = canEditDossiers(session.role);
+
+  async function saveFieldNote() {
+    const text = noteDraft.trim();
+    if (!text || isSavingNote) {
+      return;
+    }
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      showToast({ title: "Verbinding mislukt", description: "Kan de notitie nu niet opslaan.", tone: "error" });
+      return;
+    }
+
+    setIsSavingNote(true);
+    try {
+      // Eén vrij tekstveld voor snelheid aan de deur: de eerste regel wordt de
+      // titel, de volledige tekst gaat mee als omschrijving wanneer er meer is.
+      const firstLine = text.split("\n")[0].slice(0, 80);
+      await client.mutation(api.portal.createCustomerContact, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        klantId,
+        type: "note",
+        titel: firstLine,
+        omschrijving: text.length > firstLine.length ? text : undefined,
+        // De monteur werkt in projectcontext: automatisch koppelen zodat de
+        // notitie ook in de projecttijdlijn van de winkel verschijnt.
+        projectId,
+        zichtbaarVoorKlant: false
+      });
+      setNoteDraft("");
+      setIsNoteOpen(false);
+      showToast({ title: "Notitie vastgelegd", tone: "success" });
+      await onChanged();
+    } catch (noteError) {
+      showErrorToast(noteError, "Notitie kon niet worden vastgelegd");
+    } finally {
+      setIsSavingNote(false);
+    }
+  }
+
+  async function markReturned(contact: PortalCustomerContact) {
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      showToast({ title: "Verbinding mislukt", description: "Kan de retour nu niet vastleggen.", tone: "error" });
+      return;
+    }
+
+    try {
+      await client.mutation(api.portal.markCustomerLoanedItemReturned, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        contactId: contact.id,
+        returned: true
+      });
+      showToast({ title: "Retour vastgelegd", description: contact.uitgeleendItemNaam ?? contact.titel, tone: "success" });
+      await onChanged();
+    } catch (returnError) {
+      showErrorToast(returnError, "Retour kon niet worden vastgelegd");
+    }
+  }
 
   async function uploadPhoto(file: File) {
     const client = createConvexHttpClient(session);
@@ -188,7 +251,37 @@ export function FieldDossierPanel({
           compact
           title="Contactmomenten"
           description="Afspraken en notities van de winkel — incl. uitgeleende stalen."
+          actions={
+            canUpload ? (
+              <Button onClick={() => setIsNoteOpen((open) => !open)} size="sm" variant="secondary">
+                {isNoteOpen ? "Annuleren" : "Notitie toevoegen"}
+              </Button>
+            ) : null
+          }
         />
+        {isNoteOpen ? (
+          <div className="grid" style={{ gap: 8, marginBottom: 12 }}>
+            <textarea
+              aria-label="Nieuwe notitie"
+              className="ui-control"
+              placeholder="Bijv. klant wil ook de overloop laten doen; stalenboek retour ontvangen."
+              rows={3}
+              value={noteDraft}
+              onChange={(event) => setNoteDraft(event.target.value)}
+            />
+            <div className="toolbar">
+              <Button
+                disabled={!noteDraft.trim()}
+                isLoading={isSavingNote}
+                onClick={() => void saveFieldNote()}
+                size="sm"
+                variant="primary"
+              >
+                Notitie opslaan
+              </Button>
+            </div>
+          </div>
+        ) : null}
         {contacts.length === 0 ? (
           <p className="muted">Nog geen contactmomenten.</p>
         ) : (
@@ -200,6 +293,7 @@ export function FieldDossierPanel({
                   <small className="muted">
                     {" "}
                     {CONTACT_TYPE_LABEL[contact.type]} · {formatDate(contact.aangemaaktOp)}
+                    {contact.vastgelegdDoor ? ` · ${contact.vastgelegdDoor}` : ""}
                   </small>
                   {contact.type === "loaned_item" && contact.uitgeleendItemNaam && !contact.geretourneerdOp ? (
                     <small>
@@ -212,8 +306,20 @@ export function FieldDossierPanel({
                   ) : null}
                   {contact.omschrijving ? <small className="muted"> — {contact.omschrijving}</small> : null}
                 </span>
+                {canUpload && contact.type === "loaned_item" && !contact.geretourneerdOp ? (
+                  <Button onClick={() => void markReturned(contact)} size="sm" variant="ghost">
+                    Retour ontvangen
+                  </Button>
+                ) : null}
               </li>
             ))}
+            {contacts.length > 6 ? (
+              <li>
+                <small className="muted">
+                  +{contacts.length - 6} oudere contactmomenten — zie het klantdossier in de winkel.
+                </small>
+              </li>
+            ) : null}
           </ul>
         )}
       </article>

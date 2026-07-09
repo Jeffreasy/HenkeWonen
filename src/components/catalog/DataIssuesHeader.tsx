@@ -1,4 +1,4 @@
-import { CheckCircle2, RefreshCw, ShieldAlert } from "lucide-react";
+import { CheckCircle2, CopyCheck, RefreshCw, ScanSearch, ShieldAlert } from "lucide-react";
 import { Alert } from "../ui/feedback/Alert";
 import { Badge } from "../ui/data-display/Badge";
 import { Button } from "../ui/forms/Button";
@@ -13,6 +13,8 @@ type DuplicateEanReview = {
 type DataIssuesHeaderProps = {
   isLoading: boolean;
   isSaving: boolean;
+  /** Voortgangstekst tijdens de catalogus-scan, bv. "4/21 · Casamance". */
+  syncProgress: string | null;
   hasOpenIssues: boolean;
   review: DuplicateEanReview | null;
   error: string | null;
@@ -22,21 +24,22 @@ type DataIssuesHeaderProps = {
     reviewed: number;
     accepted: number;
     resolved: number;
-    missingIssueRecords: number;
   };
   nextOpenIssue?: DuplicateEanIssue;
   supplierOptionsCount: number;
   visibleProductCount: number;
-  visibleSourceFileCount: number;
   filteredGroupsCount: number;
   onRefresh: () => void | Promise<void>;
   onSync: () => void | Promise<void>;
+  /** Opent de bevestiging om alle open signalen op "Gescheiden houden" te zetten. */
+  onBulkKeepSeparate: () => void;
 };
 
 
 export function DataIssuesHeader({
   isLoading,
   isSaving,
+  syncProgress,
   hasOpenIssues,
   review,
   error,
@@ -44,10 +47,10 @@ export function DataIssuesHeader({
   nextOpenIssue,
   supplierOptionsCount,
   visibleProductCount,
-  visibleSourceFileCount,
   filteredGroupsCount,
   onRefresh,
-  onSync
+  onSync,
+  onBulkKeepSeparate
 }: DataIssuesHeaderProps) {
   return (
     <>
@@ -59,7 +62,9 @@ export function DataIssuesHeader({
               ? "Dubbele EAN-signalen laden"
               : hasOpenIssues
                 ? `${numberText(summary.open)} EAN-groepen vragen beoordeling`
-                : "Alle EAN-signalen zijn beoordeeld"}
+                : summary.total > 0
+                  ? "Alle EAN-signalen zijn beoordeeld"
+                  : "Nog geen EAN-signalen geregistreerd"}
           </h2>
           <p className="muted issue-workbench-copy">
             EAN is een controlesignaal. Producten worden nooit automatisch samengevoegd.
@@ -67,7 +72,15 @@ export function DataIssuesHeader({
         </div>
         <div className="toolbar">
           <Badge
-            variant={isLoading || !review ? "neutral" : hasOpenIssues ? "warning" : "success"}
+            variant={
+              isLoading || !review
+                ? "neutral"
+                : hasOpenIssues
+                  ? "warning"
+                  : summary.total > 0
+                    ? "success"
+                    : "neutral"
+            }
             icon={
               isLoading || !review ? (
                 <RefreshCw size={14} aria-hidden="true" />
@@ -82,7 +95,9 @@ export function DataIssuesHeader({
               ? "Laden"
               : hasOpenIssues
                 ? "Controle nodig"
-                : "Productcontrole gereed"}
+                : summary.total > 0
+                  ? "Productcontrole gereed"
+                  : "Nog niet gescand"}
           </Badge>
           <Button
             leftIcon={<RefreshCw size={17} aria-hidden="true" />}
@@ -93,13 +108,23 @@ export function DataIssuesHeader({
             Verversen
           </Button>
           <Button
-            variant="secondary"
-            leftIcon={<RefreshCw size={17} aria-hidden="true" />}
+            variant="primary"
+            leftIcon={<ScanSearch size={17} aria-hidden="true" />}
             onClick={onSync}
             disabled={isSaving || isLoading}
           >
-            Signalen bijwerken
+            {syncProgress ? `Bezig… ${syncProgress}` : "Catalogus scannen"}
           </Button>
+          {hasOpenIssues ? (
+            <Button
+              variant="secondary"
+              leftIcon={<CopyCheck size={17} aria-hidden="true" />}
+              onClick={onBulkKeepSeparate}
+              disabled={isSaving || isLoading}
+            >
+              Alles gescheiden houden ({numberText(summary.open)})
+            </Button>
+          ) : null}
         </div>
       </div>
       <Alert
@@ -173,14 +198,9 @@ export function DataIssuesHeader({
 
           <div className="issue-signal-row">
             <Badge variant="neutral">{numberText(visibleProductCount)} zichtbare producten</Badge>
-            <Badge variant="neutral">{numberText(visibleSourceFileCount)} bronbestanden</Badge>
-            {summary.missingIssueRecords > 0 ? (
-              <Badge variant="warning">
-                {numberText(summary.missingIssueRecords)} signaal nog bij te werken
-              </Badge>
-            ) : (
-              <Badge variant="success">Alle signalen opgeslagen</Badge>
-            )}
+            {summary.total === 0 ? (
+              <Badge variant="neutral">Nog niet gescand? Gebruik “Catalogus scannen”.</Badge>
+            ) : null}
           </div>
         </>
       ) : null}

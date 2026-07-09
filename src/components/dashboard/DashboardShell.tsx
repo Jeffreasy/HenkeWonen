@@ -17,6 +17,7 @@ import { DashboardInvoiceStrip } from "./DashboardInvoiceStrip";
 import { DashboardWorkOverview, type DashboardWorkItem } from "./DashboardWorkOverview";
 import type { PriorityCounts } from "../ui/data-display/PriorityCountStrip";
 import { DashboardQuoteFollowUps, type DashboardQuoteFollowUp } from "./DashboardQuoteFollowUps";
+import { DashboardCustomerFollowUps } from "./DashboardCustomerFollowUps";
 import { DashboardRecentProjects } from "./DashboardRecentProjects";
 import { DashboardAgendaWidget, type DashboardAgenda } from "./DashboardAgendaWidget";
 import { KlantStapModal, type KlantKeuze } from "./KlantStapModal";
@@ -244,6 +245,8 @@ export default function DashboardShell({ session }: DashboardShellProps) {
       />
 
       <DashboardQuoteFollowUps isLoading={isLoading} quoteFollowUps={dashboard.quoteFollowUps} />
+
+      <DashboardCustomerFollowUps session={session} />
 
       <DashboardAgendaWidget
         isLoading={isLoading}

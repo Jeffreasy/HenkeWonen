@@ -18,6 +18,7 @@
     "catalog:reconcile": "node tools/run_python_tool.mjs tools/reconcile_catalog_sources.py",
     "catalog:reset": "node tools/reset_catalog_import.mjs",
     "catalog:import": "node tools/upload_catalog_batch_import.mjs",
+    "catalog:import:v2": "node tools/import_v2_dataset.mjs",
     "catalog:import:prod": "node tools/upload_catalog_batch_import.mjs --production --target=production",
     "catalog:import:dev": "node tools/upload_catalog_batch_import.mjs --allow-unknown-vat",
     "catalog:import:legacy": "node tools/upload_catalog_import.mjs",

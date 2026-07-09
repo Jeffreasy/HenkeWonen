@@ -44,6 +44,7 @@ import {
   calculatorForService,
   deriveLineForRoom
 } from "../../../lib/quotes/roomLineDerivation";
+import { formatCalculationType } from "../../catalog/serviceRuleCatalog";
 import CatalogProductPicker from "../../catalog/CatalogProductPicker";
 import { Alert } from "../../ui/feedback/Alert";
 import { Button } from "../../ui/forms/Button";
@@ -103,6 +104,9 @@ type MeasurementAssignPanelProps = {
   onAdded: () => void | Promise<void>;
   /** Snelle ruimtenamen voor het inline toevoegen. */
   roomPresets: Array<{ label: string; name: string }>;
+  /** Werksoort-hint uit de dossier-intake: opent op de bijbehorende product-tab
+   *  i.p.v. altijd op "vloer". Een herstelde concept-invoer wint hierna alsnog. */
+  initialAddType?: AddType;
 };
 
 /** Eenheid waarmee de richtprijs wordt opgezocht, per rekenmachine. */
@@ -248,13 +252,17 @@ export default function MeasurementAssignPanel({
   selectedRoomIds,
   onSelectedRoomIdsChange,
   onAdded,
-  roomPresets
+  roomPresets,
+  initialAddType
 }: MeasurementAssignPanelProps) {
-  const [addType, setAddType] = useState<AddType>("vloer");
+  const [addType, setAddType] = useState<AddType>(initialAddType ?? "vloer");
   const [product, setProduct] = useState<PortalProduct | null>(null);
   const [productPrice, setProductPrice] = useState<IndicativePriceResult | null>(null);
   const [serviceRules, setServiceRules] = useState<ServiceRule[]>([]);
   const [serviceRuleId, setServiceRuleId] = useState("");
+  // Aantal voor vaste diensten (berekeningType fixed/manual): "Vinyl trap" of
+  // "Strippen" heeft geen maat-afleiding en wordt X keer toegepast.
+  const [serviceQuantity, setServiceQuantity] = useState("1");
   const [bundleRuleIds, setBundleRuleIds] = useState<string[]>([]);
 
   const [patternType, setPatternType] = useState<PatternType>("straight");
@@ -660,9 +668,15 @@ export default function MeasurementAssignPanel({
       doorOpeningM: Number(doorOpeningM.replace(",", ".")) || 0,
       rollWidthCm: Number(rollWidthCm.replace(",", ".")) || undefined,
       rollLengthM: Number(rollLengthM.replace(",", ".")) || undefined,
-      patternRepeatCm: Number(patternRepeatCm.replace(",", ".")) || 0
+      patternRepeatCm: Number(patternRepeatCm.replace(",", ".")) || 0,
+      // Vaste dienst: aantal keren toepassen (rekenmachine "manual").
+      // Eenheid "piece" (canonieke sleutel, weergave = "stuk"): "stuk" zelf is
+      // geen geldige prijseenheid voor isUnitCompatible en zou de richtprijs
+      // in de regellijst verbergen.
+      manualQuantity: Number(serviceQuantity.replace(",", ".")) || 0,
+      manualUnit: "piece"
     }),
-    [patternType, rollWidthM, doorOpeningM, rollWidthCm, rollLengthM, patternRepeatCm]
+    [patternType, rollWidthM, doorOpeningM, rollWidthCm, rollLengthM, patternRepeatCm, serviceQuantity]
   );
 
   function toggleRoom(roomId: string) {
@@ -825,7 +839,12 @@ export default function MeasurementAssignPanel({
       ? isMatrixReady
       : isSpecialty
         ? Boolean(specialty) && !specialty?.validationError && (specialty?.aantal ?? 0) > 0
-        : calculator !== null && calculator !== "manual");
+        : isService
+          ? // Diensten: maat-afgeleid (per m²/m¹) kan altijd; vaste tarieven
+            // ("Vinyl trap", "Strippen") gaan via een handmatig aantal (> 0).
+            calculator !== null &&
+            (calculator !== "manual" || (Number(serviceQuantity.replace(",", ".")) || 0) > 0)
+          : calculator !== null && calculator !== "manual");
 
   function productSnapshot(): Partial<BulkRegel> {
     if (!product) return {};
@@ -952,7 +971,9 @@ export default function MeasurementAssignPanel({
           snijverliesPct: main.snijverliesPct,
           aantal: main.aantal,
           eenheid: main.eenheid,
-          offerteRegelType: main.offerteRegelType,
+          // Vaste diensten lopen via de "manual"-rekenmachine maar blijven een
+          // werkzaamheid — anders verliest de offerte het Werkzaamheid-label.
+          offerteRegelType: isService && main.offerteRegelType === "manual" ? "service" : main.offerteRegelType,
           ...snapshot
         });
 
@@ -1084,7 +1105,15 @@ export default function MeasurementAssignPanel({
           productGroupHint={productGroupHint}
           selectedProductId={product?.id ?? ""}
           selectedProductLabel={productLabel}
-          onSelect={(next) => setProduct(next)}
+          onSelect={(next) => {
+            setProduct(next);
+            // Stofbreedte voorinvullen vanuit het product (bv. kamerhoog 3,05m
+            // bij Headlam) — de default 1,40 geeft anders een banenadvies dat
+            // niet bij de gekozen stof past. Blijft handmatig aanpasbaar.
+            if (addType === "gordijn" && next?.breedteMm && next.breedteMm > 0) {
+              setCurtainFabricWidthM(String(next.breedteMm / 1000));
+            }
+          }}
           label={`${activeTypeLabel} kiezen`}
           showPriceInLabel
         />
@@ -1100,15 +1129,27 @@ export default function MeasurementAssignPanel({
               .filter((rule) => rule.status === "active")
               .map((rule) => (
                 <option key={rule._id} value={rule._id}>
-                  {rule.naam} — {formatEuro(rule.prijsExBtw)} /{" "}
-                  {rule.berekeningType === "per_meter" ? "m" : "m²"}
+                  {rule.naam} — {formatEuro(rule.prijsExBtw)} excl. · {formatCalculationType(rule.berekeningType)}
                 </option>
               ))}
           </Select>
         </Field>
       )}
 
-      {calculator === "manual" ? (
+      {isService && calculator === "manual" ? (
+        <Field
+          htmlFor="assign-service-quantity"
+          label="Aantal"
+          helpText="Vast tarief of per rol/trede: vul het aantal keren in dat de dienst geldt."
+        >
+          <Input
+            id="assign-service-quantity"
+            inputMode="decimal"
+            value={serviceQuantity}
+            onChange={(event) => setServiceQuantity(event.target.value)}
+          />
+        </Field>
+      ) : calculator === "manual" ? (
         <Alert
           variant="info"
           description="Dit product wordt per stuk/maatwerk afgerekend en kan hier niet automatisch berekend worden (bv. een karpet). Gebruik hiervoor een vrije regel in de winkel-inmeting."
@@ -1419,7 +1460,7 @@ export default function MeasurementAssignPanel({
               />
             ) : wcPrice?.indicative ? (
               <p className="muted" style={{ margin: 0, fontSize: "var(--text-sm)" }}>
-                Richtprijs: <strong>{formatEuro(wcPrice.indicative.unitPriceExVat)} / stuk</strong>{" "}
+                Richtprijs: <strong>{formatEuro(wcPrice.indicative.unitPriceExVat)} / stuk excl. btw</strong>{" "}
                 · maat {wcPrice.indicative.matchedWidthCm}×{wcPrice.indicative.matchedHeightCm} cm
               </p>
             ) : null
@@ -1437,7 +1478,7 @@ export default function MeasurementAssignPanel({
               {specialty.aantal} {formatUnit(specialty.eenheid)}
             </strong>
             {productPrice?.indicative
-              ? ` · ${formatEuro(productPrice.indicative.unitPriceExVat)} / ${formatUnit(specialty.eenheid)} (richtprijs)`
+              ? ` · ${formatEuro(productPrice.indicative.unitPriceExVat)} / ${formatUnit(specialty.eenheid)} excl. btw (richtprijs)`
               : ""}
           </p>
         )
@@ -1628,8 +1669,7 @@ export default function MeasurementAssignPanel({
                   checked={bundleRuleIds.includes(rule._id)}
                   onChange={() => toggleBundle(rule._id)}
                 />
-                {rule.naam} — {formatEuro(rule.prijsExBtw)} /{" "}
-                {rule.berekeningType === "per_meter" ? "m" : "m²"}
+                {rule.naam} — {formatEuro(rule.prijsExBtw)} excl. · {formatCalculationType(rule.berekeningType)}
               </label>
             ))}
           </div>

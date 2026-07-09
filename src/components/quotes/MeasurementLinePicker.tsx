@@ -401,7 +401,7 @@ export default function MeasurementLinePicker({
               title="Geen inmeetregels klaar voor offerte"
               description={
                 isFieldMode
-                  ? "Zet bij Stap 3 van Inmeten eerst een meetregel klaar voor de conceptofferte."
+                  ? "Zet bij Stap 2 - Inmeetregels eerst een meetregel klaar voor de conceptofferte."
                   : "Zet bij Inmeten eerst een regel klaar voor de offerte."
               }
             />
@@ -459,7 +459,9 @@ export default function MeasurementLinePicker({
                   {selectedIds.length} geselecteerd
                 </span>
                 <Button
-                  disabled={selectedIds.length === 0}
+                  // Uitgeschakeld als alles al geselecteerd is — NIET bij een lege
+                  // selectie (dan is deze knop juist de bedoelde eerste klik).
+                  disabled={readyLines.length === 0 || selectedIds.length === readyLines.length}
                   onClick={() => setSelectedIds(readyLines.map((item) => item.line._id))}
                   variant="secondary"
                 >

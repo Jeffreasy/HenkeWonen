@@ -245,6 +245,16 @@ export function requireCatalogToolTarget(
         `${operation} op production vereist AUTHZ_TOKEN_SECRET in het gekozen env-bestand.`
       );
     }
+
+    // De default tool-actor (dev-user-jeffrey) bestaat alleen in dev. Zonder
+    // expliciete prod-gebruiker faalt de run pas halverwege op autorisatie —
+    // beter meteen duidelijk weigeren.
+    if (mutates && !process.env.TOOL_AUTH_USER_ID) {
+      throw new Error(
+        `${operation} op production vereist TOOL_AUTH_USER_ID in het env-bestand: ` +
+        `het externalUserId van een bestaande prod-admin (zie de users-tabel in het Convex-dashboard).`
+      );
+    }
   } else if (productionFlag) {
     throw new Error(
       `${operation} kreeg een production-flag, maar de geladen env is target=${toolEnv.target}.`

@@ -10,10 +10,14 @@ import type { MeasurementProductGroup } from "../portalTypes";
 
 export const PRODUCT_GROUP_TO_CATEGORIES: Record<MeasurementProductGroup, string[]> = {
   flooring: [
+    // V2-catalogus gebruikt "PVC" en "Tapijt & Vinyl" als subcategorie;
+    // de overige namen blijven staan voor oudere datasets.
+    "PVC",
     "PVC Vloeren",
     "PVC Dryback",
     "Palletcollectie PVC",
     "Tapijt",
+    "Tapijt & Vinyl",
     "Vinyl",
     "Karpetten",
     "Ondervloer",
@@ -22,8 +26,8 @@ export const PRODUCT_GROUP_TO_CATEGORIES: Record<MeasurementProductGroup, string
   ],
   plinths: ["Plinten"],
   wallpaper: ["Behang"],
-  wall_panels: ["Wandpanelen"],
-  curtains: ["Gordijnen"],
+  wall_panels: ["Wandpanelen", "Akoestische Panelen", "Badkamer"],
+  curtains: ["Gordijnen", "Gordijnstoffen", "Rolgordijnen", "Jaloezieën"],
   rails: ["Roedes/Railsen"],
   stairs: ["Traprenovatie"],
   other: []

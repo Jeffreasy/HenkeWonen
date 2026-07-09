@@ -91,7 +91,12 @@ export function ProductListTable({
         key: "unit",
         header: "Eenheid",
         width: "90px",
-        render: (product) => formatUnit(product.eenheid)
+        render: (product) => {
+          if (product.verkoopEenheid) {
+            return <span title={product.verkoopEenheid}>{product.verkoopEenheid}</span>;
+          }
+          return formatUnit(product.eenheid);
+        }
       },
       {
         key: "price",

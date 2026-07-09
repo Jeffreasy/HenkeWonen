@@ -157,9 +157,12 @@
   padding: 0 12px;
 }
 
+/* Omgekeerd themapaar i.p.v. hardcoded wit: in het donkere thema is --ink
+   een lichte kleur, dus "var(--ink) + #fff" gaf witte tekst op een wit vlak. */
 .tab.active {
   background: var(--ink);
-  color: #fff;
+  color: var(--surface);
+  font-weight: 600;
 }
 
 .empty-state {

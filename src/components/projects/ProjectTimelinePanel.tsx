@@ -1,6 +1,6 @@
 import { Archive, CheckCircle, FileText, Send, ShoppingCart } from "lucide-react";
 import { formatQuoteStatus } from "../../lib/i18n/statusLabels";
-import type { PortalQuote } from "../../lib/portalTypes";
+import type { PortalCustomerContact, PortalQuote } from "../../lib/portalTypes";
 import type { PortalWorkflowEvent } from "../../lib/portalTypes";
 import { Button } from "../ui/forms/Button";
 import { EmptyState } from "../ui/feedback/EmptyState";
@@ -17,9 +17,20 @@ type ProjectAction =
 
 type ProjectTimelinePanelProps = {
   workflowEvents: PortalWorkflowEvent[];
+  /** Contactmomenten die aan dit project zijn gekoppeld: samengevoegd in de tijdlijn. */
+  klantContacten?: PortalCustomerContact[];
   latestQuote?: Omit<PortalQuote, "lines"> | null;
   canEdit: boolean;
   onProcessAction: (action: ProjectAction) => void;
+};
+
+const CONTACT_BADGE: Record<PortalCustomerContact["type"], string> = {
+  note: "Notitie",
+  call: "Telefoon",
+  email: "E-mail",
+  visit: "Bezoek",
+  loaned_item: "Uitgeleend",
+  agreement: "Afspraak"
 };
 
 function dateText(value?: number) {
@@ -59,10 +70,34 @@ function eventLabel(type: PortalWorkflowEvent["type"]) {
 
 export function ProjectTimelinePanel({
   workflowEvents,
+  klantContacten = [],
   latestQuote,
   canEdit,
   onProcessAction
 }: ProjectTimelinePanelProps) {
+  // Eén chronologie: statusacties én gekoppelde klantcontacten, nieuwste boven.
+  const timelineItems = [
+    ...workflowEvents.map((event) => ({
+      id: event.id,
+      title: event.titel,
+      description: event.omschrijving,
+      meta: dateText(event.aangemaaktOp),
+      badge: eventLabel(event.type),
+      tone: (event.zichtbaarVoorKlant ? "info" : "neutral") as "info" | "neutral",
+      sortKey: event.aangemaaktOp
+    })),
+    ...klantContacten.map((contact) => ({
+      id: contact.id,
+      title: contact.titel,
+      description: [contact.omschrijving, contact.vastgelegdDoor ? `Door ${contact.vastgelegdDoor}` : undefined]
+        .filter(Boolean)
+        .join(" — "),
+      meta: dateText(contact.aangemaaktOp),
+      badge: `Klantcontact · ${CONTACT_BADGE[contact.type]}`,
+      tone: "info" as const,
+      sortKey: contact.aangemaaktOp
+    }))
+  ].sort((a, b) => b.sortKey - a.sortKey);
   const hasQuote = Boolean(latestQuote);
   const canCreateInvoice = latestQuote?.status === "accepted";
   const quoteContext = latestQuote
@@ -140,14 +175,7 @@ export function ProjectTimelinePanel({
             description="Gebruik de acties hierboven om opvolging vast te leggen."
           />
         }
-        items={workflowEvents.map((event) => ({
-          id: event.id,
-          title: event.titel,
-          description: event.omschrijving,
-          meta: dateText(event.aangemaaktOp),
-          badge: eventLabel(event.type),
-          tone: event.zichtbaarVoorKlant ? "info" : "neutral"
-        }))}
+        items={timelineItems.map(({ sortKey: _sortKey, ...item }) => item)}
       />
     </section>
   );

@@ -25,6 +25,9 @@ export function cardUrgency(card: FieldWorkspaceCard): CardUrgency {
   }
 
   if (
+    // "measured" = monteur klaar, overdracht naar de winkel — ook groen,
+    // anders schiet de kaart terug naar oranje "meetmoment ontbreekt".
+    card.measurement?.status === "measured" ||
     card.measurement?.status === "reviewed" ||
     card.measurement?.status === "converted_to_quote"
   ) {

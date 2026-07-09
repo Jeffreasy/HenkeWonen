@@ -11,6 +11,7 @@ import { calculateIncVat, formatEuro, roundMoney } from "../../lib/money";
 import { errorDescription, showToast } from "../../lib/toast";
 import {
   MEASUREMENT_AUTOSTART_PARAM,
+  measurementWorktypeFromSearch,
   shouldAutostartMeasurement
 } from "../../lib/measurementIntent";
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
@@ -786,16 +787,19 @@ export default function MeasurementPanel({
         // behoudt de server het bestaande snapshot (incl. eenheid-guard).
         productArgs = {};
       } else {
+        // Let op: de mutatie-args zijn Nederlands (indicativeSnapshotArgs in
+        // convex/projecten/measurements.ts) — Engelse keys worden door de
+        // Convex-validator geweigerd en laten de hele correctie falen.
         productArgs = {
           productId: lineCorrectionDraft.productId as Id<"products">,
-          productName: freshPrice?.productName ?? (lineCorrectionDraft.productName || undefined),
+          productNaam: freshPrice?.productName ?? (lineCorrectionDraft.productName || undefined),
           ...(indicative
             ? {
-                indicativeUnitPriceExVat: indicative.unitPriceExVat,
-                indicativeVatRate: indicative.vatRate,
-                indicativePriceUnit: indicative.priceUnit,
-                indicativePriceType: indicative.priceType,
-                indicativeCapturedAt: Date.now()
+                indicatieveEenheidsprijsExBtw: indicative.unitPriceExVat,
+                indicatiefBtwTarief: indicative.vatRate,
+                indicatievePrijsEenheid: indicative.priceUnit,
+                indicatievePrijsSoort: indicative.priceType,
+                indicatiefVastgelegdOp: Date.now()
               }
             : {})
         };
@@ -997,7 +1001,12 @@ export default function MeasurementPanel({
                           setMeasurementStatus(event.target.value as MeasurementStatus)
                         }
                       >
-                        {(["draft", "measured", "reviewed"] as const).map((status) => (
+                        {/* "Gecontroleerd" is de winkel-controlestap: de monteur mag
+                            zijn eigen inmeting niet goedkeuren, alleen afronden. */}
+                        {(mode === "field"
+                          ? (["draft", "measured"] as const)
+                          : (["draft", "measured", "reviewed"] as const)
+                        ).map((status) => (
                           <option key={status} value={status}>
                             {formatMeasurementStatus(status)}
                           </option>
@@ -1063,6 +1072,11 @@ export default function MeasurementPanel({
                 onSelectedRoomIdsChange={setAssignRoomIds}
                 onAdded={loadMeasurement}
                 roomPresets={FIELD_ROOM_PRESETS}
+                initialAddType={
+                  measurementWorktypeFromSearch(
+                    typeof window === "undefined" ? "" : window.location.search
+                  ) ?? undefined
+                }
               />
             </section>
           ) : null}

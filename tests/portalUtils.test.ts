@@ -185,4 +185,23 @@ describe("Convex Portal Utilities", () => {
     expect(description).toContain("Snijverlies: 10%");
     expect(description).toContain("Meetnotitie: Controleer hoek.");
   });
+
+  it("vertrouwt de richtprijs van een dienst-/legkostregel (service_rule) zonder catalogusproduct", () => {
+    // Regressie: eigen diensten hebben geen productId; de offerte-import zette
+    // hun prijs op € 0 omdat alleen "matrix" als productloze snapshot gold.
+    const serviceLine = {
+      productNaam: "Egaliseren m2",
+      indicatievePrijsSoort: "service_rule",
+      indicatieveEenheidsprijsExBtw: 15.95,
+      indicatiefBtwTarief: 21
+    } as any;
+
+    const description = importedMeasurementLineDescription(serviceLine);
+    expect(description).toContain("Richtprijs uit de inmeting overgenomen.");
+    expect(description).not.toContain("Kies product, verkoopprijs en btw");
+
+    // Zonder prijs-snapshot blijft de review-tekst wél staan.
+    const kaal = importedMeasurementLineDescription({ indicatievePrijsSoort: "service_rule" } as any);
+    expect(kaal).toContain("Kies product, verkoopprijs en btw");
+  });
 });

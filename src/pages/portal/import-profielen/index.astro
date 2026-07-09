@@ -20,8 +20,10 @@ if (!canManage(session.role)) {
   <PageHeader
     eyebrow="Beheer"
     title="Btw-keuzes per prijslijst"
-    description="Leg per prijskolom vast of bedragen inclusief of exclusief btw zijn, zodat prijslijsten veilig verwerkt kunnen worden."
-  />
+    description="Leg per prijskolom vast of bedragen inclusief of exclusief btw zijn bij Excel-prijslijstimports. De btw-modus van de catalogus zelf beheer je per leverancier."
+  >
+    <a class="ui-button ui-button-secondary" href="/portal/leveranciers">Btw per leverancier</a>
+  </PageHeader>
   <ProductionReadiness client:load session={session} />
   <ImportProfiles client:load session={session} />
 </PortalLayout>

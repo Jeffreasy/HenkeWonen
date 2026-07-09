@@ -97,8 +97,12 @@ export const workflowEventType = v.union(
   v.literal("quote_created"),
   v.literal("measurement_requested"),
   v.literal("measurement_planned"),
+  // Gelijk houden met projectWorkflowEvents.type in schema.ts — anders kan
+  // createWorkflowEvent deze (wel bestaande) event-typen niet loggen.
+  v.literal("measurement_completed"),
   v.literal("quote_sent"),
   v.literal("quote_accepted"),
+  v.literal("quote_rejected"),
   v.literal("thank_you_letter_sent"),
   v.literal("execution_planned"),
   v.literal("supplier_order_created"),
@@ -421,7 +425,14 @@ export async function toProject(ctx: any, tenantSlug: string, project: Doc<"proj
   };
 }
 
-export function toContact(tenantSlug: string, contact: Doc<"customerContacts">): PortalCustomerContact {
+export function toContact(
+  tenantSlug: string,
+  contact: Doc<"customerContacts">,
+  opts?: {
+    /** Weergavenaam van de vastlegger (resolved uit users.externalUserId). */
+    vastgelegdDoor?: string;
+  }
+): PortalCustomerContact {
   return {
     id: String(contact._id),
     tenantId: tenantSlug,
@@ -433,9 +444,36 @@ export function toContact(tenantSlug: string, contact: Doc<"customerContacts">):
     verwachteRetourdatum: contact.verwachteRetourdatum,
     geretourneerdOp: contact.geretourneerdOp,
     zichtbaarVoorKlant: contact.zichtbaarVoorKlant,
+    opvolgenOp: contact.opvolgenOp,
+    projectId: contact.projectId ? String(contact.projectId) : undefined,
+    vastgelegdDoor: opts?.vastgelegdDoor,
     aangemaaktOp: contact.aangemaaktOp,
     gewijzigdOp: contact.gewijzigdOp
   };
+}
+
+/**
+ * Bouwt een lookup externalUserId → weergavenaam voor het toeschrijven van
+ * contactmomenten/gebeurtenissen aan een teamlid. Valt terug op het e-mailadres
+ * wanneer er (nog) geen naam gesynchroniseerd is.
+ */
+export async function teamMemberNamesByExternalId(
+  ctx: any,
+  tenantId: Id<"tenants">
+): Promise<Map<string, string>> {
+  const users = await ctx.db
+    .query("users")
+    .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
+    .collect();
+
+  const names = new Map<string, string>();
+  for (const user of users) {
+    // Trim-checks: een lege-string naam mag niet als "auteur" verschijnen.
+    const name =
+      user.agendaWeergaveNaam?.trim() || user.naam?.trim() || user.email;
+    names.set(user.externalUserId, name);
+  }
+  return names;
 }
 
 /**
@@ -719,6 +757,7 @@ export function toSupplier(
     telefoon: supplier.telefoon,
     prijslijstStatus: supplier.prijslijstStatus,
     status: supplier.status ?? "active",
+    verkoopBtwModus: supplier.verkoopBtwModus,
     notities: supplier.notities,
     laatsteContactOp: supplier.laatsteContactOp,
     verwachtOp: supplier.verwachtOp,
@@ -1352,9 +1391,12 @@ export function importedMeasurementLineDescription(
   priceWasPrefilled?: boolean
 ) {
   const isMatrixLine = line.indicatievePrijsSoort === "matrix";
+  // Zelfde vertrouwensregel als de offerte-import: eigen diensten ("service_rule")
+  // zijn productloos maar hun richtprijs komt uit eigen beheer.
+  const isServiceRuleLine = line.indicatievePrijsSoort === "service_rule";
   const hasIndicativePrice =
     priceWasPrefilled ??
-    ((line.productId !== undefined || isMatrixLine) &&
+    ((line.productId !== undefined || isMatrixLine || isServiceRuleLine) &&
       line.indicatieveEenheidsprijsExBtw !== undefined &&
       line.indicatiefBtwTarief !== undefined);
 

@@ -118,7 +118,10 @@ const model: QuoteDocumentModel = {
     "Water en stroom beschikbaar tijdens uitvoering.",
     "Planning in overleg na akkoord op de offerte."
   ],
-  paymentTerms: ["50% bij akkoord.", "50% bij oplevering.", "Betalingstermijn 8 dagen."]
+  paymentTerms: ["50% bij akkoord.", "50% bij oplevering.", "Betalingstermijn 8 dagen."],
+  // Klant-zichtbare afspraken uit het klantdossier (contactmomenten met
+  // "zichtbaar voor klant") — verschijnen als Afsprakenblok op de klantversie.
+  agreements: ["Staalboek retour bij inmeting — PVC staalboek visgraat."]
 };
 
 describe("Quote Document Preview", () => {

@@ -62,6 +62,9 @@ export type QuoteDocumentModel = {
   };
   terms: string[];
   paymentTerms: string[];
+  /** Klant-zichtbare afspraken uit het klantdossier (contactmomenten met
+   *  "zichtbaar voor klant"), als leesbaar Afsprakenblok op de klantversie. */
+  agreements: string[];
 };
 
 // Gedeeld met het factuurdocument: zie src/lib/documents/vatBreakdown.ts.
@@ -74,6 +77,8 @@ export type BuildQuoteDocumentModelInput = {
   companyProfile?: QuoteCompanyProfile;
   salutation?: string;
   timeZone?: string;
+  /** Klant-zichtbare afspraken (titel + optionele toelichting) uit het klantdossier. */
+  customerAgreements?: Array<{ titel: string; omschrijving?: string }>;
 };
 
 const FALLBACK_SECTION_KEY = "overige";
@@ -264,7 +269,8 @@ export function buildQuoteDocumentModel({
   template,
   companyProfile = henkeCompanyProfile,
   salutation,
-  timeZone = "Europe/Amsterdam"
+  timeZone = "Europe/Amsterdam",
+  customerAgreements
 }: BuildQuoteDocumentModelInput): QuoteDocumentModel {
   return {
     company: {
@@ -301,6 +307,11 @@ export function buildQuoteDocumentModel({
       costBreakdown: buildCostBreakdown(quote.lines)
     },
     terms: normalizeLines(quote.voorwaarden),
-    paymentTerms: normalizeLines(quote.betalingsvoorwaarden)
+    paymentTerms: normalizeLines(quote.betalingsvoorwaarden),
+    agreements: (customerAgreements ?? [])
+      .map((agreement) =>
+        [agreement.titel.trim(), agreement.omschrijving?.trim()].filter(Boolean).join(" — ")
+      )
+      .filter((line) => line.length > 0)
   };
 }

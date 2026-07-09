@@ -2,6 +2,7 @@ import { ClipboardList } from "lucide-react";
 import { useState } from "react";
 import type { CustomerType } from "../../lib/portalTypes";
 import { useFormDraft } from "../../lib/useFormDraft";
+import { customerScopeOptions, type CustomerScopeOption } from "../customers/CustomerIntakePanel";
 import { Alert } from "../ui/feedback/Alert";
 import { Button } from "../ui/forms/Button";
 import { Checkbox } from "../ui/forms/Checkbox";
@@ -22,6 +23,9 @@ export type IntakeFormValues = {
   notes?: string;
   createDossier: boolean;
   projectTitle?: string;
+  /** Gekozen werksoort/scope — zelfde lijst als de winkel-intake, zodat het
+   *  dossier de juiste titel, directe-verkoop-vlag en inmeet-tab krijgt. */
+  scope?: CustomerScopeOption;
 };
 
 type FieldIntakeFormProps = {
@@ -43,6 +47,7 @@ export function FieldIntakeForm({ onSubmit, isSaving, error }: FieldIntakeFormPr
   const [leadNotes, setLeadNotes] = useState("");
   const [createDossier, setCreateDossier] = useState(true);
   const [projectTitle, setProjectTitle] = useState("");
+  const [scopeId, setScopeId] = useState("overig");
 
   // Draft-vangnet voor mobiel: de intake gebeurt bij de klant aan de deur; als de
   // browser de tab weggooit (wisselen naar telefoon/camera) was alle invoer weg.
@@ -50,7 +55,7 @@ export function FieldIntakeForm({ onSubmit, isSaving, error }: FieldIntakeFormPr
     "henke-veld-intake",
     {
       leadType, leadName, leadPhone, leadEmail, leadStreet, leadHouseNumber,
-      leadPostalCode, leadCity, leadNotes, createDossier, projectTitle
+      leadPostalCode, leadCity, leadNotes, createDossier, projectTitle, scopeId
     },
     (draft) => {
       if (draft.leadType === "private" || draft.leadType === "business") {
@@ -66,6 +71,9 @@ export function FieldIntakeForm({ onSubmit, isSaving, error }: FieldIntakeFormPr
       if (typeof draft.leadNotes === "string") setLeadNotes(draft.leadNotes);
       if (typeof draft.createDossier === "boolean") setCreateDossier(draft.createDossier);
       if (typeof draft.projectTitle === "string") setProjectTitle(draft.projectTitle);
+      if (typeof draft.scopeId === "string" && customerScopeOptions.some((s) => s.id === draft.scopeId)) {
+        setScopeId(draft.scopeId);
+      }
     }
   );
 
@@ -81,6 +89,7 @@ export function FieldIntakeForm({ onSubmit, isSaving, error }: FieldIntakeFormPr
     setLeadNotes("");
     setCreateDossier(true);
     setProjectTitle("");
+    setScopeId("overig");
     clearDraft();
   }
 
@@ -100,7 +109,8 @@ export function FieldIntakeForm({ onSubmit, isSaving, error }: FieldIntakeFormPr
         city: leadCity.trim() || undefined,
         notes: leadNotes.trim() || undefined,
         createDossier,
-        projectTitle: projectTitle.trim() || undefined
+        projectTitle: projectTitle.trim() || undefined,
+        scope: customerScopeOptions.find((s) => s.id === scopeId)
       });
       // Alleen bij succes wissen: bij een fout blijft de invoer (én de draft) staan
       // zodat de monteur direct kan corrigeren.
@@ -198,6 +208,25 @@ export function FieldIntakeForm({ onSubmit, isSaving, error }: FieldIntakeFormPr
             />
           </Field>
         </div>
+
+        <Field
+          htmlFor="field-lead-scope"
+          label="Werksoort"
+          description="Zelfde keuzes als de winkel-intake: bepaalt de inmeet-tab en directe verkoop."
+        >
+          <Select
+            id="field-lead-scope"
+            disabled={!createDossier}
+            value={scopeId}
+            onChange={(event) => setScopeId(event.target.value)}
+          >
+            {customerScopeOptions.map((scope) => (
+              <option key={scope.id} value={scope.id}>
+                {scope.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
 
         <Field htmlFor="field-lead-notes" label="Notitie">
           <Textarea

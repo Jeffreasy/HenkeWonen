@@ -1360,13 +1360,21 @@ export const updateMeasurementLine = mutation({
     // Behoud een prijssnapshot wanneer er een product is én de prijseenheid bij de (mogelijk
     // gewijzigde) meeteenheid past, OF wanneer het een productloze richtprijs is. Anders
     // vervalt de prijs zodat geen m²-prijs × meters de offerte in stroomt. clearProduct wist altijd.
+    // Ook productloze snapshots (matrix/dienst) krijgen de eenheid-guard wanneer het
+    // BESTAANDE snapshot wordt hergebruikt: anders blijft bv. een €/m²-dienstprijs
+    // staan nadat de eenheid naar m1/stuk is gewijzigd, en stroomt die als
+    // vertrouwde prijs-per-nieuwe-eenheid de offerte in. Een vers meegestuurd
+    // snapshot (usesArgsSnapshot) is per definitie bij de nieuwe eenheid gemaakt.
     const keepPriceSnapshot = Boolean(
       args.clearProduct !== true &&
       ((nextProductId &&
         snapshotSource.indicatieveEenheidsprijsExBtw !== undefined &&
         (touchesProduct ||
           isUnitCompatible(args.eenheid, snapshotSource.indicatievePrijsEenheid))) ||
-        (!nextProductId && isProductlessSnapshot))
+        (!nextProductId &&
+          isProductlessSnapshot &&
+          (usesArgsSnapshot ||
+            isUnitCompatible(args.eenheid, snapshotSource.indicatievePrijsEenheid))))
     );
     const keepProductName =
       args.clearProduct !== true && (Boolean(nextProductId) || isProductlessSnapshot);

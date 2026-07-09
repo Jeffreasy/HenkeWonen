@@ -108,140 +108,10 @@ export const get = query({
   }
 });
 
-export const create = mutation({
-  args: {
-    tenantId: v.id("tenants"),
-    actor: mutationActorValidator,
-    projectId: v.id("projects"),
-    klantId: v.id("customers"),
-    titel: v.string(),
-    inleidingTekst: v.optional(v.string()),
-    afsluitTekst: v.optional(v.string()),
-    voorwaarden: v.optional(v.array(v.string())),
-    betalingsvoorwaarden: v.optional(v.array(v.string())),
-    createdByExternalUserId: v.optional(v.string())
-  },
-  handler: async (ctx, args) => {
-    const { externalUserId } = await requireMutationRoleForTenantId(
-      ctx,
-      args.tenantId,
-      args.actor,
-      ["user", "editor", "admin"]
-    );
-    const project = await ctx.db.get(args.projectId);
-    const customer = await ctx.db.get(args.klantId);
-
-    if (!project || project.tenantId !== args.tenantId) {
-      throw new ConvexError("Project niet gevonden.");
-    }
-
-    if (!customer || customer.tenantId !== args.tenantId) {
-      throw new ConvexError("Klant niet gevonden.");
-    }
-
-    const now = Date.now();
-
-    // Guard vóór de insert: op een geannuleerd/gesloten dossier hoort geen nieuwe
-    // offerte te ontstaan (gedeeld met createQuote via applyProjectStatusForNewQuote).
-    await applyProjectStatusForNewQuote(ctx, project, now);
-
-    const quoteNumber = `OFF-${new Date(now).getFullYear()}-${now}`;
-
-    const quoteId = await ctx.db.insert("quotes", {
-      tenantId: args.tenantId,
-      projectId: args.projectId,
-      klantId: args.klantId,
-      offertenummer: quoteNumber,
-      titel: args.titel,
-      status: "draft",
-      inleidingTekst: args.inleidingTekst,
-      afsluitTekst: args.afsluitTekst,
-      voorwaarden: args.voorwaarden,
-      betalingsvoorwaarden: args.betalingsvoorwaarden,
-      subtotaalExBtw: 0,
-      btwTotaal: 0,
-      totaalInclBtw: 0,
-      createdByExternalUserId: externalUserId,
-      aangemaaktOp: now,
-      gewijzigdOp: now
-    });
-
-    return quoteId;
-  }
-});
-
-export const addLine = mutation({
-  args: {
-    tenantId: v.id("tenants"),
-    actor: mutationActorValidator,
-    quoteId: v.id("quotes"),
-    projectRuimteId: v.optional(v.id("projectRooms")),
-    productId: v.optional(v.id("products")),
-    werktariefRegelId: v.optional(v.id("serviceCostRules")),
-    regelType: lineType,
-    titel: v.string(),
-    omschrijving: v.optional(v.string()),
-    aantal: v.number(),
-    eenheid: v.string(),
-    eenheidsprijsExBtw: v.number(),
-    btwTarief: v.number(),
-    kortingExBtw: v.optional(v.number()),
-    sortOrder: v.number(),
-    metadata: v.optional(v.any())
-  },
-  handler: async (ctx, args) => {
-    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
-      "user",
-      "editor",
-      "admin"
-    ]);
-    const quote = await ctx.db.get(args.quoteId);
-
-    if (!quote || quote.tenantId !== args.tenantId) {
-      throw new ConvexError("Offerte niet gevonden.");
-    }
-
-    if (quote.status !== "draft") {
-      throw new ConvexError("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
-    }
-
-    const totals = calculateLineTotals(
-      args.regelType,
-      args.aantal,
-      args.eenheidsprijsExBtw,
-      args.btwTarief,
-      args.kortingExBtw
-    );
-    const now = Date.now();
-
-    const lineId = await ctx.db.insert("quoteLines", {
-      tenantId: args.tenantId,
-      quoteId: args.quoteId,
-      projectRuimteId: args.projectRuimteId,
-      productId: args.productId,
-      werktariefRegelId: args.werktariefRegelId,
-      regelType: args.regelType,
-      titel: args.titel,
-      omschrijving: args.omschrijving,
-      aantal: args.aantal,
-      eenheid: args.eenheid,
-      eenheidsprijsExBtw: args.eenheidsprijsExBtw,
-      btwTarief: args.btwTarief,
-      kortingExBtw: args.kortingExBtw,
-      regelTotaalExBtw: totals.lineTotalExVat,
-      regelBtwTotaal: totals.lineVatTotal,
-      regelTotaalInclBtw: totals.lineTotalIncVat,
-      sortOrder: args.sortOrder,
-      metadata: args.metadata,
-      aangemaaktOp: now,
-      gewijzigdOp: now
-    });
-
-    await recalculateQuote(ctx, args.tenantId, args.quoteId);
-
-    return lineId;
-  }
-});
+// De legacy-mutaties "create" en "addLine" zijn verwijderd (audit 2026-07-09):
+// nergens door de UI gebruikt en met zwakkere validatie dan createQuote/addQuoteLine
+// (geen tenant-check op productId/projectRuimteId/werktariefRegelId). De portal-
+// varianten in portal.ts zijn de enige ondersteunde route.
 
 export const recalculate = mutation({
   args: {
@@ -915,15 +785,21 @@ export const quoteDetailWorkspace = query({
     const quoteDoc = await ctx.db.get(args.quoteId as Id<"quotes">);
 
     if (!quoteDoc || quoteDoc.tenantId !== tenant._id) {
-      return { customers: [], projects: [], quotes: [], templates: [] };
+      return { customers: [], projects: [], quotes: [], templates: [], klantAfspraken: [] };
     }
 
-    const [customerDoc, projectDoc, templates] = await Promise.all([
+    const [customerDoc, projectDoc, templates, klantContacten] = await Promise.all([
       ctx.db.get(quoteDoc.klantId),
       ctx.db.get(quoteDoc.projectId),
       ctx.db
         .query("quoteTemplates")
         .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+        .collect(),
+      ctx.db
+        .query("customerContacts")
+        .withIndex("by_customer", (q: any) =>
+          q.eq("tenantId", tenant._id).eq("klantId", quoteDoc.klantId)
+        )
         .collect()
     ]);
 
@@ -939,7 +815,16 @@ export const quoteDetailWorkspace = query({
       quotes: [await toQuote(ctx, tenant.slug, quoteDoc)],
       templates: templates
         .filter((template: Doc<"quoteTemplates">) => template.status === "active")
-        .map((template: Doc<"quoteTemplates">) => toQuoteTemplate(tenant.slug, template))
+        .map((template: Doc<"quoteTemplates">) => toQuoteTemplate(tenant.slug, template)),
+      // Afspraken die de klant mag zien ("zichtbaar voor klant"): verschijnen als
+      // Afspraken-blok op de klantversie van de offerte. Oudste eerst (leesvolgorde).
+      klantAfspraken: (klantContacten as Doc<"customerContacts">[])
+        .filter((contact) => contact.zichtbaarVoorKlant)
+        .sort((a, b) => a.aangemaaktOp - b.aangemaaktOp)
+        .map((contact) => ({
+          titel: contact.titel,
+          omschrijving: contact.omschrijving
+        }))
     };
   }
 });
@@ -1258,12 +1143,16 @@ export const importMeasurementLinesToQuote = mutation({
         }
       }
 
-      // Een raambekleding-matrix-regel heeft géén catalogusproduct maar wél een richtprijs;
-      // die mag wél overgenomen worden. Een verwijderd/inactief catalogusproduct (productId stond
-      // er ooit, maar valideert niet meer) blijft bewust leeg-geprijsd binnenkomen.
-      const isMatrixLine = line.indicatievePrijsSoort === "matrix";
+      // Productloze maar vertrouwde richtprijzen mogen wél overgenomen worden:
+      // raambekleding-matrix ("matrix") en eigen diensten/legkosten ("service_rule")
+      // hebben géén catalogusproduct maar hun prijs komt uit eigen beheer (zelfde
+      // regel als de staleness-guard in projecten/measurements.ts). Een verwijderd/
+      // inactief catalogusproduct (productId stond er ooit, maar valideert niet
+      // meer) blijft bewust leeg-geprijsd binnenkomen.
+      const isTrustedProductlessLine =
+        line.indicatievePrijsSoort === "matrix" || line.indicatievePrijsSoort === "service_rule";
       const hasIndicativePrice =
-        (prefilledProductId !== undefined || isMatrixLine) &&
+        (prefilledProductId !== undefined || isTrustedProductlessLine) &&
         line.indicatieveEenheidsprijsExBtw !== undefined &&
         line.indicatiefBtwTarief !== undefined;
       const unitPriceExVat = hasIndicativePrice ? line.indicatieveEenheidsprijsExBtw! : 0;
@@ -1295,11 +1184,11 @@ export const importMeasurementLinesToQuote = mutation({
           wastePercent: line.snijverliesPct,
           isIndicative: true,
           productId: prefilledProductId ? line.productId : undefined,
-          productName: prefilledProductId || isMatrixLine ? line.productNaam : undefined,
+          productName: prefilledProductId || isTrustedProductlessLine ? line.productNaam : undefined,
           indicativePriceType: hasIndicativePrice ? line.indicatievePrijsSoort : undefined,
           indicativePriceUnit: hasIndicativePrice ? line.indicatievePrijsEenheid : undefined,
-          // Matrix-regels (raambekleding) hebben bewust geen catalogusproduct nodig.
-          requiresManualProductReview: !prefilledProductId && !isMatrixLine,
+          // Matrix- (raambekleding) en dienstregels hebben bewust geen catalogusproduct nodig.
+          requiresManualProductReview: !prefilledProductId && !isTrustedProductlessLine,
           requiresManualPriceReview: true,
           requiresManualVatReview: !hasIndicativePrice
         },

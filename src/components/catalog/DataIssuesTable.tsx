@@ -56,13 +56,16 @@ export type IssueDraft = {
 
 type DataIssuesTableProps = {
   filteredGroups: DuplicateEanIssue[];
+  /** Totaal aantal groepen na filtering; filteredGroups kan een deelvenster zijn. */
+  totalGroupCount: number;
   drafts: Record<string, IssueDraft>;
   isSaving: boolean;
   isLoading: boolean;
   error: string | null;
   onUpdateDraft: (issueId: string, patch: Partial<IssueDraft>) => void;
   onSaveIssue: (issue: DuplicateEanIssue) => void | Promise<void>;
-  onSyncIssues: () => void | Promise<void>;
+  /** Aanwezig zolang er meer groepen zijn dan er getoond worden. */
+  onShowMore?: () => void;
 };
 
 const decisions: Array<{ value: DuplicateEanDecision; label: string; helpText: string }> = [
@@ -148,13 +151,14 @@ function formatSeverity(severity: DuplicateEanIssue["severity"]) {
 
 export function DataIssuesTable({
   filteredGroups,
+  totalGroupCount,
   drafts,
   isSaving,
   isLoading,
   error,
   onUpdateDraft,
   onSaveIssue,
-  onSyncIssues
+  onShowMore
 }: DataIssuesTableProps) {
   function decisionHelpText(issueId?: string, fallback?: DuplicateEanDecision) {
     const decision = issueId ? drafts[issueId]?.decision : fallback;
@@ -176,7 +180,6 @@ export function DataIssuesTable({
             variant={statusVariant(issue.issueStatus)}
           />
           <Badge variant="warning">Dubbele EAN</Badge>
-          {!issue.issueId ? <Badge variant="neutral">Nog bijwerken</Badge> : null}
           <div className="issue-ean-code">{issue.ean}</div>
           <small className="muted">Ernst: {formatSeverity(issue.severity)}</small>
         </div>
@@ -205,9 +208,12 @@ export function DataIssuesTable({
               <div className="product-compare-item" key={product.productId}>
                 <strong>{product.productName}</strong>
                 <div className="muted">
-                  artikel {product.articleNumber ?? "-"} · leverancierscode {product.supplierCode ?? "-"}
+                  artikel {product.articleNumber ?? "-"}
+                  {product.supplierCode ? ` · leverancierscode ${product.supplierCode}` : ""}
                 </div>
-                <div className="muted">prijzen {numberText(product.priceCount)}</div>
+                {product.priceCount > 0 ? (
+                  <div className="muted">prijzen {numberText(product.priceCount)}</div>
+                ) : null}
               </div>
             ))}
           </div>
@@ -225,10 +231,14 @@ export function DataIssuesTable({
       hideOnMobile: true,
       render: (issue) => (
         <div className="issue-source-list">
-          <div>{issue.sourceFileNames.join(", ") || "-"}</div>
-          <small className="muted">Tabblad: {issue.sourceSheetNames.join(", ") || "-"}</small>
+          {issue.sourceFileNames.length > 0 ? <div>{issue.sourceFileNames.join(", ")}</div> : null}
+          {issue.sourceSheetNames.length > 0 ? (
+            <small className="muted">Tabblad: {issue.sourceSheetNames.join(", ")}</small>
+          ) : null}
           <small className="muted">Artikelnummers: {issue.articleNumbers.join(", ") || "-"}</small>
-          <small className="muted">Leverancierscodes: {issue.supplierCodes.join(", ") || "-"}</small>
+          {issue.supplierCodes.length > 0 ? (
+            <small className="muted">Leverancierscodes: {issue.supplierCodes.join(", ")}</small>
+          ) : null}
         </div>
       )
     },
@@ -306,32 +316,7 @@ export function DataIssuesTable({
               Beoordeling bewaren
             </Button>
             <div className="muted" style={{ marginTop: 8 }}>
-              {!issue.issueId ? (
-                <span>
-                  Dit signaal is nog niet geregistreerd.{" "}
-                  <button
-                    type="button"
-                    style={{
-                      color: "inherit",
-                      textDecoration: "underline",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: 0,
-                      font: "inherit"
-                    }}
-                    onClick={() => void onSyncIssues()}
-                    disabled={isSaving}
-                  >
-                    Klik hier om signalen bij te werken
-                  </button>
-                  , dan kun je direct beoordelen.
-                </span>
-              ) : issue.reviewedAt ? (
-                `Beoordeeld ${dateTimeText(issue.reviewedAt)}`
-              ) : (
-                "Nog niet beoordeeld"
-              )}
+              {issue.reviewedAt ? `Beoordeeld ${dateTimeText(issue.reviewedAt)}` : "Nog niet beoordeeld"}
             </div>
           </>
         );
@@ -346,7 +331,11 @@ export function DataIssuesTable({
           <p className="eyebrow">EAN-groepen</p>
           <h2>Te beoordelen productgroepen</h2>
         </div>
-        <Badge>{numberText(filteredGroups.length)} groepen</Badge>
+        <Badge>
+          {filteredGroups.length < totalGroupCount
+            ? `${numberText(filteredGroups.length)} van ${numberText(totalGroupCount)} groepen`
+            : `${numberText(totalGroupCount)} groepen`}
+        </Badge>
       </div>
       <DataTable
         rows={filteredGroups}
@@ -381,7 +370,6 @@ export function DataIssuesTable({
                   {formatRecommendation(issue.recommendation)}
                 </Badge>
                 <Badge variant="neutral">{numberText(issue.products.length)} producten</Badge>
-                {!issue.issueId ? <Badge variant="neutral">Nog bijwerken</Badge> : null}
               </div>
               <div className="mobile-card-section">
                 <p className="mobile-card-section-label">Productvergelijking</p>
@@ -390,10 +378,12 @@ export function DataIssuesTable({
                     <div className="product-compare-item" key={product.productId}>
                       <strong>{product.productName}</strong>
                       <div className="muted">
-                        artikel {product.articleNumber ?? "-"} · leverancierscode{" "}
-                        {product.supplierCode ?? "-"}
+                        artikel {product.articleNumber ?? "-"}
+                        {product.supplierCode ? ` · leverancierscode ${product.supplierCode}` : ""}
                       </div>
-                      <div className="muted">prijzen {numberText(product.priceCount)}</div>
+                      {product.priceCount > 0 ? (
+                        <div className="muted">prijzen {numberText(product.priceCount)}</div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -464,6 +454,13 @@ export function DataIssuesTable({
         }}
         ariaLabel="Dubbele EAN-waarschuwingen"
       />
+      {onShowMore ? (
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+          <Button variant="secondary" onClick={onShowMore}>
+            Toon meer ({numberText(totalGroupCount - filteredGroups.length)} resterend)
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }

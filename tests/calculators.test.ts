@@ -36,6 +36,19 @@ describe("Measurements Calculators", () => {
     expect(plinths.quoteQuantityMeter).toBe(18.9);
   });
 
+  it("rondt de offertehoeveelheid niet op door float-ruis (17.85 blijft 17.85)", () => {
+    // Regressie: 17.85 * 100 is in floats 1785.0000000000002; de ceil naar
+    // 2 decimalen maakte daar 17.86 van (een cm plint uit het niets).
+    const plinths = calculatePlinths({
+      perimeterM: 18,
+      doorOpeningM: 1,
+      wastePercent: 5
+    });
+
+    expect(plinths.totalMeter).toBe(17.85);
+    expect(plinths.quoteQuantityMeter).toBe(17.85);
+  });
+
   it("should calculate wall panels values correctly", () => {
     const wallPanels = calculateWallPanels({
       wallWidthM: 4,

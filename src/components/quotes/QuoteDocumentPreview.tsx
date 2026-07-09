@@ -316,6 +316,14 @@ export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProp
       </div>
 
       <div className="quote-document-back-matter">
+        {model.agreements.length > 0 ? (
+          <section className="quote-document-terms print-page-break-avoid">
+            <div>
+              <h3>Afspraken</h3>
+              <TextLines lines={model.agreements} />
+            </div>
+          </section>
+        ) : null}
         <section className="quote-document-terms">
           <div>
             <h3>Voorwaarden</h3>

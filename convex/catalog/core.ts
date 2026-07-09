@@ -523,6 +523,7 @@ export const listProductsForPortal = query({
           productSoort: product.productSoort,
           commercialNames: visibleCommercialNames(product, categoryName),
           eenheid: product.eenheid,
+          verkoopEenheid: product.attributen?.price_unit_raw,
           pakinhoudM2: product.pakinhoudM2,
           stuksPerPak: product.stuksPerPak,
           pakkenPerPallet: product.pakkenPerPallet,

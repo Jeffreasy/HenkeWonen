@@ -12,21 +12,6 @@ const duplicateEanDecision = v.union(
   v.literal("accepted_duplicate"),
   v.literal("resolved")
 );
-const duplicateEanSyncProduct = v.object({
-  importSleutel: v.optional(v.string()),
-  productNaam: v.string(),
-  artikelnummer: v.optional(v.string()),
-  leverancierCode: v.optional(v.string()),
-  bronBestandsnaam: v.optional(v.string()),
-  bronBladNaam: v.optional(v.string()),
-  bronRijNummer: v.optional(v.number())
-});
-const duplicateEanSyncGroup = v.object({
-  leverancierNaam: v.string(),
-  ean: v.string(),
-  products: v.array(duplicateEanSyncProduct)
-});
-
 function idString(value: unknown): string {
   return String(value ?? "");
 }
@@ -733,153 +718,188 @@ export const updateDuplicateEanIssueReview = mutation({
   }
 });
 
-async function supplierByName(ctx: any, tenantId: any, supplierName: string) {
-  return await ctx.db
-    .query("suppliers")
-    .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
-    .filter((q: any) => q.eq(q.field("naam"), supplierName))
-    .first();
-}
-
-async function productForDuplicateInput(ctx: any, tenantId: any, supplierId: any, product: any) {
-  const importKey = optionalText(product.importSleutel);
-
-  if (importKey) {
-    const existing = await ctx.db
-      .query("products")
-      .withIndex("by_import_key", (q: any) => q.eq("tenantId", tenantId).eq("importSleutel", importKey))
-      .first();
-
-    if (existing) {
-      return existing;
-    }
-  }
-
-  const articleNumber = optionalText(product.artikelnummer);
-  if (articleNumber) {
-    return await ctx.db
-      .query("products")
-      .withIndex("by_article_number", (q: any) =>
-        q.eq("tenantId", tenantId).eq("leverancierId", supplierId).eq("artikelnummer", articleNumber)
+/**
+ * Bulkbeslissing over alle OPEN dubbele-EAN-signalen — bv. "gescheiden
+ * houden" over de hele linie, zodat 1.800+ groepen niet één voor één hoeven.
+ * Zelfde vastlegging als de losse beoordeling (beslissing, wie, wanneer).
+ * Chunked: max ~500 per aanroep; de UI herhaalt tot isDone.
+ */
+export const bulkReviewOpenDuplicateEanIssues = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    decision: duplicateEanDecision,
+    notities: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "admin"
+    ]);
+    const batch = await ctx.db
+      .query("catalogDataIssues")
+      .withIndex("by_type_status", (q: any) =>
+        q.eq("tenantId", tenant._id).eq("kwestieSoort", "duplicate_ean").eq("status", "open")
       )
-      .first();
+      .take(500);
+
+    const status =
+      args.decision === "resolved"
+        ? ("resolved" as const)
+        : args.decision === "accepted_duplicate"
+          ? ("accepted" as const)
+          : ("reviewed" as const);
+    const now = Date.now();
+
+    for (const issue of batch) {
+      await ctx.db.patch(issue._id, {
+        status,
+        // Bestaande losse notities niet overschrijven met leegte.
+        ...(args.notities !== undefined ? { notities: args.notities } : {}),
+        metadata: {
+          ...(issue.metadata ?? {}),
+          reviewDecision: args.decision,
+          reviewedByExternalUserId: externalUserId,
+          reviewedAt: now,
+          bulkReviewed: true
+        },
+        gewijzigdOp: now
+      });
+    }
+
+    return {
+      patched: batch.length,
+      // Er kunnen meer open signalen zijn dan deze batch; de UI herhaalt dan.
+      isDone: batch.length < 500
+    };
   }
+});
 
-  return null;
-}
-
+/**
+ * Scant de LIVE catalogus op dubbele EAN's binnen één leverancier en legt ze
+ * vast als catalogDataIssues. Eén leverancier per aanroep (Convex-leeslimiet:
+ * de grootste leverancier heeft ~7.000 producten); de UI loopt met
+ * supplierCursor door alle leveranciers en sluit af met
+ * finalizeDuplicateEanIssueSync zodat verdwenen signalen op "opgelost" gaan.
+ *
+ * Verving de oude preview-gebaseerde sync: die leunde op productImportRows en
+ * artikelnummers uit de oude importflow, die de V2-import allebei niet meer
+ * aanmaakt (V2-producten hebben een sku).
+ */
 export const syncDuplicateEanIssues = mutation({
   args: {
     tenantSlug: v.string(),
     actor: mutationActorValidator,
-    groups: v.optional(v.array(duplicateEanSyncGroup)),
-    syncRunId: v.optional(v.string())
+    syncRunId: v.string(),
+    /** Leveranciersnaam van de vorige ronde; weglaten = eerste leverancier. */
+    supplierCursor: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
+    const suppliers = (
+      await ctx.db
+        .query("suppliers")
+        .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
+        .collect()
+    ).sort((left: any, right: any) => left.naam.localeCompare(right.naam, "nl"));
 
-    if (!args.groups) {
+    const startIndex = args.supplierCursor
+      ? suppliers.findIndex((supplier: any) => supplier.naam === args.supplierCursor) + 1
+      : 0;
+    const supplier = suppliers[startIndex];
+
+    if (!supplier) {
       return {
+        isDone: true,
+        nextCursor: null,
+        supplierNaam: null,
+        supplierIndex: suppliers.length,
+        supplierCount: suppliers.length,
+        productCount: 0,
+        duplicateGroupCount: 0,
         created: 0,
         updated: 0,
-        skipped: 0,
-        requiresPreviewSync: true,
-        message:
-          "Duplicate-EAN sync is batch-gebaseerd. Gebruik tools/sync_duplicate_ean_issues_from_preview.mjs."
+        syncRunId: args.syncRunId
       };
     }
 
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_supplier_status", (q: any) =>
+        q.eq("tenantId", tenant._id).eq("leverancierId", supplier._id).eq("status", "active")
+      )
+      .collect();
+
+    const byEan = new Map<string, any[]>();
+    for (const product of products) {
+      const ean = optionalText(product.ean);
+      if (!ean) {
+        continue;
+      }
+      const rows = byEan.get(ean) ?? [];
+      rows.push(product);
+      byEan.set(ean, rows);
+    }
+
     const now = Date.now();
-    const syncRunId = args.syncRunId ?? `duplicate-ean-${now}`;
-    const supplierCache = new Map<string, any>();
     let created = 0;
     let updated = 0;
-    let skipped = 0;
+    let duplicateGroupCount = 0;
 
-    for (const group of args.groups) {
-      if (!hasText(group.ean) || !hasText(group.leverancierNaam) || group.products.length <= 1) {
-        skipped += 1;
+    for (const [ean, rows] of byEan) {
+      if (rows.length <= 1) {
         continue;
       }
+      duplicateGroupCount += 1;
 
-      const supplierName = group.leverancierNaam.trim();
-      let supplier = supplierCache.get(supplierName);
-
-      if (supplier === undefined) {
-        supplier = await supplierByName(ctx, tenant._id, supplierName);
-        supplierCache.set(supplierName, supplier ?? null);
-      }
-
-      if (!supplier) {
-        skipped += 1;
-        continue;
-      }
-
-      const productRows = [];
-      for (const product of group.products) {
-        const existingProduct = await productForDuplicateInput(ctx, tenant._id, supplier._id, product);
-
-        if (!existingProduct) {
-          continue;
-        }
-
-        productRows.push(compactObject({
-          productId: existingProduct._id,
-          articleNumber: optionalText(product.artikelnummer ?? existingProduct.artikelnummer),
-          supplierCode: optionalText(product.leverancierCode ?? existingProduct.leverancierCode),
-          productName: label(product.productNaam ?? existingProduct.naam, "Onbekend product"),
-          sourceFileNames: uniqueTexts([product.bronBestandsnaam]),
-          sourceSheetNames: uniqueTexts([product.bronBladNaam]),
-          sourceRowNumber: product.bronRijNummer
-        }));
-      }
-
-      if (productRows.length <= 1) {
-        skipped += 1;
-        continue;
-      }
-
-      const productIds = productRows.map((product: any) => product.productId);
+      const productRows = rows.map((product: any) =>
+        compactObject({
+          productId: idString(product._id),
+          articleNumber: optionalText(product.artikelnummer ?? product.sku),
+          supplierCode: optionalText(product.leverancierCode),
+          productName: label(product.naam, "Onbekend product"),
+          sourceFileNames: [] as string[],
+          sourceSheetNames: [] as string[]
+        })
+      );
+      const productIds = rows.map((product: any) => product._id);
       const articleNumbers = uniqueTexts(productRows.map((product: any) => product.articleNumber));
       const supplierCodes = uniqueTexts(productRows.map((product: any) => product.supplierCode));
       const productNames = productRows.map((product: any) => product.productName);
       const uniqueNames = new Set(productNames);
-      const uniqueArticles = new Set(articleNumbers);
       const recommendation =
-        uniqueNames.size === 1 && uniqueArticles.size <= 1 ? "merge" : "needs human review";
+        uniqueNames.size === 1 && articleNumbers.length <= 1 ? "merge" : "needs human review";
       const metadata = {
-        supplierName,
-        ean: group.ean.trim(),
+        supplierName: supplier.naam,
+        ean,
         articleNumbers,
         supplierCodes,
         productNames,
-        sourceFileNames: uniqueTexts(productRows.flatMap((product: any) => product.sourceFileNames)),
-        sourceSheetNames: uniqueTexts(productRows.flatMap((product: any) => product.sourceSheetNames)),
+        sourceFileNames: [] as string[],
+        sourceSheetNames: [] as string[],
         recommendation,
-        syncRunId,
+        syncRunId: args.syncRunId,
         syncedAt: now,
-        products: productRows.map((product: any) =>
-          compactObject({
-            productId: idString(product.productId),
-            articleNumber: product.articleNumber,
-            supplierCode: product.supplierCode,
-            productName: product.productName,
-            sourceFileNames: product.sourceFileNames,
-            sourceSheetNames: product.sourceSheetNames,
-            sourceRowNumber: product.sourceRowNumber
-          })
-        )
+        products: productRows
       };
+
       const existing = await ctx.db
         .query("catalogDataIssues")
         .withIndex("by_supplier_ean", (q: any) =>
-          q.eq("tenantId", tenant._id).eq("leverancierId", supplier._id).eq("ean", group.ean.trim())
+          q.eq("tenantId", tenant._id).eq("leverancierId", supplier._id).eq("ean", ean)
         )
         .first();
 
       if (existing) {
+        // Eerdere beslissingen (beoordeeld/toegestaan/opgelost) blijven staan
+        // zolang de groep uit dezelfde producten bestaat; pas als de
+        // samenstelling wijzigt vraagt het signaal opnieuw om beoordeling.
+        const existingIds = new Set((existing.productIds ?? []).map(idString));
+        const sameComposition =
+          existingIds.size === productIds.length &&
+          productIds.every((id: any) => existingIds.has(idString(id)));
+
         await ctx.db.patch(existing._id, {
-          status: existing.status === "resolved" ? ("open" as const) : existing.status,
+          status: sameComposition ? existing.status : ("open" as const),
           productIds,
           metadata: {
             ...(existing.metadata ?? {}),
@@ -895,7 +915,7 @@ export const syncDuplicateEanIssues = mutation({
           ernst: "warning" as const,
           status: "open" as const,
           leverancierId: supplier._id,
-          ean: group.ean.trim(),
+          ean,
           productIds,
           metadata,
           aangemaaktOp: now,
@@ -906,10 +926,16 @@ export const syncDuplicateEanIssues = mutation({
     }
 
     return {
+      isDone: startIndex >= suppliers.length - 1,
+      nextCursor: supplier.naam,
+      supplierNaam: supplier.naam,
+      supplierIndex: startIndex + 1,
+      supplierCount: suppliers.length,
+      productCount: products.length,
+      duplicateGroupCount,
       created,
       updated,
-      skipped,
-      syncRunId
+      syncRunId: args.syncRunId
     };
   }
 });
@@ -922,21 +948,27 @@ export const finalizeDuplicateEanIssueSync = mutation({
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
-    const issues = await ctx.db
-      .query("catalogDataIssues")
-      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-      .collect();
+    // Alleen niet-opgeloste duplicate-EAN-issues lezen (geïndexeerd): een
+    // tenant-brede scan groeit mee met de issuetabel en is hier niet nodig.
+    const activeStatuses = ["open", "reviewed", "accepted"] as const;
     const now = Date.now();
     let resolvedStale = 0;
     let active = 0;
 
-    for (const issue of issues.filter((item: any) => item.kwestieSoort === "duplicate_ean")) {
-      if (issue.metadata?.syncRunId === args.syncRunId) {
-        active += 1;
-        continue;
-      }
+    for (const status of activeStatuses) {
+      const issues = await ctx.db
+        .query("catalogDataIssues")
+        .withIndex("by_type_status", (q: any) =>
+          q.eq("tenantId", tenant._id).eq("kwestieSoort", "duplicate_ean").eq("status", status)
+        )
+        .collect();
 
-      if (issue.status !== "resolved") {
+      for (const issue of issues) {
+        if (issue.metadata?.syncRunId === args.syncRunId) {
+          active += 1;
+          continue;
+        }
+
         await ctx.db.patch(issue._id, {
           status: "resolved" as const,
           metadata: {

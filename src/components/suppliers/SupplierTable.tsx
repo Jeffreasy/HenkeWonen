@@ -30,10 +30,40 @@ type SupplierTableProps = {
   onArchive: (supplier: PortalSupplier) => void;
   onRestore: (supplier: PortalSupplier) => void;
   onChangeProductListStatus: (supplier: PortalSupplier, nextStatus: ProductListStatus) => Promise<void>;
+  onChangeVatMode: (supplier: PortalSupplier, nextMode: "exclusive" | "inclusive") => void;
   savingSupplierId: string | null;
   isLoading: boolean;
   error: string | null;
 };
+
+function vatModeSelect(
+  supplier: PortalSupplier,
+  savingSupplierId: string | null,
+  onChangeVatMode: (supplier: PortalSupplier, nextMode: "exclusive" | "inclusive") => void
+) {
+  return (
+    <Select
+      aria-label={`Btw-modus verkoopprijzen voor ${supplier.naam}`}
+      disabled={savingSupplierId === supplier.id}
+      value={supplier.verkoopBtwModus ?? ""}
+      onChange={(event) => {
+        const next = event.target.value;
+        if (next === "exclusive" || next === "inclusive") {
+          onChangeVatMode(supplier, next);
+        }
+      }}
+    >
+      {/* Leeg = nog geen bewuste keuze: prijzen volgen de geïmporteerde prijslijst. */}
+      {supplier.verkoopBtwModus ? null : (
+        <option value="" disabled>
+          Volgens prijslijst
+        </option>
+      )}
+      <option value="exclusive">Exclusief btw</option>
+      <option value="inclusive">Inclusief btw</option>
+    </Select>
+  );
+}
 
 function productListTone(status: ProductListStatus) {
   if (status === "received") {
@@ -68,6 +98,7 @@ export function SupplierTable({
   onArchive,
   onRestore,
   onChangeProductListStatus,
+  onChangeVatMode,
   savingSupplierId,
   isLoading,
   error
@@ -194,6 +225,11 @@ export function SupplierTable({
         )
       },
       {
+        key: "vat",
+        header: "Btw verkoopprijzen",
+        render: (supplier) => vatModeSelect(supplier, savingSupplierId, onChangeVatMode)
+      },
+      {
         key: "actions",
         header: "Acties",
         width: "190px",
@@ -230,7 +266,7 @@ export function SupplierTable({
         )
       }
     ],
-    [savingSupplierId, onEdit, onChangeProductListStatus, onArchive, onRestore]
+    [savingSupplierId, onEdit, onChangeProductListStatus, onChangeVatMode, onArchive, onRestore]
   );
 
   return (
@@ -366,6 +402,7 @@ export function SupplierTable({
                     </option>
                   ))}
                 </Select>
+                {vatModeSelect(supplier, savingSupplierId, onChangeVatMode)}
                 <Button
                   leftIcon={<Pencil size={16} aria-hidden="true" />}
                   onClick={() => onEdit(supplier)}

@@ -10,7 +10,7 @@
  * Verwijdert (in dependency-volgorde, kind voor ouder):
  *   measurementLines → measurementRooms → measurements
  *   quoteLines → quotes → invoices → supplierOrders
- *   projectTasks → projectWorkflowEvents → timelineEvents
+ *   projectTasks → projectWorkflowEvents
  *   projectRooms → projects → customerContacts → customers
  *
  * Vereist: ALLOW_CONVEX_TOOLING=true in de Convex environment variables
@@ -128,10 +128,7 @@ export const clearTenantData = internalMutation({
       ctx, "projectWorkflowEvents", tenantId, "by_project"
     );
 
-    // ── Stap 10: timelineEvents ───────────────────────────────────────────────
-    counts.timelineEvents = await deleteAllForTenant(
-      ctx, "timelineEvents", tenantId, "by_project"
-    );
+    // (timelineEvents is als spooktabel verwijderd — audit 2026-07-09.)
 
     // ── Stap 11: projectRooms ─────────────────────────────────────────────────
     counts.projectRooms = await deleteAllForTenant(

@@ -61,6 +61,8 @@ type QuoteBuilderProps = {
   canEdit?: boolean;
   session: AppSession;
   project?: PortalProject;
+  /** Klant-zichtbare afspraken uit het klantdossier voor de klantversie. */
+  klantAfspraken?: Array<{ titel: string; omschrijving?: string }>;
   quoteTemplates?: QuoteTemplate[];
   onAddLine: (line: QuoteLineFormValues) => Promise<string | void> | string | void;
   onDeleteLine: (lineId: string) => Promise<void> | void;
@@ -152,6 +154,7 @@ export default function QuoteBuilder({
   canEdit = true,
   session,
   project,
+  klantAfspraken = [],
   quoteTemplates = [],
   onAddLine,
   onDeleteLine,
@@ -175,10 +178,11 @@ export default function QuoteBuilder({
             quote,
             customer,
             project,
-            template: defaultTemplate
+            template: defaultTemplate,
+            customerAgreements: klantAfspraken
           })
         : null,
-    [customer, defaultTemplate, project, quote]
+    [customer, defaultTemplate, klantAfspraken, project, quote]
   );
   const [termsText, setTermsText] = useState(
     polishQuoteTemplateLines(quote.voorwaarden ?? []).join("\n")

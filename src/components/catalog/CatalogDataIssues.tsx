@@ -5,6 +5,7 @@ import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatRecommendation } from "../../lib/i18n/statusLabels";
 import { showToast } from "../../lib/toast";
+import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
 import { DataIssuesHeader } from "./DataIssuesHeader";
 import { DataIssuesFilterBar, type IssueStatusFilter } from "./DataIssuesFilterBar";
 import { DataIssuesTable, type DuplicateEanIssue, type IssueDraft } from "./DataIssuesTable";
@@ -19,10 +20,23 @@ type DuplicateEanReview = {
   groups: DuplicateEanIssue[];
 };
 
-type DuplicateEanSyncResult = {
-  requiresPreviewSync?: boolean;
-  message?: string;
+type DuplicateEanSyncChunk = {
+  isDone: boolean;
+  nextCursor: string | null;
+  supplierNaam: string | null;
+  supplierIndex: number;
+  supplierCount: number;
+  created: number;
+  updated: number;
 };
+
+type DuplicateEanFinalizeResult = {
+  active: number;
+  resolvedStale: number;
+};
+
+/** Aantal groepen dat in één keer rendert; "Toon meer" haalt de rest erbij. */
+const VISIBLE_STEP = 50;
 
 const statusFilters: Array<{ value: IssueStatusFilter; label: string }> = [
   { value: "open", label: "Te beoordelen" },
@@ -88,10 +102,6 @@ function statusSortValue(status: DuplicateEanIssue["issueStatus"]) {
   return 3;
 }
 
-function uniqueCount(values: string[]) {
-  return new Set(values.filter(Boolean)).size;
-}
-
 export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
   const [review, setReview] = useState<DuplicateEanReview | null>(null);
   const [drafts, setDrafts] = useState<Record<string, IssueDraft>>({});
@@ -101,6 +111,9 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<string | null>(null);
+  const [isBulkConfirmOpen, setIsBulkConfirmOpen] = useState(false);
+  const [visibleLimit, setVisibleLimit] = useState(VISIBLE_STEP);
   const [error, setError] = useState<string | null>(null);
 
   const orderedGroups = useMemo(
@@ -135,8 +148,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
       open: orderedGroups.filter((issue) => issue.issueStatus === "open").length,
       reviewed: orderedGroups.filter((issue) => issue.issueStatus === "reviewed").length,
       accepted: orderedGroups.filter((issue) => issue.issueStatus === "accepted").length,
-      resolved: orderedGroups.filter((issue) => issue.issueStatus === "resolved").length,
-      missingIssueRecords: orderedGroups.filter((issue) => !issue.issueId).length
+      resolved: orderedGroups.filter((issue) => issue.issueStatus === "resolved").length
     };
   }, [orderedGroups]);
 
@@ -179,10 +191,6 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
 
   const visibleProductCount = useMemo(
     () => filteredGroups.reduce((total, issue) => total + issue.products.length, 0),
-    [filteredGroups]
-  );
-  const visibleSourceFileCount = useMemo(
-    () => uniqueCount(filteredGroups.flatMap((issue) => issue.sourceFileNames)),
     [filteredGroups]
   );
   const nextOpenIssue = orderedGroups.find((issue) => issue.issueStatus === "open");
@@ -231,6 +239,14 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
     void loadReview();
   }, [loadReview]);
 
+  // Bij een andere filterkeuze weer bovenaan beginnen; met ~1.800 groepen
+  // rendert alles-in-één-keer onwerkbaar traag (elke rij heeft een formulier).
+  useEffect(() => {
+    setVisibleLimit(VISIBLE_STEP);
+  }, [statusFilter, supplierFilter, recommendationFilter, searchQuery]);
+
+  // Scant de live catalogus leverancier voor leverancier (Convex-leeslimiet)
+  // en zet daarna verdwenen signalen op "opgelost" via de finalize-stap.
   async function syncIssues() {
     const client = createConvexHttpClient(session);
 
@@ -243,16 +259,90 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
     setError(null);
 
     try {
-      const result = (await client.mutation(api.catalog.review.syncDuplicateEanIssues, {
+      const actor = mutationActorFromSession(session);
+      const syncRunId = `duplicate-ean-${Date.now()}`;
+      let cursor: string | undefined;
+      let created = 0;
+      let updated = 0;
+
+      do {
+        const chunk = (await client.mutation(api.catalog.review.syncDuplicateEanIssues, {
+          tenantSlug: session.tenantId,
+          actor,
+          syncRunId,
+          supplierCursor: cursor
+        })) as DuplicateEanSyncChunk;
+
+        created += chunk.created;
+        updated += chunk.updated;
+        if (chunk.supplierNaam) {
+          setSyncProgress(`${chunk.supplierIndex}/${chunk.supplierCount} · ${chunk.supplierNaam}`);
+        }
+        cursor = chunk.isDone ? undefined : (chunk.nextCursor ?? undefined);
+      } while (cursor);
+
+      const finalized = (await client.mutation(api.catalog.review.finalizeDuplicateEanIssueSync, {
         tenantSlug: session.tenantId,
-        actor: mutationActorFromSession(session)
-      })) as DuplicateEanSyncResult;
+        actor,
+        syncRunId
+      })) as DuplicateEanFinalizeResult;
+
       await loadReview();
-      showToast({ title: "EAN-waarschuwingen bijgewerkt", description: result.message, tone: "success" });
+      showToast({
+        title: "Catalogus gescand op dubbele EAN's",
+        description: `${created} nieuwe signalen, ${updated} bijgewerkt, ${finalized.resolvedStale} vervallen signalen opgelost.`,
+        tone: "success"
+      });
     } catch (syncError) {
       console.error(syncError);
       setError("Dubbele EAN-waarschuwingen konden niet worden bijgewerkt.");
     } finally {
+      setSyncProgress(null);
+      setIsSaving(false);
+    }
+  }
+
+  // Bulk: alle OPEN signalen in één keer op "Gescheiden houden" zetten.
+  // Chunked (500 per ronde) omdat de open lijst duizenden signalen kan tellen.
+  async function bulkKeepSeparate() {
+    const client = createConvexHttpClient(session);
+
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return;
+    }
+
+    setIsBulkConfirmOpen(false);
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      const actor = mutationActorFromSession(session);
+      let patched = 0;
+      let isDone = false;
+
+      while (!isDone) {
+        const result = (await client.mutation(api.catalog.review.bulkReviewOpenDuplicateEanIssues, {
+          tenantSlug: session.tenantId,
+          actor,
+          decision: "keep_separate"
+        })) as { patched: number; isDone: boolean };
+        patched += result.patched;
+        isDone = result.isDone;
+        setSyncProgress(`${patched} beoordeeld`);
+      }
+
+      await loadReview();
+      showToast({
+        title: "Alle open signalen op 'Gescheiden houden' gezet",
+        description: `${patched} EAN-groepen beoordeeld. Wijzigt een groep later, dan vraagt het signaal opnieuw om beoordeling.`,
+        tone: "success"
+      });
+    } catch (bulkError) {
+      console.error(bulkError);
+      setError("Bulkbeoordeling kon niet worden opgeslagen.");
+    } finally {
+      setSyncProgress(null);
       setIsSaving(false);
     }
   }
@@ -307,6 +397,16 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
 
   return (
     <div className="grid">
+      <ConfirmDialog
+        open={isBulkConfirmOpen}
+        title="Alle open signalen op 'Gescheiden houden' zetten?"
+        description={`Je legt voor ${summary.open} open EAN-groepen de beslissing "Gescheiden houden" vast. Producten worden sowieso nooit samengevoegd; dit ruimt alleen de werklijst op. Verandert een groep later van samenstelling, dan komt dat signaal vanzelf terug als "Te beoordelen".`}
+        confirmLabel="Gescheiden houden"
+        tone="warning"
+        isBusy={isSaving}
+        onCancel={() => setIsBulkConfirmOpen(false)}
+        onConfirm={() => void bulkKeepSeparate()}
+      />
       <section
         className={
           hasOpenIssues ? "panel issue-workbench issue-workbench-attention" : "panel issue-workbench"
@@ -315,6 +415,7 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
         <DataIssuesHeader
           isLoading={isLoading}
           isSaving={isSaving}
+          syncProgress={syncProgress}
           hasOpenIssues={hasOpenIssues}
           review={review}
           error={error}
@@ -322,10 +423,10 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
           nextOpenIssue={nextOpenIssue}
           supplierOptionsCount={supplierOptions.length}
           visibleProductCount={visibleProductCount}
-          visibleSourceFileCount={visibleSourceFileCount}
           filteredGroupsCount={filteredGroups.length}
           onRefresh={loadReview}
           onSync={syncIssues}
+          onBulkKeepSeparate={() => setIsBulkConfirmOpen(true)}
         />
         {review && !isLoading ? (
           <DataIssuesFilterBar
@@ -346,14 +447,19 @@ export default function CatalogDataIssues({ session }: CatalogDataIssuesProps) {
       </section>
 
       <DataIssuesTable
-        filteredGroups={filteredGroups}
+        filteredGroups={filteredGroups.slice(0, visibleLimit)}
+        totalGroupCount={filteredGroups.length}
         drafts={drafts}
         isSaving={isSaving}
         isLoading={isLoading}
         error={error}
         onUpdateDraft={updateDraft}
         onSaveIssue={saveIssue}
-        onSyncIssues={syncIssues}
+        onShowMore={
+          filteredGroups.length > visibleLimit
+            ? () => setVisibleLimit((current) => current + VISIBLE_STEP)
+            : undefined
+        }
       />
     </div>
   );

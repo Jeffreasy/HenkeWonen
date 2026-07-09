@@ -47,7 +47,9 @@ import {
   getRooms,
   sortProjectTasks,
   assertValidRoomDimensions,
-  cancelOpenSupplierOrders
+  cancelOpenSupplierOrders,
+  teamMemberNamesByExternalId,
+  toContact
 } from "../portalUtils";
 
 export const list = query({
@@ -473,6 +475,32 @@ export const projectDetail = query({
             right.aangemaaktOp - left.aangemaaktOp
         )
         .map((event: Doc<"projectWorkflowEvents">) => toWorkflowEvent(tenant.slug, event)),
+      // Contactmomenten die aan dít project zijn gekoppeld: één geschiedenis in
+      // de projecttijdlijn i.p.v. klant- en projectverhaal gescheiden houden.
+      klantContacten: await (async () => {
+        const contacts = await ctx.db
+          .query("customerContacts")
+          .withIndex("by_project", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("projectId", project._id)
+          )
+          .collect();
+        if (contacts.length === 0) {
+          return [];
+        }
+        const teamNames = await teamMemberNamesByExternalId(ctx, tenant._id);
+        return contacts
+          .sort(
+            (a: Doc<"customerContacts">, b: Doc<"customerContacts">) =>
+              b.aangemaaktOp - a.aangemaaktOp
+          )
+          .map((contact: Doc<"customerContacts">) =>
+            toContact(tenant.slug, contact, {
+              vastgelegdDoor: contact.createdByExternalUserId
+                ? teamNames.get(contact.createdByExternalUserId)
+                : undefined
+            })
+          );
+      })(),
       projectTasks: sortProjectTasks(projectTasks).map((task: Doc<"projectTasks">) =>
         toProjectTask(tenant.slug, task)
       ),

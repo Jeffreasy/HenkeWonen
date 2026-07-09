@@ -249,6 +249,8 @@ export type PortalSupplier = {
   telefoon?: string;
   prijslijstStatus: ProductListStatus;
   status?: "active" | "inactive" | "archived";
+  /** Btw-modus verkoopprijzen; leeg = pipeline-default (exclusief). */
+  verkoopBtwModus?: "exclusive" | "inclusive";
   notities?: string;
   laatsteContactOp?: number;
   verwachtOp?: number;
@@ -411,6 +413,7 @@ export type PortalProduct = {
   productSoort?: ProductKind;
   commercialNames?: CommercialName[];
   eenheid: ProductUnit;
+  breedteMm?: number;
   pakinhoudM2?: number;
   stuksPerPak?: number;
   pakkenPerPallet?: number;
@@ -597,6 +600,12 @@ export type PortalCustomerContact = {
   verwachteRetourdatum?: number;
   geretourneerdOp?: number;
   zichtbaarVoorKlant: boolean;
+  /** Opvolgdatum voor het dashboard-signaal Klantopvolging. */
+  opvolgenOp?: number;
+  /** Gekoppeld projectdossier (verschijnt dan ook in de projecttijdlijn). */
+  projectId?: string;
+  /** Weergavenaam van het teamlid dat het contact heeft vastgelegd. */
+  vastgelegdDoor?: string;
   aangemaaktOp: number;
   gewijzigdOp: number;
 };

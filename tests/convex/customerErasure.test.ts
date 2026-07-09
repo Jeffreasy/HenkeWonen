@@ -359,13 +359,13 @@ test("deleteCustomer mét facturen anonimiseert de klant en bewaart de factuur",
   });
 });
 
-test("deleteCustomer veegt wees-offertes en wees-tijdlijnitems (verdwenen project) mee", async () => {
+test("deleteCustomer veegt wees-offertes (verdwenen project) mee", async () => {
   const t = convexTest(schema, modules);
   const seeded = await seedCustomer(t, { withInvoice: false });
   const now = Date.now();
 
   // Wees-rijen: klantId wijst naar deze klant, maar het project bestaat niet (meer).
-  const { weesQuoteId, weesEventId } = await t.run(async (ctx) => {
+  const { weesQuoteId } = await t.run(async (ctx) => {
     const spookProjectId = await ctx.db.insert("projects", {
       tenantId: seeded.tenantId,
       klantId: seeded.klantId,
@@ -388,18 +388,11 @@ test("deleteCustomer veegt wees-offertes en wees-tijdlijnitems (verdwenen projec
       aangemaaktOp: now,
       gewijzigdOp: now
     });
-    const weesEventId = await ctx.db.insert("timelineEvents", {
-      tenantId: seeded.tenantId,
-      projectId: spookProjectId,
-      klantId: seeded.klantId,
-      type: "note",
-      titel: "Jan belde over levering",
-      zichtbaarVoorKlant: false,
-      aangemaaktOp: now
-    });
+    // (timelineEvents is als spooktabel verwijderd — het weesrecord-scenario
+    // dekt nu alleen nog de wees-offerte.)
     // Het project verdwijnt (het historische weesrecord-scenario).
     await ctx.db.delete(spookProjectId);
-    return { weesQuoteId, weesEventId };
+    return { weesQuoteId };
   });
 
   await t.mutation(api.portal.deleteCustomer, {
@@ -411,7 +404,6 @@ test("deleteCustomer veegt wees-offertes en wees-tijdlijnitems (verdwenen projec
 
   await t.run(async (ctx) => {
     expect(await ctx.db.get(weesQuoteId)).toBeNull();
-    expect(await ctx.db.get(weesEventId)).toBeNull();
   });
 });
 

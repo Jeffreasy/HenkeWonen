@@ -2,6 +2,7 @@ import { CalendarDays, Save } from "lucide-react";
 import { useState } from "react";
 import type { PortalCustomerContact } from "../../lib/portalTypes";
 import { Button } from "../ui/forms/Button";
+import { Checkbox } from "../ui/forms/Checkbox";
 import { Field } from "../ui/forms/Field";
 import { Input } from "../ui/forms/Input";
 import { Select } from "../ui/forms/Select";
@@ -14,10 +15,20 @@ export type AddContactFormValues = {
   description?: string;
   loanedItemName?: string;
   expectedReturnDate?: number;
+  /** Opvolgdatum: verschijnt tot die datum-afhandeling in Klantopvolging op het dashboard. */
+  followUpDate?: number;
+  /** Koppeling aan een projectdossier: verschijnt dan ook in de projecttijdlijn. */
+  projectId?: string;
+  visibleToCustomer?: boolean;
 };
 
 type AddContactFormProps = {
   onSubmit: (values: AddContactFormValues) => Promise<void> | void;
+  /** Voorinvulling voor de bewerk-variant (typefout corrigeren). */
+  initialValues?: AddContactFormValues;
+  submitLabel?: string;
+  /** Projecten van deze klant, voor de optionele dossierkoppeling. */
+  projectOptions?: Array<{ id: string; titel: string }>;
 };
 
 function dateInputToTimestamp(value: string) {
@@ -30,13 +41,26 @@ function dateInputToTimestamp(value: string) {
   return Number.isNaN(timestamp) ? undefined : timestamp;
 }
 
-export function AddContactForm({ onSubmit }: AddContactFormProps) {
+function timestampToDateInput(value?: number) {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+}
+
+export function AddContactForm({ onSubmit, initialValues, submitLabel, projectOptions }: AddContactFormProps) {
   const [contactType, setContactType] =
-    useState<PortalCustomerContact["type"]>("note");
-  const [contactTitle, setContactTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [loanedItemName, setLoanedItemName] = useState("");
-  const [expectedReturnDate, setExpectedReturnDate] = useState("");
+    useState<PortalCustomerContact["type"]>(initialValues?.type ?? "note");
+  const [contactTitle, setContactTitle] = useState(initialValues?.title ?? "");
+  const [description, setDescription] = useState(initialValues?.description ?? "");
+  const [loanedItemName, setLoanedItemName] = useState(initialValues?.loanedItemName ?? "");
+  const [expectedReturnDate, setExpectedReturnDate] = useState(
+    timestampToDateInput(initialValues?.expectedReturnDate)
+  );
+  const [followUpDate, setFollowUpDate] = useState(timestampToDateInput(initialValues?.followUpDate));
+  const [projectId, setProjectId] = useState(initialValues?.projectId ?? "");
+  const [visibleToCustomer, setVisibleToCustomer] = useState(initialValues?.visibleToCustomer ?? false);
   const [isSaving, setIsSaving] = useState(false);
   const isLoanedItem = contactType === "loaned_item";
   const canSubmit =
@@ -68,13 +92,19 @@ export function AddContactForm({ onSubmit }: AddContactFormProps) {
         loanedItemName: isLoanedItem ? loanedItemName.trim() : undefined,
         expectedReturnDate: isLoanedItem
           ? dateInputToTimestamp(expectedReturnDate)
-          : undefined
+          : undefined,
+        followUpDate: dateInputToTimestamp(followUpDate),
+        projectId: projectId || undefined,
+        visibleToCustomer
       });
       setContactType("note");
       setContactTitle("");
       setDescription("");
       setLoanedItemName("");
       setExpectedReturnDate("");
+      setFollowUpDate("");
+      setProjectId("");
+      setVisibleToCustomer(false);
     } finally {
       setIsSaving(false);
     }
@@ -147,6 +177,46 @@ export function AddContactForm({ onSubmit }: AddContactFormProps) {
             </Field>
           </>
         ) : null}
+        <Field
+          htmlFor="contact-follow-up"
+          label="Opvolgen op"
+          description="Verschijnt vanaf die dag onder Klantopvolging op het dashboard; leegmaken = afgehandeld."
+        >
+          <Input
+            id="contact-follow-up"
+            type="date"
+            value={followUpDate}
+            onChange={(event) => setFollowUpDate(event.target.value)}
+          />
+        </Field>
+        {projectOptions && projectOptions.length > 0 ? (
+          <Field
+            htmlFor="contact-project"
+            label="Koppel aan project"
+            description="Het contactmoment verschijnt dan ook in de tijdlijn van dat dossier."
+          >
+            <Select
+              id="contact-project"
+              value={projectId}
+              onChange={(event) => setProjectId(event.target.value)}
+            >
+              <option value="">Geen project</option>
+              {projectOptions.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.titel}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        ) : null}
+        <div className="contact-form-field-full">
+          <Checkbox
+            checked={visibleToCustomer}
+            label="Zichtbaar voor klant"
+            description="Verschijnt als afspraak op de klantversie van de offerte."
+            onChange={(event) => setVisibleToCustomer(event.target.checked)}
+          />
+        </div>
       </div>
 
       <div className="contact-form-footer">
@@ -156,7 +226,7 @@ export function AddContactForm({ onSubmit }: AddContactFormProps) {
           type="submit"
           variant="primary"
         >
-          {isSaving ? "Opslaan..." : "Contactmoment opslaan"}
+          {isSaving ? "Opslaan..." : (submitLabel ?? "Contactmoment opslaan")}
         </Button>
       </div>
     </form>

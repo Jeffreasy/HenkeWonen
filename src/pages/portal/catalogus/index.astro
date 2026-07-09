@@ -20,7 +20,7 @@ const showProductControl = canManage(session.role);
     description="Zoek producten, leveranciers, kleuren en verkoopprijzen."
   >
     {showProductControl ? (
-      <a class="button secondary" href="/portal/catalogus/data-issues">Productcontrole</a>
+      <a class="ui-button ui-button-secondary" href="/portal/catalogus/data-issues">Productcontrole</a>
     ) : null}
   </PageHeader>
   <ProductList client:load session={session} />

@@ -5,6 +5,7 @@ import {
   fieldInmeetTimestamp,
   fieldVisitTimestamp,
   taskPriority,
+  teamMemberNamesByExternalId,
   toContact,
   toDossierAttachment
 } from "../portalUtils";
@@ -352,6 +353,10 @@ export const fieldServiceWorkspace = query({
       "quote_draft",
       "quote_sent",
       "quote_accepted",
+      // Na een afwijzing aan de deur (de veld-UI biedt "Afwijzen" aan) moet het
+      // dossier zichtbaar blijven in Opvolgen — anders verdwijnt het direct van
+      // de tablet en kan de monteur geen vervolg (nieuwe offerte) meer starten.
+      "quote_rejected",
       "measurement_planned",
       "execution_planned",
       "ordering",
@@ -614,9 +619,18 @@ export const fieldProjectWorkspace = query({
       tasks: sortProjectTasks(projectTasks).map((task: Doc<"projectTasks">) =>
         toProjectTask(tenant.slug, task)
       ),
-      contacts: (contacts as Doc<"customerContacts">[]).map((contact) =>
-        toContact(tenant.slug, contact)
-      ),
+      contacts: await (async () => {
+        // Auteur meegeven: de monteur moet zien wíé "korting toegezegd" heeft
+        // vastgelegd (zelfde resolutie als het winkel-klantdossier).
+        const teamNames = await teamMemberNamesByExternalId(ctx, tenant._id);
+        return (contacts as Doc<"customerContacts">[]).map((contact) =>
+          toContact(tenant.slug, contact, {
+            vastgelegdDoor: contact.createdByExternalUserId
+              ? teamNames.get(contact.createdByExternalUserId)
+              : undefined
+          })
+        );
+      })(),
       attachments: (attachments as Doc<"dossierAttachments">[])
         .filter((attachment) => attachment.status === "active")
         .map((attachment) => toDossierAttachment(tenant.slug, attachment)),

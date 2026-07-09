@@ -1,5 +1,6 @@
 import { ClipboardList } from "lucide-react";
 import { useState } from "react";
+import type { MeasurementWorktype } from "../../lib/measurementIntent";
 import { Button } from "../ui/forms/Button";
 import { SectionHeader } from "../ui/layout/SectionHeader";
 
@@ -12,6 +13,9 @@ export type CustomerScopeOption = {
   /** Bestemming na het starten. "measurement" = naar de inmeting (standaard),
    *  "quote" = direct naar een nieuwe offerte met catalogus (directe verkoop). */
   target?: "measurement" | "quote";
+  /** Werksoort-hint voor het inmeet-paneel: opent de juiste product-tab
+   *  (Vloer/Plint/Behang/...) i.p.v. altijd de eerste. */
+  werksoort?: MeasurementWorktype;
 };
 
 type CustomerIntakePanelProps = {
@@ -32,49 +36,72 @@ export const customerScopeOptions: CustomerScopeOption[] = [
     label: "PVC vloer",
     description: "Vloeroppervlak, legwijze en snijverlies.",
     projectTitle: "PVC vloer",
-    projectDescription: "Aanvraag gestart vanuit klantdossier: PVC vloer."
+    projectDescription: "Aanvraag gestart vanuit klantdossier: PVC vloer.",
+    werksoort: "vloer"
   },
   {
     id: "tapijt",
     label: "Tapijt",
     description: "Vloeroppervlak en plaatsingsnotities.",
     projectTitle: "Tapijt",
-    projectDescription: "Aanvraag gestart vanuit klantdossier: tapijt."
+    projectDescription: "Aanvraag gestart vanuit klantdossier: tapijt.",
+    werksoort: "vloer"
   },
   {
     id: "vinyl",
     label: "Vinyl",
     description: "Vloeroppervlak en snijverlies.",
     projectTitle: "Vinyl",
-    projectDescription: "Aanvraag gestart vanuit klantdossier: vinyl."
+    projectDescription: "Aanvraag gestart vanuit klantdossier: vinyl.",
+    werksoort: "vloer"
   },
   {
     id: "plinten",
     label: "Plinten",
     description: "Omtrek, deuropeningen en meters plint.",
     projectTitle: "Plinten",
-    projectDescription: "Aanvraag gestart vanuit klantdossier: plinten."
+    projectDescription: "Aanvraag gestart vanuit klantdossier: plinten.",
+    werksoort: "plint"
+  },
+  {
+    id: "trap",
+    label: "Traprenovatie",
+    description: "Treden, stootborden en trapvorm (recht, kwart- of halve draai).",
+    projectTitle: "Traprenovatie",
+    projectDescription: "Aanvraag gestart vanuit klantdossier: traprenovatie.",
+    werksoort: "trap"
   },
   {
     id: "behang",
     label: "Behang",
     description: "Wandmaat, rolbreedte, rollengte en patroonrapport.",
     projectTitle: "Behang",
-    projectDescription: "Aanvraag gestart vanuit klantdossier: behang."
+    projectDescription: "Aanvraag gestart vanuit klantdossier: behang.",
+    werksoort: "behang"
+  },
+  {
+    id: "wandpanelen",
+    label: "Wandpanelen",
+    description: "Wandmaat en aantal panelen (akoestisch of badkamer).",
+    projectTitle: "Wandpanelen",
+    projectDescription: "Aanvraag gestart vanuit klantdossier: wandpanelen.",
+    werksoort: "wandpaneel"
   },
   {
     id: "raambekleding",
     label: "Raambekleding",
-    description: "Vrije maatregel voor raamdecoratie.",
+    description: "Jaloezieën en rolgordijnen op maat (breedte × hoogte).",
     projectTitle: "Raambekleding",
-    projectDescription: "Aanvraag gestart vanuit klantdossier: raambekleding."
+    projectDescription: "Aanvraag gestart vanuit klantdossier: raambekleding.",
+    werksoort: "raambekleding"
   },
   {
     id: "gordijnen",
     label: "Gordijnen",
     description: "Vrije maatregel voor gordijnen en rails.",
     projectTitle: "Gordijnen",
-    projectDescription: "Aanvraag gestart vanuit klantdossier: gordijnen."
+    projectDescription: "Aanvraag gestart vanuit klantdossier: gordijnen.",
+    werksoort: "gordijn"
   },
   {
     id: "overig",

@@ -38,7 +38,6 @@
  * │ projectWorkflowEvents   │ Audit trail van projectstatusovergangen               │
  * │ projectTasks            │ Opvolgingstaken per project (workflow-triggers)       │
  * │ invoices                │ Facturen gekoppeld aan project + quote                │
- * │ timelineEvents          │ Tijdlijnitems over projecten en klantdossiers         │
  * └─────────────────────────┴──────────────────────────────────────────────────────┘
  *
  * Alle tabellen bevatten `tenantId` als eerste veld — queries filteren altijd hierop.
@@ -281,12 +280,20 @@ export default defineSchema({
     verwachteRetourdatum: v.optional(v.number()),
     geretourneerdOp: v.optional(v.number()),
     zichtbaarVoorKlant: v.boolean(),
+    // Optionele opvolgdatum: "bel klant terug", "staal ophalen" — voedt het
+    // dashboard-signaal Klantopvolging zolang de datum niet gewist is.
+    opvolgenOp: v.optional(v.number()),
+    // Optionele koppeling aan een projectdossier zodat het gesprek óók in de
+    // projecttijdlijn verschijnt (zelfde klant, één geschiedenis).
+    projectId: v.optional(v.id("projects")),
     createdByExternalUserId: v.optional(v.string()),
     aangemaaktOp: v.number(),
     gewijzigdOp: v.number()
   })
     .index("by_customer", ["tenantId", "klantId"])
-    .index("by_type", ["tenantId", "type"]),
+    .index("by_type", ["tenantId", "type"])
+    .index("by_project", ["tenantId", "projectId"])
+    .index("by_follow_up", ["tenantId", "opvolgenOp"]),
 
   // AVG-wisregister: minimaal, aantoonbaar spoor van elk recht-op-vergetelheid-verzoek
   // (verantwoordingsplicht, art. 5 lid 2 AVG). Bewust alleen de weergavenaam als
@@ -355,6 +362,10 @@ export default defineSchema({
     telefoon: v.optional(v.string()),
     notities: v.optional(v.string()),
     status: v.optional(v.union(v.literal("active"), v.literal("inactive"), v.literal("archived"))),
+    // Btw-modus van de verkoop-/adviesprijzen van deze leverancier. Ingesteld via het
+    // portaal (leidend): een her-import overschrijft dit niet, maar volgt het juist.
+    // Leeg = pipeline-default (vat_config.json in de datamap, doorgaans exclusief).
+    verkoopBtwModus: v.optional(v.union(v.literal("exclusive"), v.literal("inclusive"))),
     prijslijstStatus: v.union(
       v.literal("unknown"),
       v.literal("requested"),
@@ -1218,32 +1229,10 @@ export default defineSchema({
     // Geïndexeerde dedup/lookup van de factuur per offerte (existingInvoiceForQuote).
     .index("by_quote", ["tenantId", "quoteId"]),
 
-  timelineEvents: defineTable({
-    tenantId: v.id("tenants"),
-    projectId: v.id("projects"),
-    klantId: v.optional(v.id("customers")),
-    type: v.union(
-      v.literal("created"),
-      v.literal("note"),
-      v.literal("quote_sent"),
-      v.literal("quote_accepted"),
-      v.literal("quote_rejected"),
-      v.literal("measurement_planned"),
-      v.literal("execution_planned"),
-      v.literal("supplier_ordered"),
-      v.literal("invoice_sent"),
-      v.literal("payment_received"),
-      v.literal("closed")
-    ),
-    titel: v.string(),
-    omschrijving: v.optional(v.string()),
-    zichtbaarVoorKlant: v.boolean(),
-    createdByExternalUserId: v.optional(v.string()),
-    aangemaaktOp: v.number()
-  })
-    .index("by_project", ["tenantId", "projectId"])
-    .index("by_customer", ["tenantId", "klantId"])
-    .index("by_type", ["tenantId", "type"]),
+  // timelineEvents is verwijderd (audit klantcontact-domein 2026-07-09): de tabel
+  // werd nergens beschreven of gelezen — de echte tijdlijnen zijn customerContacts
+  // (klant) en projectWorkflowEvents (project), sinds vandaag gekoppeld via
+  // customerContacts.projectId.
 
   // ── Agenda & beschikbaarheid (monteurs) ────────────────────────────────────
   // Terugkerende werktijden per monteur (gebruiker), per weekdag.

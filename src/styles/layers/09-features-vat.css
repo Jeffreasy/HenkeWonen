@@ -169,8 +169,9 @@
 }
 
 .tab.active .vat-tab-count {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
+  /* Volgt de tekstkleur van de actieve tab, in beide thema's leesbaar. */
+  background: color-mix(in srgb, currentColor 20%, transparent);
+  color: inherit;
 }
 
 .vat-profile-panel {

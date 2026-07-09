@@ -16,7 +16,8 @@ import {
   toDossierAttachment,
   customerType,
   customerStatus,
-  customerContactType
+  customerContactType,
+  teamMemberNamesByExternalId
 } from "../portalUtils";
 
 
@@ -306,14 +307,14 @@ export const createCustomer = mutation({
     notities: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
       "user",
       "editor",
       "admin"
     ]);
     const now = Date.now();
 
-    return await ctx.db.insert("customers", {
+    const customerId = await ctx.db.insert("customers", {
       tenantId: tenant._id,
       type: args.type,
       weergaveNaam: args.weergaveNaam,
@@ -329,6 +330,28 @@ export const createCustomer = mutation({
       aangemaaktOp: now,
       gewijzigdOp: now
     });
+
+    // Een intake-notitie is (ook) het eerste klantcontact: leg 'm vast als
+    // contactmoment zodat hij met datum en auteur in de Contactmomenten-tijdlijn
+    // terugkomt. Het notitieveld op de klantkaart blijft de actuele werknotitie
+    // (en wordt bij bewerken overschreven) — de tijdlijn bewaart wat er bij het
+    // eerste contact is gezegd. Geldt voor winkel- én buitendienst-intake.
+    const intakeNote = args.notities?.trim();
+    if (intakeNote) {
+      await ctx.db.insert("customerContacts", {
+        tenantId: tenant._id,
+        klantId: customerId,
+        type: "note",
+        titel: "Intake-notitie",
+        omschrijving: intakeNote,
+        zichtbaarVoorKlant: false,
+        createdByExternalUserId: externalUserId,
+        aangemaaktOp: now,
+        gewijzigdOp: now
+      });
+    }
+
+    return customerId;
   }
 });
 
@@ -434,13 +457,20 @@ export const customerDetail = query({
       (attachment: Doc<"dossierAttachments">) => attachment.status === "active"
     );
 
+    // Auteur van elk contactmoment tonen: resolve externalUserId → teamlid-naam.
+    const teamNames = await teamMemberNamesByExternalId(ctx, tenant._id);
+
     return {
       customer: toCustomer(tenant.slug, customer),
       projects: await Promise.all(
         projects.map((project: Doc<"projects">) => toProject(ctx, tenant.slug, project))
       ),
       contacts: contacts.map((contact: Doc<"customerContacts">) =>
-        toContact(tenant.slug, contact)
+        toContact(tenant.slug, contact, {
+          vastgelegdDoor: contact.createdByExternalUserId
+            ? teamNames.get(contact.createdByExternalUserId)
+            : undefined
+        })
       ),
       attachments: activeAttachments.map((attachment: Doc<"dossierAttachments">) =>
         toDossierAttachment(tenant.slug, attachment)
@@ -459,8 +489,14 @@ export const createCustomerContact = mutation({
     omschrijving: v.optional(v.string()),
     uitgeleendItemNaam: v.optional(v.string()),
     verwachteRetourdatum: v.optional(v.number()),
-    zichtbaarVoorKlant: v.boolean(),
-    createdByExternalUserId: v.optional(v.string())
+    /** Opvolgdatum: voedt het dashboard-signaal Klantopvolging. */
+    opvolgenOp: v.optional(v.number()),
+    /** Optionele koppeling aan een projectdossier (zelfde klant). */
+    projectId: v.optional(v.string()),
+    // Default intern (zichtbaar-voor-klant verschijnt op de klantversie van de offerte).
+    zichtbaarVoorKlant: v.optional(v.boolean())
+    // Bewust géén createdByExternalUserId-arg meer: de auteur komt altijd uit
+    // de geauthenticeerde actor (geen author-spoofing; arg werd al genegeerd).
   },
   handler: async (ctx, args) => {
     const { tenant, externalUserId } = await requireMutationRole(
@@ -482,6 +518,17 @@ export const createCustomerContact = mutation({
       );
     }
 
+    // Projectkoppeling valideren: het project moet van deze tenant én deze klant zijn.
+    let projectId: Id<"projects"> | undefined;
+    if (args.projectId) {
+      const normalizedProjectId = ctx.db.normalizeId("projects", args.projectId);
+      const project = normalizedProjectId ? await ctx.db.get(normalizedProjectId) : null;
+      if (!project || project.tenantId !== tenant._id || project.klantId !== customer._id) {
+        throw new ConvexError("Project niet gevonden bij deze klant.");
+      }
+      projectId = project._id;
+    }
+
     const now = Date.now();
 
     return await ctx.db.insert("customerContacts", {
@@ -492,11 +539,225 @@ export const createCustomerContact = mutation({
       omschrijving: args.omschrijving,
       uitgeleendItemNaam: args.uitgeleendItemNaam,
       verwachteRetourdatum: args.verwachteRetourdatum,
-      zichtbaarVoorKlant: args.zichtbaarVoorKlant,
+      opvolgenOp: args.opvolgenOp,
+      projectId,
+      zichtbaarVoorKlant: args.zichtbaarVoorKlant ?? false,
       createdByExternalUserId: externalUserId,
       aangemaaktOp: now,
       gewijzigdOp: now
     });
+  }
+});
+
+/** Gedeelde guards voor het muteren van een bestaand contactmoment. */
+async function requireEditableContact(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  contactId: string
+): Promise<Doc<"customerContacts">> {
+  const normalizedId = ctx.db.normalizeId("customerContacts", contactId);
+  const contact = normalizedId ? await ctx.db.get(normalizedId) : null;
+
+  if (!contact || contact.tenantId !== tenantId) {
+    throw new ConvexError("Contactmoment niet gevonden.");
+  }
+
+  const customer = await ctx.db.get(contact.klantId);
+  if (customer?.geanonimiseerdOp !== undefined) {
+    throw new ConvexError(
+      "Deze klant is geanonimiseerd (AVG); contactmomenten kunnen niet meer worden aangepast."
+    );
+  }
+
+  return contact;
+}
+
+/**
+ * Corrigeer een contactmoment (typefout, verkeerde type-keuze, retourdatum).
+ * Zelfde rollen als aanmaken: ook de monteur moet zijn eigen notitie kunnen
+ * rechtzetten. De auteur blijft de oorspronkelijke vastlegger.
+ */
+export const updateCustomerContact = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    contactId: v.string(),
+    type: customerContactType,
+    titel: v.string(),
+    omschrijving: v.optional(v.string()),
+    uitgeleendItemNaam: v.optional(v.string()),
+    verwachteRetourdatum: v.optional(v.number()),
+    /** Weglaten of undefined = opvolgdatum wissen (afgehandeld). */
+    opvolgenOp: v.optional(v.number()),
+    zichtbaarVoorKlant: v.optional(v.boolean())
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+    const contact = await requireEditableContact(ctx, tenant._id, args.contactId);
+
+    await ctx.db.patch(contact._id, {
+      type: args.type,
+      titel: args.titel,
+      omschrijving: args.omschrijving,
+      uitgeleendItemNaam: args.uitgeleendItemNaam,
+      verwachteRetourdatum: args.verwachteRetourdatum,
+      opvolgenOp: args.opvolgenOp,
+      zichtbaarVoorKlant: args.zichtbaarVoorKlant ?? contact.zichtbaarVoorKlant,
+      gewijzigdOp: Date.now()
+    });
+
+    return contact._id;
+  }
+});
+
+/**
+ * Dashboard-signaal "Klantopvolging": contactmomenten met een verstreken of
+ * vandaag-verlopende opvolgdatum, plus uitgeleende items waarvan de
+ * retourdatum is verstreken zonder retour. Tenant-breed, met klantnaam en
+ * link-informatie voor het klantdossier.
+ */
+export const customerFollowUps = query({
+  args: {
+    tenantSlug: v.string(),
+    actor: readActorValidator
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
+      "viewer",
+      "user",
+      "editor",
+      "admin"
+    ]);
+
+    // Einde van vandaag: alles met een opvolgdatum t/m vandaag vraagt actie.
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const [dueContacts, loanedItems] = await Promise.all([
+      ctx.db
+        .query("customerContacts")
+        .withIndex("by_follow_up", (q: any) =>
+          q.eq("tenantId", tenant._id).lte("opvolgenOp", endOfToday.getTime())
+        )
+        .collect(),
+      ctx.db
+        .query("customerContacts")
+        .withIndex("by_type", (q: any) => q.eq("tenantId", tenant._id).eq("type", "loaned_item"))
+        .collect()
+    ]);
+
+    // "Te laat" pas ná de afgesproken dag: een retourdatum van vandaag is nog op tijd.
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const overdueLoans = loanedItems.filter(
+      (contact: Doc<"customerContacts">) =>
+        contact.geretourneerdOp === undefined &&
+        contact.verwachteRetourdatum !== undefined &&
+        contact.verwachteRetourdatum < startOfToday.getTime()
+    );
+
+    // Klantnamen resolven voor beide lijsten in één keer.
+    const customerIds = new Set<string>();
+    for (const contact of [...dueContacts, ...overdueLoans]) {
+      customerIds.add(String(contact.klantId));
+    }
+    const customerNames = new Map<string, string>();
+    for (const id of customerIds) {
+      const customer = await ctx.db.get(id as Id<"customers">);
+      if (customer && customer.tenantId === tenant._id) {
+        customerNames.set(id, customer.weergaveNaam);
+      }
+    }
+
+    const toSignal = (contact: Doc<"customerContacts">) => ({
+      contactId: String(contact._id),
+      klantId: String(contact.klantId),
+      klantNaam: customerNames.get(String(contact.klantId)) ?? "Onbekende klant",
+      titel: contact.titel,
+      type: contact.type,
+      uitgeleendItemNaam: contact.uitgeleendItemNaam,
+      opvolgenOp: contact.opvolgenOp,
+      verwachteRetourdatum: contact.verwachteRetourdatum
+    });
+
+    return {
+      // De index pakt ook rijen zonder opvolgenOp niet (lte op undefined matcht niet),
+      // maar filter defensief; nieuwste deadline eerst.
+      followUps: dueContacts
+        .filter((contact: Doc<"customerContacts">) => contact.opvolgenOp !== undefined)
+        .sort(
+          (a: Doc<"customerContacts">, b: Doc<"customerContacts">) =>
+            (a.opvolgenOp ?? 0) - (b.opvolgenOp ?? 0)
+        )
+        .map(toSignal),
+      overdueLoans: overdueLoans
+        .sort(
+          (a: Doc<"customerContacts">, b: Doc<"customerContacts">) =>
+            (a.verwachteRetourdatum ?? 0) - (b.verwachteRetourdatum ?? 0)
+        )
+        .map(toSignal)
+    };
+  }
+});
+
+/**
+ * Verwijder een contactmoment (verkeerde klant, dubbel vastgelegd). Bewust
+ * editor/admin: verwijderen uit een klantdossier is winkel-beheer, geen
+ * veldactie — de monteur corrigeert via updateCustomerContact.
+ */
+export const deleteCustomerContact = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    contactId: v.string()
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "editor",
+      "admin"
+    ]);
+    const contact = await requireEditableContact(ctx, tenant._id, args.contactId);
+
+    await ctx.db.delete(contact._id);
+
+    return contact._id;
+  }
+});
+
+/**
+ * Retour van een uitgeleend item vastleggen (of ongedaan maken bij een misklik).
+ * Alleen geldig op type "loaned_item" — de oude variant kon per ongeluk een
+ * telefoonnotitie als "geretourneerd" markeren.
+ */
+export const markCustomerLoanedItemReturned = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    contactId: v.string(),
+    returned: v.boolean()
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+    const contact = await requireEditableContact(ctx, tenant._id, args.contactId);
+
+    if (contact.type !== "loaned_item") {
+      throw new ConvexError("Alleen uitgeleende items kunnen als geretourneerd worden gemarkeerd.");
+    }
+
+    await ctx.db.patch(contact._id, {
+      geretourneerdOp: args.returned ? Date.now() : undefined,
+      gewijzigdOp: Date.now()
+    });
+
+    return contact._id;
   }
 });
 
@@ -507,8 +768,8 @@ export const createCustomerContact = mutation({
  *
  * Altijd hard verwijderd (persoonsgegevens zonder bewaarplicht):
  *   dossierstukken (incl. de fysieke bestanden in storage), contactmomenten, inmetingen
- *   (+ruimtes/regels), projecttaken, workflow-events en tijdlijnitems (ook wees-items via
- *   de by_customer-index). Inmetingen zijn tevens de agenda-items van de klant.
+ *   (+ruimtes/regels), projecttaken en workflow-events. Inmetingen zijn tevens de
+ *   agenda-items van de klant.
  *
  * Facturen bepalen de uitkomst (wettelijke bewaarplicht 7 jaar):
  *   - GEEN facturen  → alles wordt verwijderd, inclusief de klant zelf (`mode: "deleted"`).
@@ -630,11 +891,10 @@ export const deleteCustomer = mutation({
         bump("measurements");
       }
 
-      // Projecttaken, workflow-events en tijdlijnitems — altijd weg.
+      // Projecttaken en workflow-events — altijd weg.
       for (const [table, index] of [
         ["projectTasks", "by_project"],
-        ["projectWorkflowEvents", "by_project"],
-        ["timelineEvents", "by_project"]
+        ["projectWorkflowEvents", "by_project"]
       ] as const) {
         const rows = await ctx.db
           .query(table)
@@ -781,15 +1041,6 @@ export const deleteCustomer = mutation({
       await ctx.db.delete(quote._id);
       bump("quotes");
     }
-    const klantTimelineEvents = await ctx.db
-      .query("timelineEvents")
-      .withIndex("by_customer", (q: any) => q.eq("tenantId", tenant._id).eq("klantId", customerId))
-      .collect();
-    for (const event of klantTimelineEvents) {
-      await ctx.db.delete(event._id);
-      bump("timelineEvents");
-    }
-
     // Contactmomenten — altijd weg.
     const contacts = await ctx.db
       .query("customerContacts")

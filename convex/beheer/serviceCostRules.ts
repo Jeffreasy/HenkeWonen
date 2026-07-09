@@ -1,25 +1,114 @@
-import { mutation, query } from "../_generated/server";
-import { ConvexError, v } from "convex/values";
-import {
-  mutationActorValidator,
-  readActorValidator,
-  requireMutationRoleForTenantId,
-  requireMutationRole,
-  requireQueryRole,
-  requireQueryRoleForTenantId
-} from "../authz";
-import type { Doc, Id } from "../_generated/dataModel";
-import { serviceRuleCalculationType, activeStatus } from "../portalUtils";
+import { query } from "../_generated/server";
+import { readActorValidator, requireQueryRoleForTenantId, requireQueryRole } from "../authz";
+import { v } from "convex/values";
+import type { Doc } from "../_generated/dataModel";
 
-const calculationType = v.union(
-  v.literal("fixed"),
-  v.literal("per_m2"),
-  v.literal("per_meter"),
-  v.literal("per_roll"),
-  v.literal("per_side"),
-  v.literal("per_staircase"),
-  v.literal("manual")
-);
+async function getServiceRuleDocs(ctx: any, tenantId: string) {
+  // 1. Vind de "Henke Wonen Diensten" leverancier
+  const supplier = await ctx.db
+    .query("suppliers")
+    .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
+    .filter((q: any) => q.eq(q.field("naam"), "Henke Wonen Diensten"))
+    .first();
+
+  if (!supplier) {
+    return [];
+  }
+
+  // 2. Haal alle producten (diensten) op van deze leverancier
+  const products = await ctx.db
+    .query("products")
+    .withIndex("by_supplier", (q: any) =>
+      q.eq("tenantId", tenantId).eq("leverancierId", supplier._id)
+    )
+    .collect();
+
+  const now = Date.now();
+  const serviceRuleDocs = [];
+
+  // 3. Haal voor elk product de actuele prijs op en formatteer als ServiceRuleDoc
+  for (const product of products) {
+    if (product.status !== "active") continue;
+
+    const prices = await ctx.db
+      .query("productPrices")
+      .withIndex("by_product", (q: any) =>
+        q.eq("tenantId", tenantId).eq("productId", product._id)
+      )
+      .collect();
+
+    // Eigen diensten hebben klantzichtbare verkoopprijzen: de V2-import
+    // schrijft die als prijsSoort "advice_retail" (er bestaat geen "sales").
+    const validPrices = prices.filter(
+      (p: any) =>
+        (p.prijsSoort === "advice_retail" || p.prijsSoort === "retail") &&
+        (p.btwModus === "exclusive" || p.btwModus === "inclusive")
+    );
+
+    // Valideer datum
+    const currentPrices = validPrices.filter(
+      (p: any) => (!p.geldigVanaf || p.geldigVanaf <= now) && (!p.geldigTot || p.geldigTot >= now)
+    );
+
+    if (currentPrices.length === 0) continue;
+
+    // Deterministische keuze bij meerdere geldige rijen (bv. na een herimport):
+    // zelfde tie-break als selectIndicativePrice — nieuwste geldigVanaf, dan
+    // nieuwste wijziging, dan nieuwste rij. Anders kan de dienst-kiezer een
+    // verouderde prijs tonen die als snapshot in offertes belandt.
+    currentPrices.sort((a: any, b: any) =>
+      (b.geldigVanaf ?? 0) - (a.geldigVanaf ?? 0) ||
+      (b.gewijzigdOp ?? 0) - (a.gewijzigdOp ?? 0) ||
+      (b._creationTime ?? 0) - (a._creationTime ?? 0)
+    );
+
+    const price = currentPrices[0];
+
+    // prijsExBtw doorgeven; btwModus-literals zijn "inclusive"/"exclusive".
+    const rawPrijsEx = price.btwModus === "inclusive"
+      ? price.bedrag / (1 + (price.btwTarief / 100))
+      : price.bedrag;
+
+    // Afronden op 2 decimalen (bijv. 37.19 in plaats van 37.190082644628095)
+    // zodat de frontend input velden in de offertes netjes worden gevuld!
+    const prijsExBtw = Math.round(rawPrijsEx * 100) / 100;
+
+    // Rekentype uit de gestructureerde prijseenheid (V2: m2/m1/roll/piece/...),
+    // met de oude vrije-tekst-herkenning als vangnet voor legacy data.
+    const unit = (price.prijsEenheid ?? "").toLowerCase();
+    let berekeningType = "manual";
+    if (unit === "m2") berekeningType = "per_m2";
+    else if (unit === "m1" || unit === "meter") berekeningType = "per_meter";
+    else if (unit === "roll") berekeningType = "per_roll";
+    else if (unit === "piece" || unit === "pack" || unit === "package") berekeningType = "fixed";
+    else {
+      const normalized = unit.replace(/[\s\-_]/g, "");
+      if (/m2|m²|vierkantemeter/.test(normalized)) berekeningType = "per_m2";
+      else if (/m1|meter|strekkendemeter/.test(normalized)) berekeningType = "per_meter";
+      else if (/rol|rollen/.test(normalized)) berekeningType = "per_roll";
+      else if (/trap|trappen/.test(normalized)) berekeningType = "per_staircase";
+      else if (/zijde|zijden|kant|kanten/.test(normalized)) berekeningType = "per_side";
+      else if (/vast|stuk|piece|stuks/.test(normalized)) berekeningType = "fixed";
+    }
+
+    serviceRuleDocs.push({
+      _id: String(product._id),
+      tenantId: product.tenantId, // For portal variant if needed
+      naam: product.naam,
+      // Toon de leesbare eenheid ("per m²", "Vast") als er geen omschrijving is.
+      omschrijving: product.omschrijving || product.attributen?.price_unit_raw,
+      berekeningType,
+      prijsExBtw,
+      btwTarief: price.btwTarief,
+      status: product.status
+    });
+  }
+
+  // Sort them alphabetically by name
+  serviceRuleDocs.sort((a, b) => a.naam.localeCompare(b.naam, "nl"));
+
+  return serviceRuleDocs;
+}
 
 export const list = query({
   args: {
@@ -27,50 +116,9 @@ export const list = query({
     actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    // Lezen mag door iedereen die mag inmeten/offreren (user/editor/admin): de inmeet-flow
-    // koppelt diensten/legkosten aan ruimtes. Beheren (create/update) blijft admin-only.
+    // Lezen mag door iedereen die mag inmeten/offreren (user/editor/admin).
     await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, ["user", "editor", "admin"]);
-
-    return await ctx.db
-      .query("serviceCostRules")
-      .withIndex("by_tenant", (q) => q.eq("tenantId", args.tenantId))
-      .collect();
-  }
-});
-
-export const create = mutation({
-  args: {
-    tenantId: v.id("tenants"),
-    actor: mutationActorValidator,
-    categorieId: v.optional(v.id("categories")),
-    naam: v.string(),
-    omschrijving: v.optional(v.string()),
-    berekeningType: calculationType,
-    prijsExBtw: v.number(),
-    btwTarief: v.number(),
-    minQuantity: v.optional(v.number()),
-    maxQuantity: v.optional(v.number()),
-    metadata: v.optional(v.any())
-  },
-  handler: async (ctx, args) => {
-    await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, ["admin"]);
-    const now = Date.now();
-
-    return await ctx.db.insert("serviceCostRules", {
-      tenantId: args.tenantId,
-      categorieId: args.categorieId,
-      naam: args.naam,
-      omschrijving: args.omschrijving,
-      berekeningType: args.berekeningType,
-      prijsExBtw: args.prijsExBtw,
-      btwTarief: args.btwTarief,
-      minQuantity: args.minQuantity,
-      maxQuantity: args.maxQuantity,
-      metadata: args.metadata,
-      status: "active",
-      aangemaaktOp: now,
-      gewijzigdOp: now
-    });
+    return await getServiceRuleDocs(ctx, args.tenantId);
   }
 });
 
@@ -80,75 +128,20 @@ export const listServiceRules = query({
     actor: readActorValidator
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["admin"]);
-    const rules = await ctx.db
-      .query("serviceCostRules")
-      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenant._id))
-      .collect();
-
-    return rules
-      .sort((left: Doc<"serviceCostRules">, right: Doc<"serviceCostRules">) =>
-        left.naam.localeCompare(right.naam, "nl")
-      )
-      .map((rule: Doc<"serviceCostRules">) => ({
-        id: String(rule._id),
-        tenantId: tenant.slug,
-        name: rule.naam,
-        description: rule.omschrijving,
-        calculationType: rule.berekeningType,
-        priceExVat: rule.prijsExBtw,
-        vatRate: rule.btwTarief,
-        status: rule.status
-      }));
-  }
-});
-
-export const upsertServiceRule = mutation({
-  args: {
-    tenantSlug: v.string(),
-    actor: mutationActorValidator,
-    ruleId: v.optional(v.string()),
-    naam: v.string(),
-    omschrijving: v.optional(v.string()),
-    berekeningType: serviceRuleCalculationType,
-    prijsExBtw: v.number(),
-    btwTarief: v.number(),
-    status: activeStatus
-  },
-  handler: async (ctx, args) => {
-    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
-    const now = Date.now();
-
-    if (args.ruleId) {
-      const rule = await ctx.db.get(args.ruleId as Id<"serviceCostRules">);
-
-      if (!rule || rule.tenantId !== tenant._id) {
-        throw new ConvexError("Servicekostenregel niet gevonden.");
-      }
-
-      await ctx.db.patch(rule._id, {
-        naam: args.naam,
-        omschrijving: args.omschrijving,
-        berekeningType: args.berekeningType,
-        prijsExBtw: args.prijsExBtw,
-        btwTarief: args.btwTarief,
-        status: args.status,
-        gewijzigdOp: now
-      });
-
-      return rule._id;
-    }
-
-    return await ctx.db.insert("serviceCostRules", {
-      tenantId: tenant._id,
-      naam: args.naam,
-      omschrijving: args.omschrijving,
-      berekeningType: args.berekeningType,
-      prijsExBtw: args.prijsExBtw,
-      btwTarief: args.btwTarief,
-      status: args.status,
-      aangemaaktOp: now,
-      gewijzigdOp: now
-    });
+    const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, ["user", "editor", "admin"]);
+    
+    const docs = await getServiceRuleDocs(ctx, tenant._id);
+    
+    // De oude listServiceRules gaf een net iets andere vorm terug voor de settings tabel.
+    return docs.map(doc => ({
+      id: doc._id,
+      tenantId: args.tenantSlug,
+      name: doc.naam,
+      description: doc.omschrijving,
+      calculationType: doc.berekeningType,
+      priceExVat: doc.prijsExBtw,
+      vatRate: doc.btwTarief,
+      status: doc.status
+    }));
   }
 });

@@ -6,6 +6,7 @@ import { api } from "../../../convex/_generated/api";
 import { mutationActorFromSession } from "../../lib/auth/authzToken";
 import { canEditDossiers, type AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
+import { measurementWorktypeQuery } from "../../lib/measurementIntent";
 import type {
   FieldWorkspaceBucket,
   FieldServiceWorkspaceResult,
@@ -306,16 +307,23 @@ export default function FieldServiceWorkspace({
       });
 
       if (values.createDossier) {
+        // Zelfde gedrag als de winkel-intake: de werksoort bepaalt titel,
+        // directe-verkoop-vlag én de inmeet-tab (via ?werksoort=... in de URL).
+        const scope = values.scope;
+        const scopeTitle =
+          scope && scope.id !== "overig" ? `${displayName} - ${scope.projectTitle}` : `${displayName} - inmeten`;
         const newProjectId = await client.mutation(api.portal.createProject, {
           tenantSlug: session.tenantId,
           actor: mutationActorFromSession(session),
           klantId: String(customerId),
-          titel: values.projectTitle || `${displayName} - inmeten`,
+          titel: values.projectTitle || scopeTitle,
           omschrijving: values.notes,
+          directeVerkoop: scope?.target === "quote",
           createdByExternalUserId: session.userId
         });
 
-        void navigate(`/portal/buitendienst/projecten/${String(newProjectId)}`);
+        const worktypeQuery = scope?.werksoort ? measurementWorktypeQuery(scope.werksoort) : "";
+        void navigate(`/portal/buitendienst/projecten/${String(newProjectId)}${worktypeQuery}`);
         return true;
       }
 

@@ -34,6 +34,8 @@ type QuoteWorkspaceResult = {
   projects: PortalProject[];
   quotes: PortalQuote[];
   templates: QuoteTemplate[];
+  /** Klant-zichtbare afspraken voor het Afsprakenblok op de klantversie. */
+  klantAfspraken?: Array<{ titel: string; omschrijving?: string }>;
 };
 
 type StatusFilter = "all" | QuoteStatus;
@@ -64,6 +66,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
   const [projects, setProjects] = useState<PortalProject[]>([]);
   const [quotes, setQuotes] = useState<PortalQuote[]>([]);
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
+  const [klantAfspraken, setKlantAfspraken] = useState<Array<{ titel: string; omschrijving?: string }>>([]);
   // Selectie volgt nu de route: /portal/offertes (lijst) vs /portal/offertes/[id] (detail).
   const selectedQuoteId = quoteId ?? null;
   const isDetailMode = Boolean(quoteId);
@@ -103,6 +106,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
       setProjects(result.projects);
       setQuotes(result.quotes);
       setTemplates(result.templates ?? []);
+      setKlantAfspraken(result.klantAfspraken ?? []);
     } catch (loadError) {
       console.error(loadError);
       setError("Offertes konden niet worden geladen.");
@@ -400,6 +404,7 @@ export default function QuoteWorkspace({ session, quoteId }: QuoteWorkspaceProps
               canEdit={canEditQuote}
               session={session}
               project={selectedProject}
+              klantAfspraken={klantAfspraken}
               quoteTemplates={templates}
               onAddLine={addQuoteLine}
               onDeleteLine={deleteQuoteLine}

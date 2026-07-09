@@ -51,6 +51,10 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
     supplier: PortalSupplier;
     nextStatus: SupplierStatus;
   } | null>(null);
+  const [pendingVatMode, setPendingVatMode] = useState<{
+    supplier: PortalSupplier;
+    nextMode: "exclusive" | "inclusive";
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadSuppliers = useCallback(async () => {
@@ -244,6 +248,58 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
     }
   }
 
+  // Zet alle verkoop-/adviesprijzen van de leverancier om en legt de keuze op de
+  // leverancier vast (leidend bij her-imports). Chunked: grote catalogi (duizenden
+  // prijsregels) gaan in rondes van 200 producten door tot isDone.
+  async function confirmVatMode() {
+    if (!pendingVatMode) {
+      return;
+    }
+
+    const { supplier, nextMode } = pendingVatMode;
+    const client = createConvexHttpClient(session);
+
+    if (!client) {
+      setError("Kan de gegevens nu niet bereiken. Controleer de omgeving of probeer het opnieuw.");
+      return;
+    }
+
+    setSavingSupplierId(supplier.id);
+    setError(null);
+
+    try {
+      const actor = mutationActorFromSession(session);
+      let cursor: string | undefined;
+      let patched = 0;
+
+      do {
+        const result = (await client.mutation(api.catalog.v2_import.setSupplierSalesVatMode, {
+          tenantSlug: session.tenantId,
+          actor,
+          supplierName: supplier.naam,
+          mode: nextMode,
+          dryRun: false,
+          cursor
+        })) as { patched: number; isDone: boolean; continueCursor: string | null };
+
+        patched += result.patched;
+        cursor = result.isDone ? undefined : (result.continueCursor ?? undefined);
+      } while (cursor);
+
+      showToast({
+        title: `Btw-modus omgezet: ${nextMode === "inclusive" ? "inclusief" : "exclusief"} btw`,
+        description: `${supplier.naam} — ${patched} verkoopprijzen bijgewerkt.`,
+        tone: "success"
+      });
+      setPendingVatMode(null);
+      await loadSuppliers();
+    } catch (saveError) {
+      showErrorToast(saveError, "Btw-modus kon niet worden omgezet");
+    } finally {
+      setSavingSupplierId(null);
+    }
+  }
+
   async function confirmSupplierStatus() {
     if (!pendingSupplierStatus) {
       return;
@@ -311,6 +367,23 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
         onConfirm={() => void confirmSupplierStatus()}
       />
 
+      <ConfirmDialog
+        open={Boolean(pendingVatMode)}
+        title="Btw-modus verkoopprijzen omzetten?"
+        description={
+          pendingVatMode
+            ? `Je zet alle verkoop-/adviesprijzen van ${pendingVatMode.supplier.naam} om naar ${
+                pendingVatMode.nextMode === "inclusive" ? "inclusief" : "exclusief"
+              } btw. Richtprijzen en offertevoorstellen rekenen hier direct mee; de instelling blijft ook na een her-import van de catalogus gelden.`
+            : ""
+        }
+        confirmLabel="Omzetten"
+        tone="warning"
+        isBusy={Boolean(savingSupplierId)}
+        onCancel={() => setPendingVatMode(null)}
+        onConfirm={() => void confirmVatMode()}
+      />
+
       <SupplierStats
         total={summary.total}
         available={summary.available}
@@ -343,6 +416,7 @@ export default function SupplierWorkspace({ session }: SupplierWorkspaceProps) {
         onArchive={(supplier) => setPendingSupplierStatus({ supplier, nextStatus: "archived" })}
         onRestore={(supplier) => setPendingSupplierStatus({ supplier, nextStatus: "active" })}
         onChangeProductListStatus={handleChangeProductListStatus}
+        onChangeVatMode={(supplier, nextMode) => setPendingVatMode({ supplier, nextMode })}
         savingSupplierId={savingSupplierId}
         isLoading={isLoading}
         error={error}

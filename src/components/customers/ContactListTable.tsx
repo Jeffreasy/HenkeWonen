@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import type { PortalCustomerContact } from "../../lib/portalTypes";
 import { NoteVisibilityBadge } from "../common/NoteVisibilityBadge";
@@ -11,6 +11,10 @@ import { dateText } from "../projects/measurement/measurementUtils";
 type ContactListTableProps = {
   contacts: PortalCustomerContact[];
   onNew?: () => void;
+  /** Typefout of verkeerd type corrigeren (user+). */
+  onEdit?: (contact: PortalCustomerContact) => void;
+  /** Verwijderen is winkel-beheer (editor/admin). */
+  onDelete?: (contact: PortalCustomerContact) => void;
 };
 
 function contactTypeLabel(type: PortalCustomerContact["type"]) {
@@ -26,7 +30,7 @@ function contactTypeLabel(type: PortalCustomerContact["type"]) {
   return labels[type];
 }
 
-export function ContactListTable({ contacts, onNew }: ContactListTableProps) {
+export function ContactListTable({ contacts, onNew, onEdit, onDelete }: ContactListTableProps) {
   const contactColumns = useMemo<Array<DataTableColumn<PortalCustomerContact>>>(
     () => [
       {
@@ -59,13 +63,51 @@ export function ContactListTable({ contacts, onNew }: ContactListTableProps) {
         render: (contact) => <NoteVisibilityBadge visibleToCustomer={contact.zichtbaarVoorKlant} />
       },
       {
+        key: "author",
+        header: "Door",
+        width: "140px",
+        hideOnMobile: true,
+        render: (contact) => contact.vastgelegdDoor ?? "-"
+      },
+      {
         key: "date",
         header: "Datum",
         width: "110px",
         render: (contact) => dateText(contact.aangemaaktOp)
-      }
+      },
+      ...(onEdit || onDelete
+        ? [
+            {
+              key: "actions",
+              header: "Acties",
+              width: "100px",
+              render: (contact: PortalCustomerContact) => (
+                <div className="toolbar" style={{ gap: 4 }}>
+                  {onEdit ? (
+                    <Button
+                      aria-label={`Contactmoment ${contact.titel} bewerken`}
+                      leftIcon={<Pencil size={14} aria-hidden="true" />}
+                      onClick={() => onEdit(contact)}
+                      size="sm"
+                      variant="ghost"
+                    />
+                  ) : null}
+                  {onDelete ? (
+                    <Button
+                      aria-label={`Contactmoment ${contact.titel} verwijderen`}
+                      leftIcon={<Trash2 size={14} aria-hidden="true" />}
+                      onClick={() => onDelete(contact)}
+                      size="sm"
+                      variant="ghost"
+                    />
+                  ) : null}
+                </div>
+              )
+            } satisfies DataTableColumn<PortalCustomerContact>
+          ]
+        : [])
     ],
-    []
+    [onEdit, onDelete]
   );
 
   return (
@@ -109,7 +151,26 @@ export function ContactListTable({ contacts, onNew }: ContactListTableProps) {
             </div>
             <div className="mobile-card-meta">
               <NoteVisibilityBadge visibleToCustomer={contact.zichtbaarVoorKlant} />
+              {contact.vastgelegdDoor ? <span>{contact.vastgelegdDoor}</span> : null}
               <span>{dateText(contact.aangemaaktOp)}</span>
+              {onEdit ? (
+                <Button
+                  aria-label={`Contactmoment ${contact.titel} bewerken`}
+                  leftIcon={<Pencil size={14} aria-hidden="true" />}
+                  onClick={() => onEdit(contact)}
+                  size="sm"
+                  variant="ghost"
+                />
+              ) : null}
+              {onDelete ? (
+                <Button
+                  aria-label={`Contactmoment ${contact.titel} verwijderen`}
+                  leftIcon={<Trash2 size={14} aria-hidden="true" />}
+                  onClick={() => onDelete(contact)}
+                  size="sm"
+                  variant="ghost"
+                />
+              ) : null}
             </div>
           </div>
         )}

@@ -33,6 +33,7 @@ import {
   CustomerDossierAttachmentsPanel,
   type DossierAttachmentDraft
 } from "./CustomerDossierAttachmentsPanel";
+import { measurementWorktypeQuery } from "../../lib/measurementIntent";
 import { CustomerIntakePanel, type CustomerScopeOption } from "./CustomerIntakePanel";
 
 type CustomerDetailProps = {
@@ -53,6 +54,8 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
   const [error, setError] = useState<string | null>(null);
   const [editingCustomer, setEditingCustomer] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<PortalCustomerContact | null>(null);
+  const [pendingDeleteContact, setPendingDeleteContact] = useState<PortalCustomerContact | null>(null);
   const [pendingCustomerStatus, setPendingCustomerStatus] = useState<
     PortalCustomer["status"] | null
   >(null);
@@ -200,14 +203,96 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         omschrijving: values.description,
         uitgeleendItemNaam: values.loanedItemName,
         verwachteRetourdatum: values.expectedReturnDate,
-        zichtbaarVoorKlant: false,
-        createdByExternalUserId: session.userId
+        opvolgenOp: values.followUpDate,
+        projectId: values.projectId,
+        zichtbaarVoorKlant: values.visibleToCustomer ?? false
       });
       await loadDetail();
       setIsContactModalOpen(false);
       showToast({ title: "Contactmoment toegevoegd", tone: "success" });
     } catch (contactError) {
       showErrorToast(contactError, "Contactmoment kon niet worden toegevoegd");
+    }
+  }
+
+  async function handleUpdateContact(values: AddContactFormValues) {
+    if (!editingContact) {
+      return;
+    }
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      return;
+    }
+
+    try {
+      await client.mutation(api.portal.updateCustomerContact, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        contactId: editingContact.id,
+        type: values.type,
+        titel: values.title,
+        omschrijving: values.description,
+        uitgeleendItemNaam: values.loanedItemName,
+        verwachteRetourdatum: values.expectedReturnDate,
+        opvolgenOp: values.followUpDate,
+        zichtbaarVoorKlant: values.visibleToCustomer
+      });
+      await loadDetail();
+      setEditingContact(null);
+      showToast({ title: "Contactmoment bijgewerkt", tone: "success" });
+    } catch (contactError) {
+      showErrorToast(contactError, "Contactmoment kon niet worden bijgewerkt");
+    }
+  }
+
+  async function confirmDeleteContact() {
+    if (!pendingDeleteContact) {
+      return;
+    }
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      return;
+    }
+
+    try {
+      await client.mutation(api.portal.deleteCustomerContact, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        contactId: pendingDeleteContact.id
+      });
+      await loadDetail();
+      showToast({ title: "Contactmoment verwijderd", tone: "success" });
+    } catch (contactError) {
+      showErrorToast(contactError, "Contactmoment kon niet worden verwijderd");
+    } finally {
+      setPendingDeleteContact(null);
+    }
+  }
+
+  async function handleMarkLoanedItemReturned(contact: PortalCustomerContact, returned: boolean) {
+    const client = createConvexHttpClient(session);
+    if (!client) {
+      showToast({ title: "Verbinding mislukt", description: "Kan de omgeving niet bereiken.", tone: "error" });
+      return;
+    }
+
+    try {
+      await client.mutation(api.portal.markCustomerLoanedItemReturned, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        contactId: contact.id,
+        returned
+      });
+      await loadDetail();
+      showToast({
+        title: returned ? "Retour vastgelegd" : "Retour ongedaan gemaakt",
+        description: contact.uitgeleendItemNaam ?? contact.titel,
+        tone: "success"
+      });
+    } catch (contactError) {
+      showErrorToast(contactError, "Retourstatus kon niet worden bijgewerkt");
     }
   }
 
@@ -318,11 +403,13 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       showToast({ title: "Aanvraag gestart", description: scope.label, tone: "success" });
       const newProjectId = String(projectId);
       // Directe verkoop springt naar een nieuwe offerte met de catalogus-picker;
-      // de overige werksoorten gaan naar de inmeting.
+      // de overige werksoorten gaan naar de inmeting mét werksoort-hint zodat
+      // het inmeet-paneel op de juiste product-tab opent.
+      const worktypeQuery = scope.werksoort ? measurementWorktypeQuery(scope.werksoort) : "";
       void navigate(
         scope.target === "quote"
           ? `/portal/offertes?open=nieuw&project=${newProjectId}`
-          : `/portal/projecten/${newProjectId}#project-measurement`
+          : `/portal/projecten/${newProjectId}${worktypeQuery}#project-measurement`
       );
     } catch (startError) {
       showErrorToast(startError, "Aanvraag kon niet worden gestart");
@@ -450,8 +537,13 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         <ContactListTable
           contacts={contacts}
           onNew={canAddContact ? () => setIsContactModalOpen(true) : undefined}
+          onEdit={canAddContact ? (contact) => setEditingContact(contact) : undefined}
+          onDelete={canManage(session.role) ? (contact) => setPendingDeleteContact(contact) : undefined}
         />
-        <LoanedItemsList loanedItems={loanedItems} />
+        <LoanedItemsList
+          loanedItems={loanedItems}
+          onMarkReturned={canAddContact ? handleMarkLoanedItemReturned : undefined}
+        />
       </div>
 
       {canAddContact ? <CustomerIntakePanel onStartProject={handleStartProject} /> : null}
@@ -472,9 +564,48 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
           size="md"
           onClose={() => setIsContactModalOpen(false)}
         >
-          <AddContactForm onSubmit={handleAddContact} />
+          <AddContactForm
+            onSubmit={handleAddContact}
+            projectOptions={projects.map((project) => ({ id: project.id, titel: project.titel }))}
+          />
         </FormModal>
       ) : null}
+
+      {canAddContact && editingContact ? (
+        <FormModal
+          open
+          title="Contactmoment bewerken"
+          description="Corrigeer de tekst, het type of de retourdatum. De oorspronkelijke vastlegger blijft de auteur."
+          size="md"
+          onClose={() => setEditingContact(null)}
+        >
+          <AddContactForm
+            key={editingContact.id}
+            initialValues={{
+              type: editingContact.type,
+              title: editingContact.titel,
+              description: editingContact.omschrijving,
+              loanedItemName: editingContact.uitgeleendItemNaam,
+              expectedReturnDate: editingContact.verwachteRetourdatum,
+              followUpDate: editingContact.opvolgenOp,
+              projectId: editingContact.projectId,
+              visibleToCustomer: editingContact.zichtbaarVoorKlant
+            }}
+            submitLabel="Wijzigingen opslaan"
+            onSubmit={handleUpdateContact}
+          />
+        </FormModal>
+      ) : null}
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteContact)}
+        title="Contactmoment verwijderen?"
+        description={`Je verwijdert "${pendingDeleteContact?.titel ?? ""}" definitief uit dit klantdossier.`}
+        confirmLabel="Verwijderen"
+        tone="danger"
+        onCancel={() => setPendingDeleteContact(null)}
+        onConfirm={() => void confirmDeleteContact()}
+      />
 
       {canDeleteCustomer ? (
         <section className="panel customer-detail-panel">

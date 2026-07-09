@@ -39,14 +39,18 @@ export function VatWorkbenchHeader({
               ? "Btw-keuzes laden"
               : hasUnresolvedVatChoices
                 ? `${numberText(summary.unresolved)} prijskolommen vragen nog een keuze`
-                : "Alle prijskolommen hebben een btw-keuze"}
+                : (review?.totalPriceColumns ?? 0) > 0
+                  ? "Alle prijskolommen hebben een btw-keuze"
+                  : "Geen prijskolommen om te beoordelen"}
           </h2>
           <p className="muted vat-workbench-copy">
             {isLoading
               ? "De controles worden opgehaald."
-              : `${numberText(review?.totalProfiles ?? 0)} importprofielen met ${numberText(
-                  review?.totalPriceColumns ?? 0
-                )} prijskolommen.`}
+              : (review?.totalProfiles ?? 0) > 0
+                ? `${numberText(review?.totalProfiles ?? 0)} importprofielen met ${numberText(
+                    review?.totalPriceColumns ?? 0
+                  )} prijskolommen.`
+                : "De V2-catalogusimport gebruikt geen importprofielen; de btw-modus per leverancier beheer je op de Leveranciers-pagina. Deze werkbank vult zich pas weer bij een Excel-prijslijstimport."}
           </p>
         </div>
       </div>

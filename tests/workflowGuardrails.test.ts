@@ -141,11 +141,24 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
       // exact matchen). Tenant-gescoped (klant + alle kinderen via tenantId-indexen); facturen
       // worden bewaard — de klant wordt dan geanonimiseerd i.p.v. verwijderd.
       "convex/beheer/customers.ts:deleteCustomer",
+      // Contactmoment verwijderen: editor/admin, tenant-gescoped, met
+      // geanonimiseerd-guard (audit klantcontact-domein 2026-07-09).
+      "convex/beheer/customers.ts:deleteCustomerContact",
       "convex/catalog/import.ts:deleteProductsByCategoryChunk",
       "convex/catalog/import.ts:deleteProductsBySupplierChunk",
       "convex/catalog/import.ts:resetCatalogChunk",
       "convex/catalog/maintenance.ts:deletePseudoPriceRowsChunk",
       "convex/catalog/maintenance.ts:deleteDocumentsByIdChunk",
+      // V2-catalogusimport: gefaseerd wissen van producten/prijzen/issues/
+      // importstaging vóór her-import, plus opruimen van leveranciers zonder
+      // producten. Tenant-gescoped + editor/admin-authz (cron is internal);
+      // de driver (tools/import_v2_dataset.mjs) vereist op production een
+      // expliciete --confirm-production-v2-import.
+      "convex/catalog/v2_import.ts:clearCatalogProducts",
+      "convex/catalog/v2_import.ts:clearCatalogDataIssues",
+      "convex/catalog/v2_import.ts:clearOldImportData",
+      "convex/catalog/v2_import.ts:cleanLegacySuppliers",
+      "convex/catalog/v2_import.ts:cleanupOldLogsCron",
       "convex/projecten/measurements.ts:deleteMeasurementLine",
       "convex/projecten/measurements.ts:deleteMeasurementRoom",
       "convex/projecten/core.ts:deleteProjectRoom",
@@ -193,8 +206,11 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
       const block = exportedMutationBlock("convex/offertes/core.ts", mutationName);
       expect(block).toContain('quote.status !== "draft"');
     }
-    const legacyAddQuoteLine = exportedMutationBlock("convex/offertes/core.ts", "addLine");
-    expect(legacyAddQuoteLine).toContain('quote.status !== "draft"');
+    // De legacy-mutaties "create"/"addLine" (zwakkere validatie, nergens gebruikt)
+    // zijn bij de buitendienst-audit van 2026-07-09 verwijderd en mogen niet terugkomen.
+    const coreSource = read("convex/offertes/core.ts");
+    expect(coreSource).not.toContain("export const addLine = mutation");
+    expect(coreSource).not.toContain("export const create = mutation");
   });
 
   it("should not accept a project quote workflow without an actual quote", () => {
@@ -521,23 +537,27 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(schemaSource).toContain('index("by_supplier_status", ["tenantId", "leverancierId", "status"])');
   });
 
-  it("should enforce production confirmation flags on all catalog cleanups", () => {
-    for (const cleanupScript of [
-      "tools/cleanup_catalog.mjs"
+  it("should enforce production confirmation flags on all catalog tools", () => {
+    // De V2-import wist eerst de complete catalogus en is daarmee de
+    // destructiefste tool; de vat-tool muteert prijsdata live. Beide moeten
+    // de gedeelde target-guard gebruiken met een production-confirm-vlag.
+    for (const toolScript of [
+      "tools/import_v2_dataset.mjs",
+      "tools/set_supplier_vat_mode.mjs"
     ]) {
-      const script = read(cleanupScript);
+      const script = read(toolScript);
+      expect(script).toContain("requireCatalogToolTarget");
       expect(script).toContain("productionConfirmFlag");
       expect(script).toContain("requireAuthzSecret: true");
-      expect(script).toContain("confirm:");
+      expect(script).toContain("createToolMutationActor");
     }
   });
 
-  it("should enforce destructive confirmation flags on resetCatalog", () => {
-    const resetCatalogImportScript = read("tools/reset_catalog_import.mjs");
-    expect(resetCatalogImportScript).toContain("--confirm-reset-imported-catalog");
-    expect(resetCatalogImportScript).toContain("Catalog reset is destructive");
-    expect(resetCatalogImportScript).toContain("createToolMutationActor");
-    expect(resetCatalogImportScript).toContain("actor");
+  it("should enforce destructive confirmation flags on the V2 import", () => {
+    const importScript = read("tools/import_v2_dataset.mjs");
+    expect(importScript).toContain("--confirm-production-v2-import");
+    expect(importScript).toContain("destructief");
+    expect(importScript).toContain("mutates: true");
   });
 
   it("should configure ALLOW_DEV_AUTHZ_TOKENS check on authz helpers", () => {

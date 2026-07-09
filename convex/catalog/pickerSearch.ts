@@ -40,10 +40,14 @@ const measurementProductGroup = v.union(
 /** Zelfde mapping als src/lib/quotes/measurementCatalogMapping.ts, maar server-side afgedwongen. */
 const PRODUCT_GROUP_CATEGORIES: Record<string, string[]> = {
   flooring: [
+    // V2-catalogus gebruikt "PVC" en "Tapijt & Vinyl" als subcategorie;
+    // de overige namen blijven staan voor oudere datasets.
+    "PVC",
     "PVC Vloeren",
     "PVC Dryback",
     "Palletcollectie PVC",
     "Tapijt",
+    "Tapijt & Vinyl",
     "Vinyl",
     "Karpetten",
     "Ondervloer",
@@ -52,8 +56,8 @@ const PRODUCT_GROUP_CATEGORIES: Record<string, string[]> = {
   ],
   plinths: ["Plinten"],
   wallpaper: ["Behang"],
-  wall_panels: ["Wandpanelen"],
-  curtains: ["Gordijnen"],
+  wall_panels: ["Wandpanelen", "Akoestische Panelen", "Badkamer"],
+  curtains: ["Gordijnen", "Gordijnstoffen", "Rolgordijnen", "Jaloezieën"],
   rails: ["Roedes/Railsen"],
   stairs: ["Traprenovatie"],
   other: []
@@ -128,23 +132,22 @@ export const searchPickerProducts = query({
     const supplierById = new Map(suppliers.map((supplier) => [String(supplier._id), supplier]));
 
     // Data-driven filter: categorieën waarvan de beheerde `productGroep` matcht met
-    // de hint (beheer bestuurt dit via /instellingen/categorieen). Zolang nog niet
-    // elke categorie een productgroep heeft, valt hij terug op de hardgecodeerde
-    // naam-map (veilig vóór de eenmalige backfill). "other" = geen filter (alles).
+    // de hint (beheer bestuurt dit via /instellingen/categorieen), AANGEVULD met de
+    // hardgecodeerde naam-map. Unie i.p.v. of/of: na een (her)import bestaan er
+    // categorieën zonder productGroep-veld naast oudere mét — beide moeten meedoen,
+    // anders verdwijnen nieuwe categorieën uit de werksoort-tab. "other" = geen filter.
     let allowedCategoryIds: Array<Doc<"categories">["_id"]> | null = null;
     if (args.productGroep && args.productGroep !== "other") {
-      const byField = categories
-        .filter((category) => category.productGroep === args.productGroep)
+      const fallbackNames = new Set(PRODUCT_GROUP_CATEGORIES[args.productGroep] ?? []);
+      const matched = categories
+        .filter(
+          (category) =>
+            category.productGroep === args.productGroep ||
+            (category.productGroep === undefined && fallbackNames.has(category.naam))
+        )
         .map((category) => category._id);
-      if (byField.length > 0) {
-        allowedCategoryIds = byField;
-      } else {
-        const fallbackNames = PRODUCT_GROUP_CATEGORIES[args.productGroep];
-        if (fallbackNames?.length) {
-          allowedCategoryIds = categories
-            .filter((category) => fallbackNames.includes(category.naam))
-            .map((category) => category._id);
-        }
+      if (matched.length > 0) {
+        allowedCategoryIds = matched;
       }
     }
 
@@ -199,6 +202,7 @@ export const searchPickerProducts = query({
         productSoort: product.productSoort,
         commercialNames: visibleCommercialNames(product, categoryName),
         eenheid: product.eenheid,
+        breedteMm: product.breedteMm,
         pakinhoudM2: product.pakinhoudM2,
         stuksPerPak: product.stuksPerPak,
         pakkenPerPallet: product.pakkenPerPallet,
