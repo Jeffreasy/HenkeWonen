@@ -144,6 +144,10 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
       // Contactmoment verwijderen: editor/admin, tenant-gescoped, met
       // geanonimiseerd-guard (audit klantcontact-domein 2026-07-09).
       "convex/beheer/customers.ts:deleteCustomerContact",
+      // Testdata-opschoning: internalMutation (alleen dashboard/npx convex run),
+      // ALLOW_CONVEX_TOOLING-gate + confirmPhrase. Wist dossierdata incl.
+      // dossierbijlagen + hun _storage-bestanden; catalogus/gebruikers blijven.
+      "convex/beheer/clearTenantData.ts:clearTenantData",
       "convex/catalog/import.ts:deleteProductsByCategoryChunk",
       "convex/catalog/import.ts:deleteProductsBySupplierChunk",
       "convex/catalog/import.ts:resetCatalogChunk",

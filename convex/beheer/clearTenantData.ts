@@ -11,7 +11,8 @@
  *   measurementLines → measurementRooms → measurements
  *   quoteLines → quotes → invoices → supplierOrders
  *   projectTasks → projectWorkflowEvents
- *   projectRooms → projects → customerContacts → customers
+ *   projectRooms → projects → customerContacts
+ *   → dossierAttachments (incl. _storage-bestanden) → customers
  *
  * Vereist: ALLOW_CONVEX_TOOLING=true in de Convex environment variables
  * Vereist: confirmPhrase = "JA_VERWIJDER_TESTDATA"
@@ -143,7 +144,28 @@ export const clearTenantData = internalMutation({
       ctx, "customerContacts", tenantId, "by_customer"
     );
 
-    // ── Stap 14: customers ────────────────────────────────────────────────────
+    // ── Stap 14: dossierAttachments (incl. opslagbestanden) ──────────────────
+    // Zonder deze stap blijven bijlagen als wezen achter nadat de klanten weg
+    // zijn, en blijven hun bestanden in _storage staan.
+    counts.dossierAttachments = 0;
+    counts.storageFiles = 0;
+    while (true) {
+      const batch = await ctx.db
+        .query("dossierAttachments")
+        .withIndex("by_customer", (q: any) => q.eq("tenantId", tenantId))
+        .take(100);
+      if (batch.length === 0) break;
+      for (const attachment of batch) {
+        if (attachment.storageId) {
+          await ctx.storage.delete(attachment.storageId);
+          counts.storageFiles += 1;
+        }
+        await ctx.db.delete(attachment._id);
+        counts.dossierAttachments += 1;
+      }
+    }
+
+    // ── Stap 15: customers ────────────────────────────────────────────────────
     counts.customers = await deleteAllForTenant(ctx, "customers", tenantId, "by_tenant");
 
     const totalDeleted = Object.values(counts).reduce((sum, n) => sum + n, 0);
