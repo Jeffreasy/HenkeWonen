@@ -974,3 +974,45 @@
   color: var(--accent);
 }
 
+
+/* ── Presentatiemodus: fullscreen klantversie voor het winkelgesprek ─────────
+   Het scherm gaat naar de klant toe: alleen het offertevel is zichtbaar.
+   Alles met de interne no-print-markering (controlepanelen, waarschuwingen,
+   conceptbadges) volgt dezelfde grens als de papieren print. */
+.quote-presentation-overlay {
+  position: fixed;
+  inset: 0;
+  /* Boven de quick-action-fab-container (z-index 1400): tijdens de presentatie
+     mag er geen intern portaal-element over het offertevel heen zweven. */
+  z-index: 1500;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg, #14100c);
+}
+
+.quote-presentation-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.quote-presentation-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+}
+
+.quote-presentation-body .quote-document-preview {
+  width: min(920px, 100%);
+}
+
+/* De printgrens is de klantgrens: interne blokken verdwijnen in presentatie. */
+.quote-presentation-body .no-print {
+  display: none !important;
+}

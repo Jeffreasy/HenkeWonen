@@ -4,6 +4,7 @@ import {
   Eye,
   FileText,
   Pencil,
+  Presentation,
   Printer,
   Save,
   Send,
@@ -199,6 +200,23 @@ export default function QuoteBuilder({
   const [pendingStatus, setPendingStatus] = useState<QuoteStatus | null>(null);
   const [pendingCreateInvoice, setPendingCreateInvoice] = useState(false);
   const [isCustomerVersionModalOpen, setIsCustomerVersionModalOpen] = useState(false);
+  // Presentatiemodus: fullscreen klantwaardige weergave voor het winkelgesprek
+  // (scherm omdraaien naar de klant). Toont uitsluitend het offertevel — alles
+  // met de interne no-print-markering blijft verborgen, net als op papier.
+  const [isPresentationOpen, setIsPresentationOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isPresentationOpen) {
+      return;
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsPresentationOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isPresentationOpen]);
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [isSavingLine, setIsSavingLine] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -816,14 +834,24 @@ export default function QuoteBuilder({
       description="Controleer hoe de offerte eruitziet voordat je deze deelt of print."
       action={
         documentModel ? (
-          <Button
-            leftIcon={<Eye size={16} aria-hidden="true" />}
-            onClick={() => setIsCustomerVersionModalOpen(true)}
-            size="sm"
-            variant="primary"
-          >
-            Klantversie openen
-          </Button>
+          <div className="toolbar">
+            <Button
+              leftIcon={<Presentation size={16} aria-hidden="true" />}
+              onClick={() => setIsPresentationOpen(true)}
+              size="sm"
+              variant="primary"
+            >
+              Presenteren aan klant
+            </Button>
+            <Button
+              leftIcon={<Eye size={16} aria-hidden="true" />}
+              onClick={() => setIsCustomerVersionModalOpen(true)}
+              size="sm"
+              variant="secondary"
+            >
+              Klantversie openen
+            </Button>
+          </div>
         ) : null
       }
     >
@@ -956,6 +984,26 @@ export default function QuoteBuilder({
       >
         {customerVersionPreview}
       </FormModal>
+      {isPresentationOpen && documentModel ? (
+        <div
+          className="quote-presentation-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Offerte presenteren aan de klant"
+        >
+          <div className="quote-presentation-toolbar">
+            <span className="muted">
+              Presentatie voor de klant — interne controles zijn verborgen
+            </span>
+            <Button variant="secondary" size="sm" onClick={() => setIsPresentationOpen(false)}>
+              Sluiten (Esc)
+            </Button>
+          </div>
+          <div className="quote-presentation-body">
+            <QuoteDocumentPreview model={documentModel} />
+          </div>
+        </div>
+      ) : null}
     </>
   );
 
@@ -1044,14 +1092,24 @@ export default function QuoteBuilder({
             description="Controleer en print de offerte zoals de klant hem ontvangt."
             actions={
               documentModel ? (
-                <Button
-                  leftIcon={<Printer size={16} aria-hidden="true" />}
-                  onClick={() => setIsCustomerVersionModalOpen(true)}
-                  size="sm"
-                  variant="primary"
-                >
-                  Klantversie openen
-                </Button>
+                <div className="toolbar">
+                  <Button
+                    leftIcon={<Presentation size={16} aria-hidden="true" />}
+                    onClick={() => setIsPresentationOpen(true)}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Presenteren aan klant
+                  </Button>
+                  <Button
+                    leftIcon={<Printer size={16} aria-hidden="true" />}
+                    onClick={() => setIsCustomerVersionModalOpen(true)}
+                    size="sm"
+                    variant="primary"
+                  >
+                    Klantversie openen
+                  </Button>
+                </div>
               ) : null
             }
           />
