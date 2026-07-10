@@ -13,6 +13,7 @@ import type * as beheer_agenda from "../beheer/agenda.js";
 import type * as beheer_categories from "../beheer/categories.js";
 import type * as beheer_clearTenantData from "../beheer/clearTenantData.js";
 import type * as beheer_customers from "../beheer/customers.js";
+import type * as beheer_deleteProjects from "../beheer/deleteProjects.js";
 import type * as beheer_migrateNlFields from "../beheer/migrateNlFields.js";
 import type * as beheer_retention from "../beheer/retention.js";
 import type * as beheer_serviceCostRules from "../beheer/serviceCostRules.js";
@@ -66,6 +67,7 @@ declare const fullApi: ApiFromModules<{
   "beheer/categories": typeof beheer_categories;
   "beheer/clearTenantData": typeof beheer_clearTenantData;
   "beheer/customers": typeof beheer_customers;
+  "beheer/deleteProjects": typeof beheer_deleteProjects;
   "beheer/migrateNlFields": typeof beheer_migrateNlFields;
   "beheer/retention": typeof beheer_retention;
   "beheer/serviceCostRules": typeof beheer_serviceCostRules;

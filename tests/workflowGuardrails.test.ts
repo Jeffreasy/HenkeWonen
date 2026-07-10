@@ -148,6 +148,10 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
       // ALLOW_CONVEX_TOOLING-gate + confirmPhrase. Wist dossierdata incl.
       // dossierbijlagen + hun _storage-bestanden; catalogus/gebruikers blijven.
       "convex/beheer/clearTenantData.ts:clearTenantData",
+      // Losse test-/duplicaatdossiers verwijderen: internalMutation met
+      // tooling-gate + confirmPhrase; factuur-guard (dossier met factuur wordt
+      // overgeslagen), bijlagen/contacten worden losgekoppeld i.p.v. gewist.
+      "convex/beheer/deleteProjects.ts:deleteProjects",
       "convex/catalog/import.ts:deleteProductsByCategoryChunk",
       "convex/catalog/import.ts:deleteProductsBySupplierChunk",
       "convex/catalog/import.ts:resetCatalogChunk",
