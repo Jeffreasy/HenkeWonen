@@ -223,6 +223,15 @@ a.stat-pill:hover,
   border-color: var(--line-strong);
 }
 
+/* Factuur-KPI met achterstand: alarmrand zodat het bedrag niet wegvalt. */
+.dashboard-stat-pill-alert {
+  border-color: color-mix(in srgb, var(--color-urgency-red) 55%, transparent);
+}
+
+.dashboard-stat-pill-alert strong {
+  color: var(--color-urgency-red);
+}
+
 /* Inklapbare naslag-secties (details/summary). */
 .collapsible-panel-summary {
   display: flex;
@@ -286,9 +295,45 @@ a.stat-pill:hover,
   font-size: var(--text-md);
 }
 
+/* Twee dashboardkolommen op desktop: links de werklijst, rechts context
+   (agenda, opvolging, recente dossiers). Op smallere schermen weer één kolom. */
+.dashboard-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.dashboard-column-main,
+.dashboard-column-side {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* In de smalle zijkolom: projectsnelkoppelingen onder elkaar i.p.v. 3 kolommen. */
+.dashboard-column-side .dashboard-project-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .dashboard-work-list {
   display: grid;
   gap: var(--space-2);
+}
+
+/* Badge en titel op één regel: houdt een werkitem op twee compacte regels. */
+.dashboard-work-titlerow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
 }
 
 .dashboard-work-toggle {

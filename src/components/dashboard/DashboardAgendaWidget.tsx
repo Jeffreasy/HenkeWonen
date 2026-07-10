@@ -65,6 +65,7 @@ export function DashboardAgendaWidget({
       ) : null}
 
       <CollapsiblePanel
+        defaultOpen
         id="agenda-week"
         eyebrow="Agenda"
         title="Inmeetweek"

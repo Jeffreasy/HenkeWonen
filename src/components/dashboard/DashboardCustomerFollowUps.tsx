@@ -83,6 +83,7 @@ export function DashboardCustomerFollowUps({ session }: DashboardCustomerFollowU
 
   return (
     <CollapsiblePanel
+      defaultOpen
       eyebrow="Klanten"
       title="Klantopvolging"
       description="Afgesproken opvolgingen en uitgeleende items die terug moeten."

@@ -29,6 +29,7 @@ export function DashboardQuoteFollowUps({
 }: DashboardQuoteFollowUpsProps) {
   return (
     <CollapsiblePanel
+      defaultOpen
       eyebrow="Offertes"
       title="Opvolgen"
       description="Concepten afmaken en verzonden offertes nalopen."

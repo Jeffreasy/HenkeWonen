@@ -95,8 +95,10 @@ export function DashboardWorkOverview({
                 key={item.id}
               >
                 <span className="dashboard-work-copy">
-                  <Badge variant={item.tone}>{item.label}</Badge>
-                  <strong>{item.title}</strong>
+                  <span className="dashboard-work-titlerow">
+                    <Badge variant={item.tone}>{item.label}</Badge>
+                    <strong>{item.title}</strong>
+                  </span>
                   <small className="muted">{item.description}</small>
                 </span>
                 <span className="dashboard-work-meta">

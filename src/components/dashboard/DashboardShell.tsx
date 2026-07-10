@@ -13,7 +13,6 @@ import { PlanMeasurementModal, type TeamMember } from "../projects/PlanMeasureme
 import ProductionReadiness from "../imports/ProductionReadiness";
 import { Alert } from "../ui/feedback/Alert";
 import { DashboardFocusCards } from "./DashboardFocusCards";
-import { DashboardInvoiceStrip } from "./DashboardInvoiceStrip";
 import { DashboardWorkOverview, type DashboardWorkItem } from "./DashboardWorkOverview";
 import type { PriorityCounts } from "../ui/data-display/PriorityCountStrip";
 import { DashboardQuoteFollowUps, type DashboardQuoteFollowUp } from "./DashboardQuoteFollowUps";
@@ -224,40 +223,44 @@ export default function DashboardShell({ session }: DashboardShellProps) {
         <Alert variant="danger" title="Werkoverzicht niet geladen" description={error} />
       ) : null}
 
-      <DashboardInvoiceStrip
-        isLoading={isLoading}
-        openAmount={dashboard.invoiceStats.openAmount}
-        overdueCount={dashboard.invoiceStats.overdueCount}
-      />
-
       <DashboardFocusCards
         isLoading={isLoading}
         workItemCount={dashboard.workItemCount}
         openQuoteCount={dashboard.openQuoteCount}
         plannedWorkCount={dashboard.plannedWorkCount}
+        invoiceStats={dashboard.invoiceStats}
       />
 
-      <DashboardWorkOverview
-        isLoading={isLoading}
-        workItems={dashboard.workItems}
-        priorityCounts={dashboard.priorityCounts}
-        totalCount={dashboard.workItemCount}
-      />
+      {/* Twee kolommen op desktop: links de werklijst (waar je iets mee móét),
+          rechts de context (agenda, opvolging, recente dossiers) — standaard
+          open en compact, i.p.v. een lange stapel dichtgeklapte panelen. */}
+      <div className="dashboard-columns">
+        <div className="dashboard-column-main">
+          <DashboardWorkOverview
+            isLoading={isLoading}
+            workItems={dashboard.workItems}
+            priorityCounts={dashboard.priorityCounts}
+            totalCount={dashboard.workItemCount}
+          />
 
-      <DashboardQuoteFollowUps isLoading={isLoading} quoteFollowUps={dashboard.quoteFollowUps} />
+          {showAdminReadiness ? <ProductionReadiness session={session} hideWhenReady /> : null}
+        </div>
 
-      <DashboardCustomerFollowUps session={session} />
+        <aside className="dashboard-column-side" aria-label="Agenda en opvolging">
+          <DashboardAgendaWidget
+            isLoading={isLoading}
+            agenda={dashboard.agenda}
+            canPlan={canPlan}
+            onPlan={openWizard}
+          />
 
-      <DashboardAgendaWidget
-        isLoading={isLoading}
-        agenda={dashboard.agenda}
-        canPlan={canPlan}
-        onPlan={openWizard}
-      />
+          <DashboardQuoteFollowUps isLoading={isLoading} quoteFollowUps={dashboard.quoteFollowUps} />
 
-      <DashboardRecentProjects isLoading={isLoading} projects={dashboard.projects} />
+          <DashboardCustomerFollowUps session={session} />
 
-      {showAdminReadiness ? <ProductionReadiness session={session} hideWhenReady /> : null}
+          <DashboardRecentProjects isLoading={isLoading} projects={dashboard.projects} />
+        </aside>
+      </div>
 
       {canPlan ? (
         <>

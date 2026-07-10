@@ -12,8 +12,11 @@ type DashboardRecentProjectsProps = {
 };
 
 export function DashboardRecentProjects({ isLoading, projects }: DashboardRecentProjectsProps) {
+  // Zijkolom: compact houden — de vier meest recente volstaan als snelkoppeling.
+  const visibleProjects = projects.slice(0, 4);
   return (
     <CollapsiblePanel
+      defaultOpen
       eyebrow="Snel verder"
       title="Recente projectdossiers"
       description="Open lopende projecten zonder opnieuw te zoeken."
@@ -36,7 +39,7 @@ export function DashboardRecentProjects({ isLoading, projects }: DashboardRecent
         </div>
       ) : projects.length > 0 ? (
         <div className="dashboard-project-grid">
-          {projects.map((project) => (
+          {visibleProjects.map((project) => (
             <a
               href={`/portal/projecten/${project.id}`}
               className="dashboard-project-link"
