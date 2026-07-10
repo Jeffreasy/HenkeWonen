@@ -13,6 +13,8 @@ import type {
   PortalProject
 } from "../../lib/portalTypes";
 import { showErrorToast, showToast } from "../../lib/toast";
+import { formatDate } from "../../lib/dates";
+import { formatProjectStatus } from "../../lib/i18n/statusLabels";
 import { Button } from "../ui/forms/Button";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
 import { EmptyState } from "../ui/feedback/EmptyState";
@@ -62,6 +64,14 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
   const [pendingCustomerStatus, setPendingCustomerStatus] = useState<
     PortalCustomer["status"] | null
   >(null);
+  // Duplicaat-wachter: start de winkel een aanvraag terwijl er al een open
+  // dossier met dezelfde titel loopt, dan eerst kiezen (verder in bestaand of
+  // bewust nieuw). In de praktijk ontstonden anders drie keer "PVC vloer".
+  const [pendingDuplicateStart, setPendingDuplicateStart] = useState<{
+    scope: CustomerScopeOption;
+    existing: PortalProject;
+  } | null>(null);
+  const [isStartingProject, setIsStartingProject] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const customerEditFormRef = useRef<HTMLFormElement>(null);
@@ -380,7 +390,10 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
     }
   }
 
-  async function handleStartProject(scope: CustomerScopeOption) {
+  /** Dossierfases waarin "nog een keer starten" vrijwel altijd een vergissing is. */
+  const OPEN_PROJECT_STATUSES = new Set(["lead", "measurement_planned", "quote_draft", "quote_sent"]);
+
+  async function createProjectFromScope(scope: CustomerScopeOption) {
     const client = createConvexHttpClient(session);
 
     if (!client) {
@@ -392,6 +405,7 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       return;
     }
 
+    setIsStartingProject(true);
     try {
       const projectId = await client.mutation(api.portal.createProject, {
         tenantSlug: session.tenantId,
@@ -416,7 +430,27 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
       );
     } catch (startError) {
       showErrorToast(startError, "Aanvraag kon niet worden gestart");
+    } finally {
+      setIsStartingProject(false);
     }
+  }
+
+  async function handleStartProject(scope: CustomerScopeOption) {
+    // Duplicaat-wachter: dezelfde aanvraag nóg een keer starten terwijl het
+    // vorige dossier nog open staat is vrijwel altijd "waar was ik gebleven?".
+    // Laat dan kiezen i.p.v. stil een tweede dossier aan te maken.
+    const existing = (detail?.projects ?? []).find(
+      (project) =>
+        OPEN_PROJECT_STATUSES.has(project.status) &&
+        project.titel.trim().toLowerCase() === scope.projectTitle.trim().toLowerCase()
+    );
+
+    if (existing) {
+      setPendingDuplicateStart({ scope, existing });
+      return;
+    }
+
+    await createProjectFromScope(scope);
   }
 
   async function handleDeleteCustomer(typedName: string) {
@@ -510,6 +544,37 @@ export default function CustomerDetail({ session, customerId }: CustomerDetailPr
         onCancel={() => setPendingCustomerStatus(null)}
         onConfirm={() => void confirmCustomerStatus()}
       />
+      <ConfirmDialog
+        open={Boolean(pendingDuplicateStart)}
+        title={`Er loopt al een dossier “${pendingDuplicateStart?.existing.titel ?? ""}”`}
+        description={`Voor deze klant staat al een open aanvraag met dezelfde naam (status ${formatProjectStatus(pendingDuplicateStart?.existing.status ?? "lead")}, gestart ${formatDate(pendingDuplicateStart?.existing.aangemaaktOp)}). Meestal wil je dáárin verder werken — zo voorkom je dubbele dossiers voor dezelfde klus.`}
+        confirmLabel="Bestaand dossier openen"
+        tone="warning"
+        isBusy={isStartingProject}
+        onCancel={() => setPendingDuplicateStart(null)}
+        onConfirm={() => {
+          const existing = pendingDuplicateStart?.existing;
+          setPendingDuplicateStart(null);
+          if (existing) {
+            void navigate(`/portal/projecten/${existing.id}`);
+          }
+        }}
+      >
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isStartingProject}
+          onClick={() => {
+            const scope = pendingDuplicateStart?.scope;
+            setPendingDuplicateStart(null);
+            if (scope) {
+              void createProjectFromScope(scope);
+            }
+          }}
+        >
+          Toch een nieuw dossier starten
+        </Button>
+      </ConfirmDialog>
       <CustomerDetailStats
         projectsCount={projects.length}
         contactsCount={contacts.length}
