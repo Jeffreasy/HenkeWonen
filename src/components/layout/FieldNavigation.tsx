@@ -123,7 +123,7 @@ function fieldNavGroups(pathname: string, hash: string): FieldNavGroup[] {
       items: [
         {
           href: fieldMeasurePath,
-          label: "Dossiers",
+          label: "Dossier",
           icon: BriefcaseBusiness,
           active: false
         },

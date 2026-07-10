@@ -60,7 +60,7 @@ export const portalRoutes: RouteConfig[] = [
     isBuitendienst: true,
     expectedTerms: ["Vandaag", "Inmeten", "Conceptofferte", "Klantversie"]
   },
-  { path: "/portal/dossiers", label: "Dossiers" },
+  { path: "/portal/dossiers", label: "Zoeken in dossiers" },
   { path: "/portal/klanten", label: "Klanten" },
   { path: "/portal/projecten", label: "Projecten" },
   { path: "/portal/projecten/kn7drc2c79vjw94h17z7e7e7f585tqra", label: "Project" },

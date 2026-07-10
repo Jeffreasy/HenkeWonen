@@ -43,7 +43,7 @@ const TOPIC_WAAR_VIND_IK: HelpTopic = {
           <span>Je werkoverzicht: wat vandaag aandacht vraagt.</span>
         </li>
         <li>
-          <HelpLink href="/portal/dossiers">Dossiers</HelpLink>
+          <HelpLink href="/portal/klanten">Klanten</HelpLink>
           <span>
             Alle klanten en klussen. Hier begint een nieuwe aanvraag, via <Kbd>Klant vastleggen</Kbd>.
           </span>
@@ -135,7 +135,7 @@ const TOPIC_WINKEL_FLOW: HelpTopic = {
   body: (
     <ol className="help-guide-steps">
       <li>
-        Nieuwe klant? Open <HelpLink href="/portal/dossiers">Dossiers</HelpLink> en kies{" "}
+        Nieuwe klant? Open <HelpLink href="/portal/klanten">Klanten</HelpLink> en kies{" "}
         <Kbd>Klant vastleggen</Kbd> — of klik rechtsonder op <Kbd>+ Actie</Kbd> →{" "}
         <Kbd>Nieuwe aanvraag</Kbd>. Naam, adres en telefoonnummer zijn genoeg.
       </li>
@@ -256,7 +256,7 @@ const TOPIC_DOSSIERSTUKKEN: HelpTopic = {
     <>
       <p>
         Onder <Kbd>Dossierstukken</Kbd> op de klantkaart (via{" "}
-        <HelpLink href="/portal/dossiers">Dossiers</HelpLink>) bewaar je plattegronden, foto's en
+        <HelpLink href="/portal/klanten">Klanten</HelpLink>) bewaar je plattegronden, foto's en
         oude offertes. De monteur ziet ze op de tablet en kan er met <Kbd>Foto toevoegen</Kbd> zelf
         een foto van de situatie bij zetten.
       </p>

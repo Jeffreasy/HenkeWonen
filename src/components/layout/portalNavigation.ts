@@ -49,8 +49,11 @@ export const portalNavGroups: PortalNavGroup[] = [
     items: [
       { href: "/portal", label: "Start", icon: Home, quickbar: true },
       {
-        href: "/portal/dossiers",
-        label: "Dossiers",
+        // De klant is dé ingang van de winkel (zo begint elk gesprek); de
+        // subtabs op de pagina leiden door naar Projecten en Zoeken. "Dossiers"
+        // als label was intern jargon en landde bovendien op de zoektab.
+        href: "/portal/klanten",
+        label: "Klanten",
         icon: BriefcaseBusiness,
         quickbar: true,
         matches: [
