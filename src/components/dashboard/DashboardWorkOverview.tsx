@@ -1,21 +1,13 @@
 import { ArrowRight } from "lucide-react";
 import { useState } from "react";
-import { formatDate } from "../../lib/dates";
 import { Badge, type BadgeVariant } from "../ui/data-display/Badge";
-import { PriorityCountStrip, type PriorityCounts } from "../ui/data-display/PriorityCountStrip";
+import type { PriorityCounts } from "../ui/data-display/PriorityCountStrip";
 import { Button } from "../ui/forms/Button";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { Skeleton } from "../ui/feedback/Skeleton";
 
-/** Aantal werkitems dat standaard zichtbaar is; de rest komt achter "Toon alles". */
-const VISIBLE_LIMIT = 6;
-
-/** Winkel-formulering van de urgentiestrip (mix van deadlines en dossierstatussen). */
-const WORK_PRIORITY_LABELS = {
-  red: "vandaag of morgen",
-  orange: "actie nodig",
-  green: "op schema"
-};
+/** Aantal actie-items (rood + oranje) dat standaard zichtbaar is. */
+const VISIBLE_LIMIT = 10;
 
 export type DashboardWorkItem = {
   id: string;
@@ -36,6 +28,41 @@ type DashboardWorkOverviewProps = {
   totalCount?: number;
 };
 
+/**
+ * Triage-indeling: de urgentie is de structuur. Rood en oranje zijn "vandaag
+ * iets mee doen" en staan open; groen is "op schema" en staat achter een
+ * toggle — daar hoeft vandaag niets mee. De losse tellerstrip is vervangen
+ * door de sectiekoppen zelf (zelfde cijfers, geen dubbele rij).
+ */
+const WORK_SECTIONS: Array<{
+  level: DashboardWorkItem["level"];
+  label: string;
+}> = [
+  { level: "red", label: "Vandaag of morgen" },
+  { level: "orange", label: "Actie nodig" },
+  { level: "green", label: "Op schema" }
+];
+
+function WorkItemRow({ item }: { item: DashboardWorkItem }) {
+  return (
+    <a className={`dashboard-work-item dashboard-work-item-${item.level}`} href={item.href}>
+      <span className="dashboard-work-copy">
+        {/* Het dossier (klant + project) is de kop; de actie is de subregel.
+            Voorheen stond de generieke actietekst ("Nieuwe aanvraag opvolgen")
+            groot en het onderscheidende dossier klein. */}
+        <span className="dashboard-work-titlerow">
+          <Badge variant={item.tone}>{item.label}</Badge>
+          <strong>{item.description}</strong>
+        </span>
+        <small className="muted">{item.title}</small>
+      </span>
+      <span className="dashboard-work-meta">
+        <ArrowRight size={17} aria-hidden="true" />
+      </span>
+    </a>
+  );
+}
+
 export function DashboardWorkOverview({
   isLoading,
   workItems,
@@ -43,35 +70,51 @@ export function DashboardWorkOverview({
   totalCount
 }: DashboardWorkOverviewProps) {
   const [showAll, setShowAll] = useState(false);
-  const visibleItems = showAll ? workItems : workItems.slice(0, VISIBLE_LIMIT);
-  // De server stuurt de lijst met een bovengrens mee; benoem het verschil expliciet
-  // zodat de teller op de pill en deze knop nooit stilzwijgend uiteenlopen.
+
+  const byLevel = {
+    red: workItems.filter((item) => item.level === "red"),
+    orange: workItems.filter((item) => item.level === "orange"),
+    green: workItems.filter((item) => item.level === "green")
+  };
+  const actionableCount = byLevel.red.length + byLevel.orange.length;
   const total = totalCount ?? workItems.length;
+
+  // Rood + oranje tonen (gecapt), groen alleen bij "alles tonen".
+  let remainingBudget = showAll ? Number.MAX_SAFE_INTEGER : VISIBLE_LIMIT;
+  const visibleByLevel: Record<DashboardWorkItem["level"], DashboardWorkItem[]> = {
+    red: [],
+    orange: [],
+    green: []
+  };
+  for (const section of WORK_SECTIONS) {
+    if (section.level === "green" && !showAll) {
+      continue;
+    }
+    const items = byLevel[section.level];
+    visibleByLevel[section.level] = items.slice(0, Math.max(0, remainingBudget));
+    remainingBudget -= visibleByLevel[section.level].length;
+  }
+  const hiddenCount = workItems.length - WORK_SECTIONS.reduce(
+    (sum, section) => sum + visibleByLevel[section.level].length,
+    0
+  );
   const toonAllesLabel =
     total > workItems.length
-      ? `Toon alles (${workItems.length} van ${total} — rest via Dossiers)`
-      : `Toon alles (${workItems.length})`;
+      ? `Toon alles (nog ${hiddenCount}, waarvan ${byLevel.green.length} op schema — rest via Klanten)`
+      : `Toon alles (nog ${hiddenCount}, waarvan ${byLevel.green.length} op schema)`;
+
   return (
     <section className="panel" id="werkoverzicht">
       <div className="dashboard-section-header">
         <div>
           <p className="eyebrow">Werkoverzicht</p>
           <h2>Wat moet ik vandaag doen?</h2>
-          <p className="muted">Begin bij deze dossiers en werk daarna vanuit Dossiers verder.</p>
+          <p className="muted">Rood en oranje vragen actie; op schema staat onderaan.</p>
         </div>
         <a className="ui-button ui-button-secondary ui-button-sm" href="/portal/dossiers">
           Alle dossiers
         </a>
       </div>
-
-      {isLoading || workItems.length > 0 ? (
-        <PriorityCountStrip
-          counts={priorityCounts}
-          labels={WORK_PRIORITY_LABELS}
-          loading={isLoading}
-          ariaLabel="Wat heeft haast — rood, oranje, groen"
-        />
-      ) : null}
 
       {isLoading ? (
         <div className="dashboard-work-list" aria-busy="true" aria-label="Werkvoorraad laden">
@@ -80,41 +123,50 @@ export function DashboardWorkOverview({
               <span className="dashboard-work-copy">
                 <Skeleton width={88} height={20} />
                 <Skeleton width="55%" height={15} />
-                <Skeleton width="80%" height={12} />
               </span>
             </div>
           ))}
         </div>
       ) : workItems.length > 0 ? (
         <>
-          <div className="dashboard-work-list" id="werkoverzicht-lijst">
-            {visibleItems.map((item) => (
-              <a
-                className={`dashboard-work-item dashboard-work-item-${item.level}`}
-                href={item.href}
-                key={item.id}
-              >
-                <span className="dashboard-work-copy">
-                  <span className="dashboard-work-titlerow">
-                    <Badge variant={item.tone}>{item.label}</Badge>
-                    <strong>{item.title}</strong>
-                  </span>
-                  <small className="muted">{item.description}</small>
-                </span>
-                <span className="dashboard-work-meta">
-                  <small className="muted">{formatDate(item.updatedAt)}</small>
-                  <ArrowRight size={17} aria-hidden="true" />
-                </span>
-              </a>
-            ))}
-          </div>
-          {workItems.length > VISIBLE_LIMIT ? (
+          {WORK_SECTIONS.map((section) => {
+            const sectionItems = byLevel[section.level];
+            const visible = visibleByLevel[section.level];
+            if (sectionItems.length === 0 || (section.level === "green" && !showAll)) {
+              return null;
+            }
+            return (
+              <div className="dashboard-work-group" key={section.level}>
+                <h3 className="dashboard-work-group-title">
+                  <span
+                    className={`dashboard-work-dot dashboard-work-dot-${section.level}`}
+                    aria-hidden="true"
+                  />
+                  {section.label}
+                  <span className="dashboard-work-group-count">{sectionItems.length}</span>
+                </h3>
+                <div className="dashboard-work-list">
+                  {visible.map((item) => (
+                    <WorkItemRow item={item} key={item.id} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {actionableCount === 0 ? (
+            <p className="muted dashboard-work-allclear">
+              Niets urgents — alle {priorityCounts.green} lopende dossiers staan op schema.
+            </p>
+          ) : null}
+
+          {hiddenCount > 0 || showAll ? (
             <div className="dashboard-work-toggle">
               <Button
                 variant="ghost"
                 size="sm"
                 aria-expanded={showAll}
-                aria-controls="werkoverzicht-lijst"
+                aria-controls="werkoverzicht"
                 onClick={() => setShowAll((current) => !current)}
               >
                 {showAll ? "Toon minder" : toonAllesLabel}
@@ -127,8 +179,8 @@ export function DashboardWorkOverview({
           title="Geen directe acties"
           description="Er zijn geen nieuwe aanvragen, open offertes of geplande inmetingen en bestellingen gevonden."
           action={
-            <a className="ui-button ui-button-secondary ui-button-md" href="/portal/dossiers">
-              Dossiers bekijken
+            <a className="ui-button ui-button-secondary ui-button-md" href="/portal/klanten">
+              Naar klanten
             </a>
           }
         />
