@@ -99,7 +99,12 @@ export default function WallpaperCalculator({ onUseResult }: WallpaperCalculator
         </Field>
       </div>
 
-      {result.validationError ? (
+      {/* Leeg is geen fout: pas waarschuwen als er echt iets (ongeldigs) is ingevuld. */}
+      {wallWidthM.trim() === "" && wallHeightM.trim() === "" ? (
+        <p className="muted">
+          Vul de wandbreedte en -hoogte in om het aantal rollen te berekenen.
+        </p>
+      ) : result.validationError ? (
         <Alert variant="warning" title="Controleer invoer" description={result.validationError} />
       ) : (
         <div className="grid">

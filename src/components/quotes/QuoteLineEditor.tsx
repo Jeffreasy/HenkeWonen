@@ -27,6 +27,7 @@ import LineTypeBadge from "./LineTypeBadge";
 import { LineTypeButtons } from "./LineTypeButtons";
 import WallpaperCalculator from "./WallpaperCalculator";
 import { LINE_TYPE_OPTIONS, isServiceRuleLineType } from "./quote/quoteConstants";
+import { parseQuoteLineNumbers } from "./quote/quoteLineInput";
 import type { QuoteLineFormValues } from "./quote/quoteTypes";
 
 // Re-export voor backwards compatibiliteit — importeer liever direct van ./quote/quoteTypes
@@ -95,6 +96,7 @@ export default function QuoteLineEditor({
   const [selectedProduct, setSelectedProduct] = useState<PortalProduct | null>(null);
   const [productError, setProductError] = useState<string | null>(null);
   const [selectedServiceRule, setSelectedServiceRule] = useState<ServiceRuleRow | null>(null);
+  const [numbersError, setNumbersError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const showServicePicker = isServiceRuleLineType(lineType);
@@ -225,6 +227,21 @@ export default function QuoteLineEditor({
       return;
     }
 
+    // Getalvelden expliciet valideren: komma-invoer (12,50) is geldig, onzin of
+    // negatieve waarden geven een melding i.p.v. stil € 0 op de offerte.
+    const numbers = parseQuoteLineNumbers({
+      lineType,
+      quantity,
+      unitPriceExVat,
+      vatRate,
+      discountExVat
+    });
+    if (!numbers.ok) {
+      setNumbersError(numbers.error);
+      return;
+    }
+    setNumbersError(null);
+
     const templateMetadata = selectedTemplateLine
       ? Object.fromEntries(
           Object.entries({
@@ -272,11 +289,11 @@ export default function QuoteLineEditor({
         lineType,
         title: title.trim(),
         description: description.trim() || undefined,
-        quantity: lineType === "text" ? 0 : Number(quantity) || 0,
+        quantity: numbers.values.quantity,
         unit: lineType === "text" ? "tekst" : unit,
-        unitPriceExVat: lineType === "text" ? 0 : Number(unitPriceExVat) || 0,
-        vatRate: lineType === "text" ? 0 : Number(vatRate) || 0,
-        discountExVat: Number(discountExVat) || undefined,
+        unitPriceExVat: numbers.values.unitPriceExVat,
+        vatRate: numbers.values.vatRate,
+        discountExVat: numbers.values.discountExVat,
         sortOrder,
         metadata
       });
@@ -472,6 +489,9 @@ export default function QuoteLineEditor({
           </Button>
         </div>
       </div>
+      {numbersError ? (
+        <Alert variant="warning" title="Controleer de invoer" description={numbersError} />
+      ) : null}
       {scope !== "manual" ? (
         <details className="wallpaper-calculator-details">
           <summary>Behangcalculator openen</summary>

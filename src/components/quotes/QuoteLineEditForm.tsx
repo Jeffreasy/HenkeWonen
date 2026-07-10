@@ -16,6 +16,8 @@ import { Textarea } from "../ui/forms/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
 import { LineTypeButtons } from "./LineTypeButtons";
 import { LINE_TYPE_OPTIONS, isServiceRuleLineType, parseDecimal } from "./quote/quoteConstants";
+import { parseQuoteLineNumbers } from "./quote/quoteLineInput";
+import { Alert } from "../ui/feedback/Alert";
 import type { QuoteLineFormValues } from "./quote/quoteTypes";
 
 type QuoteLineEditFormProps = {
@@ -26,15 +28,6 @@ type QuoteLineEditFormProps = {
   onSave: (data: QuoteLineFormValues) => Promise<void>;
   onCancel: () => void;
 };
-
-function optionalDecimal(value: string): number | undefined {
-  const normalized = value.trim();
-  if (!normalized) {
-    return undefined;
-  }
-  const parsed = parseDecimal(normalized);
-  return parsed !== undefined && Number.isFinite(parsed) ? parsed : undefined;
-}
 
 export function QuoteLineEditForm({
   line,
@@ -55,6 +48,7 @@ export function QuoteLineEditForm({
   const [sortOrder, setSortOrder] = useState("");
   const [projectRoomId, setProjectRoomId] = useState("");
   const [selectedServiceRule, setSelectedServiceRule] = useState<ServiceRuleRow | null>(null);
+  const [numbersError, setNumbersError] = useState<string | null>(null);
 
   const showServicePicker = isServiceRuleLineType(lineType);
 
@@ -101,6 +95,21 @@ export function QuoteLineEditForm({
     event.preventDefault();
     if (!title.trim()) return;
 
+    // Zelfde validatiepad als bij het toevoegen: komma-invoer geldig, onzin of
+    // negatieve waarden melden i.p.v. stil € 0 opslaan.
+    const numbers = parseQuoteLineNumbers({
+      lineType,
+      quantity,
+      unitPriceExVat,
+      vatRate,
+      discountExVat
+    });
+    if (!numbers.ok) {
+      setNumbersError(numbers.error);
+      return;
+    }
+    setNumbersError(null);
+
     const isTextLine = lineType === "text";
     await onSave({
       projectRoomId: projectRoomId || undefined,
@@ -108,11 +117,11 @@ export function QuoteLineEditForm({
       lineType,
       title: title.trim(),
       description: description.trim() || undefined,
-      quantity: isTextLine ? 0 : (parseDecimal(quantity) ?? 0),
+      quantity: numbers.values.quantity,
       unit: isTextLine ? "tekst" : unit.trim() || line.eenheid,
-      unitPriceExVat: isTextLine ? 0 : (parseDecimal(unitPriceExVat) ?? 0),
-      vatRate: isTextLine ? 0 : (parseDecimal(vatRate) ?? 0),
-      discountExVat: optionalDecimal(discountExVat),
+      unitPriceExVat: numbers.values.unitPriceExVat,
+      vatRate: numbers.values.vatRate,
+      discountExVat: numbers.values.discountExVat,
       sortOrder: Math.max(1, Math.round((parseDecimal(sortOrder) ?? 0) || line.sortOrder)),
       // Bestaande metadata behouden; bij een (nieuw) gekozen werkzaamheid de
       // herkomst overschrijven naar de service rule.
@@ -247,6 +256,9 @@ export function QuoteLineEditForm({
             />
           </Field>
         </div>
+        {numbersError ? (
+          <Alert variant="warning" title="Controleer de invoer" description={numbersError} />
+        ) : null}
         <div className="toolbar">
           <Button
             isLoading={isSaving}

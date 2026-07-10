@@ -105,6 +105,10 @@ function useFlashKey(resultKey: string | number): number {
 
 function TabPanel({ tab }: { tab: CalcTab }) {
   const flashKey = useFlashKey(tab.resultKey);
+  // Leeg is geen fout: de invoerwaarschuwing verschijnt pas nadat de monteur
+  // iets heeft ingetypt (of probeert op te slaan), niet al bij het openen van
+  // een lege calculator.
+  const [touched, setTouched] = useState(false);
 
   return (
     <form
@@ -112,13 +116,16 @@ function TabPanel({ tab }: { tab: CalcTab }) {
       role="tabpanel"
       aria-labelledby={`calc-tab-${tab.id}`}
       className="calc-tab-body"
-      onSubmit={tab.onSubmit}
+      onSubmit={(event) => {
+        setTouched(true);
+        tab.onSubmit(event);
+      }}
     >
       {/* ── Left: input fields ─────────────────────────────── */}
-      <div className="calc-tab-inputs">
+      <div className="calc-tab-inputs" onInput={() => setTouched(true)}>
         {tab.fields}
 
-        {tab.validationError ? (
+        {touched && tab.validationError ? (
           <div className="calc-tab-validation" role="alert">
             <Alert
               variant="warning"
