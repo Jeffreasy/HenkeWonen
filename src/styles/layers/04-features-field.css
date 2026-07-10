@@ -1299,3 +1299,10 @@ html[data-theme="dark"] .field-room-preset-btn.added {
   color: var(--color-success);
 }
 
+
+.customer-route-hint {
+  margin: var(--space-2) 0 0;
+  color: var(--accent-strong);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}

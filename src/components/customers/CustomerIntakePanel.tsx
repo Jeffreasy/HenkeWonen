@@ -150,8 +150,13 @@ function combinedScope(selected: CustomerScopeOption[]): CustomerScopeOption {
 export function CustomerIntakePanel({ onStartProject, onLogVisit }: CustomerIntakePanelProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isStarting, setIsStarting] = useState(false);
+  // Hint als er op "starten" wordt geklikt zonder werksoortkeuze. Bewust géén
+  // uitgeschakelde (grijze) knop: die oogt als kapot naast de twee actieve
+  // kaarten en legt niet uit wat er moet gebeuren.
+  const [needsChoice, setNeedsChoice] = useState(false);
 
   function toggleWorktype(id: string) {
+    setNeedsChoice(false);
     setSelectedIds((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
     );
@@ -162,7 +167,11 @@ export function CustomerIntakePanel({ onStartProject, onLogVisit }: CustomerInta
     const selected = selectedIds
       .map((id) => inmeetScopes.find((scope) => scope.id === id))
       .filter((scope): scope is CustomerScopeOption => Boolean(scope));
-    if (selected.length === 0 || isStarting) {
+    if (isStarting) {
+      return;
+    }
+    if (selected.length === 0) {
+      setNeedsChoice(true);
       return;
     }
 
@@ -243,13 +252,18 @@ export function CustomerIntakePanel({ onStartProject, onLogVisit }: CustomerInta
               variant="primary"
               size="sm"
               onClick={() => void startSelected()}
-              disabled={selectedIds.length === 0 || isStarting}
+              disabled={isStarting}
               isLoading={isStarting && selectedIds.length > 0}
             >
               {selectedIds.length > 1
                 ? `Inmeettraject starten (${selectedIds.length} werksoorten)`
                 : "Inmeettraject starten"}
             </Button>
+            {needsChoice ? (
+              <p className="customer-route-hint" role="alert">
+                Kies eerst hierboven wat er speelt — één of meer werksoorten.
+              </p>
+            ) : null}
           </div>
         </div>
 
