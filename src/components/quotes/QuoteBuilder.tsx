@@ -43,6 +43,7 @@ import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
 import { EmptyState } from "../ui/feedback/EmptyState";
 import { Field } from "../ui/forms/Field";
 import { IconButton } from "../ui/forms/IconButton";
+import { Input } from "../ui/forms/Input";
 import { FormModal } from "../ui/overlays/FormModal";
 import { SectionHeader } from "../ui/layout/SectionHeader";
 import { CollapsiblePanel } from "../ui/layout/CollapsiblePanel";
@@ -70,6 +71,7 @@ type QuoteBuilderProps = {
   onDeleteLine: (lineId: string) => Promise<void> | void;
   onUpdateLine?: (lineId: string, line: QuoteLineFormValues) => Promise<void> | void;
   onUpdateStatus?: (status: QuoteStatus) => Promise<void> | void;
+  onUpdateTitle?: (titel: string) => Promise<void> | void;
   onUpdateTerms?: (terms: string[], paymentTerms: string[]) => Promise<void> | void;
   onUpdateTexts?: (introText: string, closingText: string) => Promise<void> | void;
   onMeasurementLinesImported?: () => Promise<void> | void;
@@ -162,6 +164,7 @@ export default function QuoteBuilder({
   onDeleteLine,
   onUpdateLine,
   onUpdateStatus,
+  onUpdateTitle,
   onUpdateTerms,
   onUpdateTexts,
   onMeasurementLinesImported,
@@ -222,6 +225,37 @@ export default function QuoteBuilder({
   const [isSavingLine, setIsSavingLine] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const canEditDraftLines = canEdit && quote.status === "draft";
+  // Offertenaam: nieuwe offertes krijgen een automatische naam ("PVC Vloer 1");
+  // die moet aanpasbaar zijn zolang het een concept is — de naam staat ook op
+  // de klantversie.
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(quote.titel);
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const canEditTitle = Boolean(onUpdateTitle) && canEditDraftLines;
+
+  function startTitleEdit() {
+    setTitleDraft(quote.titel);
+    setIsEditingTitle(true);
+  }
+
+  async function saveTitle() {
+    const next = titleDraft.trim();
+    if (!onUpdateTitle || isSavingTitle) {
+      return;
+    }
+    if (!next || next === quote.titel) {
+      setIsEditingTitle(false);
+      return;
+    }
+    setIsSavingTitle(true);
+    try {
+      await onUpdateTitle(next);
+      setIsEditingTitle(false);
+    } finally {
+      setIsSavingTitle(false);
+    }
+  }
+
   // Wat er bij de intake met de klant is besproken ("Roots 55 Mattina, 2 zwarte
   // strippen"): boven de posten zolang de offerte een concept is, zodat de
   // medewerker ziet wat erop moet zonder terug te bladeren naar het dossier.
@@ -508,6 +542,54 @@ export default function QuoteBuilder({
       vatTotal: 0,
       totalIncVat: 0
     }
+  );
+
+  // Titel als kopinhoud: gewone weergave met potloodje, of het inline
+  // bewerkveld. Bewust phrasing-content (geen form) — dit leeft binnen een h2.
+  const quoteTitleContent = isEditingTitle ? (
+    <span className="quote-title-edit">
+      <Input
+        aria-label="Offertenaam"
+        value={titleDraft}
+        onChange={(event) => setTitleDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            void saveTitle();
+          } else if (event.key === "Escape") {
+            setIsEditingTitle(false);
+          }
+        }}
+        autoFocus
+        disabled={isSavingTitle}
+        maxLength={120}
+      />
+      <Button variant="primary" size="sm" onClick={() => void saveTitle()} isLoading={isSavingTitle}>
+        Opslaan
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => setIsEditingTitle(false)}
+        disabled={isSavingTitle}
+      >
+        Annuleren
+      </Button>
+    </span>
+  ) : (
+    <span className="quote-title-display">
+      {quote.titel}
+      {canEditTitle ? (
+        <IconButton
+          aria-label="Offertenaam wijzigen"
+          variant="ghost"
+          size="sm"
+          onClick={startTitleEdit}
+        >
+          <Pencil size={16} aria-hidden="true" />
+        </IconButton>
+      ) : null}
+    </span>
   );
 
   const intakeBanner =
@@ -1037,7 +1119,7 @@ export default function QuoteBuilder({
         <section className="field-quote-compact-header">
           <div>
             <p className="eyebrow">{fieldQuoteLabel}</p>
-            <h2>{quote.titel}</h2>
+            <h2>{quoteTitleContent}</h2>
           </div>
           <StatusBadge status={quote.status} label={formatQuoteStatus(quote.status)} />
           <SummaryList
@@ -1148,7 +1230,7 @@ export default function QuoteBuilder({
       <section className="panel quote-summary-panel">
         <SectionHeader
           compact
-          title={quote.titel}
+          title={quoteTitleContent}
           description="Controleer gegevens, voorwaarden en offerteposten."
           actions={statusActions}
         />

@@ -399,6 +399,33 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
     }
   }
 
+  async function updateQuoteTitle(titel: string) {
+    if (!selectedQuote) {
+      return;
+    }
+
+    const client = createConvexHttpClient(session);
+
+    if (!client) {
+      setError("Kan de offerte nu niet verwerken.");
+      return;
+    }
+
+    try {
+      await client.mutation(api.portal.updateQuote, {
+        tenantSlug: session.tenantId,
+        actor: mutationActorFromSession(session),
+        quoteId: selectedQuote.id,
+        titel
+      });
+      await loadWorkspace();
+      showToast({ title: "Offertenaam opgeslagen", tone: "success" });
+    } catch (mutationError) {
+      showErrorToast(mutationError, "Offertenaam opslaan mislukt");
+      throw mutationError;
+    }
+  }
+
   async function updateQuoteTerms(terms: string[], paymentTerms: string[]) {
     if (!selectedQuote) {
       return;
@@ -598,6 +625,7 @@ export default function FieldProjectWorkspace({ session, projectId }: FieldProje
             onDeleteLine={deleteQuoteLine}
             onUpdateLine={updateQuoteLine}
             onUpdateStatus={updateQuoteStatus}
+            onUpdateTitle={updateQuoteTitle}
             onMeasurementLinesImported={loadWorkspace}
             onUpdateTerms={updateQuoteTerms}
             onUpdateTexts={updateQuoteTexts}

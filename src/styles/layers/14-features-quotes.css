@@ -59,6 +59,30 @@
   align-items: start;
 }
 
+/* Offertenaam in de kop: weergave met potloodje, of het inline bewerkveld.
+   Leeft binnen een h2 — de input krijgt gewone tekstmaat, niet de kopmaat. */
+.quote-title-display {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.quote-title-edit {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.quote-title-edit .ui-control {
+  flex: 1 1 220px;
+  font-size: var(--text-md);
+  font-weight: 500;
+}
+
 /* Intakenotitie boven de offerteposten: de gespreksnotitie van het dossier
    ("Roots 55 Mattina, 2 zwarte strippen") als geheugensteun bij het samenstellen.
    Regelafbrekingen uit de notitie blijven staan. */
