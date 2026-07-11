@@ -444,6 +444,7 @@ export const importChunk = mutation({
     const tenantId = tenant._id;
     const now = Date.now();
     let inserted = 0;
+    let updated = 0;
 
     for (const row of args.rows) {
       const supplier = await ensureSupplier(ctx, tenantId, row.supplier);
@@ -452,26 +453,60 @@ export const importChunk = mutation({
       const subCatId = await ensureCategory(ctx, tenantId, row.sub_category, mainCatId);
       const unit = v2Unit(row.unit);
 
-      const productId = await ctx.db.insert("products", {
-        tenantId,
+      // Upsert op leverancier+sku: productId's blijven stabiel over
+      // prijslijst-updates heen, zodat offerteregels en bestellingen die naar
+      // een product verwijzen niet breken bij een her-import.
+      const existing = await ctx.db
+        .query("products")
+        .withIndex("by_supplier_sku", (q: any) =>
+          q.eq("tenantId", tenantId).eq("leverancierId", supplierId).eq("sku", row.sku)
+        )
+        .first();
+
+      const fields = {
         categorieId: subCatId,
         leverancierId: supplierId,
         naam: row.product_name,
         omschrijving: row.description,
         sku: row.sku,
         ean: row.ean,
-        productAard: row.main_category === "Werkzaamheden" ? "service" : "standard",
+        productAard: (row.main_category === "Werkzaamheden" ? "service" : "standard") as
+          | "service"
+          | "standard",
         eenheid: unit,
         pakinhoudM2: row.pack_content_m2,
         breedteMm: row.width_cm !== undefined ? Math.round(row.width_cm * 10) : undefined,
-        status: "active",
-        aangemaaktOp: now,
+        status: "active" as const,
         gewijzigdOp: now,
         attributen: {
           product_type: row.product_type,
           price_unit_raw: row.price_unit,
         }
-      });
+      };
+
+      let productId: Id<"products">;
+      if (existing) {
+        productId = existing._id;
+        await ctx.db.patch(productId, fields);
+        // Prijzen volledig vervangen: de prijslijst is de waarheid.
+        const oldPrices = await ctx.db
+          .query("productPrices")
+          .withIndex("by_product", (q: any) =>
+            q.eq("tenantId", tenantId).eq("productId", productId)
+          )
+          .collect();
+        for (const price of oldPrices) {
+          await ctx.db.delete(price._id);
+        }
+        updated++;
+      } else {
+        productId = await ctx.db.insert("products", {
+          tenantId,
+          aangemaaktOp: now,
+          ...fields
+        });
+        inserted++;
+      }
 
       const insertPurchase = async (bedrag: number, conditie?: string) => {
         await ctx.db.insert("productPrices", {
@@ -512,11 +547,62 @@ export const importChunk = mutation({
           gewijzigdOp: now
         });
       }
-
-      inserted++;
     }
 
-    return { inserted };
+    return { inserted, updated };
+  }
+});
+
+/**
+ * Naloop van een upsert-import: producten van een leverancier die deze run
+ * niet zijn aangeraakt (gewijzigdOp < runStartMs) staan niet meer op de
+ * prijslijst. Ze worden GEARCHIVEERD, niet verwijderd: offerteregels en
+ * bestellingen die ernaar verwijzen blijven werken, maar picker/catalogus
+ * (status "active") tonen ze niet meer.
+ */
+export const archiveVanishedProducts = mutation({
+  args: {
+    actor: mutationActorValidator,
+    tenantSlug: v.string(),
+    supplierName: v.string(),
+    runStartMs: v.number(),
+    cursor: v.optional(v.union(v.string(), v.null()))
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["editor", "admin"]);
+    const tenantId = tenant._id;
+    const now = Date.now();
+
+    const supplier = await ctx.db
+      .query("suppliers")
+      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
+      .filter((q: any) => q.eq(q.field("naam"), args.supplierName))
+      .first();
+    if (!supplier) {
+      return { supplierFound: false, archived: 0, isDone: true, continueCursor: null };
+    }
+
+    const paginated = await ctx.db
+      .query("products")
+      .withIndex("by_supplier_status", (q: any) =>
+        q.eq("tenantId", tenantId).eq("leverancierId", supplier._id).eq("status", "active")
+      )
+      .paginate({ numItems: 200, cursor: args.cursor ?? null });
+
+    let archived = 0;
+    for (const product of paginated.page) {
+      if (product.gewijzigdOp < args.runStartMs) {
+        await ctx.db.patch(product._id, { status: "archived", gewijzigdOp: now });
+        archived++;
+      }
+    }
+
+    return {
+      supplierFound: true,
+      archived,
+      isDone: paginated.isDone,
+      continueCursor: paginated.isDone ? null : paginated.continueCursor
+    };
   }
 });
 

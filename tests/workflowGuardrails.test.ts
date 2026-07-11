@@ -162,6 +162,11 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
       // producten. Tenant-gescoped + editor/admin-authz (cron is internal);
       // de driver (tools/import_v2_dataset.mjs) vereist op production een
       // expliciete --confirm-production-v2-import.
+      // importChunk is een upsert: bij een bestaand product (leverancier+sku)
+      // worden alleen de prijsrijen vervangen (prijslijst = waarheid); het
+      // product zelf blijft staan (stabiele productId's voor offertes) en
+      // verdwenen sku's worden gearchiveerd, niet gewist.
+      "convex/catalog/v2_import.ts:importChunk",
       "convex/catalog/v2_import.ts:clearCatalogProducts",
       "convex/catalog/v2_import.ts:clearCatalogDataIssues",
       "convex/catalog/v2_import.ts:clearOldImportData",
@@ -561,10 +566,15 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     }
   });
 
-  it("should enforce destructive confirmation flags on the V2 import", () => {
+  it("should enforce confirmation flags on the V2 import (upsert, maar vervangt prijzen)", () => {
     const importScript = read("tools/import_v2_dataset.mjs");
     expect(importScript).toContain("--confirm-production-v2-import");
-    expect(importScript).toContain("destructief");
+    // Upsert op leverancier+sku: de vooraf-wipe is vervallen (stabiele
+    // productId's), maar prijzen worden wel vervangen en verdwenen sku's
+    // gearchiveerd — de production-vlag blijft dus verplicht.
+    expect(importScript).toContain("upsert");
+    expect(importScript).toContain("archiveVanishedProducts");
+    expect(importScript).not.toContain("clearCatalogProducts");
     expect(importScript).toContain("mutates: true");
   });
 

@@ -10,8 +10,11 @@ import { loadCatalogToolEnv, requireCatalogToolTarget } from "./catalog_tooling_
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const toolEnv = loadCatalogToolEnv({ root, argv: process.argv.slice(2) });
 
-// De V2-import is destructief: hij wist eerst ALLE producten en prijzen van de
-// tenant. Op production is daarom een expliciete bevestigingsvlag verplicht.
+// De V2-import is een upsert op leverancier+sku: bestaande producten worden
+// bijgewerkt (stabiele productId's, dus offertes/bestellingen blijven werken),
+// nieuwe toegevoegd, en producten die van de prijslijst verdwenen worden
+// GEARCHIVEERD. Op production blijft een expliciete bevestigingsvlag verplicht:
+// de import vervangt wel alle prijzen van de aangeleverde leveranciers.
 requireCatalogToolTarget(toolEnv, {
   operation: "V2 catalogus-import",
   mutates: true,
@@ -48,31 +51,15 @@ async function mutationWithRetry(fn, args, attempts = 5) {
 }
 
 async function run() {
-  console.log(`Starting V2 import for tenant: ${tenantSlug} at ${convexUrl}`);
-  
-  console.log("1. Safely clearing ALL old products and prices...");
-  
-  let totalDeleted = 0;
-  let hasMore = true;
-  while (hasMore) {
-    const result = await mutationWithRetry(api.catalog.v2_import.clearCatalogProducts, {
-      tenantSlug,
-      actor,
-    });
-    const deletedThisRound = (result.deletedProducts || 0) + (result.deletedPrices || 0);
-    totalDeleted += deletedThisRound;
-    hasMore = result.moreProducts || result.morePrices;
-    console.log(`- Deleted ${deletedThisRound} old products/prices (Total so far: ${totalDeleted}). hasMore: ${hasMore}`);
-  }
-  console.log(`Finished clearing old products & prices (Total: ${totalDeleted}).`);
+  console.log(`Starting V2 upsert-import for tenant: ${tenantSlug} at ${convexUrl}`);
 
-  console.log("\n2. Clearing old catalog data issues...");
-  const issuesResult = await mutationWithRetry(api.catalog.v2_import.clearCatalogDataIssues, {
-    tenantSlug,
-    actor,
-  });
-  console.log(`- Deleted ${issuesResult.deleted} old data issues.`);
-  
+  // Alles wat de import deze run aanraakt krijgt gewijzigdOp >= runStart; wat
+  // van een aangeleverde leverancier daarna nog vóór runStart staat, is van de
+  // prijslijst verdwenen en wordt in stap 4 gearchiveerd.
+  const runStart = Date.now();
+
+  // 1/2 (wissen van producten en EAN-beoordelingen) zijn vervallen: de import
+  // upsert nu op leverancier+sku, dus productId's en beoordelingen blijven.
   console.log("\n3. Clearing old import batches, profiles and logs...");
   let deletedLogs = 0;
   let hasMoreLogs = true;
@@ -122,20 +109,51 @@ async function run() {
       }
     }
     
+    let fileInserted = 0;
+    let fileUpdated = 0;
     for (let i = 0; i < parsedRows.length; i += CHUNK_SIZE) {
       const chunk = parsedRows.slice(i, i + CHUNK_SIZE);
       console.log(`- Processing chunk ${Math.floor(i / CHUNK_SIZE) + 1} of ${Math.ceil(parsedRows.length / CHUNK_SIZE)} (${chunk.length} items)...`);
-      
-      await mutationWithRetry(api.catalog.v2_import.importChunk, {
+
+      const result = await mutationWithRetry(api.catalog.v2_import.importChunk, {
         tenantSlug,
         actor,
         rows: chunk
       });
+      fileInserted += result.inserted ?? 0;
+      fileUpdated += result.updated ?? 0;
     }
-    
-    console.log(`Finished importing ${file}.`);
+
+    console.log(`Finished importing ${file} (${fileInserted} nieuw, ${fileUpdated} bijgewerkt).`);
   }
-  
+
+  // 3b. Archiveer producten van aangeleverde leveranciers die niet meer op de
+  // prijslijst staan (deze run niet aangeraakt). Alleen leveranciers uit de
+  // dataset: andere leveranciers blijven volledig ongemoeid.
+  console.log("\n3b. Archiving vanished products per supplier...");
+  let totalArchived = 0;
+  for (const supplierName of supplierCounts.keys()) {
+    let cursor = null;
+    let archivedForSupplier = 0;
+    for (let guard = 0; guard < 500; guard += 1) {
+      const result = await mutationWithRetry(api.catalog.v2_import.archiveVanishedProducts, {
+        tenantSlug,
+        actor,
+        supplierName,
+        runStartMs: runStart,
+        cursor
+      });
+      archivedForSupplier += result.archived ?? 0;
+      if (result.isDone) break;
+      cursor = result.continueCursor;
+    }
+    if (archivedForSupplier > 0) {
+      console.log(`- ${supplierName}: ${archivedForSupplier} producten gearchiveerd (niet meer op de prijslijst)`);
+    }
+    totalArchived += archivedForSupplier;
+  }
+  console.log(`Archived ${totalArchived} vanished products.`);
+
   // 4. Update Supplier batches for accurate 'bijgewerkt' timestamps in portal
   console.log("\n4. Updating supplier latest import timestamps...");
   const countsArray = Array.from(supplierCounts.entries()).map(([supplier, counts]) => ({

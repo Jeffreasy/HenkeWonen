@@ -516,6 +516,8 @@ export default defineSchema({
     .index("by_status", ["tenantId", "status"])
     .index("by_status_naam", ["tenantId", "status", "naam"])
     .index("by_import_key", ["tenantId", "importSleutel"])
+    // Upsert-sleutel van de V2-import: één product per leverancier+sku.
+    .index("by_supplier_sku", ["tenantId", "leverancierId", "sku"])
     .index("by_article_number", ["tenantId", "leverancierId", "artikelnummer"])
     .index("by_supplier_code", ["tenantId", "leverancierId", "leverancierCode"])
     .index("by_ean", ["tenantId", "ean"])
