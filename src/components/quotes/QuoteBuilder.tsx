@@ -31,6 +31,7 @@ import {
 import { formatEuro } from "../../lib/money";
 import type { MeasurementProductGroup } from "../../lib/portalTypes";
 import { buildQuoteDocumentModel } from "../../lib/quotes/quoteDocumentModel";
+import { intakeNoteFromProject } from "../../lib/quotes/intakeNote";
 import { PRODUCT_GROUP_OPTIONS } from "../projects/measurement/measurementTypes";
 import {
   polishQuoteTemplateLines,
@@ -221,6 +222,10 @@ export default function QuoteBuilder({
   const [isSavingLine, setIsSavingLine] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const canEditDraftLines = canEdit && quote.status === "draft";
+  // Wat er bij de intake met de klant is besproken ("Roots 55 Mattina, 2 zwarte
+  // strippen"): boven de posten zolang de offerte een concept is, zodat de
+  // medewerker ziet wat erop moet zonder terug te bladeren naar het dossier.
+  const intakeNote = intakeNoteFromProject(project?.omschrijving);
   const fieldQuoteLabel = quote.status === "draft" ? "Conceptofferte" : "Klantversie";
   const fieldLineLabel = quote.status === "draft" ? "Conceptposten" : "Offerteposten";
   const customerName = customer?.weergaveNaam ?? "Onbekende klant";
@@ -504,6 +509,22 @@ export default function QuoteBuilder({
       totalIncVat: 0
     }
   );
+
+  const intakeBanner =
+    intakeNote && canEditDraftLines ? (
+      <section
+        className="next-step-banner next-step-banner-info quote-intake-banner"
+        aria-label="Besproken met de klant"
+      >
+        <div className="next-step-banner-copy">
+          <span className="next-step-banner-eyebrow">Besproken met de klant</span>
+          <strong className="next-step-banner-title quote-intake-note">{intakeNote}</strong>
+          <span className="next-step-banner-hint">
+            Genoteerd bij de intake van dossier “{project?.titel}” — zet dit om in offerteposten.
+          </span>
+        </div>
+      </section>
+    ) : null;
 
   const composer = (
     // key={quote.id}: remount bij een offertewissel, zodat useFormDraft (dat maar één keer per
@@ -1033,6 +1054,8 @@ export default function QuoteBuilder({
           ) : null}
         </section>
 
+        {intakeBanner}
+
         {canEditDraftLines ? measurementPicker : null}
 
         {quoteLinesPanel}
@@ -1141,6 +1164,8 @@ export default function QuoteBuilder({
         />
       </section>
       <QuoteTotals lines={quote.lines} />
+
+      {intakeBanner ? <div className="quote-full-width-panel">{intakeBanner}</div> : null}
 
       <div className="quote-full-width-panel">{quoteLinesPanel}</div>
       {lineEditPanel ? <div className="quote-full-width-panel">{lineEditPanel}</div> : null}

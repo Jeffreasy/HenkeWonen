@@ -59,6 +59,16 @@
   align-items: start;
 }
 
+/* Intakenotitie boven de offerteposten: de gespreksnotitie van het dossier
+   ("Roots 55 Mattina, 2 zwarte strippen") als geheugensteun bij het samenstellen.
+   Regelafbrekingen uit de notitie blijven staan. */
+.quote-intake-note {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
 .quote-status-actions {
   align-items: center;
   gap: var(--space-2);
