@@ -42,7 +42,10 @@ const CASES = [
   },
   {
     name: "Traprenovatie per trede (Floorlife Victoria)",
-    group: "stairs", search: "Victoria grey",
+    // "Victoria grey" alleen matcht sinds de losse-termen-zoeker óók de
+    // "OverzettredensetpvcVictoriagrey" (bron zonder spaties) — die sorteert
+    // vóór de bedoelde tredenset en heeft terecht geen per-trede-prijs.
+    group: "stairs", search: "Traptreden Victoria grey",
     measurementUnit: "trede",
     expect: { exVat: 27.45, incVat: 33.21, unit: "step", vatMode: "exclusive" }
   },
