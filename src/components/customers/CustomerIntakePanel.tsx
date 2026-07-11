@@ -2,6 +2,8 @@ import { MessageSquareText, Ruler, ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import type { MeasurementWorktype } from "../../lib/measurementIntent";
 import { Button } from "../ui/forms/Button";
+import { Field } from "../ui/forms/Field";
+import { Textarea } from "../ui/forms/Textarea";
 import { SectionHeader } from "../ui/layout/SectionHeader";
 
 export type CustomerScopeOption = {
@@ -149,6 +151,10 @@ function combinedScope(selected: CustomerScopeOption[]): CustomerScopeOption {
  */
 export function CustomerIntakePanel({ onStartProject, onLogVisit }: CustomerIntakePanelProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // Gespreksnotitie bij de intake — het digitale equivalent van wat de winkel
+  // op het papieren werkblad naast de werksoort schrijft ("Roots 55 Mattina,
+  // 2 zwarte strippen"). Wordt de projectomschrijving van het dossier.
+  const [intakeNote, setIntakeNote] = useState("");
   const [isStarting, setIsStarting] = useState(false);
   // Hint als er op "starten" wordt geklikt zonder werksoortkeuze. Bewust géén
   // uitgeschakelde (grijze) knop: die oogt als kapot naast de twee actieve
@@ -177,9 +183,11 @@ export function CustomerIntakePanel({ onStartProject, onLogVisit }: CustomerInta
 
     setIsStarting(true);
     try {
+      const scope = combinedScope(selected);
+      const note = intakeNote.trim();
       // Bij succes navigeert de aanroeper weg (component unmount); bij een fout
       // wordt de knop in finally weer vrijgegeven zodat de gebruiker opnieuw kan.
-      await onStartProject(combinedScope(selected));
+      await onStartProject(note ? { ...scope, projectDescription: note } : scope);
     } finally {
       setIsStarting(false);
     }
@@ -247,6 +255,19 @@ export function CustomerIntakePanel({ onStartProject, onLogVisit }: CustomerInta
               );
             })}
           </div>
+          <Field
+            htmlFor="intake-note"
+            label="Notitie voor het dossier"
+            description="Bijvoorbeeld het besproken product, kleur, maten of accessoires."
+          >
+            <Textarea
+              id="intake-note"
+              rows={2}
+              value={intakeNote}
+              placeholder="Bv. Roots 55 Mattina, 2 zwarte strippen"
+              onChange={(event) => setIntakeNote(event.target.value)}
+            />
+          </Field>
           <div className="customer-route-action">
             <Button
               variant="primary"
