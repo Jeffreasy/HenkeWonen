@@ -76,6 +76,30 @@ describe("cleanProductDisplayName — schone klant-/offertenaam", () => {
     );
   });
 
+  it("maakt volledig-kapitale bronnamen leesbaar, met behoud van codes", () => {
+    expect(
+      cleanProductDisplayName(product("TISSU SCENE D'ETE CAMEL (Les Belles Toiles De Jouy)"), "Gordijnstoffen", "Casadeco")
+    ).toBe("Tissu Scene D'Ete Camel (Les Belles Toiles De Jouy)");
+    // 2-letter code FR (brandvertragend) en cijfer-tokens blijven staan.
+    expect(cleanProductDisplayName(product("ALP.WONDERFUL FR 49 RUBY WINE"), "Gordijnen", "Headlam")).toBe(
+      "Alp.Wonderful FR 49 Ruby Wine"
+    );
+    expect(cleanProductDisplayName(product("INDULGE 140B 44MV ORANGE"), "Gordijnen", "Headlam")).toBe(
+      "Indulge 140B 44MV Orange"
+    );
+    // Accenten volgen mee in de omzetting.
+    expect(cleanProductDisplayName(product("CHROMA BLANC PÉTALE (Chroma)"), "Gordijnstoffen", "Casamance")).toBe(
+      "Chroma Blanc Pétale (Chroma)"
+    );
+  });
+
+  it("raakt namen met kleine letters niet aan (bewuste kapitalen als PVC/RAL blijven)", () => {
+    expect(cleanProductDisplayName(product("Ambiant PVC"), "PVC Vloeren", "Ambiant")).toBe("Ambiant PVC");
+    expect(
+      cleanProductDisplayName(product("Amsterdam (recht) gelakt extra wit RAL 9016 120x12 mm"), "Plinten", "Co-pro")
+    ).toBe("Amsterdam (recht) gelakt extra wit RAL 9016 120x12 mm");
+  });
+
   it("plakt de maat uit de Maatwerk-sku achter de naam (anders zijn alle maten identiek)", () => {
     expect(
       cleanProductDisplayName(

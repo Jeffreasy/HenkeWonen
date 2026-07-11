@@ -283,12 +283,86 @@ export function productVariantSuffix(product: {
   return undefined;
 }
 
+/**
+ * Codes die kapitaal moeten blijven bij het netjes maken van volledig-kapitale
+ * bronnamen: kwaliteits-/eigenschap-/merkcodes, geen woorden. Empirisch
+ * bepaald over de 21.853 all-caps namen in de V2-catalogus (audit 2026-07-11).
+ */
+const KEEP_CAPS = new Set([
+  "FR", // brandvertragend (stoffen)
+  "MV", // met verduistering
+  "LB",
+  "VL",
+  "LS",
+  "CM",
+  "XL",
+  "XXL",
+  "PU",
+  "ZLB", // Headlam-kwaliteitscode
+  "MOD",
+  "REC",
+  "RAL",
+  "PVC",
+  "SDN",
+  "EIR",
+  "SRC",
+  "CAD", // Texdecor-merkcodes (Casadeco/Caselio/Casamance/Camengo)
+  "CAL",
+  "CAS",
+  "CAM"
+]);
+
+function prettifyRawCapsToken(token: string) {
+  if (KEEP_CAPS.has(token)) {
+    return token;
+  }
+  // Alleen zuiver-alfabetische kapitaalwoorden omzetten; tokens met cijfers of
+  // gemengde casing ("62MV", "140B", "0,55") zijn codes en blijven staan.
+  if (/^[A-ZÀ-Ý]{2,}$/.test(token)) {
+    return token.charAt(0) + token.slice(1).toLowerCase();
+  }
+  return token;
+}
+
+function prettifyAllCapsSegment(segment: string) {
+  return segment
+    .split(/(\s+)/)
+    .map((part) =>
+      part
+        .split(/([./'’-])/)
+        .map((token) => prettifyRawCapsToken(token))
+        .join("")
+    )
+    .join("");
+}
+
+/**
+ * Bronnamen die volledig in kapitalen staan ("TISSU SCENE D'ETE CAMEL") leesbaar
+ * maken voor picker en klant-offerte. Alleen wanneer het deel buiten haakjes
+ * géén kleine letters bevat — gemengde namen ("Ambiant PVC", "… RAL 9016")
+ * blijven onaangeroerd, zodat bewuste kapitalen nooit sneuvelen. Het deel
+ * tussen haakjes (collectienaam) is al netjes en blijft staan.
+ */
+function prettifyIfAllCaps(name: string) {
+  const outside = name.replace(/\([^)]*\)/g, "");
+  if (/[a-zà-ÿ]/.test(outside)) {
+    return name;
+  }
+  if (!/[A-ZÀ-Ý]{3,}/.test(outside)) {
+    return name;
+  }
+  return name
+    .split(/(\([^)]*\))/)
+    .map((segment) => (segment.startsWith("(") ? segment : prettifyAllCapsSegment(segment)))
+    .join("");
+}
+
 export function cleanProductDisplayName(
   product: PilotProductLike,
   categoryName?: string,
   supplierName?: string
 ) {
-  const base = cleanedBaseName(product, categoryName, supplierName);
+  const base = prettifyIfAllCaps(cleanedBaseName(product, categoryName, supplierName));
   const variant = productVariantSuffix(product);
   if (variant && !normalized(base).includes(normalized(variant))) {
     return `${base} — ${variant}`;
