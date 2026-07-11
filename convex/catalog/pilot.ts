@@ -10,6 +10,8 @@ type PilotProductLike = {
   productSoort?: string;
   commercialNames?: CommercialName[];
   kleurnaam?: string;
+  sku?: string;
+  eenheid?: string;
 };
 
 function normalized(value?: string) {
@@ -249,7 +251,52 @@ function looksMessy(rawName: string, colorName: string) {
  * displayProductName wanneer de naam al schoon is of er niets bruikbaars
  * overblijft. De rauwe `name` blijft elders intact voor zoeken/import.
  */
+/**
+ * Maat-/variantaanduiding die in de weergavenaam thuishoort maar alleen in de
+ * sku zit (catalogusaudit 2026-07-11):
+ * - Maatwerk_Collectie: naam = "Duo Rolgordijn - PRIJSGROEP E" voor élke maat;
+ *   de maat zit als "-60X100" in de eigen sku-conventie ("MAAT-…"). Zonder maat
+ *   zijn tientallen pickerrijen identiek op de prijs na.
+ * - Masureel-behang: hetzelfde dessin bestaat in twee rolhoogtes (sku-suffix
+ *   "-260"/"-300" = hoogte in cm) met verschillende prijzen.
+ * Bereik 200–400 cm voorkomt valse treffers (bv. dienst-sku "HW-DIENST-001").
+ */
+export function productVariantSuffix(product: {
+  sku?: string;
+  eenheid?: string;
+}): string | undefined {
+  const sku = product.sku ?? "";
+
+  const maat = /^MAAT-.+-(\d{2,3})X(\d{2,3})$/i.exec(sku);
+  if (maat) {
+    return `${maat[1]}×${maat[2]} cm`;
+  }
+
+  if (product.eenheid === "roll") {
+    const rol = /-(\d{3})$/.exec(sku);
+    const hoogte = rol ? Number(rol[1]) : 0;
+    if (hoogte >= 200 && hoogte <= 400) {
+      return `rolhoogte ${hoogte} cm`;
+    }
+  }
+
+  return undefined;
+}
+
 export function cleanProductDisplayName(
+  product: PilotProductLike,
+  categoryName?: string,
+  supplierName?: string
+) {
+  const base = cleanedBaseName(product, categoryName, supplierName);
+  const variant = productVariantSuffix(product);
+  if (variant && !normalized(base).includes(normalized(variant))) {
+    return `${base} — ${variant}`;
+  }
+  return base;
+}
+
+function cleanedBaseName(
   product: PilotProductLike,
   categoryName?: string,
   supplierName?: string

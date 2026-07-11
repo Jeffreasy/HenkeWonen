@@ -75,4 +75,49 @@ describe("cleanProductDisplayName — schone klant-/offertenaam", () => {
       "CAD 12345AB 0,55"
     );
   });
+
+  it("plakt de maat uit de Maatwerk-sku achter de naam (anders zijn alle maten identiek)", () => {
+    expect(
+      cleanProductDisplayName(
+        { naam: "Duo Rolgordijn - PRIJSGROEP E", sku: "MAAT-DUOR-DUOROLGORDIJNPGE-60X100", eenheid: "piece" },
+        "Rolgordijnen",
+        "Maatwerk_Collectie"
+      )
+    ).toBe("Duo Rolgordijn - PRIJSGROEP E — 60×100 cm");
+  });
+
+  it("plakt de rolhoogte uit de Masureel-sku achter de naam (zelfde dessin in 260 en 300 cm)", () => {
+    expect(
+      cleanProductDisplayName(
+        { naam: "Salcey Delft", sku: "DGSAL1021-260", eenheid: "roll" },
+        "Behang",
+        "Masureel"
+      )
+    ).toBe("Salcey Delft — rolhoogte 260 cm");
+    expect(
+      cleanProductDisplayName(
+        { naam: "Salcey Delft", sku: "DGSAL1021-300", eenheid: "roll" },
+        "Behang",
+        "Masureel"
+      )
+    ).toBe("Salcey Delft — rolhoogte 300 cm");
+  });
+
+  it("ziet een dienst-sku of laag getal niet aan voor een rolhoogte", () => {
+    expect(
+      cleanProductDisplayName(
+        { naam: "Behangen patroon per rol", sku: "HW-DIENST-001", eenheid: "roll" },
+        "Werkzaamheden",
+        "Henke Wonen Diensten"
+      )
+    ).toBe("Behangen patroon per rol");
+    // Geen roll-eenheid -> suffix genegeerd, ook al lijkt hij op een hoogte.
+    expect(
+      cleanProductDisplayName(
+        { naam: "Hanglamp 1-lichts Platinum", sku: "4540-300", eenheid: "piece" },
+        "Verlichting",
+        "ZTAHL"
+      )
+    ).toBe("Hanglamp 1-lichts Platinum");
+  });
 });
