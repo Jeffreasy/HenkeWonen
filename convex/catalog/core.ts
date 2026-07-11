@@ -513,7 +513,8 @@ export const listProductsForPortal = query({
           supplier: supplierName,
           displaySupplierName: displaySupplierName(supplierName),
           leverancierId: product.leverancierId ? String(product.leverancierId) : undefined,
-          artikelnummer: product.artikelnummer,
+          // V2-import vult sku i.p.v. artikelnummer; zelfde begrip voor het portaal.
+          artikelnummer: product.artikelnummer ?? product.sku,
           leverancierCode: product.leverancierCode,
           commercieleCode: product.commercieleCode,
           leverancierProductGroep: product.leverancierProductGroep,

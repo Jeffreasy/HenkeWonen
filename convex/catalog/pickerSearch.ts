@@ -82,6 +82,7 @@ function matchesHaystack(
     product.naam,
     displayProductName(product, categoryName, supplierName),
     product.artikelnummer,
+    product.sku,
     product.leverancierCode,
     product.commercieleCode,
     product.ean,
@@ -196,7 +197,9 @@ export const searchPickerProducts = query({
         category: categoryName,
         supplier: supplierName,
         displaySupplierName: displaySupplierName(supplierName),
-        artikelnummer: product.artikelnummer,
+        // V2-import vult sku i.p.v. artikelnummer; voor het portaal is dat
+        // hetzelfde begrip (de bestelcode van de leverancier).
+        artikelnummer: product.artikelnummer ?? product.sku,
         leverancierCode: product.leverancierCode,
         commercieleCode: product.commercieleCode,
         leverancierProductGroep: product.leverancierProductGroep,

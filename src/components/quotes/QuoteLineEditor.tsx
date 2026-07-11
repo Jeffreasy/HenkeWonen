@@ -168,7 +168,14 @@ export default function QuoteLineEditor({
     setDescription(
       (current) =>
         current ||
-        [product.displaySupplierName ?? product.supplier, product.category, product.kleurnaam]
+        [
+          product.displaySupplierName ?? product.supplier,
+          product.category,
+          product.kleurnaam,
+          // Artikelnummer identificeert de kleurvariant wanneer de weergavenaam
+          // die niet draagt ("Moduleo Mattina" bestaat in meerdere kleurcodes).
+          product.artikelnummer ? `Art. ${product.artikelnummer}` : null
+        ]
           .filter(Boolean)
           .join(" - ")
     );

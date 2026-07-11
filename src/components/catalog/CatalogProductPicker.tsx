@@ -50,7 +50,20 @@ function productSummaryText(product: PortalProduct): string {
     product.kleurnaam && !normalizedName.includes(product.kleurnaam.toLowerCase())
       ? product.kleurnaam
       : undefined;
-  return [name, color, product.displaySupplierName ?? product.supplier].filter(Boolean).join(" — ");
+  return [name, color ?? variantCode(product), product.displaySupplierName ?? product.supplier]
+    .filter(Boolean)
+    .join(" — ");
+}
+
+/**
+ * Variantaanduiding als er geen kleurnaam is: het artikelnummer. Kleurvarianten
+ * van hetzelfde product ("MOD ROOTS 0,55 MATTINA 46580CD" vs "…46930CD") krijgen
+ * dezelfde opgeschoonde weergavenaam ("Moduleo Mattina") — zonder dit nummer
+ * zijn twee pickerrijen niet uit elkaar te houden en pakt de winkel zomaar de
+ * verkeerde kleur.
+ */
+function variantCode(product: PortalProduct): string | undefined {
+  return product.artikelnummer || product.leverancierCode || undefined;
 }
 
 /** Prijs + eenheid, of null als er geen (klantveilige) prijs is. */
@@ -474,10 +487,14 @@ export default function CatalogProductPicker({
                 {products.map((product) => {
                   const price = showPriceInLabel ? productPriceText(product) : null;
                   const name = product.weergaveNaam ?? product.naam;
-                  const meta = [
+                  const color =
                     product.kleurnaam && !name.toLowerCase().includes(product.kleurnaam.toLowerCase())
                       ? product.kleurnaam
-                      : null,
+                      : null;
+                  const meta = [
+                    // Zonder kleurnaam is het artikelnummer de enige zichtbare
+                    // variantaanduiding (zie variantCode).
+                    color ?? variantCode(product),
                     product.displaySupplierName ?? product.supplier
                   ]
                     .filter(Boolean)

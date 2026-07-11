@@ -204,7 +204,9 @@ export const generateSupplierOrdersFromQuote = mutation({
           quoteLineId: qLine._id,
           projectRuimteId: qLine.projectRuimteId,
           omschrijving: qLine.titel,
-          artikelnummer: product.artikelnummer,
+          // V2-producten dragen hun bestelcode in sku; zonder terugval zou de
+          // bestelregel naar de leverancier géén artikelnummer hebben.
+          artikelnummer: product.artikelnummer ?? product.sku,
           leverancierCode: product.leverancierCode,
           aantal: qLine.aantal,
           eenheid: qLine.eenheid,
