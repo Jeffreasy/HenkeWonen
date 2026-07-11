@@ -195,6 +195,58 @@ test("pickerCategories geeft actieve categorieën met productgroep terug, ook vo
   expect(cats.map((category) => category.name)).toEqual(["PVC Vloeren", "Tapijt"]);
 });
 
+test("searchPickerProducts vindt producten op losse zoektermen, ook als ze niet aaneengesloten in de naam staan", async () => {
+  const t = convexTest(schema, modules);
+  const { tenantId, pvcCat } = await seed(t);
+  // Echte V2-naam: de winkel zoekt zoals het op het werkblad staat ("Roots 55
+  // Mattina"), maar in de naam staat "ROOTS 0,55 MATTINA" — de oude
+  // hele-zin-substringmatch vond dan niets.
+  await t.run(async (ctx) => {
+    const now = Date.now();
+    const id = await ctx.db.insert("products", {
+      tenantId: tenantId as never,
+      categorieId: pvcCat as never,
+      naam: "MOD ROOTS 0,55 MATTINA 46580CD",
+      artikelnummer: "RO46580MT49302",
+      productAard: "standard",
+      eenheid: "pack",
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    await ctx.db.insert("productPrices", {
+      tenantId: tenantId as never,
+      productId: id,
+      prijsSoort: "retail",
+      prijsEenheid: "pack",
+      bedrag: 228.22,
+      btwTarief: 21,
+      btwModus: "exclusive",
+      currency: "EUR",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+  });
+
+  async function search(term: string) {
+    const result = (await t.query(api.catalog.pickerSearch.searchPickerProducts, {
+      tenantSlug: "henke-wonen",
+      actor: adminActor,
+      search: term,
+      limit: 30
+    })) as { items: Array<{ naam: string }> };
+    return result.items.map((item) => item.naam);
+  }
+
+  // Losse woorden in andere schrijfwijze/volgorde dan de catalogusnaam.
+  expect(await search("Roots 55 Mattina")).toContain("MOD ROOTS 0,55 MATTINA 46580CD");
+  expect(await search("mattina roots")).toContain("MOD ROOTS 0,55 MATTINA 46580CD");
+  // Term die deels op het artikelnummer matcht, gecombineerd met de naam.
+  expect(await search("roots RO46580")).toContain("MOD ROOTS 0,55 MATTINA 46580CD");
+  // AND-semantiek: een term die nergens voorkomt, geeft géén treffer.
+  expect(await search("roots ubg")).not.toContain("MOD ROOTS 0,55 MATTINA 46580CD");
+});
+
 async function seedManyPvc(t: ReturnType<typeof convexTest>, tenantId: string, pvcCat: string, count: number) {
   await t.run(async (ctx) => {
     const now = Date.now();

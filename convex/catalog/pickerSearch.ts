@@ -94,7 +94,11 @@ function matchesHaystack(
     .join(" ")
     .toLowerCase();
 
-  return haystack.includes(search);
+  // Elke zoekterm apart matchen (AND), niet de hele invoer als één substring:
+  // de winkel zoekt zoals het op het werkblad staat ("Roots 55 Mattina"), terwijl
+  // het product "MOD ROOTS 0,55 MATTINA …" heet — woorden staan zelden exact
+  // aaneengesloten in de catalogusnaam.
+  return search.split(/\s+/).every((term) => haystack.includes(term));
 }
 
 export const searchPickerProducts = query({
