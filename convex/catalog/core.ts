@@ -567,6 +567,10 @@ export const updateProductForPortal = mutation({
     leverancierProductGroep: v.optional(v.string()),
     pakinhoudM2: v.optional(v.number()),
     stuksPerPak: v.optional(v.number()),
+    // Toelichting bij het product; voor diensten is dit de tekst die de
+    // werkzaamheid-kiezer als regelomschrijving voorstelt ("Arbeid; materiaal
+    // wordt apart berekend").
+    omschrijving: v.optional(v.string()),
     status: productStatus
   },
   handler: async (ctx, args) => {
@@ -604,6 +608,7 @@ export const updateProductForPortal = mutation({
     }
     if (hasArg(args, "pakinhoudM2")) patch.pakinhoudM2 = args.pakinhoudM2;
     if (hasArg(args, "stuksPerPak")) patch.stuksPerPak = args.stuksPerPak;
+    if (hasArg(args, "omschrijving")) patch.omschrijving = args.omschrijving;
 
     await ctx.db.patch(product._id, patch);
 

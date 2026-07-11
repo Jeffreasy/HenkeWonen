@@ -418,6 +418,9 @@ export const importChunk = mutation({
         sub_category: v.string(),
         product_type: v.string(),
         product_name: v.string(),
+        // Toelichting bij het product; voor diensten de tekst die de
+        // werkzaamheid-kiezer als regelomschrijving voorstelt.
+        description: v.optional(v.string()),
         sku: v.string(),
         ean: v.optional(v.string()),
         purchase_price_excl: v.optional(v.number()),
@@ -454,6 +457,7 @@ export const importChunk = mutation({
         categorieId: subCatId,
         leverancierId: supplierId,
         naam: row.product_name,
+        omschrijving: row.description,
         sku: row.sku,
         ean: row.ean,
         productAard: row.main_category === "Werkzaamheden" ? "service" : "standard",
