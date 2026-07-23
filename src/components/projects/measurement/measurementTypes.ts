@@ -64,6 +64,10 @@ export type MeasurementLineDoc = {
   productId?: string;
   productNaam?: string;
   indicatieveEenheidsprijsExBtw?: number;
+  bundleId?: string;
+  bundleType?: "stair_renovation";
+  bundleRole?: "material" | "labor" | "surcharge";
+  sectionKey?: string;
   indicatiefBtwTarief?: number;
   indicatievePrijsEenheid?: string;
   indicatievePrijsSoort?: string;

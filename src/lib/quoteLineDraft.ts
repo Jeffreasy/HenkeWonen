@@ -1,4 +1,9 @@
-import type { PortalProduct, QuoteLineType } from "./portalTypes";
+import type {
+  ServiceRuleCalculationType,
+  ServiceRuleMetadata,
+  ServiceRuleRow
+} from "../components/settings/settings/settingsTypes";
+import type { MeasurementProductGroup, PortalProduct, QuoteLineType } from "./portalTypes";
 
 /**
  * Concept-vangnet voor de offerte-regeleditor (QuoteLineEditor). Net als bij de inmeting
@@ -25,6 +30,7 @@ export type QuoteLineDraftState = {
   discountExVat: string;
   projectRoomId: string;
   selectedProduct: PortalProduct | null;
+  selectedServiceRule: ServiceRuleRow | null;
 };
 
 /** localStorage-sleutel per offerte. Uniek per `quoteId` → geen kruisbesmetting tussen offertes. */
@@ -73,6 +79,91 @@ function isRestorablePortalProduct(value: unknown): value is PortalProduct {
   );
 }
 
+const SERVICE_RULE_CALCULATION_TYPES: Record<ServiceRuleCalculationType, true> = {
+  fixed: true,
+  per_m2: true,
+  per_meter: true,
+  per_roll: true,
+  per_side: true,
+  per_staircase: true,
+  manual: true
+};
+const SERVICE_RULE_CALCULATION_TYPE_SET = new Set<string>(
+  Object.keys(SERVICE_RULE_CALCULATION_TYPES)
+);
+
+const MEASUREMENT_PRODUCT_GROUPS: Record<MeasurementProductGroup, true> = {
+  flooring: true,
+  plinths: true,
+  wallpaper: true,
+  wall_panels: true,
+  curtains: true,
+  rails: true,
+  stairs: true,
+  other: true
+};
+const MEASUREMENT_PRODUCT_GROUP_SET = new Set<string>(Object.keys(MEASUREMENT_PRODUCT_GROUPS));
+
+function isOptionalString(value: unknown): boolean {
+  return value === undefined || typeof value === "string";
+}
+
+function isRestorableServiceMetadata(value: unknown): value is ServiceRuleMetadata {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.family === "string" &&
+    typeof candidate.role === "string" &&
+    typeof candidate.sectionKey === "string" &&
+    isOptionalString(candidate.covering) &&
+    isOptionalString(candidate.shape)
+  );
+}
+
+/** Alleen een complete, typeveilige catalogusdienst mag uit localStorage terugkeren. */
+function isRestorableServiceRule(value: unknown): value is ServiceRuleRow {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  const optionalStrings = [
+    candidate.description,
+    candidate.sku,
+    candidate.category,
+    candidate.subcategory,
+    candidate.priceUnit,
+    candidate.serviceFamily,
+    candidate.covering,
+    candidate.stairShape,
+    candidate.serviceRole,
+    candidate.sectionKey
+  ];
+
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.productId === "string" &&
+    candidate.productId.length > 0 &&
+    typeof candidate.name === "string" &&
+    candidate.name.length > 0 &&
+    typeof candidate.calculationType === "string" &&
+    SERVICE_RULE_CALCULATION_TYPE_SET.has(candidate.calculationType) &&
+    typeof candidate.priceExVat === "number" &&
+    Number.isFinite(candidate.priceExVat) &&
+    typeof candidate.vatRate === "number" &&
+    Number.isFinite(candidate.vatRate) &&
+    (candidate.status === "active" || candidate.status === "inactive") &&
+    optionalStrings.every(isOptionalString) &&
+    (candidate.productGroup === undefined ||
+      (typeof candidate.productGroup === "string" &&
+        MEASUREMENT_PRODUCT_GROUP_SET.has(candidate.productGroup))) &&
+    (candidate.serviceMetadata === undefined ||
+      isRestorableServiceMetadata(candidate.serviceMetadata))
+  );
+}
+
 /**
  * Leest de offerte-regelinvoer veilig terug uit een (mogelijk oud/corrupt) concept. Alleen
  * velden die hun type-check doorstaan komen in het resultaat; de rest blijft op de begininstelling
@@ -89,6 +180,7 @@ export function readQuoteLineDraft(draft: {
   discountExVat?: unknown;
   projectRoomId?: unknown;
   selectedProduct?: unknown;
+  selectedServiceRule?: unknown;
 }): Partial<QuoteLineDraftState> {
   const restored: Partial<QuoteLineDraftState> = {};
   const str = (value: unknown): value is string => typeof value === "string";
@@ -104,6 +196,9 @@ export function readQuoteLineDraft(draft: {
   if (str(draft.projectRoomId)) restored.projectRoomId = draft.projectRoomId;
   if (isRestorablePortalProduct(draft.selectedProduct)) {
     restored.selectedProduct = draft.selectedProduct;
+  }
+  if (isRestorableServiceRule(draft.selectedServiceRule)) {
+    restored.selectedServiceRule = draft.selectedServiceRule;
   }
   return restored;
 }

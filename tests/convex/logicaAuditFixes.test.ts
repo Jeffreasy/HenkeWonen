@@ -194,7 +194,8 @@ describe("F4: offerte-statusovergangen", () => {
   test("een geannuleerde offerte mag wél terug naar concept (om te herzien)", async () => {
     stubAuth();
     const t = convexTest(schema, modules);
-    const ids = await base(t, "cancelled");
+    // De offerte is geannuleerd, maar het dossier zelf blijft open voor herziening.
+    const ids = await base(t, "quote_rejected");
     const quoteId = await insertQuote(t, ids, "cancelled", "OFF-2026-4");
 
     await t.mutation(api.portal.updateQuoteStatus, {
@@ -205,6 +206,73 @@ describe("F4: offerte-statusovergangen", () => {
     });
     const quote = await t.run(async (ctx) => ctx.db.get(quoteId));
     expect(quote?.status).toBe("draft");
+  });
+
+  test("terug naar concept wist oude statusdatums en opnieuw verzenden maakt een nieuwe cyclus", async () => {
+    stubAuth();
+    const t = convexTest(schema, modules);
+    const ids = await base(t, "quote_rejected");
+    const quoteId = await insertQuote(t, ids, "rejected", "OFF-2026-DATUM");
+    const oldSentAt = Date.now() - 40 * 86400000;
+    await t.run(async (ctx) =>
+      ctx.db.patch(quoteId, {
+        verzondenOp: oldSentAt,
+        geldigTot: oldSentAt + 30 * 86400000,
+        afgewezenOp: oldSentAt + 31 * 86400000
+      })
+    );
+
+    await t.mutation(api.portal.updateQuoteStatus, {
+      tenantSlug: "henke-wonen",
+      actor,
+      quoteId: String(quoteId),
+      status: "draft"
+    });
+    let quote = await t.run(async (ctx) => ctx.db.get(quoteId));
+    expect(quote?.verzondenOp).toBeUndefined();
+    expect(quote?.geldigTot).toBeUndefined();
+    expect(quote?.geaccepteerdOp).toBeUndefined();
+    expect(quote?.afgewezenOp).toBeUndefined();
+
+    await t.mutation(api.portal.addQuoteLine, {
+      tenantSlug: "henke-wonen",
+      actor,
+      quoteId: String(quoteId),
+      regelType: "product",
+      titel: "PVC",
+      aantal: 1,
+      eenheid: "m2",
+      eenheidsprijsExBtw: 100,
+      btwTarief: 21,
+      sortOrder: 1
+    });
+    const beforeResend = Date.now();
+    await t.mutation(api.portal.updateQuoteStatus, {
+      tenantSlug: "henke-wonen",
+      actor,
+      quoteId: String(quoteId),
+      status: "sent"
+    });
+    quote = await t.run(async (ctx) => ctx.db.get(quoteId));
+    expect(quote?.verzondenOp).toBeGreaterThanOrEqual(beforeResend);
+    expect(quote?.verzondenOp).toBeGreaterThan(oldSentAt);
+    expect(quote?.geldigTot).toBeGreaterThan(beforeResend + 29 * 86400000);
+  });
+
+  test("een terminale offerte kan niet direct naar een andere terminale status", async () => {
+    stubAuth();
+    const t = convexTest(schema, modules);
+    const ids = await base(t, "quote_rejected");
+    const quoteId = await insertQuote(t, ids, "rejected", "OFF-2026-TERMINAL");
+
+    await expect(
+      t.mutation(api.portal.updateQuoteStatus, {
+        tenantSlug: "henke-wonen",
+        actor,
+        quoteId: String(quoteId),
+        status: "cancelled"
+      })
+    ).rejects.toThrow(/eerst terug op concept|niet toegestaan/i);
   });
 
   test("dezelfde status opnieuw zetten is een idempotente no-op (geen side effects)", async () => {

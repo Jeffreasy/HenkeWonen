@@ -1,4 +1,15 @@
-import { ChevronDown, Compass, FileText, Flag, Paperclip, Receipt, ShieldCheck, Store, Tablet, X } from "lucide-react";
+import {
+  ChevronDown,
+  Compass,
+  FileText,
+  Flag,
+  Paperclip,
+  Receipt,
+  ShieldCheck,
+  Store,
+  Tablet,
+  X
+} from "lucide-react";
 import { type ReactNode } from "react";
 import { BaseDialog } from "../ui/overlays/BaseDialog";
 import { IconButton } from "../ui/forms/IconButton";
@@ -45,7 +56,8 @@ const TOPIC_WAAR_VIND_IK: HelpTopic = {
         <li>
           <HelpLink href="/portal/klanten">Klanten</HelpLink>
           <span>
-            Alle klanten en klussen. Hier begint een nieuwe aanvraag, via <Kbd>Klant vastleggen</Kbd>.
+            Alle klanten en klussen. Hier begint een nieuwe aanvraag, via{" "}
+            <Kbd>Klant vastleggen</Kbd>.
           </span>
         </li>
         <li>
@@ -109,19 +121,27 @@ const TOPIC_KLEUREN: HelpTopic = {
   title: "De drie kleuren — wat heeft haast?",
   body: (
     <>
-      <p>De gekleurde balk links op kaarten is overal hetzelfde: op het dashboard én op de tablet.</p>
+      <p>
+        De gekleurde balk links op kaarten is overal hetzelfde: op het dashboard én op de tablet.
+      </p>
       <ul className="help-guide-colors">
         <li>
           <span className="help-guide-dot help-guide-dot-rood" aria-hidden="true" />
-          <span><b>Rood</b> — vandaag of morgen, of een probleem. Nú oppakken.</span>
+          <span>
+            <b>Rood</b> — vandaag of morgen, of een probleem. Nú oppakken.
+          </span>
         </li>
         <li>
           <span className="help-guide-dot help-guide-dot-oranje" aria-hidden="true" />
-          <span><b>Oranje</b> — deze week, of er moet nog een datum worden geprikt.</span>
+          <span>
+            <b>Oranje</b> — deze week, of er moet nog een datum worden geprikt.
+          </span>
         </li>
         <li>
           <span className="help-guide-dot help-guide-dot-groen" aria-hidden="true" />
-          <span><b>Groen</b> — klaar of nog ver weg. Hier hoef je niets mee.</span>
+          <span>
+            <b>Groen</b> — klaar of nog ver weg. Hier hoef je niets mee.
+          </span>
         </li>
       </ul>
     </>
@@ -144,7 +164,10 @@ const TOPIC_WINKEL_FLOW: HelpTopic = {
         woensdag of donderdag) en klik op <Kbd>Inplannen</Kbd>. Het systeem bewaakt zelf of er nog
         plek is; de planning zie je terug in <HelpLink href="/portal/agenda">Agenda</HelpLink>.
       </li>
-      <li>Na het bezoek staan de maten al in het tabblad <Kbd>Inmeting</Kbd> van het dossier — niets overtypen.</li>
+      <li>
+        Na het bezoek staan de maten al in het tabblad <Kbd>Inmeting</Kbd> van het dossier — niets
+        overtypen.
+      </li>
       <li>
         Maak de offerte met <Kbd>Inmeting overnemen</Kbd>, voeg prijzen toe en klik op{" "}
         <Kbd>Markeer verzonden</Kbd>. Later zet je 'm op <Kbd>Akkoord</Kbd> of <Kbd>Afwijzen</Kbd> —
@@ -161,56 +184,60 @@ const TOPIC_OFFERTE_SAMENSTELLEN: HelpTopic = {
   body: (
     <ol className="help-guide-steps">
       <li>
-        <b>Open de offerte.</b> Vanuit een dossier klik je op <Kbd>Offerte / verkoop maken</Kbd>; net
-        ingemeten? Dan staat er <Kbd>Maak offerte van deze inmeting</Kbd>. Los kan ook via{" "}
+        <b>Open de offerte.</b> Vanuit een dossier klik je op <Kbd>Offerte / verkoop maken</Kbd>;
+        net ingemeten? Dan staat er <Kbd>Maak offerte van deze inmeting</Kbd>. Los kan ook via{" "}
         <HelpLink href="/portal/offertes">Offertes</HelpLink> → <Kbd>Nieuwe offerte</Kbd> →{" "}
         <Kbd>Offerte starten</Kbd>. Je komt op het scherm <b>Offerte samenstellen</b>.
       </li>
       <li>
         <b>Voeg een post toe.</b> Klap <Kbd>Offertepost toevoegen</Kbd> open en kies hoe:{" "}
-        <Kbd>Catalogusproduct</Kbd>, <Kbd>Werkzaamheid of handmatig</Kbd>, of{" "}
-        <Kbd>Inmeting overnemen</Kbd> (de meetregels van de monteur).
+        <Kbd>Catalogusproduct</Kbd>, <Kbd>Werkzaamheid of handmatig</Kbd>,{" "}
+        <Kbd>Inmeting overnemen</Kbd> of <Kbd>Rekenhulpen</Kbd>.
       </li>
       <li>
         <b>Kies de soort post.</b> In de rij <Kbd>Soort post</Kbd> staan <Kbd>Product</Kbd>,{" "}
         <Kbd>Werkzaamheid</Kbd>, <Kbd>Arbeid</Kbd>, <Kbd>Materiaal</Kbd>, <Kbd>Korting</Kbd>,{" "}
-        <Kbd>Tekst</Kbd> en <Kbd>Handmatig</Kbd>. <b>Werkzaamheid, Arbeid en Materiaal doen hetzelfde</b>{" "}
-        — het zijn ordeningslabels, kies gewoon wat het beste past.
+        <Kbd>Tekst</Kbd> en <Kbd>Handmatig</Kbd>.{" "}
+        <b>Werkzaamheid, Arbeid en Materiaal doen hetzelfde</b> — het zijn ordeningslabels, kies
+        gewoon wat het beste past.
       </li>
       <li>
-        <b>Een product uit de catalogus.</b> Klik op <Kbd>Kies een product…</Kbd> en zoek of blader per
-        categorie door <HelpLink href="/portal/catalogus">de catalogus</HelpLink>. Prijs, eenheid en btw
-        komen automatisch mee — dat is een <b>richtprijs</b>, controleer 'm bij <Kbd>Prijs excl. btw</Kbd>.
-        Btw staat standaard op 21%; bij een verlaagd tarief zet je <Kbd>Btw %</Kbd> zelf op 9.
+        <b>Een product uit de catalogus.</b> Klik op <Kbd>Kies een product…</Kbd> en zoek of blader
+        per categorie door <HelpLink href="/portal/catalogus">de catalogus</HelpLink>. Prijs,
+        eenheid en btw komen automatisch mee — dat is een <b>richtprijs</b>, controleer 'm bij{" "}
+        <Kbd>Prijs excl. btw</Kbd>. Btw staat standaard op 21%; bij een verlaagd tarief zet je{" "}
+        <Kbd>Btw %</Kbd> zelf op 9.
       </li>
       <li>
-        <b>Werkzaamheid, arbeid of materiaal.</b> Klik op <Kbd>Kies een werkzaamheid…</Kbd> voor een vaste
-        werkzaamheid uit{" "}
-        <HelpLink href="/portal/instellingen/werkzaamheden">Instellingen</HelpLink>, of typ zelf. Vul{" "}
-        <Kbd>Aantal</Kbd>, <Kbd>Eenheid</Kbd> en <Kbd>Prijs excl. btw</Kbd> in; <Kbd>Omschrijving</Kbd> is
-        verplicht.
+        <b>Werkzaamheid, arbeid of materiaal.</b> Klik op <Kbd>Kies een werkzaamheid…</Kbd> voor een
+        vaste werkzaamheid uit{" "}
+        <HelpLink href="/portal/instellingen/werkzaamheden">Instellingen</HelpLink>, of typ zelf.
+        Vul <Kbd>Aantal</Kbd>, <Kbd>Eenheid</Kbd> en <Kbd>Prijs excl. btw</Kbd> in;{" "}
+        <Kbd>Omschrijving</Kbd> is verplicht.
       </li>
       <li>
-        <b>Behang uitrekenen?</b> Klap <Kbd>Behangcalculator openen</Kbd> uit, vul de maten in en klik{" "}
-        <Kbd>Gebruik aantal rollen</Kbd> — dat zet meteen een productregel klaar. De uitkomst is{" "}
-        <b>indicatief</b>: controleer altijd maatvoering en snijverlies.
+        <b>Behang uitrekenen?</b> Kies <Kbd>Rekenhulpen</Kbd>, start zo nodig de rekencontext en
+        kies <Kbd>Behang</Kbd>. Kies product en ruimte, vul de rolgegevens in en klik{" "}
+        <Kbd>Gebruik in offerte</Kbd>. De uitkomst is <b>indicatief</b>: controleer altijd
+        maatvoering, patroonrapport en snijverlies.
       </li>
       <li>
-        <b>Zet de post erop.</b> Klik <Kbd>Offertepost toevoegen</Kbd> en herhaal voor de volgende. Een
-        regel aanpassen (potlood, dan <Kbd>Offertepost opslaan</Kbd>) of verwijderen kan{" "}
+        <b>Zet de post erop.</b> Klik <Kbd>Offertepost toevoegen</Kbd> en herhaal voor de volgende.
+        Een regel aanpassen (potlood, dan <Kbd>Offertepost opslaan</Kbd>) of verwijderen kan{" "}
         <b>alleen zolang de offerte nog Concept is</b>.
       </li>
       <li>
         <b>Controleer en bekijk als klant.</b> Kijk de <Kbd>Totalen</Kbd> na en open de{" "}
-        <Kbd>Klantversie</Kbd>. Los eerst eventuele <Kbd>Controle nodig</Kbd>-punten op (bijvoorbeeld een
-        regel zonder prijs). Versturen doe je met <Kbd>Klantversie printen</Kbd> → “Opslaan als PDF”; die
-        mail of app je zelf.
+        <Kbd>Klantversie</Kbd>. Los eerst eventuele <Kbd>Controle nodig</Kbd>-punten op
+        (bijvoorbeeld een regel zonder prijs). Versturen doe je met <Kbd>Klantversie printen</Kbd> →
+        “Opslaan als PDF”; die mail of app je zelf.
       </li>
       <li>
         <b>Zet 'm door.</b> Klik <Kbd>Markeer verzonden</Kbd>, later <Kbd>Akkoord</Kbd> of{" "}
-        <Kbd>Afwijzen</Kbd>. Na akkoord maak je hier de factuur met <Kbd>Factuur aanmaken</Kbd> (terug te
-        vinden onder <HelpLink href="/portal/facturen">Facturen</HelpLink>); de leveranciersbestellingen
-        maak je met <Kbd>Bestellingen genereren</Kbd> op het <b>dossier</b>, tabblad <Kbd>Bestellingen</Kbd>.
+        <Kbd>Afwijzen</Kbd>. Na akkoord maak je hier de factuur met <Kbd>Factuur aanmaken</Kbd>{" "}
+        (terug te vinden onder <HelpLink href="/portal/facturen">Facturen</HelpLink>); de
+        leveranciersbestellingen maak je met <Kbd>Bestellingen genereren</Kbd> op het <b>dossier</b>
+        , tabblad <Kbd>Bestellingen</Kbd>.
       </li>
     </ol>
   )
@@ -222,13 +249,19 @@ const TOPIC_NA_AKKOORD: HelpTopic = {
   title: "Na het akkoord: bestelling & factuur",
   body: (
     <ol className="help-guide-steps">
-      <li>Maak vanuit de akkoord-offerte de leveranciersbestellingen met <Kbd>Bestellingen genereren</Kbd> (tabblad <Kbd>Bestellingen</Kbd>).</li>
+      <li>
+        Maak vanuit de akkoord-offerte de leveranciersbestellingen met{" "}
+        <Kbd>Bestellingen genereren</Kbd> (tabblad <Kbd>Bestellingen</Kbd>).
+      </li>
       <li>
         Maak daarna de factuur in hetzelfde dossier — terug te vinden onder{" "}
         <HelpLink href="/portal/facturen">Facturen</HelpLink>. Een lege of € 0-factuur versturen
         blokkeert het systeem vanzelf.
       </li>
-      <li>Versturen naar de klant: klik op <Kbd>Klantversie printen</Kbd> en kies “Opslaan als PDF”. Die PDF mail of app je zelf — automatisch e-mailen volgt zodra het domein klaar is.</li>
+      <li>
+        Versturen naar de klant: klik op <Kbd>Klantversie printen</Kbd> en kies “Opslaan als PDF”.
+        Die PDF mail of app je zelf — automatisch e-mailen volgt zodra het domein klaar is.
+      </li>
     </ol>
   )
 };
@@ -239,11 +272,23 @@ const TOPIC_TABLET: HelpTopic = {
   title: "Op de tablet (monteur)",
   body: (
     <ol className="help-guide-steps">
-      <li>Onder <Kbd>Vandaag</Kbd> staat je route. Rood pak je als eerste.</li>
-      <li>Op de klantkaart: <Kbd>Bellen</Kbd> belt direct, <Kbd>Route</Kbd> opent de kaart.</li>
-      <li>Tik op <Kbd>Inmeten</Kbd>, dan per kamer op <Kbd>Nieuwe ruimte</Kbd>. Vul lengte en breedte in — de tablet rekent m², rollen en banen zelf uit, inclusief snijverlies.</li>
-      <li>Noemt de tablet een richtprijs? Zeg er altijd bij: “Kantoor stuurt u de exacte prijs.”</li>
-      <li>Klaar? Tik per regel op <Kbd>Naar offerte</Kbd> — de winkel kan meteen verder, bellen hoeft niet.</li>
+      <li>
+        Onder <Kbd>Vandaag</Kbd> staat je route. Rood pak je als eerste.
+      </li>
+      <li>
+        Op de klantkaart: <Kbd>Bellen</Kbd> belt direct, <Kbd>Route</Kbd> opent de kaart.
+      </li>
+      <li>
+        Tik op <Kbd>Inmeten</Kbd>, dan per kamer op <Kbd>Nieuwe ruimte</Kbd>. Vul lengte en breedte
+        in — de tablet rekent m², rollen en banen zelf uit, inclusief snijverlies.
+      </li>
+      <li>
+        Noemt de tablet een richtprijs? Zeg er altijd bij: “Kantoor stuurt u de exacte prijs.”
+      </li>
+      <li>
+        Klaar? Tik per regel op <Kbd>Naar offerte</Kbd> — de winkel kan meteen verder, bellen hoeft
+        niet.
+      </li>
     </ol>
   )
 };
@@ -256,9 +301,9 @@ const TOPIC_DOSSIERSTUKKEN: HelpTopic = {
     <>
       <p>
         Onder <Kbd>Dossierstukken</Kbd> op de klantkaart (via{" "}
-        <HelpLink href="/portal/klanten">Klanten</HelpLink>) bewaar je plattegronden, foto's en
-        oude offertes. De monteur ziet ze op de tablet en kan er met <Kbd>Foto toevoegen</Kbd> zelf
-        een foto van de situatie bij zetten.
+        <HelpLink href="/portal/klanten">Klanten</HelpLink>) bewaar je plattegronden, foto's en oude
+        offertes. De monteur ziet ze op de tablet en kan er met <Kbd>Foto toevoegen</Kbd> zelf een
+        foto van de situatie bij zetten.
       </p>
       <p>Alles is alleen zichtbaar voor ingelogde medewerkers — er bestaan geen open linkjes.</p>
     </>
@@ -395,7 +440,9 @@ export function HelpGuideModal({
             </p>
           ) : (
             // Geen ?-verwijzing: de sneltoetsen-hulp bestaat alleen in de portal.
-            <p>Twijfel je ergens over? Bel even de winkel — zij kijken live mee in hetzelfde dossier.</p>
+            <p>
+              Twijfel je ergens over? Bel even de winkel — zij kijken live mee in hetzelfde dossier.
+            </p>
           )}
         </div>
       </div>

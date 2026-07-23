@@ -15,9 +15,15 @@ import type { PortalProduct } from "./portalTypes";
  * (getIndicativePrice) en zou uit het concept juist kunnen verouderen. `bundleRuleIds`
  * laten we ook los — die worden bij remount opnieuw afgeleid uit de dienst-suggesties.
  */
+export type StairMaterialDraftSelection = {
+  product: PortalProduct;
+  quantityOverride?: string;
+  overrideReason?: string;
+};
 export type MeasurementProductSelection = {
   product: PortalProduct | null;
   serviceRuleId: string;
+  stairMaterials: StairMaterialDraftSelection[];
 };
 
 /**
@@ -47,6 +53,7 @@ export function isRestorablePortalProduct(value: unknown): value is PortalProduc
 export function restoreMeasurementProductSelection(draft: {
   product?: unknown;
   serviceRuleId?: unknown;
+  stairMaterials?: unknown;
 }): Partial<MeasurementProductSelection> {
   const restored: Partial<MeasurementProductSelection> = {};
   if (isRestorablePortalProduct(draft.product)) {
@@ -54,6 +61,44 @@ export function restoreMeasurementProductSelection(draft: {
   }
   if (typeof draft.serviceRuleId === "string") {
     restored.serviceRuleId = draft.serviceRuleId;
+  }
+  if (Array.isArray(draft.stairMaterials)) {
+    restored.stairMaterials = draft.stairMaterials.flatMap((entry) => {
+      if (typeof entry !== "object" || entry === null) {
+        return [];
+      }
+      const candidate = entry as {
+        product?: unknown;
+        quantity?: unknown;
+        quantityOverride?: unknown;
+        overrideReason?: unknown;
+      };
+      if (
+        (candidate.quantity !== undefined && typeof candidate.quantity !== "string") ||
+        (candidate.quantityOverride !== undefined &&
+          typeof candidate.quantityOverride !== "string") ||
+        (candidate.overrideReason !== undefined && typeof candidate.overrideReason !== "string")
+      ) {
+        return [];
+      }
+      if (!isRestorablePortalProduct(candidate.product)) {
+        return [];
+      }
+      const quantityOverride =
+        typeof candidate.quantityOverride === "string" ? candidate.quantityOverride : undefined;
+      const overrideReason =
+        typeof candidate.overrideReason === "string" ? candidate.overrideReason : undefined;
+
+      // Oude concepten bevatten alleen `quantity`. Die waarde kan door later gewijzigde
+      // trapmaten verouderd zijn en wordt daarom bewust niet als handmatige override hersteld.
+      return [
+        {
+          product: candidate.product,
+          ...(quantityOverride !== undefined ? { quantityOverride } : {}),
+          ...(overrideReason !== undefined ? { overrideReason } : {})
+        }
+      ];
+    });
   }
   return restored;
 }

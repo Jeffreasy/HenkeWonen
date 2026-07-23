@@ -16,6 +16,7 @@ import type {
 } from "../src/lib/portalTypes";
 import { ConvexError, v } from "convex/values";
 import { pilotHiddenReason } from "./catalog/pilot";
+import { assertValidQuoteStairBundles } from "./stairBundles";
 
 export const customerType = v.union(v.literal("private"), v.literal("business"));
 export const customerStatus = v.union(
@@ -70,7 +71,11 @@ export const quoteStatus = v.union(
 );
 
 export const activeStatus = v.union(v.literal("active"), v.literal("inactive"));
-export const supplierStatus = v.union(v.literal("active"), v.literal("inactive"), v.literal("archived"));
+export const supplierStatus = v.union(
+  v.literal("active"),
+  v.literal("inactive"),
+  v.literal("archived")
+);
 
 export const serviceRuleCalculationType = v.union(
   v.literal("fixed"),
@@ -152,10 +157,12 @@ export async function nextInvoiceNumber(ctx: any, tenantId: Id<"tenants">): Prom
   const now = Date.now();
   const year = new Date(now).getFullYear();
   const prefix = `FAC-${year}-`;
-  const tenant = (await ctx.db.get(tenantId)) as (Doc<"tenants"> & {
-    invoiceSequenceYear?: number;
-    invoiceSequenceValue?: number;
-  }) | null;
+  const tenant = (await ctx.db.get(tenantId)) as
+    | (Doc<"tenants"> & {
+        invoiceSequenceYear?: number;
+        invoiceSequenceValue?: number;
+      })
+    | null;
   let nextSequence: number;
 
   if (tenant?.invoiceSequenceYear === year && typeof tenant.invoiceSequenceValue === "number") {
@@ -244,7 +251,12 @@ export function taskPriority(dueAt: number, now = Date.now()) {
   }
 
   if (daysUntilDue <= 7) {
-    return { level: "orange" as const, label: "Oranje" as const, tone: "warning" as const, rank: 1 };
+    return {
+      level: "orange" as const,
+      label: "Oranje" as const,
+      tone: "warning" as const,
+      rank: 1
+    };
   }
 
   return { level: "green" as const, label: "Groen" as const, tone: "success" as const, rank: 2 };
@@ -310,7 +322,9 @@ export function calculateLineTotals(
   // negatieve unitPriceExVat. Wel: niet-eindige waarden (NaN/Infinity) weren — die
   // corrumperen offerte-/factuurtotalen — en het btw-percentage begrenzen.
   if (![quantity, unitPriceExVat, vatRate, discountExVat ?? 0].every((n) => Number.isFinite(n))) {
-    throw new ConvexError("Ongeldige regelbedragen: aantal, prijs, btw en korting moeten eindige getallen zijn.");
+    throw new ConvexError(
+      "Ongeldige regelbedragen: aantal, prijs, btw en korting moeten eindige getallen zijn."
+    );
   }
   if (vatRate < 0 || vatRate > 100) {
     throw new ConvexError("Ongeldig btw-percentage: moet tussen 0 en 100 liggen.");
@@ -397,7 +411,11 @@ export async function getRooms(ctx: any, tenantId: Id<"tenants">, projectId: Id<
   });
 }
 
-export async function toProject(ctx: any, tenantSlug: string, project: Doc<"projects">): Promise<PortalProject> {
+export async function toProject(
+  ctx: any,
+  tenantSlug: string,
+  project: Doc<"projects">
+): Promise<PortalProject> {
   const rooms = await getRooms(ctx, project.tenantId, project._id);
 
   return {
@@ -469,8 +487,7 @@ export async function teamMemberNamesByExternalId(
   const names = new Map<string, string>();
   for (const user of users) {
     // Trim-checks: een lege-string naam mag niet als "auteur" verschijnen.
-    const name =
-      user.agendaWeergaveNaam?.trim() || user.naam?.trim() || user.email;
+    const name = user.agendaWeergaveNaam?.trim() || user.naam?.trim() || user.email;
     names.set(user.externalUserId, name);
   }
   return names;
@@ -506,7 +523,10 @@ export function toDossierAttachment(
   };
 }
 
-export function toWorkflowEvent(tenantSlug: string, event: Doc<"projectWorkflowEvents">): PortalWorkflowEvent {
+export function toWorkflowEvent(
+  tenantSlug: string,
+  event: Doc<"projectWorkflowEvents">
+): PortalWorkflowEvent {
   return {
     id: String(event._id),
     tenantId: tenantSlug,
@@ -561,7 +581,11 @@ export function toQuoteLine(line: Doc<"quoteLines">): PortalQuoteLine {
   };
 }
 
-export async function toQuote(ctx: any, tenantSlug: string, quote: Doc<"quotes">): Promise<PortalQuote> {
+export async function toQuote(
+  ctx: any,
+  tenantSlug: string,
+  quote: Doc<"quotes">
+): Promise<PortalQuote> {
   const lines = await ctx.db
     .query("quoteLines")
     .withIndex("by_quote", (q: any) => q.eq("tenantId", quote.tenantId).eq("quoteId", quote._id))
@@ -593,7 +617,10 @@ export async function toQuote(ctx: any, tenantSlug: string, quote: Doc<"quotes">
   };
 }
 
-export function toQuoteSummary(tenantSlug: string, quote: Doc<"quotes">): Omit<PortalQuote, "lines"> {
+export function toQuoteSummary(
+  tenantSlug: string,
+  quote: Doc<"quotes">
+): Omit<PortalQuote, "lines"> {
   return {
     id: String(quote._id),
     tenantId: tenantSlug,
@@ -613,7 +640,10 @@ export function toQuoteSummary(tenantSlug: string, quote: Doc<"quotes">): Omit<P
   };
 }
 
-export function toQuoteTemplate(tenantSlug: string, template: Doc<"quoteTemplates">): QuoteTemplate {
+export function toQuoteTemplate(
+  tenantSlug: string,
+  template: Doc<"quoteTemplates">
+): QuoteTemplate {
   return {
     id: String(template._id),
     tenantId: tenantSlug,
@@ -642,17 +672,15 @@ export function customerAddress(customer: Doc<"customers"> | undefined | null) {
 export function activeFieldQuote(quotes: Doc<"quotes">[], projectId: Id<"projects">) {
   return quotes
     .filter((quote) => quote.projectId === projectId)
-    .filter((quote) =>
-      quote.status === "draft" ||
-      quote.status === "sent" ||
-      quote.status === "accepted"
+    .filter(
+      (quote) => quote.status === "draft" || quote.status === "sent" || quote.status === "accepted"
     )
     .sort((left, right) => right.gewijzigdOp - left.gewijzigdOp)[0];
 }
 
 export function latestMeasurement(measurements: Doc<"measurements">[], projectId: Id<"projects">) {
   return measurements
-    .filter((measurement) => measurement.projectId === projectId)
+    .filter((measurement) => measurement.projectId === projectId && !measurement.contextQuoteId)
     .sort((left, right) => right.gewijzigdOp - left.gewijzigdOp)[0];
 }
 
@@ -734,7 +762,6 @@ export function sortProjectTasks(tasks: Doc<"projectTasks">[]) {
   });
 }
 
-
 export function toSupplier(
   tenantSlug: string,
   supplier: Doc<"suppliers">,
@@ -780,13 +807,19 @@ export async function findSupplierByName(ctx: any, tenantId: Id<"tenants">, name
     .first();
 }
 
-export async function latestQuoteForProject(ctx: any, tenantId: Id<"tenants">, projectId: Id<"projects">) {
+export async function latestQuoteForProject(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  projectId: Id<"projects">
+) {
   const quotes = await ctx.db
     .query("quotes")
     .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
     .collect();
 
-  return quotes.sort((left: Doc<"quotes">, right: Doc<"quotes">) => right.gewijzigdOp - left.gewijzigdOp)[0];
+  return quotes.sort(
+    (left: Doc<"quotes">, right: Doc<"quotes">) => right.gewijzigdOp - left.gewijzigdOp
+  )[0];
 }
 
 export async function latestAcceptedQuoteForProject(
@@ -905,6 +938,62 @@ export async function applyProjectStatusForNewQuote(
 }
 
 /**
+ * Houdt de globale dossierstatus in lijn met de levende offertes, maar alleen zolang
+ * het dossier nog in de offertefase zit. Een meerwerkofferte op een dossier dat al in
+ * uitvoering, bestelling, facturatie of afsluiting zit mag die verdere fase nooit
+ * terugzetten naar offerteconcept/verzonden/afgewezen.
+ *
+ * Binnen de offertefase geldt de prioriteit: akkoord > verzonden > concept > afgewezen.
+ * Een individuele offerte-annulering annuleert dus niet stil het hele dossier.
+ */
+const QUOTE_PHASE_PROJECT_STATUSES: ReadonlyArray<Doc<"projects">["status"]> = [
+  "lead",
+  "measurement_planned",
+  "quote_draft",
+  "quote_sent",
+  "quote_accepted",
+  "quote_rejected"
+];
+
+export async function syncProjectStatusFromQuotes(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  project: Doc<"projects">,
+  now: number
+): Promise<Doc<"projects">["status"]> {
+  if (!QUOTE_PHASE_PROJECT_STATUSES.includes(project.status)) {
+    await ctx.db.patch(project._id, { gewijzigdOp: now });
+    return project.status;
+  }
+
+  const quotes = await ctx.db
+    .query("quotes")
+    .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", project._id))
+    .collect();
+
+  const nextStatus: Doc<"projects">["status"] = quotes.some(
+    (quote: Doc<"quotes">) => quote.status === "accepted"
+  )
+    ? "quote_accepted"
+    : quotes.some((quote: Doc<"quotes">) => quote.status === "sent")
+      ? "quote_sent"
+      : quotes.some((quote: Doc<"quotes">) => quote.status === "draft")
+        ? "quote_draft"
+        : "quote_rejected";
+
+  await ctx.db.patch(project._id, {
+    status: nextStatus,
+    geaccepteerdOp:
+      nextStatus === "quote_accepted" && project.status !== "quote_accepted"
+        ? now
+        : project.geaccepteerdOp,
+    gewijzigdOp: now
+  });
+
+  return nextStatus;
+}
+
+/**
  * Bevrijdt alle uit een offerte geïmporteerde inmeetregels: terug op 'ready_for_quote' +
  * conversie-refs gewist, zodat de buitendienst-inmeting opnieuw naar een (andere) offerte kan
  * worden geïmporteerd. Aanroepen zodra een offerte definitief niet meer leidend is (afgewezen/
@@ -931,23 +1020,31 @@ export async function restoreMeasurementLinesForQuote(
       )
       .collect();
 
+    const isQuoteCalculationContext = measurement.contextQuoteId === quoteId;
     let touched = false;
     for (const ml of mLines) {
       if (ml.geconverteerdeOfferteId === quoteId && ml.quotePreparationStatus === "converted") {
-        await ctx.db.patch(ml._id, {
-          quotePreparationStatus: "ready_for_quote",
-          geconverteerdeOfferteId: undefined,
-          geconverteerdeOfferteregelId: undefined,
-          gewijzigdOp: now
-        });
+        if (isQuoteCalculationContext) {
+          await ctx.db.delete(ml._id);
+        } else {
+          await ctx.db.patch(ml._id, {
+            quotePreparationStatus: "ready_for_quote",
+            geconverteerdeOfferteId: undefined,
+            geconverteerdeOfferteregelId: undefined,
+            gewijzigdOp: now
+          });
+        }
         touched = true;
       }
     }
     if (touched) {
+      if (isQuoteCalculationContext) {
+        await ctx.db.patch(measurement._id, { gewijzigdOp: now });
+        continue;
+      }
+
       // De inmeting is pas niet langer 'verwerkt naar offerte' als er ook geen regels
-      // meer geconverteerd zijn naar een ÁNDERE (nog levende) offerte — terug naar
-      // 'gecontroleerd', zodat de buitendienst-bucket 'Conceptofferte maken' het
-      // dossier weer oppakt en de status niet liegt.
+      // meer geconverteerd zijn naar een ANDERE (nog levende) offerte.
       const nogGeconverteerd = mLines.some(
         (ml: Doc<"measurementLines">) =>
           ml.geconverteerdeOfferteId !== quoteId && ml.quotePreparationStatus === "converted"
@@ -973,10 +1070,22 @@ export async function assertQuoteAcceptable(
   tenantId: Id<"tenants">,
   quoteId: Id<"quotes">
 ): Promise<void> {
+  const quote = await ctx.db.get(quoteId);
+  if (!quote || quote.tenantId !== tenantId) {
+    throw new ConvexError("Offerte niet gevonden.");
+  }
+
   const lines = await ctx.db
     .query("quoteLines")
     .withIndex("by_quote", (q: any) => q.eq("tenantId", tenantId).eq("quoteId", quoteId))
     .collect();
+
+  await assertValidQuoteStairBundles(
+    ctx,
+    tenantId,
+    lines,
+    quote.status === "draft" ? "catalog" : "snapshot"
+  );
   const chargeableTypes = ["product", "material", "labor", "service", "manual"];
   const chargeableLines = lines.filter((line: Doc<"quoteLines">) =>
     chargeableTypes.includes(line.regelType)
@@ -1036,17 +1145,41 @@ export async function cancelOtherOpenQuotesAndRestore(
   tenantId: Id<"tenants">,
   projectId: Id<"projects">,
   keepQuoteId: Id<"quotes">,
-  now: number
+  now: number,
+  externalUserId?: string
 ): Promise<void> {
   const otherQuotes = await ctx.db
     .query("quotes")
     .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
     .collect();
+  const keptQuote = otherQuotes.find(
+    (quote: Doc<"quotes">) => String(quote._id) === String(keepQuoteId)
+  );
 
   for (const other of otherQuotes) {
-    if (other._id !== keepQuoteId && (other.status === "draft" || other.status === "sent")) {
+    if (
+      String(other._id) !== String(keepQuoteId) &&
+      (other.status === "draft" || other.status === "sent")
+    ) {
       await ctx.db.patch(other._id, { status: "cancelled", gewijzigdOp: now });
+      await closeOpenProjectTasks(
+        ctx,
+        tenantId,
+        projectId,
+        "quote_follow_up",
+        "dismissed",
+        other._id
+      );
       await restoreMeasurementLinesForQuote(ctx, tenantId, projectId, other._id);
+      await addProjectEvent(
+        ctx,
+        tenantId,
+        projectId,
+        "closed",
+        "Offerte automatisch geannuleerd",
+        externalUserId,
+        `${other.offertenummer} is automatisch geannuleerd omdat ${keptQuote?.offertenummer ?? "een andere offerte"} akkoord is gezet.`
+      );
     }
   }
 }
@@ -1097,40 +1230,34 @@ export async function cancelOpenSupplierOrders(
   return cancelledCount;
 }
 
-/** Terminale offerte-staten: de offerte-fase is geëindigd zonder akkoord. */
-const TERMINAL_QUOTE_STATUSES: ReadonlyArray<Doc<"quotes">["status"]> = [
-  "rejected",
-  "cancelled",
-  "expired"
-];
-/** Levende offerte-staten die het dossier weer "in beweging" zetten. */
-const LIVE_QUOTE_STATUSES: ReadonlyArray<Doc<"quotes">["status"]> = ["sent", "accepted"];
-
 /**
- * Bewaakt de toegestane offerte-statusovergangen. Een terminale offerte
- * (afgewezen/geannuleerd/verlopen) mag NIET herleven naar een levende staat
- * (verstuurd/akkoord) — anders kan dezelfde inmeting via een herleefde offerte
- * een tweede keer worden gefactureerd. Terug naar concept (om te herzien) of naar
- * een andere terminale staat blijft toegestaan.
- *
- * Een geaccepteerde offerte gaat alleen nog naar 'geannuleerd': stil terug naar
- * concept/verstuurd zou de offerte laten afwijken van de al op basis van dat akkoord
- * geplaatste leveranciersbestellingen (het annuleer-pad annuleert die bestellingen
- * juist expliciet en met terugkoppeling).
+ * Bewaakt de expliciete statusmatrix. Een terminale offerte kan alleen terug naar
+ * concept om een nieuwe versie te maken; directe terminal-naar-terminalovergangen
+ * leveren verwarrende historie op. Een geaccepteerde offerte kan alleen nog worden
+ * geannuleerd, zodat gekoppelde bestellingen bewust worden afgehandeld.
  */
 export function assertQuoteStatusTransition(
   from: Doc<"quotes">["status"],
   to: Doc<"quotes">["status"]
 ): void {
-  if (TERMINAL_QUOTE_STATUSES.includes(from) && LIVE_QUOTE_STATUSES.includes(to)) {
-    throw new ConvexError(
-      "Een afgewezen, geannuleerde of verlopen offerte kan niet herleven. Maak een nieuwe offerte, of zet deze eerst terug op concept om 'm te herzien."
-    );
-  }
-
   if (from === "accepted" && to !== "cancelled") {
     throw new ConvexError(
       "Een geaccepteerde offerte kan alleen worden geannuleerd (open bestellingen worden dan mee-geannuleerd). Annuleer de offerte en maak daarna een nieuwe versie."
+    );
+  }
+
+  const allowedTargets: Record<Doc<"quotes">["status"], ReadonlyArray<Doc<"quotes">["status"]>> = {
+    draft: ["sent", "accepted", "rejected", "expired", "cancelled"],
+    sent: ["draft", "accepted", "rejected", "expired", "cancelled"],
+    accepted: ["cancelled"],
+    rejected: ["draft"],
+    cancelled: ["draft"],
+    expired: ["draft"]
+  };
+
+  if (!allowedTargets[from].includes(to)) {
+    throw new ConvexError(
+      "Deze statusovergang is niet toegestaan. Zet een afgewezen, geannuleerde of verlopen offerte eerst terug op concept om 'm te herzien."
     );
   }
 }
@@ -1172,9 +1299,12 @@ export async function latestMeasurementForProject(
     .withIndex("by_project", (q: any) => q.eq("tenantId", tenantId).eq("projectId", projectId))
     .collect();
 
-  return measurements.sort((left: Doc<"measurements">, right: Doc<"measurements">) =>
-    right.gewijzigdOp - left.gewijzigdOp
-  )[0];
+  return measurements
+    .filter((measurement: Doc<"measurements">) => !measurement.contextQuoteId)
+    .sort(
+      (left: Doc<"measurements">, right: Doc<"measurements">) =>
+        right.gewijzigdOp - left.gewijzigdOp
+    )[0];
 }
 
 export async function hasProjectEvent(
@@ -1310,7 +1440,14 @@ export async function completeInvoiceWorkflow(
   );
 
   if (!(await hasProjectEvent(ctx, tenantId, project._id, "invoice_created"))) {
-    await addProjectEvent(ctx, tenantId, project._id, "invoice_created", "Factuur aangemaakt", externalUserId);
+    await addProjectEvent(
+      ctx,
+      tenantId,
+      project._id,
+      "invoice_created",
+      "Factuur aangemaakt",
+      externalUserId
+    );
   }
 }
 
@@ -1377,7 +1514,8 @@ export function importedMeasurementLineTitle(
   }
 
   return [
-    measurementProductGroupLabels[line.productGroep] ?? readableMeasurementFallback(line.productGroep),
+    measurementProductGroupLabels[line.productGroep] ??
+      readableMeasurementFallback(line.productGroep),
     measurementCalculationTypeLabels[line.berekeningType] ??
       readableMeasurementFallback(line.berekeningType),
     room?.naam

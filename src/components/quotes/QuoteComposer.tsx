@@ -1,16 +1,13 @@
-import { Ruler, ShoppingCart, Wrench } from "lucide-react";
+import { Calculator, Ruler, ShoppingCart, Wrench } from "lucide-react";
 import { useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
-import type {
-  MeasurementProductGroup,
-  PortalRoom,
-  QuoteTemplateLine
-} from "../../lib/portalTypes";
+import type { MeasurementProductGroup, PortalRoom, QuoteTemplateLine } from "../../lib/portalTypes";
 import MeasurementLinePicker from "./MeasurementLinePicker";
+import QuoteMeasurementTools from "./QuoteMeasurementTools";
 import QuoteLineEditor from "./QuoteLineEditor";
 import type { QuoteLineFormValues } from "./quote/quoteTypes";
 
-type ComposerMethod = "catalog" | "manual" | "measurement";
+type ComposerMethod = "catalog" | "manual" | "measurement" | "calculator";
 
 type QuoteComposerProps = {
   mode: "full" | "field";
@@ -54,6 +51,12 @@ const METHODS: Array<{
     icon: Ruler,
     title: "Inmeting overnemen",
     description: "Neem klaargezette meetregels over."
+  },
+  {
+    key: "calculator",
+    icon: Calculator,
+    title: "Rekenhulpen",
+    description: "Bereken materiaal en diensten direct."
   }
 ];
 
@@ -80,7 +83,11 @@ export default function QuoteComposer({
 
   // Standaardregels horen bij de handmatige flow; productregels kies je via de catalogus.
   const manualTemplateLines = templateLines.filter((line) => line.regelType !== "product");
-  const methods = METHODS.filter((entry) => showMeasurement || entry.key !== "measurement");
+  const methods = METHODS.filter(
+    (entry) =>
+      (showMeasurement || entry.key !== "measurement") &&
+      (mode !== "field" || entry.key !== "calculator")
+  );
 
   return (
     <div className="quote-composer">
@@ -134,7 +141,7 @@ export default function QuoteComposer({
             onAdd={onAddLine}
             draftScopeId={`${quoteId}:manual`}
           />
-        ) : (
+        ) : method === "measurement" ? (
           <MeasurementLinePicker
             mode={mode}
             tenantSlug={tenantSlug}
@@ -142,6 +149,15 @@ export default function QuoteComposer({
             projectId={projectId}
             session={session}
             startSortOrder={sortOrder}
+            onImported={onMeasurementLinesImported}
+          />
+        ) : (
+          <QuoteMeasurementTools
+            quoteId={quoteId}
+            projectId={projectId}
+            tenantSlug={tenantSlug}
+            session={session}
+            sortOrder={sortOrder}
             onImported={onMeasurementLinesImported}
           />
         )}

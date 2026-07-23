@@ -68,6 +68,16 @@ async function seed(t: ReturnType<typeof convexTest>) {
       aangemaaktOp: now,
       gewijzigdOp: now
     });
+    const serviceCat = await ctx.db.insert("categories", {
+      tenantId,
+      naam: "Traprenovatie (arbeid)",
+      slug: "traprenovatie-arbeid",
+      productGroep: "stairs",
+      sortOrder: 3,
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
     await ctx.db.insert("categories", {
       tenantId,
       naam: "Oude groep",
@@ -115,6 +125,30 @@ async function seed(t: ReturnType<typeof convexTest>) {
       return id;
     }
 
+    const serviceProductId = await ctx.db.insert("products", {
+      tenantId,
+      categorieId: serviceCat,
+      sku: "HW-DIENST-014",
+      naam: "PVC trap halve draai",
+      productAard: "service",
+      eenheid: "piece",
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    await ctx.db.insert("productPrices", {
+      tenantId,
+      productId: serviceProductId,
+      prijsSoort: "retail",
+      prijsEenheid: "piece",
+      bedrag: 1795,
+      btwTarief: 21,
+      btwModus: "exclusive",
+      currency: "EUR",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+
     await product("Ambiant PVC", pvcCat);
     await product("Berber tapijt", tapijtCat);
 
@@ -137,6 +171,34 @@ test("searchPickerProducts met categorieId filtert strak op één categorie binn
   // PVC Vloeren en Tapijt zitten allebei in meetgroep "flooring"; categorieId knijpt dieper.
   expect(names).toContain("Ambiant PVC");
   expect(names).not.toContain("Berber tapijt");
+});
+
+test("productpicker scheidt bestelbare producten en dienstproducten strikt", async () => {
+  const t = convexTest(schema, modules);
+  await seed(t);
+
+  const orderable = (await t.query(api.catalog.pickerSearch.searchPickerProducts, {
+    tenantSlug: "henke-wonen",
+    actor: adminActor,
+    limit: 30
+  })) as { items: Array<{ naam: string; productAard?: string }> };
+  expect(orderable.items.map((item) => item.naam)).not.toContain("PVC trap halve draai");
+
+  const services = (await t.query(api.catalog.pickerSearch.searchPickerProducts, {
+    tenantSlug: "henke-wonen",
+    actor: adminActor,
+    scope: "service",
+    limit: 30
+  })) as { items: Array<{ naam: string; productAard?: string }> };
+  expect(services.items.map((item) => item.naam)).toEqual(["PVC trap halve draai"]);
+  expect(services.items[0]?.productAard).toBe("service");
+
+  const serviceCategories = (await t.query(api.catalog.pickerSearch.pickerCategories, {
+    tenantSlug: "henke-wonen",
+    actor: viewerActor,
+    scope: "service"
+  })) as Array<{ name: string }>;
+  expect(serviceCategories.map((category) => category.name)).toEqual(["Traprenovatie (arbeid)"]);
 });
 
 test("searchPickerProducts negeert een categorieId van een andere tenant (valt terug op alles)", async () => {
@@ -247,7 +309,12 @@ test("searchPickerProducts vindt producten op losse zoektermen, ook als ze niet 
   expect(await search("roots ubg")).not.toContain("MOD ROOTS 0,55 MATTINA 46580CD");
 });
 
-async function seedManyPvc(t: ReturnType<typeof convexTest>, tenantId: string, pvcCat: string, count: number) {
+async function seedManyPvc(
+  t: ReturnType<typeof convexTest>,
+  tenantId: string,
+  pvcCat: string,
+  count: number
+) {
   await t.run(async (ctx) => {
     const now = Date.now();
     for (let i = 1; i <= count; i += 1) {
@@ -349,4 +416,169 @@ test("searchPickerProducts pagineert ook 'Alles' (geen filter) over categorieën
 
   expect(seen.size).toBe(14); // 13 PVC + Berber tapijt, over de categoriegrens heen
   expect(seen.has("Berber tapijt")).toBe(true);
+});
+
+test("trap-SKU fallback wordt buiten de trapcategorie niet als PVC-trapmateriaal gemarkeerd", async () => {
+  const t = convexTest(schema, modules);
+  const { tenantId, pvcCat } = await seed(t);
+  const now = Date.now();
+
+  await t.run(async (ctx) => {
+    const productId = await ctx.db.insert("products", {
+      tenantId,
+      categorieId: pvcCat,
+      naam: "Vloerproduct met toevallig vergelijkbare code",
+      sku: "5635389999",
+      productAard: "standard",
+      eenheid: "m2",
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    await ctx.db.insert("productPrices", {
+      tenantId,
+      productId,
+      prijsSoort: "retail",
+      prijsEenheid: "m2",
+      bedrag: 25,
+      btwTarief: 21,
+      btwModus: "exclusive",
+      currency: "EUR",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+  });
+
+  const result = (await t.query(api.catalog.pickerSearch.searchPickerProducts, {
+    tenantSlug: "henke-wonen",
+    actor: adminActor,
+    search: "toevallig vergelijkbare",
+    limit: 30
+  })) as {
+    items: Array<{
+      naam: string;
+      attributen?: { stairMaterialMetadata?: unknown };
+    }>;
+  };
+
+  const product = result.items.find(
+    (item) => item.naam === "Vloerproduct met toevallig vergelijkbare code"
+  );
+  expect(product).toBeDefined();
+  expect(product?.attributen?.stairMaterialMetadata).toBeUndefined();
+});
+
+test("trapmateriaalfilter laat uitsluitend structureel herkend PVC toe via alle zoekroutes", async () => {
+  const t = convexTest(schema, modules);
+  const { tenantId } = await seed(t);
+  const now = Date.now();
+
+  const stairCat = await t.run(async (ctx) => {
+    const categoryId = await ctx.db.insert("categories", {
+      tenantId,
+      naam: "Traprenovatie",
+      slug: "traprenovatie-materialen",
+      productGroep: "stairs",
+      sortOrder: 4,
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+
+    async function material(
+      naam: string,
+      options: { sku?: string; attributen?: Record<string, unknown> } = {}
+    ) {
+      await ctx.db.insert("products", {
+        tenantId,
+        categorieId: categoryId,
+        naam,
+        sku: options.sku,
+        attributen: options.attributen,
+        productAard: "standard",
+        eenheid: "pack",
+        status: "active",
+        aangemaaktOp: now,
+        gewijzigdOp: now
+      });
+    }
+
+    for (let index = 1; index <= 12; index++) {
+      await material(`AAA onbekend trapmateriaal ${String(index).padStart(2, "0")}`);
+    }
+
+    await material("Herkende PVC traptrede via SKU", { sku: "5635380011" });
+    await material("Herkende PVC trapaccessoire via metadata", {
+      sku: "GEEN-FALLBACK",
+      attributen: {
+        stairMaterialMetadata: {
+          family: "stair_renovation",
+          covering: "pvc",
+          componentRole: "tool",
+          isPrimary: false
+        }
+      }
+    });
+    await material("Onbekend trapmateriaal");
+    await material("Tapijt trapmateriaal", {
+      attributen: {
+        stairMaterialMetadata: {
+          family: "stair_renovation",
+          covering: "tapijt",
+          componentRole: "standard_tread",
+          isPrimary: true
+        }
+      }
+    });
+
+    return categoryId;
+  });
+
+  const allStairMaterials = (await t.query(api.catalog.pickerSearch.searchPickerProducts, {
+    tenantSlug: "henke-wonen",
+    actor: adminActor,
+    productGroep: "stairs",
+    limit: 30
+  })) as PickerPage;
+  expect(allStairMaterials.items.map((item) => item.naam)).toEqual(
+    expect.arrayContaining([
+      "Herkende PVC traptrede via SKU",
+      "Herkende PVC trapaccessoire via metadata",
+      "Onbekend trapmateriaal",
+      "Tapijt trapmateriaal"
+    ])
+  );
+
+  const filter = { family: "stair_renovation" as const, covering: "pvc" as const };
+  const expected = ["Herkende PVC traptrede via SKU", "Herkende PVC trapaccessoire via metadata"];
+
+  const byProductGroup = (await t.query(api.catalog.pickerSearch.searchPickerProducts, {
+    tenantSlug: "henke-wonen",
+    actor: adminActor,
+    productGroep: "stairs",
+    stairMaterialFilter: filter,
+    limit: 10
+  })) as PickerPage;
+  expect(byProductGroup.items.map((item) => item.naam)).toEqual(expect.arrayContaining(expected));
+  expect(byProductGroup.items).toHaveLength(2);
+
+  const byCategory = (await t.query(api.catalog.pickerSearch.searchPickerProducts, {
+    tenantSlug: "henke-wonen",
+    actor: adminActor,
+    categorieId: stairCat,
+    stairMaterialFilter: filter,
+    limit: 10
+  })) as PickerPage;
+  expect(byCategory.items.map((item) => item.naam)).toEqual(expect.arrayContaining(expected));
+  expect(byCategory.items).toHaveLength(2);
+
+  const unknownSearch = (await t.query(api.catalog.pickerSearch.searchPickerProducts, {
+    tenantSlug: "henke-wonen",
+    actor: adminActor,
+    productGroep: "stairs",
+    search: "Onbekend trapmateriaal",
+    stairMaterialFilter: filter,
+    limit: 30
+  })) as PickerPage;
+  expect(unknownSearch.items).toEqual([]);
 });

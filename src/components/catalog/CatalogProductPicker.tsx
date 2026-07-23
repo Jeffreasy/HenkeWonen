@@ -5,8 +5,13 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import type { AppSession } from "../../lib/auth/session";
 import { createConvexHttpClient } from "../../lib/convex/client";
 import { formatEuro } from "../../lib/money";
+import type { StairMaterialCatalogFilter } from "../../lib/quotes/stairMaterialFilter";
 import { formatMeasurementProductGroup, formatUnit } from "../../lib/i18n/statusLabels";
-import type { MeasurementProductGroup, PortalProduct } from "../../lib/portalTypes";
+import type {
+  MeasurementProductGroup,
+  PortalProduct,
+  ProductPickerScope
+} from "../../lib/portalTypes";
 import { Alert } from "../ui/feedback/Alert";
 import { Field } from "../ui/forms/Field";
 import { IconButton } from "../ui/forms/IconButton";
@@ -20,6 +25,10 @@ type CatalogProductPickerProps = {
   /** Filtert de catalogus server-side op de categorieën van deze meetproductgroep. */
   productGroupHint?: MeasurementProductGroup | null;
   selectedProductId: string;
+  /** Filtert bestelbare producten en catalogusdiensten strikt van elkaar. */
+  scope?: ProductPickerScope;
+  /** Optionele structurele materiaalfilter voor de geleide PVC-trapcomposer. */
+  stairMaterialFilter?: StairMaterialCatalogFilter;
   /** Weergavenaam van de huidige keuze, voor als die buiten de zoekresultaten valt. */
   selectedProductLabel?: string;
   onSelect: (product: PortalProduct | null) => void;
@@ -92,6 +101,8 @@ export default function CatalogProductPicker({
   productGroupHint = null,
   selectedProductId,
   selectedProductLabel,
+  scope = "orderable",
+  stairMaterialFilter,
   onSelect,
   label = "Product",
   description,
@@ -119,6 +130,8 @@ export default function CatalogProductPicker({
   // Generatieteller: een lopende "meer laden" die van een oude filter is, wordt genegeerd.
   const loadGenRef = useRef(0);
   const bodyRef = useRef<HTMLDivElement | null>(null);
+  const stairMaterialFamily = stairMaterialFilter?.family;
+  const stairMaterialCovering = stairMaterialFilter?.covering;
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
@@ -133,9 +146,26 @@ export default function CatalogProductPicker({
       search: debouncedSearch || undefined,
       limit: 40,
       ...(productGroupHint ? { productGroep: productGroupHint } : {}),
+      ...(scope !== "orderable" ? { scope } : {}),
+      ...(stairMaterialFamily && stairMaterialCovering
+        ? {
+            stairMaterialFilter: {
+              family: stairMaterialFamily,
+              covering: stairMaterialCovering
+            }
+          }
+        : {}),
       ...(selectedCategoryId ? { categorieId: selectedCategoryId as Id<"categories"> } : {})
     }),
-    [session.tenantId, debouncedSearch, productGroupHint, selectedCategoryId]
+    [
+      session.tenantId,
+      debouncedSearch,
+      productGroupHint,
+      scope,
+      stairMaterialFamily,
+      stairMaterialCovering,
+      selectedCategoryId
+    ]
   );
 
   // Eerste pagina (her)laden zodra de dialoog opent of de filtercontext wijzigt. Gesloten
@@ -263,7 +293,8 @@ export default function CatalogProductPicker({
 
       try {
         const result = (await client.query(api.catalog.pickerSearch.pickerCategories, {
-          tenantSlug: session.tenantId
+          tenantSlug: session.tenantId,
+          ...(scope !== "orderable" ? { scope } : {})
         })) as PickerCategory[];
 
         if (isActive) {
@@ -283,7 +314,7 @@ export default function CatalogProductPicker({
       isActive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, session.tenantId]);
+  }, [open, scope, session.tenantId]);
 
   const selectedInResults = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? null,
@@ -311,7 +342,9 @@ export default function CatalogProductPicker({
       if (!group) {
         group = {
           key,
-          label: category.productGroep ? formatMeasurementProductGroup(category.productGroep) : "Overig",
+          label: category.productGroep
+            ? formatMeasurementProductGroup(category.productGroep)
+            : "Overig",
           items: []
         };
         groups.set(key, group);
@@ -393,7 +426,12 @@ export default function CatalogProductPicker({
             <h2 id={titleId} className="catalog-picker-title">
               {label}
             </h2>
-            <IconButton aria-label="Sluiten" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+            <IconButton
+              aria-label="Sluiten"
+              variant="ghost"
+              size="sm"
+              onClick={() => setOpen(false)}
+            >
               <X size={18} aria-hidden="true" />
             </IconButton>
           </div>
@@ -462,71 +500,80 @@ export default function CatalogProductPicker({
                 }
               }}
             >
-            {error ? <Alert variant="warning" description={error} /> : null}
+              {error ? <Alert variant="warning" description={error} /> : null}
 
-            {!required && selectedProductId ? (
-              <button
-                type="button"
-                className="catalog-picker-option catalog-picker-option-clear"
-                onClick={() => choose(null)}
-              >
-                <span className="catalog-picker-option-main">{emptyOptionLabel}</span>
-              </button>
-            ) : null}
+              {!required && selectedProductId ? (
+                <button
+                  type="button"
+                  className="catalog-picker-option catalog-picker-option-clear"
+                  onClick={() => choose(null)}
+                >
+                  <span className="catalog-picker-option-main">{emptyOptionLabel}</span>
+                </button>
+              ) : null}
 
-            {isLoading ? (
-              <p className="catalog-picker-status">Catalogus laden…</p>
-            ) : products.length === 0 ? (
-              <p className="catalog-picker-status">
-                {debouncedSearch
-                  ? "Geen producten gevonden — pas de zoekterm aan."
-                  : "Geen producten in deze selectie."}
-              </p>
-            ) : (
-              <ul className="catalog-picker-list">
-                {products.map((product) => {
-                  const price = showPriceInLabel ? productPriceText(product) : null;
-                  const name = product.weergaveNaam ?? product.naam;
-                  const color =
-                    product.kleurnaam && !name.toLowerCase().includes(product.kleurnaam.toLowerCase())
-                      ? product.kleurnaam
-                      : null;
-                  const meta = [
-                    // Zonder kleurnaam is het artikelnummer de enige zichtbare
-                    // variantaanduiding (zie variantCode).
-                    color ?? variantCode(product),
-                    product.displaySupplierName ?? product.supplier
-                  ]
-                    .filter(Boolean)
-                    .join(" · ");
-                  const isActive = product.id === selectedProductId;
+              {isLoading ? (
+                <p className="catalog-picker-status">Catalogus laden…</p>
+              ) : products.length === 0 ? (
+                <p className="catalog-picker-status">
+                  {debouncedSearch
+                    ? "Geen producten gevonden — pas de zoekterm aan."
+                    : "Geen producten in deze selectie."}
+                </p>
+              ) : (
+                <ul className="catalog-picker-list">
+                  {products.map((product) => {
+                    const price = showPriceInLabel ? productPriceText(product) : null;
+                    const name = product.weergaveNaam ?? product.naam;
+                    const color =
+                      product.kleurnaam &&
+                      !name.toLowerCase().includes(product.kleurnaam.toLowerCase())
+                        ? product.kleurnaam
+                        : null;
+                    const meta = [
+                      // Zonder kleurnaam is het artikelnummer de enige zichtbare
+                      // variantaanduiding (zie variantCode).
+                      color ?? variantCode(product),
+                      product.displaySupplierName ?? product.supplier
+                    ]
+                      .filter(Boolean)
+                      .join(" · ");
+                    const isActive = product.id === selectedProductId;
 
-                  return (
-                    <li key={product.id}>
-                      <button
-                        type="button"
-                        className={`catalog-picker-option${isActive ? " is-active" : ""}`}
-                        aria-current={isActive || undefined}
-                        onClick={() => choose(product)}
-                      >
-                        <span className="catalog-picker-option-text">
-                          <span className="catalog-picker-option-main">{name}</span>
-                          {meta ? <span className="catalog-picker-option-meta">{meta}</span> : null}
-                        </span>
-                        {price ? <span className="catalog-picker-option-price">{price}</span> : null}
-                        {isActive ? (
-                          <Check size={16} aria-hidden="true" className="catalog-picker-option-check" />
-                        ) : null}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+                    return (
+                      <li key={product.id}>
+                        <button
+                          type="button"
+                          className={`catalog-picker-option${isActive ? " is-active" : ""}`}
+                          aria-current={isActive || undefined}
+                          onClick={() => choose(product)}
+                        >
+                          <span className="catalog-picker-option-text">
+                            <span className="catalog-picker-option-main">{name}</span>
+                            {meta ? (
+                              <span className="catalog-picker-option-meta">{meta}</span>
+                            ) : null}
+                          </span>
+                          {price ? (
+                            <span className="catalog-picker-option-price">{price}</span>
+                          ) : null}
+                          {isActive ? (
+                            <Check
+                              size={16}
+                              aria-hidden="true"
+                              className="catalog-picker-option-check"
+                            />
+                          ) : null}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
 
-            {isLoadingMore ? (
-              <p className="catalog-picker-status catalog-picker-status-more">Meer laden…</p>
-            ) : null}
+              {isLoadingMore ? (
+                <p className="catalog-picker-status catalog-picker-status-more">Meer laden…</p>
+              ) : null}
             </div>
           </div>
         </div>

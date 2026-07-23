@@ -161,6 +161,15 @@ const quotePreparationStatus = v.union(
   v.literal("converted")
 );
 
+/** Linked measurement-line bundles, initially for a stair renovation. */
+const measurementBundleType = v.union(v.literal("stair_renovation"));
+
+const measurementBundleRole = v.union(
+  v.literal("material"),
+  v.literal("labor"),
+  v.literal("surcharge")
+);
+
 const projectTaskType = v.union(
   v.literal("quote_follow_up"),
   v.literal("confirmation_payment"),
@@ -357,6 +366,8 @@ export default defineSchema({
   suppliers: defineTable({
     tenantId: v.id("tenants"),
     naam: v.string(),
+    // Stabiele identiteit van een importbron; de zichtbare naam mag wijzigen.
+    importSleutel: v.optional(v.string()),
     contactpersoon: v.optional(v.string()),
     email: v.optional(v.string()),
     telefoon: v.optional(v.string()),
@@ -382,6 +393,7 @@ export default defineSchema({
     .index("by_tenant", ["tenantId"])
     .index("by_status", ["tenantId", "status"])
     .index("by_product_list_status", ["tenantId", "prijslijstStatus"])
+    .index("by_import_key", ["tenantId", "importSleutel"])
     .searchIndex("search_supplier", {
       searchField: "naam",
       filterFields: ["tenantId", "prijslijstStatus"]
@@ -513,6 +525,7 @@ export default defineSchema({
     .index("by_category_status_naam", ["tenantId", "categorieId", "status", "naam"])
     .index("by_supplier", ["tenantId", "leverancierId"])
     .index("by_supplier_status", ["tenantId", "leverancierId", "status"])
+    .index("by_product_kind_status", ["tenantId", "productAard", "status"])
     .index("by_status", ["tenantId", "status"])
     .index("by_status_naam", ["tenantId", "status", "naam"])
     .index("by_import_key", ["tenantId", "importSleutel"])
@@ -822,6 +835,10 @@ export default defineSchema({
   }).index("by_project", ["tenantId", "projectId"]),
 
   measurements: defineTable({
+    // Interne, quote-specifieke rekencontext. Deze is geen fysieke inmeting en
+    // mag daarom niet als laatste inmeting in planning/buitendienst verschijnen.
+    // Ontbrekend = normale operationele inmeting.
+    contextQuoteId: v.optional(v.id("quotes")),
     tenantId: v.id("tenants"),
     projectId: v.id("projects"),
     klantId: v.id("customers"),
@@ -842,7 +859,8 @@ export default defineSchema({
   })
     .index("by_project", ["tenantId", "projectId"])
     .index("by_status", ["tenantId", "status"])
-    .index("by_measurement_date", ["tenantId", "inmeetdatum"]),
+    .index("by_measurement_date", ["tenantId", "inmeetdatum"])
+    .index("by_quote_context", ["tenantId", "contextQuoteId"]),
 
   measurementRooms: defineTable({
     tenantId: v.id("tenants"),
@@ -880,6 +898,12 @@ export default defineSchema({
     notities: v.optional(v.string()),
     offerteRegelType: quoteLineType,
     quotePreparationStatus,
+    // Separate material and service lines can belong to one guided stair renovation.
+    // Explicit fields keep that relationship queryable instead of hiding it in `invoer`.
+    bundleId: v.optional(v.string()),
+    bundleType: v.optional(measurementBundleType),
+    bundleRole: v.optional(measurementBundleRole),
+    sectionKey: v.optional(v.string()),
     // True = hoeveelheid is handmatig aangepast; wordt dan NIET automatisch herrekend bij
     // een latere wijziging van de ruimtematen (krijgt in plaats daarvan een controle-seintje).
     handmatigAangepast: v.optional(v.boolean()),

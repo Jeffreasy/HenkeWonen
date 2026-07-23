@@ -49,7 +49,8 @@ import {
   assertValidRoomDimensions,
   cancelOpenSupplierOrders,
   teamMemberNamesByExternalId,
-  toContact
+  toContact,
+  syncProjectStatusFromQuotes
 } from "../portalUtils";
 
 export const list = query({
@@ -1011,7 +1012,11 @@ export const processProjectAction = mutation({
     if (args.action === "quote_accepted") {
       if (args.quoteId) {
         const expliciet = await ctx.db.get(args.quoteId as Id<"quotes">);
-        if (!expliciet || expliciet.tenantId !== tenant._id || expliciet.projectId !== project._id) {
+        if (
+          !expliciet ||
+          expliciet.tenantId !== tenant._id ||
+          expliciet.projectId !== project._id
+        ) {
           throw new ConvexError("Offerte niet gevonden bij dit dossier.");
         }
         latestQuote = expliciet;
@@ -1056,9 +1061,7 @@ export const processProjectAction = mutation({
     if (args.action === "bookkeeper_export_sent") {
       const projectInvoices = await ctx.db
         .query("invoices")
-        .withIndex("by_project", (q) =>
-          q.eq("tenantId", tenant._id).eq("projectId", project._id)
-        )
+        .withIndex("by_project", (q) => q.eq("tenantId", tenant._id).eq("projectId", project._id))
         .collect();
       // Alleen een exporteerbare factuur telt: een 'draft' of 'cancelled' factuur mag
       // het dossier niet naar 'invoiced' tillen.
@@ -1072,18 +1075,23 @@ export const processProjectAction = mutation({
       }
     }
 
-    await ctx.db.patch(project._id, {
-      status: actionConfig.projectStatus,
-      geaccepteerdOp:
-        actionConfig.projectStatus === "quote_accepted" ? now : project.geaccepteerdOp,
-      besteldOp: actionConfig.projectStatus === "ordering" ? now : project.besteldOp,
-      gefactureerdOp: actionConfig.projectStatus === "invoiced" ? now : project.gefactureerdOp,
-      afgeslotenOp:
-        actionConfig.projectStatus === "closed" || actionConfig.projectStatus === "cancelled"
-          ? now
-          : project.afgeslotenOp,
-      gewijzigdOp: now
-    });
+    if (args.action === "quote_accepted") {
+      // De offerte wordt hieronder eerst bijgewerkt; daarna bepaalt de gedeelde
+      // offerte-sync of de dossierstatus nog in de offertefase mee mag bewegen.
+      // Een meerwerkakkoord mag een lopend dossier niet terugzetten.
+      await ctx.db.patch(project._id, { gewijzigdOp: now });
+    } else {
+      await ctx.db.patch(project._id, {
+        status: actionConfig.projectStatus,
+        besteldOp: actionConfig.projectStatus === "ordering" ? now : project.besteldOp,
+        gefactureerdOp: actionConfig.projectStatus === "invoiced" ? now : project.gefactureerdOp,
+        afgeslotenOp:
+          actionConfig.projectStatus === "closed" || actionConfig.projectStatus === "cancelled"
+            ? now
+            : project.afgeslotenOp,
+        gewijzigdOp: now
+      });
+    }
 
     if (args.action === "quote_accepted") {
       if (latestQuote && latestQuote.status !== "accepted") {
@@ -1098,8 +1106,16 @@ export const processProjectAction = mutation({
       // met updateQuoteStatus) zodat er nooit twee 'levende' offertes blijven en geen siblings
       // permanent 'converted' staan.
       if (latestQuote) {
-        await cancelOtherOpenQuotesAndRestore(ctx, tenant._id, project._id, latestQuote._id, now);
+        await cancelOtherOpenQuotesAndRestore(
+          ctx,
+          tenant._id,
+          project._id,
+          latestQuote._id,
+          now,
+          externalUserId
+        );
       }
+      await syncProjectStatusFromQuotes(ctx, tenant._id, project, now);
 
       await closeOpenProjectTasks(
         ctx,

@@ -31,11 +31,15 @@ vi.mock("lucide-react", async (importOriginal) => {
 vi.mock("../src/components/catalog/CatalogProductPicker", () => ({ default: () => null }));
 vi.mock("../src/components/catalog/ServiceRulePicker", () => ({ default: () => null }));
 vi.mock("../src/components/quotes/MeasurementLinePicker", () => ({ default: () => null }));
+vi.mock("../src/components/quotes/QuoteMeasurementTools", () => ({
+  default: () => "Rekenhulpen-flow actief"
+}));
 
 import QuoteLineEditor from "../src/components/quotes/QuoteLineEditor";
 import QuoteComposer from "../src/components/quotes/QuoteComposer";
 import { quoteLineDraftKey } from "../src/lib/quoteLineDraft";
 import type { AppSession } from "../src/lib/auth/session";
+import type { QuoteTemplateLine } from "../src/lib/portalTypes";
 
 // React 19 vereist deze vlag rond act().
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -70,7 +74,12 @@ function seedDraft(draftScopeId: string, data: Record<string, unknown>) {
   );
 }
 
-async function mountEditor(scope: "product" | "manual", draftScopeId: string) {
+async function mountEditor(
+  scope: "product" | "manual",
+  draftScopeId: string,
+  templateLines: QuoteTemplateLine[] = [],
+  mode: "full" | "field" = "full"
+) {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -80,9 +89,11 @@ async function mountEditor(scope: "product" | "manual", draftScopeId: string) {
         scope,
         draftScopeId,
         session,
+        mode,
         sortOrder: 1,
         onAdd: () => undefined,
         // Zoals de composer QuoteLineEditor mount.
+        templateLines,
         hideHeader: true,
         surface: "plain"
       })
@@ -110,6 +121,13 @@ describe("QuoteLineEditor scope-invariant", () => {
     const view = await mountEditor("product", "quote-1:product");
     expect(view.text()).toContain("Catalogusproduct");
     expect(view.text()).not.toContain("Werkzaamheid uit de lijst");
+    expect(view.text()).not.toContain("Behangcalculator openen");
+  });
+
+  it("toont ook in field-mode geen tweede behangcalculator", async () => {
+    memory.clear();
+    const view = await mountEditor("product", "quote-field:product", [], "field");
+    expect(view.text()).not.toContain("Behangcalculator openen");
   });
 
   it("negeert een corrupt cross-scope concept: productkiezer blijft én de titel lekt niet", async () => {
@@ -161,20 +179,44 @@ describe("QuoteLineEditor scope-invariant", () => {
     expect(view.text()).not.toContain("Catalogusproduct");
     expect(view.titleValue()).toBe("Ondervloer voor PVC");
   });
-});
 
+  it("verbergt de oude PVC-trapregel maar behoudt andere handmatige trapregels", async () => {
+    const legacyPvcTitle = "Traprenovatie PVC fabrikant, kleur, kleur strip";
+    const carpetTitle = "Traprenovatie tapijt fabrikant en kleur";
+    const view = await mountEditor("manual", "quote-1:manual", [
+      {
+        sectieSleutel: "traprenovatie",
+        regelType: "manual",
+        titel: legacyPvcTitle,
+        eenheid: "post",
+        sortOrder: 1
+      },
+      {
+        sectieSleutel: "traprenovatie",
+        regelType: "manual",
+        titel: carpetTitle,
+        eenheid: "post",
+        sortOrder: 2
+      }
+    ]);
+
+    expect(view.text()).not.toContain(legacyPvcTitle);
+    expect(view.text()).toContain(carpetTitle);
+  });
+});
 describe("QuoteComposer kaartwissel (pad 1: remount)", () => {
   const PRODUCT_MARKER = "Kies een product uit de catalogus"; // uniek voor de productsectie
   const SERVICE_MARKER = "Werkzaamheid uit de lijst"; // uniek voor de werkzaamheidsectie
+  const CALCULATOR_MARKER = "Rekenhulpen-flow actief";
 
-  async function mountComposer() {
+  async function mountComposer(mode: "full" | "field" = "full") {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
     await act(async () => {
       root.render(
         h(QuoteComposer, {
-          mode: "full",
+          mode,
           session,
           sortOrder: 1,
           templateLines: [],
@@ -184,21 +226,28 @@ describe("QuoteComposer kaartwissel (pad 1: remount)", () => {
           projectId: "project-9",
           tenantSlug: "henke-wonen",
           onAddLine: () => undefined,
-          showMeasurement: false
+          showMeasurement: mode === "full"
         })
       );
     });
     await act(async () => {});
     function clickMethod(titleText: string) {
-      const button = [...container.querySelectorAll<HTMLButtonElement>("button.quote-composer-method")].find(
-        (candidate) => candidate.textContent?.includes(titleText)
-      );
+      const button = [
+        ...container.querySelectorAll<HTMLButtonElement>("button.quote-composer-method")
+      ].find((candidate) => candidate.textContent?.includes(titleText));
       if (!button) {
         throw new Error(`methode-knop niet gevonden: ${titleText}`);
       }
       act(() => button.click());
     }
-    return { text: () => container.textContent ?? "", clickMethod };
+    return {
+      text: () => container.textContent ?? "",
+      clickMethod,
+      methodTitles: () =>
+        Array.from(container.querySelectorAll<HTMLElement>(".quote-composer-method-title")).map(
+          (title) => title.textContent?.trim() ?? ""
+        )
+    };
   }
 
   it("toont weer de productkiezer op Catalogusproduct ná een wissel naar Werkzaamheid en terug", async () => {
@@ -218,5 +267,37 @@ describe("QuoteComposer kaartwissel (pad 1: remount)", () => {
     view.clickMethod("Catalogusproduct");
     expect(view.text()).toContain(PRODUCT_MARKER);
     expect(view.text()).not.toContain(SERVICE_MARKER);
+  });
+
+  it("toont Rekenhulpen als vierde methode en wisselt zonder andere flow te laten staan", async () => {
+    memory.clear();
+    const view = await mountComposer();
+
+    expect(view.text()).toContain("Rekenhulpen");
+    expect(view.text()).not.toContain(CALCULATOR_MARKER);
+    expect(view.methodTitles()).toEqual([
+      "Catalogusproduct",
+      "Werkzaamheid of handmatig",
+      "Inmeting overnemen",
+      "Rekenhulpen"
+    ]);
+
+    view.clickMethod("Rekenhulpen");
+    expect(view.text()).toContain(CALCULATOR_MARKER);
+    expect(view.text()).not.toContain(PRODUCT_MARKER);
+    expect(view.text()).not.toContain(SERVICE_MARKER);
+
+    view.clickMethod("Catalogusproduct");
+    expect(view.text()).toContain(PRODUCT_MARKER);
+    expect(view.text()).not.toContain(CALCULATOR_MARKER);
+  });
+
+  it("beperkt field-mode tot de twee lokale postmethodes", async () => {
+    memory.clear();
+    const view = await mountComposer("field");
+
+    expect(view.methodTitles()).toEqual(["Catalogusproduct", "Werkzaamheid of handmatig"]);
+    expect(view.text()).not.toContain("Rekenhulpen");
+    expect(view.text()).not.toContain("Behangcalculator openen");
   });
 });

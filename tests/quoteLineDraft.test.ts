@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PortalProduct } from "../src/lib/portalTypes";
+import type { ServiceRuleRow } from "../src/components/settings/settings/settingsTypes";
 import {
   quoteLineDraftKey,
   readQuoteLineDraft,
@@ -23,6 +24,26 @@ const SAMPLE_PRODUCT: PortalProduct = {
   status: "active"
 };
 
+const SAMPLE_SERVICE_RULE: ServiceRuleRow = {
+  id: "service_123",
+  productId: "service_product_123",
+  name: "PVC trap halve draai",
+  description: "Arbeid voor een halve-draaitrap",
+  sku: "HW-DIENST-014",
+  productGroup: "stairs",
+  serviceMetadata: {
+    family: "stair_renovation",
+    covering: "pvc",
+    shape: "half_turn",
+    role: "base_labor",
+    sectionKey: "traprenovatie"
+  },
+  calculationType: "per_staircase",
+  priceExVat: 495,
+  vatRate: 21,
+  status: "active"
+};
+
 const FILLED_LINE: QuoteLineDraftState = {
   lineType: "product",
   title: "Vloer woonkamer",
@@ -33,7 +54,8 @@ const FILLED_LINE: QuoteLineDraftState = {
   vatRate: "21",
   discountExVat: "10",
   projectRoomId: "room_9",
-  selectedProduct: SAMPLE_PRODUCT
+  selectedProduct: SAMPLE_PRODUCT,
+  selectedServiceRule: null
 };
 
 /** Bootst de `useFormDraft`-envelope na: state → localStorage (JSON) → parse → concept. */
@@ -70,42 +92,58 @@ describe("readQuoteLineDraft (offerteregel overleeft tab-eviction)", () => {
     expect(restored.selectedProduct?.productSoort).toBe("click");
   });
 
+  it("herstelt een gekozen werkzaamheid volledig en typeveilig na tab-eviction", () => {
+    const restored = readQuoteLineDraft(
+      throughDraft({
+        ...FILLED_LINE,
+        lineType: "service",
+        selectedProduct: null,
+        selectedServiceRule: SAMPLE_SERVICE_RULE
+      })
+    );
+
+    expect(restored.selectedServiceRule).toEqual(SAMPLE_SERVICE_RULE);
+    expect(restored.selectedServiceRule?.serviceMetadata?.shape).toBe("half_turn");
+    expect(restored.selectedServiceRule?.productId).toBe("service_product_123");
+  });
+
   it("laat een leeg concept ongemoeid (geen product, lege velden)", () => {
     const restored = readQuoteLineDraft(
       throughDraft({
         lineType: "product",
         title: "",
         quantity: "1",
-        selectedProduct: null
+        selectedProduct: null,
+        selectedServiceRule: null
       })
     );
 
     expect(restored.title).toBe("");
     expect(restored.selectedProduct).toBeUndefined();
+    expect(restored.selectedServiceRule).toBeUndefined();
   });
 
   it("herstelt alleen een geldig regeltype en negeert een onbekende/corrupte lineType", () => {
-    // Geldige typen komen door.
     expect(readQuoteLineDraft(throughDraft({ lineType: "service" })).lineType).toBe("service");
     expect(readQuoteLineDraft(throughDraft({ lineType: "text" })).lineType).toBe("text");
-    // Onbekende of niet-string waarden worden niet teruggezet (select houdt zijn begininstelling,
-    // en er lekt geen ongeldige waarde naar onAdd).
     expect(readQuoteLineDraft(throughDraft({ lineType: "bogus" })).lineType).toBeUndefined();
     expect(readQuoteLineDraft({ lineType: 7 }).lineType).toBeUndefined();
   });
 
-  it("negeert niet-string velden en een corrupt product uit een kapot concept", () => {
+  it("negeert niet-string velden en corrupte cataloguskeuzes", () => {
     const restored = readQuoteLineDraft({
       title: 123,
       quantity: null,
       unitPriceExVat: { bad: true },
-      selectedProduct: { id: "x" }
+      selectedProduct: { id: "x" },
+      selectedServiceRule: { id: "service-zonder-verplichte-velden" }
     });
 
     expect(restored.title).toBeUndefined();
     expect(restored.quantity).toBeUndefined();
     expect(restored.unitPriceExVat).toBeUndefined();
     expect(restored.selectedProduct).toBeUndefined();
+    expect(restored.selectedServiceRule).toBeUndefined();
   });
 
   it("houdt alleen de aanwezige velden aan (partieel concept)", () => {
@@ -114,5 +152,6 @@ describe("readQuoteLineDraft (offerteregel overleeft tab-eviction)", () => {
     expect(restored.title).toBe("Alleen titel");
     expect(restored.quantity).toBeUndefined();
     expect(restored.selectedProduct).toBeUndefined();
+    expect(restored.selectedServiceRule).toBeUndefined();
   });
 });

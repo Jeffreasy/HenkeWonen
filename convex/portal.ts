@@ -121,6 +121,7 @@ export const dashboard = query({
     // projectWorklistItem() zodat dashboard en cockpit niet kunnen uiteenlopen.
     const laatsteMetingPerProject = new Map<string, Doc<"measurements">>();
     for (const meting of alleMetingen) {
+      if (meting.contextQuoteId) continue;
       const key = String(meting.projectId);
       const huidige = laatsteMetingPerProject.get(key);
       if (!huidige || meting.gewijzigdOp > huidige.gewijzigdOp) {

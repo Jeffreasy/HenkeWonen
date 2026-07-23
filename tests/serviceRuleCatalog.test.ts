@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   calculationTypeToUnit,
   filterServiceRules,
+  excludeGuidedStairServiceRules,
   formatCalculationType,
+  isGuidedStairServiceRule,
+  isStandaloneServiceRule,
   normalizeCalculationType,
   serviceRuleDocToRow,
   toActiveServiceRuleRows,
@@ -12,8 +15,22 @@ import {
 function doc(overrides: Partial<ServiceRuleDoc> & { naam: string }): ServiceRuleDoc {
   return {
     _id: overrides._id ?? `id-${overrides.naam}`,
+    id: overrides.id ?? overrides._id ?? `id-${overrides.naam}`,
+    productId: overrides.productId ?? overrides.id ?? overrides._id ?? `id-${overrides.naam}`,
     naam: overrides.naam,
     omschrijving: overrides.omschrijving,
+    sku: overrides.sku,
+    category: overrides.category,
+    subcategory: overrides.subcategory,
+    prijsEenheid: overrides.prijsEenheid,
+    priceUnit: overrides.priceUnit,
+    productGroup: overrides.productGroup,
+    serviceMetadata: overrides.serviceMetadata,
+    serviceFamily: overrides.serviceFamily,
+    covering: overrides.covering,
+    stairShape: overrides.stairShape,
+    serviceRole: overrides.serviceRole,
+    sectionKey: overrides.sectionKey,
     berekeningType: overrides.berekeningType ?? "fixed",
     prijsExBtw: overrides.prijsExBtw ?? 0,
     btwTarief: overrides.btwTarief ?? 21,
@@ -68,6 +85,24 @@ describe("serviceRuleDocToRow", () => {
         _id: "r1",
         naam: "Dichte trap tapijt",
         omschrijving: "incl. materiaal",
+        sku: "HW-DIENST-014",
+        category: "Werkzaamheden",
+        subcategory: "Traprenovatie (arbeid)",
+        prijsEenheid: "piece",
+        priceUnit: "piece",
+        productGroup: "stairs",
+        serviceMetadata: {
+          family: "stair_renovation",
+          covering: "pvc",
+          shape: "half_turn",
+          role: "base_labor",
+          sectionKey: "traprenovatie"
+        },
+        serviceFamily: "stair_renovation",
+        covering: "pvc",
+        stairShape: "half_turn",
+        serviceRole: "base_labor",
+        sectionKey: "traprenovatie",
         berekeningType: "fixed",
         prijsExBtw: 400,
         btwTarief: 21,
@@ -77,8 +112,26 @@ describe("serviceRuleDocToRow", () => {
 
     expect(row).toEqual({
       id: "r1",
+      productId: "r1",
       name: "Dichte trap tapijt",
       description: "incl. materiaal",
+      sku: "HW-DIENST-014",
+      category: "Werkzaamheden",
+      subcategory: "Traprenovatie (arbeid)",
+      priceUnit: "piece",
+      productGroup: "stairs",
+      serviceMetadata: {
+        family: "stair_renovation",
+        covering: "pvc",
+        shape: "half_turn",
+        role: "base_labor",
+        sectionKey: "traprenovatie"
+      },
+      serviceFamily: "stair_renovation",
+      covering: "pvc",
+      stairShape: "half_turn",
+      serviceRole: "base_labor",
+      sectionKey: "traprenovatie",
       calculationType: "fixed",
       priceExVat: 400,
       vatRate: 21,
@@ -101,6 +154,29 @@ describe("toActiveServiceRuleRows", () => {
     ]);
 
     expect(rows.map((rule) => rule.name)).toEqual(["Egaliseren", "Zagen"]);
+  });
+});
+describe("geleide trapdiensten in generieke kiezers", () => {
+  it("herkent stair_renovation via platte én geneste metadata", () => {
+    expect(isGuidedStairServiceRule({ serviceFamily: "stair_renovation" })).toBe(true);
+    expect(isGuidedStairServiceRule({ serviceMetadata: { family: "stair_renovation" } })).toBe(
+      true
+    );
+    expect(isStandaloneServiceRule({ serviceFamily: "flooring" })).toBe(true);
+  });
+
+  it("houdt traprenovatie uit een generieke dienstselectie maar laat losse diensten staan", () => {
+    const rows = toActiveServiceRuleRows([
+      doc({
+        naam: "PVC trap halve draai",
+        serviceFamily: "stair_renovation",
+        productGroup: "stairs"
+      }),
+      doc({ naam: "Egaliseren", serviceFamily: "floor_preparation", productGroup: "flooring" })
+    ]);
+
+    expect(excludeGuidedStairServiceRules(rows).map((rule) => rule.name)).toEqual(["Egaliseren"]);
+    expect(rows).toHaveLength(2);
   });
 });
 

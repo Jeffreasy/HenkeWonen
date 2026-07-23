@@ -1,4 +1,4 @@
-import { Save , X} from "lucide-react";
+import { Save, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { AppSession } from "../../lib/auth/session";
 import type { SubmitEventLike } from "../../lib/events";
@@ -6,7 +6,7 @@ import type { PortalQuoteLine, PortalRoom, QuoteLineType } from "../../lib/porta
 import { useAutoFocusPanel } from "../../lib/useAutoFocusPanel";
 import type { ServiceRuleRow } from "../settings/settings/settingsTypes";
 import ServiceRulePicker from "../catalog/ServiceRulePicker";
-import { calculationTypeToUnit } from "../catalog/serviceRuleCatalog";
+import { calculationTypeToUnit, isStandaloneServiceRule } from "../catalog/serviceRuleCatalog";
 import { Button } from "../ui/forms/Button";
 import { Field } from "../ui/forms/Field";
 import { Input } from "../ui/forms/Input";
@@ -15,6 +15,7 @@ import { Select } from "../ui/forms/Select";
 import { Textarea } from "../ui/forms/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
 import { LineTypeButtons } from "./LineTypeButtons";
+import { serviceRuleProductId, serviceRuleQuoteMetadata } from "./QuoteLineEditor";
 import { LINE_TYPE_OPTIONS, isServiceRuleLineType, parseDecimal } from "./quote/quoteConstants";
 import { parseQuoteLineNumbers } from "./quote/quoteLineInput";
 import { Alert } from "../ui/feedback/Alert";
@@ -28,6 +29,72 @@ type QuoteLineEditFormProps = {
   onSave: (data: QuoteLineFormValues) => Promise<void>;
   onCancel: () => void;
 };
+
+export type ServiceRuleEditSelection = ServiceRuleRow | null | undefined;
+
+export function quoteLineProductIdForEdit(
+  line: Pick<PortalQuoteLine, "productId" | "regelType">,
+  lineType: QuoteLineType,
+  selectedServiceRule: ServiceRuleEditSelection
+): string | undefined {
+  // Tri-state: undefined = ongemoeid, null = expliciet losgekoppeld, object = nieuw gekozen.
+  if (selectedServiceRule !== undefined) {
+    return selectedServiceRule ? serviceRuleProductId(lineType, selectedServiceRule) : undefined;
+  }
+
+  if (
+    (lineType === "service" || lineType === "labor") &&
+    (line.regelType === "service" || line.regelType === "labor")
+  ) {
+    return line.productId;
+  }
+
+  if (
+    (lineType === "product" || lineType === "material") &&
+    (line.regelType === "product" || line.regelType === "material")
+  ) {
+    return line.productId;
+  }
+
+  return undefined;
+}
+
+export function quoteLineMetadataForEdit(
+  metadata: Record<string, unknown> | undefined,
+  showServicePicker: boolean,
+  selectedServiceRule: ServiceRuleEditSelection
+): Record<string, unknown> | undefined {
+  if (!showServicePicker || selectedServiceRule === undefined) {
+    return metadata;
+  }
+
+  if (selectedServiceRule) {
+    return {
+      ...(metadata ?? {}),
+      ...serviceRuleQuoteMetadata(selectedServiceRule)
+    };
+  }
+
+  if (!metadata) {
+    return undefined;
+  }
+
+  const cleared = { ...metadata };
+  delete cleared.serviceRuleId;
+  delete cleared.serviceSku;
+  delete cleared.serviceFamily;
+  delete cleared.covering;
+  delete cleared.stairShape;
+  delete cleared.serviceRole;
+
+  if (cleared.source === "serviceRule") {
+    delete cleared.source;
+    delete cleared.calculationType;
+    delete cleared.sectionKey;
+  }
+
+  return Object.keys(cleared).length > 0 ? cleared : undefined;
+}
 
 export function QuoteLineEditForm({
   line,
@@ -47,10 +114,15 @@ export function QuoteLineEditForm({
   const [discountExVat, setDiscountExVat] = useState("");
   const [sortOrder, setSortOrder] = useState("");
   const [projectRoomId, setProjectRoomId] = useState("");
-  const [selectedServiceRule, setSelectedServiceRule] = useState<ServiceRuleRow | null>(null);
+  const [selectedServiceRule, setSelectedServiceRule] =
+    useState<ServiceRuleEditSelection>(undefined);
   const [numbersError, setNumbersError] = useState<string | null>(null);
 
-  const showServicePicker = isServiceRuleLineType(lineType);
+  const existingServiceRuleId =
+    typeof line.metadata?.serviceRuleId === "string" ? line.metadata.serviceRuleId : "";
+  const isImportedStairBundle =
+    line.metadata?.bundleType === "stair_renovation" && typeof line.metadata?.bundleId === "string";
+  const showServicePicker = isServiceRuleLineType(lineType) && !isImportedStairBundle;
 
   const formRef = useRef<HTMLFormElement>(null);
   useAutoFocusPanel(true, formRef);
@@ -68,12 +140,12 @@ export function QuoteLineEditForm({
     );
     setSortOrder(String(line.sortOrder));
     setProjectRoomId(line.projectRuimteId ?? "");
-    setSelectedServiceRule(null);
+    setSelectedServiceRule(undefined);
   }, [line]);
 
   useEffect(() => {
     if (!isServiceRuleLineType(lineType)) {
-      setSelectedServiceRule(null);
+      setSelectedServiceRule(undefined);
     }
   }, [lineType]);
 
@@ -113,7 +185,7 @@ export function QuoteLineEditForm({
     const isTextLine = lineType === "text";
     await onSave({
       projectRoomId: projectRoomId || undefined,
-      productId: line.productId || undefined,
+      productId: quoteLineProductIdForEdit(line, lineType, selectedServiceRule),
       lineType,
       title: title.trim(),
       description: description.trim() || undefined,
@@ -123,17 +195,8 @@ export function QuoteLineEditForm({
       vatRate: numbers.values.vatRate,
       discountExVat: numbers.values.discountExVat,
       sortOrder: Math.max(1, Math.round((parseDecimal(sortOrder) ?? 0) || line.sortOrder)),
-      // Bestaande metadata behouden; bij een (nieuw) gekozen werkzaamheid de
-      // herkomst overschrijven naar de service rule.
-      metadata:
-        showServicePicker && selectedServiceRule
-          ? {
-              ...((line.metadata as Record<string, unknown> | undefined) ?? {}),
-              source: "serviceRule",
-              serviceRuleId: selectedServiceRule.id,
-              calculationType: selectedServiceRule.calculationType
-            }
-          : line.metadata
+      // undefined behoudt de koppeling, null wist hem en een object vervangt hem.
+      metadata: quoteLineMetadataForEdit(line.metadata, showServicePicker, selectedServiceRule)
     });
   }
 
@@ -146,11 +209,15 @@ export function QuoteLineEditForm({
         actions={<LineTypeBadge lineType={lineType} />}
       />
       <form className="form-grid" onSubmit={handleSubmit}>
-        <LineTypeButtons
-          value={lineType}
-          options={LINE_TYPE_OPTIONS}
-          onChange={setLineType}
-        />
+        {isImportedStairBundle ? (
+          <Alert
+            variant="info"
+            title="Onderdeel van PVC-trapbundel"
+            description="Regeltype, product, aantal, ruimte en eenheid blijven gekoppeld aan het berekende recept. Omschrijving, prijs, btw en korting kun je corrigeren; verwijderen herstelt altijd de volledige bundel."
+          />
+        ) : (
+          <LineTypeButtons value={lineType} options={LINE_TYPE_OPTIONS} onChange={setLineType} />
+        )}
         <Field htmlFor="quote-line-edit-title" label="Omschrijving" required>
           <Input
             id="quote-line-edit-title"
@@ -163,6 +230,7 @@ export function QuoteLineEditForm({
           <Field htmlFor="quote-line-edit-room" label="Ruimte">
             <Select
               id="quote-line-edit-room"
+              disabled={isImportedStairBundle}
               value={projectRoomId}
               onChange={(event) => setProjectRoomId(event.target.value)}
             >
@@ -180,15 +248,25 @@ export function QuoteLineEditForm({
             <SectionHeader
               compact
               title="Werkzaamheid uit de lijst"
-              description="Kies een vaste werkzaamheid; naam, prijs, btw en eenheid worden overgenomen. Zelf typen mag ook."
+              description="Kies een losse werkzaamheid; naam, prijs, btw en eenheid worden overgenomen."
             />
             <ServiceRulePicker
               session={session}
               idPrefix="quote-line-edit-service"
-              selectedRuleId={selectedServiceRule?.id ?? ""}
+              selectedRuleId={
+                selectedServiceRule === undefined
+                  ? existingServiceRuleId
+                  : (selectedServiceRule?.id ?? "")
+              }
+              selectedRuleLabel={line.titel}
               onSelect={applyServiceRule}
+              ruleFilter={isStandaloneServiceRule}
               label="Werkzaamheid kiezen"
               showPriceInLabel
+            />
+            <Alert
+              variant="info"
+              description="PVC-trapwerk beheer je via Inmeting › Trap; nieuwe geleide trapdiensten zijn hier niet selecteerbaar. Een bestaande koppeling blijft staan totdat je die bewust wist."
             />
           </section>
         ) : null}
@@ -203,16 +281,18 @@ export function QuoteLineEditForm({
         <div className="grid three-column">
           <Field htmlFor="quote-line-edit-quantity" label="Aantal">
             <Input
-              disabled={lineType === "text"}
+              disabled={lineType === "text" || isImportedStairBundle}
               id="quote-line-edit-quantity"
-              inputMode="decimal"
+              inputMode={isImportedStairBundle ? "numeric" : "decimal"}
+              min={isImportedStairBundle ? 1 : undefined}
+              step={isImportedStairBundle ? 1 : "any"}
               value={quantity}
               onChange={(event) => setQuantity(event.target.value)}
             />
           </Field>
           <Field htmlFor="quote-line-edit-unit" label="Eenheid">
             <Input
-              disabled={lineType === "text"}
+              disabled={lineType === "text" || isImportedStairBundle}
               id="quote-line-edit-unit"
               value={unit}
               onChange={(event) => setUnit(event.target.value)}
@@ -268,7 +348,11 @@ export function QuoteLineEditForm({
           >
             Offertepost opslaan
           </Button>
-          <Button variant="secondary" leftIcon={<X size={15} aria-hidden="true" />} onClick={onCancel}>
+          <Button
+            variant="secondary"
+            leftIcon={<X size={15} aria-hidden="true" />}
+            onClick={onCancel}
+          >
             Annuleren
           </Button>
         </div>

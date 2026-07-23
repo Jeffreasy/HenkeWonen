@@ -28,7 +28,7 @@ function exportedQueryBlock(relativePath: string, name: string) {
 
 function allConvexWriteBlocks() {
   const convexDir = path.join(root, "convex");
-  const blocks: Array<{ file: string, name: string, type: string, block: string }> = [];
+  const blocks: Array<{ file: string; name: string; type: string; block: string }> = [];
 
   function walk(dir: string) {
     const list = fs.readdirSync(dir);
@@ -69,7 +69,7 @@ function allConvexWriteBlocks() {
 
 function allConvexQueryBlocks() {
   const convexDir = path.join(root, "convex");
-  const blocks: Array<{ file: string, name: string, block: string }> = [];
+  const blocks: Array<{ file: string; name: string; block: string }> = [];
 
   function walk(dir: string) {
     const list = fs.readdirSync(dir);
@@ -124,7 +124,8 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
       const actorSecured =
         block.includes("actor: mutationActorValidator") &&
         (block.includes("requireMutationRole") || block.includes("requireMutationRoleForTenantId"));
-      const syncSecured = block.includes("syncToken: v.string()") && block.includes("requireSyncToken");
+      const syncSecured =
+        block.includes("syncToken: v.string()") && block.includes("requireSyncToken");
       const toolingSecured = block.includes("requireConvexToolingEnabled");
 
       expect(actorSecured || syncSecured || toolingSecured).toBe(true);
@@ -132,55 +133,57 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
   });
 
   it("should restrict hard database deletes to the whitelisted set of operations", () => {
-    expect(deleteBlocks.map(({ file, name }) => `${file}:${name}`).sort()).toEqual([
-      // Agenda-beheer: tenant-gescoped + editor/admin-authz; setMonteurWerktijden
-      // vervangt het weekrooster (verwijder-dan-invoeg), removeAfwezigheid wist 1 rij.
-      "convex/beheer/agenda.ts:removeAfwezigheid",
-      "convex/beheer/agenda.ts:setMonteurWerktijden",
-      // AVG / recht op vergetelheid: admin-only + dubbele bevestiging (getypte klantnaam moet
-      // exact matchen). Tenant-gescoped (klant + alle kinderen via tenantId-indexen); facturen
-      // worden bewaard — de klant wordt dan geanonimiseerd i.p.v. verwijderd.
-      "convex/beheer/customers.ts:deleteCustomer",
-      // Contactmoment verwijderen: editor/admin, tenant-gescoped, met
-      // geanonimiseerd-guard (audit klantcontact-domein 2026-07-09).
-      "convex/beheer/customers.ts:deleteCustomerContact",
-      // Testdata-opschoning: internalMutation (alleen dashboard/npx convex run),
-      // ALLOW_CONVEX_TOOLING-gate + confirmPhrase. Wist dossierdata incl.
-      // dossierbijlagen + hun _storage-bestanden; catalogus/gebruikers blijven.
-      "convex/beheer/clearTenantData.ts:clearTenantData",
-      // Losse test-/duplicaatdossiers verwijderen: internalMutation met
-      // tooling-gate + confirmPhrase; factuur-guard (dossier met factuur wordt
-      // overgeslagen), bijlagen/contacten worden losgekoppeld i.p.v. gewist.
-      "convex/beheer/deleteProjects.ts:deleteProjects",
-      "convex/catalog/import.ts:deleteProductsByCategoryChunk",
-      "convex/catalog/import.ts:deleteProductsBySupplierChunk",
-      "convex/catalog/import.ts:resetCatalogChunk",
-      "convex/catalog/maintenance.ts:deletePseudoPriceRowsChunk",
-      "convex/catalog/maintenance.ts:deleteDocumentsByIdChunk",
-      // V2-catalogusimport: gefaseerd wissen van producten/prijzen/issues/
-      // importstaging vóór her-import, plus opruimen van leveranciers zonder
-      // producten. Tenant-gescoped + editor/admin-authz (cron is internal);
-      // de driver (tools/import_v2_dataset.mjs) vereist op production een
-      // expliciete --confirm-production-v2-import.
-      // importChunk is een upsert: bij een bestaand product (leverancier+sku)
-      // worden alleen de prijsrijen vervangen (prijslijst = waarheid); het
-      // product zelf blijft staan (stabiele productId's voor offertes) en
-      // verdwenen sku's worden gearchiveerd, niet gewist.
-      "convex/catalog/v2_import.ts:importChunk",
-      "convex/catalog/v2_import.ts:clearCatalogProducts",
-      "convex/catalog/v2_import.ts:clearCatalogDataIssues",
-      "convex/catalog/v2_import.ts:clearOldImportData",
-      "convex/catalog/v2_import.ts:cleanLegacySuppliers",
-      "convex/catalog/v2_import.ts:cleanupOldLogsCron",
-      "convex/projecten/measurements.ts:deleteMeasurementLine",
-      "convex/projecten/measurements.ts:deleteMeasurementRoom",
-      "convex/projecten/core.ts:deleteProjectRoom",
-      "convex/offertes/core.ts:deleteQuoteLine",
-      // Inkoop: bij regenereren worden alleen de DRAFT-bestellingen + hun regels van
-      // dezelfde offerte gewist (tenant-gescoped via by_project + quoteId-filter);
-      // reeds geplaatste (niet-draft) orders blijven staan.
-      "convex/inkoop/core.ts:generateSupplierOrdersFromQuote"
-    ].sort());
+    expect(deleteBlocks.map(({ file, name }) => `${file}:${name}`).sort()).toEqual(
+      [
+        // Agenda-beheer: tenant-gescoped + editor/admin-authz; setMonteurWerktijden
+        // vervangt het weekrooster (verwijder-dan-invoeg), removeAfwezigheid wist 1 rij.
+        "convex/beheer/agenda.ts:removeAfwezigheid",
+        "convex/beheer/agenda.ts:setMonteurWerktijden",
+        // AVG / recht op vergetelheid: admin-only + dubbele bevestiging (getypte klantnaam moet
+        // exact matchen). Tenant-gescoped (klant + alle kinderen via tenantId-indexen); facturen
+        // worden bewaard — de klant wordt dan geanonimiseerd i.p.v. verwijderd.
+        "convex/beheer/customers.ts:deleteCustomer",
+        // Contactmoment verwijderen: editor/admin, tenant-gescoped, met
+        // geanonimiseerd-guard (audit klantcontact-domein 2026-07-09).
+        "convex/beheer/customers.ts:deleteCustomerContact",
+        // Testdata-opschoning: internalMutation (alleen dashboard/npx convex run),
+        // ALLOW_CONVEX_TOOLING-gate + confirmPhrase. Wist dossierdata incl.
+        // dossierbijlagen + hun _storage-bestanden; catalogus/gebruikers blijven.
+        "convex/beheer/clearTenantData.ts:clearTenantData",
+        // Losse test-/duplicaatdossiers verwijderen: internalMutation met
+        // tooling-gate + confirmPhrase; factuur-guard (dossier met factuur wordt
+        // overgeslagen), bijlagen/contacten worden losgekoppeld i.p.v. gewist.
+        "convex/beheer/deleteProjects.ts:deleteProjects",
+        "convex/catalog/import.ts:deleteProductsByCategoryChunk",
+        "convex/catalog/import.ts:deleteProductsBySupplierChunk",
+        "convex/catalog/import.ts:resetCatalogChunk",
+        "convex/catalog/maintenance.ts:deletePseudoPriceRowsChunk",
+        "convex/catalog/maintenance.ts:deleteDocumentsByIdChunk",
+        // V2-catalogusimport: gefaseerd wissen van producten/prijzen/issues/
+        // importstaging vóór her-import, plus opruimen van leveranciers zonder
+        // producten. Tenant-gescoped + editor/admin-authz (cron is internal);
+        // de driver (tools/import_v2_dataset.mjs) vereist op production een
+        // expliciete --confirm-production-v2-import.
+        // importChunk is een upsert: bij een bestaand product (leverancier+sku)
+        // worden alleen de prijsrijen vervangen (prijslijst = waarheid); het
+        // product zelf blijft staan (stabiele productId's voor offertes) en
+        // verdwenen sku's worden gearchiveerd, niet gewist.
+        "convex/catalog/v2_import.ts:importChunk",
+        "convex/catalog/v2_import.ts:clearCatalogProducts",
+        "convex/catalog/v2_import.ts:clearCatalogDataIssues",
+        "convex/catalog/v2_import.ts:clearOldImportData",
+        "convex/catalog/v2_import.ts:cleanLegacySuppliers",
+        "convex/catalog/v2_import.ts:cleanupOldLogsCron",
+        "convex/projecten/measurements.ts:deleteMeasurementLine",
+        "convex/projecten/measurements.ts:deleteMeasurementRoom",
+        "convex/projecten/core.ts:deleteProjectRoom",
+        "convex/offertes/core.ts:deleteQuoteLine",
+        // Inkoop: bij regenereren worden alleen de DRAFT-bestellingen + hun regels van
+        // dezelfde offerte gewist (tenant-gescoped via by_project + quoteId-filter);
+        // reeds geplaatste (niet-draft) orders blijven staan.
+        "convex/inkoop/core.ts:generateSupplierOrdersFromQuote"
+      ].sort()
+    );
   });
 
   it("should secure the agenda hard-deletes with tenant scope and editor/admin authz", () => {
@@ -210,12 +213,19 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     const deleteQuoteLine = exportedMutationBlock("convex/offertes/core.ts", "deleteQuoteLine");
     expect(deleteQuoteLine).toContain("line.tenantId !== tenant._id");
     expect(deleteQuoteLine).toContain('quote.status !== "draft"');
-    expect(deleteQuoteLine).toContain("await ctx.db.delete(line._id);");
+    expect(deleteQuoteLine).toContain("quoteLineIdsToDelete");
+    expect(deleteQuoteLine).toContain("for (const quoteLineId of quoteLineIdsToDelete)");
+    expect(deleteQuoteLine).toContain('await ctx.db.delete(quoteLineId as Id<"quoteLines">);');
     expect(deleteQuoteLine).toContain("await recalculateQuote(ctx, tenant._id, line.quoteId);");
   });
 
   it("should restrict quote modifications to draft quotes", () => {
-    for (const mutationName of ["addQuoteLine", "updateQuote", "updateQuoteLine", "updateQuoteTerms"]) {
+    for (const mutationName of [
+      "addQuoteLine",
+      "updateQuote",
+      "updateQuoteLine",
+      "updateQuoteTerms"
+    ]) {
       const block = exportedMutationBlock("convex/offertes/core.ts", mutationName);
       expect(block).toContain('quote.status !== "draft"');
     }
@@ -237,8 +247,14 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
   });
 
   it("should keep project invoice creation idempotent per accepted quote", () => {
-    const processProjectAction = exportedMutationBlock("convex/projecten/core.ts", "processProjectAction");
-    const createInvoiceFromQuote = exportedMutationBlock("convex/facturen/core.ts", "createInvoiceFromQuote");
+    const processProjectAction = exportedMutationBlock(
+      "convex/projecten/core.ts",
+      "processProjectAction"
+    );
+    const createInvoiceFromQuote = exportedMutationBlock(
+      "convex/facturen/core.ts",
+      "createInvoiceFromQuote"
+    );
     const portalUtils = read("convex/portalUtils.ts");
     const schema = read("convex/schema.ts");
 
@@ -250,8 +266,12 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(createInvoiceFromQuote).toContain("existingInvoiceForQuote(ctx, tenant._id, quoteId)");
     expect(createInvoiceFromQuote).toContain("completeInvoiceWorkflow(ctx, tenant._id, project");
     expect(createInvoiceFromQuote).toContain('status: "sent"');
-    expect(processProjectAction).toContain("existingInvoiceForQuote(ctx, tenant._id, latestAcceptedQuote._id)");
-    expect(processProjectAction).toContain("completeInvoiceWorkflow(ctx, tenant._id, project, invoiceDueAt");
+    expect(processProjectAction).toContain(
+      "existingInvoiceForQuote(ctx, tenant._id, latestAcceptedQuote._id)"
+    );
+    expect(processProjectAction).toContain(
+      "completeInvoiceWorkflow(ctx, tenant._id, project, invoiceDueAt"
+    );
     expect(processProjectAction).toContain('args.action !== "invoice_created"');
     expect(processProjectAction).toContain("if (!existingInvoice)");
     expect(processProjectAction).toContain("existingInvoice?.vervaldatum ?? args.invoiceDueAt");
@@ -273,7 +293,9 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     // inmeting vals rood "achterstallig".
     expect(portalUtils).toContain("UITVOER_FASEN.includes(project.status) ? project.uitvoerdatum");
     // Een afgeronde inmeting van (voor) vandaag is geen komend bezoek meer (geen vals rood).
-    expect(portalUtils).toContain("measurementDone(measurement) && isDueTodayOrEarlier(inmeet, now)");
+    expect(portalUtils).toContain(
+      "measurementDone(measurement) && isDueTodayOrEarlier(inmeet, now)"
+    );
     expect(portalUtils).toContain('quote.status === "accepted"');
     expect(portalUtils).not.toContain('["lead", "quote_accepted", "measurement_planned"]');
   });
@@ -311,7 +333,9 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
     expect(dossierActions).toContain('href="/portal/klanten?open=nieuw"');
     expect(dossierActions).toContain('href="/portal/projecten?open=nieuw"');
     expect(dossierActions).toContain('className="card dossier-action-card"');
-    expect(dossierWorkspace.indexOf("<DossierActions")).toBeLessThan(dossierWorkspace.indexOf("<DossierStats"));
+    expect(dossierWorkspace.indexOf("<DossierActions")).toBeLessThan(
+      dossierWorkspace.indexOf("<DossierStats")
+    );
     expect(dossierTabs).toContain('href: "/portal/klanten"');
     expect(dossierTabs).toContain('href: "/portal/projecten"');
     expect(dossierPage).toContain('<DossierTabs active="overview" />');
@@ -341,12 +365,12 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
 
     expect(quoteBuilder).toContain("isCustomerVersionModalOpen");
     expect(quoteBuilder).toContain("setIsCustomerVersionModalOpen(true)");
-    expect(quoteBuilder).toContain('<FormModal');
+    expect(quoteBuilder).toContain("<FormModal");
     expect(quoteBuilder).toContain('size="xl"');
     expect(quoteBuilder).toContain("Klantversie openen");
     expect(quoteDocumentPreview).toContain('className="no-print"');
-    expect(quoteDocumentPreview).toContain('quote-document-cover print-page-break-avoid no-print');
-    expect(quoteDocumentPreview).toContain('quote-document-review-warning no-print');
+    expect(quoteDocumentPreview).toContain("quote-document-cover print-page-break-avoid no-print");
+    expect(quoteDocumentPreview).toContain("quote-document-review-warning no-print");
   });
 
   it("should open the field intake in a modal instead of inline on the field workspace", () => {
@@ -430,7 +454,10 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
   });
 
   it("should enforce child check constraints before deleting a project room", () => {
-    const deleteProjectRoom = exportedMutationBlock("convex/projecten/core.ts", "deleteProjectRoom");
+    const deleteProjectRoom = exportedMutationBlock(
+      "convex/projecten/core.ts",
+      "deleteProjectRoom"
+    );
     expect(deleteProjectRoom).toContain('query("measurementRooms")');
     expect(deleteProjectRoom).toContain('query("quoteLines")');
     expect(deleteProjectRoom).toContain("measurementRoom || quoteLine");
@@ -438,22 +465,33 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
   });
 
   it("should check child constraints before deleting a measurement room", () => {
-    const deleteMeasurementRoom = exportedMutationBlock("convex/projecten/measurements.ts", "deleteMeasurementRoom");
+    const deleteMeasurementRoom = exportedMutationBlock(
+      "convex/projecten/measurements.ts",
+      "deleteMeasurementRoom"
+    );
     expect(deleteMeasurementRoom).toContain('query("measurementLines")');
     expect(deleteMeasurementRoom).toContain("if (line)");
     expect(deleteMeasurementRoom).toContain("await ctx.db.delete(room._id);");
   });
 
   it("should check child constraints before deleting a measurement line", () => {
-    const deleteMeasurementLine = exportedMutationBlock("convex/projecten/measurements.ts", "deleteMeasurementLine");
+    const deleteMeasurementLine = exportedMutationBlock(
+      "convex/projecten/measurements.ts",
+      "deleteMeasurementLine"
+    );
     expect(deleteMeasurementLine).toContain('line.quotePreparationStatus === "converted"');
     expect(deleteMeasurementLine).toContain("line.geconverteerdeOfferteId");
     expect(deleteMeasurementLine).toContain("line.geconverteerdeOfferteregelId");
-    expect(deleteMeasurementLine).toContain("await ctx.db.delete(line._id);");
+    expect(deleteMeasurementLine).toContain("deleteLines.some(isConvertedOrLinked)");
+    expect(deleteMeasurementLine).toContain("for (const deleteLine of deleteLines)");
+    expect(deleteMeasurementLine).toContain("await ctx.db.delete(deleteLine._id);");
   });
 
   it("should guard resetCatalogChunk to require literal confirmation and admin role", () => {
-    const resetCatalogChunk = exportedMutationBlock("convex/catalog/import.ts", "resetCatalogChunk");
+    const resetCatalogChunk = exportedMutationBlock(
+      "convex/catalog/import.ts",
+      "resetCatalogChunk"
+    );
     expect(resetCatalogChunk).toContain('confirm: v.literal("RESET_IMPORTED_CATALOG")');
     expect(resetCatalogChunk).toContain("actor: mutationActorValidator");
     expect(resetCatalogChunk).toContain('["admin"]');
@@ -469,25 +507,36 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
       "convex/catalog/import.ts",
       "deleteProductsByCategoryChunk"
     );
-    expect(deleteProductsByCategoryChunk).toContain('confirm: v.literal("DELETE_PRODUCTS_BY_CATEGORY")');
+    expect(deleteProductsByCategoryChunk).toContain(
+      'confirm: v.literal("DELETE_PRODUCTS_BY_CATEGORY")'
+    );
     expect(deleteProductsByCategoryChunk).toContain("actor: mutationActorValidator");
     expect(deleteProductsByCategoryChunk).toContain('["admin"]');
   });
 
   it("should guard the price maintenance mutations with literal confirmation and admin role", () => {
-    const repairVatModes = exportedMutationBlock("convex/catalog/maintenance.ts", "repairPriceVatModesChunk");
+    const repairVatModes = exportedMutationBlock(
+      "convex/catalog/maintenance.ts",
+      "repairPriceVatModesChunk"
+    );
     expect(repairVatModes).toContain('confirm: v.literal("REPAIR_PRICE_VAT_MODES")');
     expect(repairVatModes).toContain("actor: mutationActorValidator");
     expect(repairVatModes).toContain('["admin"]');
     expect(repairVatModes).not.toContain("ctx.db.delete(");
 
-    const stripNames = exportedMutationBlock("convex/catalog/maintenance.ts", "stripLeakedFilenameFromNamesChunk");
+    const stripNames = exportedMutationBlock(
+      "convex/catalog/maintenance.ts",
+      "stripLeakedFilenameFromNamesChunk"
+    );
     expect(stripNames).toContain('confirm: v.literal("STRIP_LEAKED_FILENAME")');
     expect(stripNames).toContain("actor: mutationActorValidator");
     expect(stripNames).toContain('["admin"]');
     expect(stripNames).not.toContain("ctx.db.delete(");
 
-    const deletePseudoRows = exportedMutationBlock("convex/catalog/maintenance.ts", "deletePseudoPriceRowsChunk");
+    const deletePseudoRows = exportedMutationBlock(
+      "convex/catalog/maintenance.ts",
+      "deletePseudoPriceRowsChunk"
+    );
     expect(deletePseudoRows).toContain('confirm: v.literal("DELETE_PSEUDO_PRICE_ROWS")');
     expect(deletePseudoRows).toContain("actor: mutationActorValidator");
     expect(deletePseudoRows).toContain('["admin"]');
@@ -496,7 +545,10 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
   });
 
   it("should secure deleteDocumentsByIdChunk with confirm, admin role and tenant scope", () => {
-    const deleteById = exportedMutationBlock("convex/catalog/maintenance.ts", "deleteDocumentsByIdChunk");
+    const deleteById = exportedMutationBlock(
+      "convex/catalog/maintenance.ts",
+      "deleteDocumentsByIdChunk"
+    );
     expect(deleteById).toContain('confirm: v.literal("DELETE_ORPHAN_RECORDS")');
     expect(deleteById).toContain("actor: mutationActorValidator");
     expect(deleteById).toContain('["admin"]');
@@ -521,7 +573,9 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
       "convex/catalog/import.ts",
       "deleteProductsBySupplierChunk"
     );
-    expect(deleteProductsBySupplierChunk).toContain('confirm: v.literal("DELETE_PRODUCTS_BY_SUPPLIER")');
+    expect(deleteProductsBySupplierChunk).toContain(
+      'confirm: v.literal("DELETE_PRODUCTS_BY_SUPPLIER")'
+    );
     expect(deleteProductsBySupplierChunk).toContain("actor: mutationActorValidator");
     expect(deleteProductsBySupplierChunk).toContain('["admin"]');
   });
@@ -534,7 +588,10 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
   });
 
   it("should use slug-scoped invoice action mutations for portal invoices", () => {
-    const updateInvoiceStatus = exportedMutationBlock("convex/facturen/core.ts", "updateInvoiceStatus");
+    const updateInvoiceStatus = exportedMutationBlock(
+      "convex/facturen/core.ts",
+      "updateInvoiceStatus"
+    );
     const markInvoicePaid = exportedMutationBlock("convex/facturen/core.ts", "markInvoicePaid");
     const invoiceDetail = read("src/components/invoices/InvoiceDetail.tsx");
 
@@ -546,18 +603,19 @@ describe("Workflow Mutation Guardrails & Security Policies", () => {
 
   it("should define required search indexes on catalog tables", () => {
     const schemaSource = read("convex/schema.ts");
-    expect(schemaSource).toContain('index("by_category_status", ["tenantId", "categorieId", "status"])');
-    expect(schemaSource).toContain('index("by_supplier_status", ["tenantId", "leverancierId", "status"])');
+    expect(schemaSource).toContain(
+      'index("by_category_status", ["tenantId", "categorieId", "status"])'
+    );
+    expect(schemaSource).toContain(
+      'index("by_supplier_status", ["tenantId", "leverancierId", "status"])'
+    );
   });
 
   it("should enforce production confirmation flags on all catalog tools", () => {
     // De V2-import wist eerst de complete catalogus en is daarmee de
     // destructiefste tool; de vat-tool muteert prijsdata live. Beide moeten
     // de gedeelde target-guard gebruiken met een production-confirm-vlag.
-    for (const toolScript of [
-      "tools/import_v2_dataset.mjs",
-      "tools/set_supplier_vat_mode.mjs"
-    ]) {
+    for (const toolScript of ["tools/import_v2_dataset.mjs", "tools/set_supplier_vat_mode.mjs"]) {
       const script = read(toolScript);
       expect(script).toContain("requireCatalogToolTarget");
       expect(script).toContain("productionConfirmFlag");

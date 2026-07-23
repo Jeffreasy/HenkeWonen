@@ -22,6 +22,15 @@ import {
   type RoomDimensions
 } from "../../src/lib/quotes/roomLineDerivation";
 import type { Doc, Id } from "../_generated/dataModel";
+import {
+  assertCompleteBundleFields,
+  assertValidStairRenovationBundle,
+  getMeasurementBundleLines,
+  hasAnyBundleField,
+  isConvertedOrLinked,
+  type StairBundleLineLike
+} from "../stairBundles";
+import { assertGuidedStairServiceHasBundle } from "../stairServiceProducts";
 
 /** Genormaliseerde ruimtenaam voor dedup (trim + lowercase). */
 function normalizeRoomName(naam: string): string {
@@ -232,6 +241,14 @@ const quotePreparationStatus = v.union(
   v.literal("converted")
 );
 
+const measurementBundleType = v.union(v.literal("stair_renovation"));
+
+const measurementBundleRole = v.union(
+  v.literal("material"),
+  v.literal("labor"),
+  v.literal("surcharge")
+);
+
 function hasArg<T extends object>(args: T, key: keyof T): boolean {
   return Object.prototype.hasOwnProperty.call(args, key);
 }
@@ -289,6 +306,26 @@ async function requireSelectableProduct(ctx: any, tenantId: any, productId: any)
   return product;
 }
 
+/**
+ * Houdt catalogusidentiteit en offerteregelsoort op hetzelfde betekenisvolle spoor.
+ * Een dienstproduct mag nooit vermomd als bestelbaar materiaal worden opgeslagen.
+ */
+function assertProductCompatibleWithQuoteLineType(product: Doc<"products">, lineType: string) {
+  const isServiceProduct = product.productAard === "service";
+
+  if ((lineType === "product" || lineType === "material") && isServiceProduct) {
+    throw new ConvexError(
+      "Een dienstproduct kan niet als materiaal- of productregel worden opgeslagen."
+    );
+  }
+
+  if ((lineType === "service" || lineType === "labor") && !isServiceProduct) {
+    throw new ConvexError(
+      "Een service- of arbeidsregel met productkoppeling vereist een dienstproduct."
+    );
+  }
+}
+
 /** Optionele richtprijs-snapshotvelden op een meetregel. */
 const indicativeSnapshotArgs = {
   productId: v.optional(v.id("products")),
@@ -298,6 +335,13 @@ const indicativeSnapshotArgs = {
   indicatievePrijsEenheid: v.optional(v.string()),
   indicatievePrijsSoort: v.optional(v.string()),
   indicatiefVastgelegdOp: v.optional(v.number())
+};
+
+const measurementBundleArgs = {
+  bundleId: v.optional(v.string()),
+  bundleType: v.optional(measurementBundleType),
+  bundleRole: v.optional(measurementBundleRole),
+  sectionKey: v.optional(v.string())
 };
 
 async function getActiveWasteProfiles(ctx: any, tenantId: any, productGroupArg?: string) {
@@ -321,7 +365,8 @@ export const getForProject = query({
   args: {
     tenantId: v.id("tenants"),
     projectId: v.id("projects"),
-    actor: readActorValidator
+    actor: readActorValidator,
+    quoteCalculationQuoteId: v.optional(v.id("quotes"))
   },
   handler: async (ctx, args) => {
     await requireQueryRoleForTenantId(ctx, args.tenantId, args.actor, [
@@ -336,13 +381,42 @@ export const getForProject = query({
       throw new ConvexError("Project niet gevonden.");
     }
 
-    const measurement = await ctx.db
-      .query("measurements")
-      .withIndex("by_project", (q) =>
-        q.eq("tenantId", args.tenantId).eq("projectId", args.projectId)
-      )
-      .order("desc")
-      .first();
+    let measurement: Doc<"measurements"> | null | undefined;
+    if (args.quoteCalculationQuoteId) {
+      const quote = await ctx.db.get(args.quoteCalculationQuoteId);
+      if (
+        !quote ||
+        quote.tenantId !== args.tenantId ||
+        quote.projectId !== args.projectId ||
+        quote.klantId !== project.klantId
+      ) {
+        throw new ConvexError("Offerte niet gevonden bij dit project.");
+      }
+      measurement = await ctx.db
+        .query("measurements")
+        .withIndex("by_quote_context", (q) =>
+          q.eq("tenantId", args.tenantId).eq("contextQuoteId", args.quoteCalculationQuoteId)
+        )
+        .order("desc")
+        .first();
+      if (
+        measurement &&
+        (measurement.projectId !== args.projectId || measurement.klantId !== project.klantId)
+      ) {
+        throw new ConvexError("Offerte-rekencontext hoort niet bij dit project.");
+      }
+    } else {
+      const measurements = await ctx.db
+        .query("measurements")
+        .withIndex("by_project", (q) =>
+          q.eq("tenantId", args.tenantId).eq("projectId", args.projectId)
+        )
+        .order("desc")
+        .collect();
+      measurement = measurements.find(
+        (candidate: Doc<"measurements">) => !candidate.contextQuoteId
+      );
+    }
     const wasteProfiles = await getActiveWasteProfiles(ctx, args.tenantId);
 
     if (!measurement) {
@@ -401,7 +475,10 @@ export const listReadyForQuoteByProject = query({
         q.eq("tenantId", args.tenantId).eq("projectId", args.projectId)
       )
       .order("desc")
-      .collect();
+      .collect()
+      .then((items) =>
+        items.filter((measurement: Doc<"measurements">) => !measurement.contextQuoteId)
+      );
     const latestMeasurement = measurements[0] ?? null;
     const readyLines = [];
     // Aantal regels dat nog in concept staat: de import-picker toont alleen
@@ -447,7 +524,9 @@ export const listReadyForQuoteByProject = query({
 
     return {
       measurement: latestMeasurement,
-      readyLines: readyLines.sort((left, right) => left.line.aangemaaktOp - right.line.aangemaaktOp),
+      readyLines: readyLines.sort(
+        (left, right) => left.line.aangemaaktOp - right.line.aangemaaktOp
+      ),
       draftLineCount
     };
   }
@@ -494,7 +573,10 @@ export const createForProject = mutation({
         q.eq("tenantId", args.tenantId).eq("projectId", args.projectId)
       )
       .order("desc")
-      .first();
+      .collect()
+      .then((items) =>
+        items.find((measurement: Doc<"measurements">) => !measurement.contextQuoteId)
+      );
 
     // Plan-guard óók op dit pad: de invariant is dat ELK pad dat measurement.inmeetdatum
     // muteert de inmeet-regels toetst (zie assertInmeetBoeking) — dit pad omzeilde ze.
@@ -502,7 +584,8 @@ export const createForProject = mutation({
     // anders de monteur die al op de inmeting staat — een call die tegelijk datum én
     // monteur meegeeft kon anders de capaciteit van de gekozen monteur omzeilen.
     const zetGemetenDoor = Boolean(args.gemetenDoor && !existing?.gemetenDoor);
-    const datumGewijzigd = hasArg(args, "inmeetdatum") && existing?.inmeetdatum !== args.inmeetdatum;
+    const datumGewijzigd =
+      hasArg(args, "inmeetdatum") && existing?.inmeetdatum !== args.inmeetdatum;
     const nieuweMonteur = zetGemetenDoor
       ? await resolveMonteurByNaam(ctx, args.tenantId, args.gemetenDoor)
       : null;
@@ -612,11 +695,12 @@ export const updateMeasurement = mutation({
     force: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
-    const { externalUserId } = await requireMutationRoleForTenantId(ctx, args.tenantId, args.actor, [
-      "user",
-      "editor",
-      "admin"
-    ]);
+    const { externalUserId } = await requireMutationRoleForTenantId(
+      ctx,
+      args.tenantId,
+      args.actor,
+      ["user", "editor", "admin"]
+    );
     const measurement = await requireMeasurement(ctx, args.tenantId, args.inmetingId);
 
     const nieuweDatum = args.inmeetdatum ?? undefined; // null → wissen
@@ -823,15 +907,20 @@ export const addMeasurementRoom = mutation({
         await ctx.db.patch(duplicateRoom._id, { ...dupPatch, gewijzigdOp: now });
         const updatedDuplicate = await ctx.db.get(duplicateRoom._id);
         if (updatedDuplicate) {
-          await syncProjectRoomFromMeasurement(ctx, args.tenantId, updatedDuplicate.projectRuimteId, {
-            naam: updatedDuplicate.naam,
-            verdieping: updatedDuplicate.verdieping,
-            breedteM: updatedDuplicate.breedteM,
-            lengteM: updatedDuplicate.lengteM,
-            hoogteM: updatedDuplicate.hoogteM,
-            oppervlakteM2: updatedDuplicate.oppervlakteM2,
-            omtrekM: updatedDuplicate.omtrekM
-          });
+          await syncProjectRoomFromMeasurement(
+            ctx,
+            args.tenantId,
+            updatedDuplicate.projectRuimteId,
+            {
+              naam: updatedDuplicate.naam,
+              verdieping: updatedDuplicate.verdieping,
+              breedteM: updatedDuplicate.breedteM,
+              lengteM: updatedDuplicate.lengteM,
+              hoogteM: updatedDuplicate.hoogteM,
+              oppervlakteM2: updatedDuplicate.oppervlakteM2,
+              omtrekM: updatedDuplicate.omtrekM
+            }
+          );
           await recalculateLinesForRoom(ctx, args.tenantId, updatedDuplicate);
         }
       }
@@ -1081,6 +1170,7 @@ export const addMeasurementLine = mutation({
     eenheid: v.string(),
     notities: v.optional(v.string()),
     offerteRegelType: quoteLineType,
+    ...measurementBundleArgs,
     ...indicativeSnapshotArgs
   },
   handler: async (ctx, args) => {
@@ -1099,9 +1189,16 @@ export const addMeasurementLine = mutation({
         throw new ConvexError("Meetruimte niet gevonden.");
       }
     }
+    if (hasAnyBundleField(args)) {
+      throw new ConvexError(
+        "Een trapbundel kan alleen als volledige set via de bulkactie worden toegevoegd."
+      );
+    }
 
     if (args.productId) {
-      await requireSelectableProduct(ctx, args.tenantId, args.productId);
+      const product = await requireSelectableProduct(ctx, args.tenantId, args.productId);
+      assertProductCompatibleWithQuoteLineType(product, args.offerteRegelType);
+      assertGuidedStairServiceHasBundle(product, false);
     }
 
     const now = Date.now();
@@ -1125,6 +1222,10 @@ export const addMeasurementLine = mutation({
       notities: args.notities,
       offerteRegelType: args.offerteRegelType,
       quotePreparationStatus: "draft",
+      bundleId: args.bundleId,
+      bundleType: args.bundleType,
+      bundleRole: args.bundleRole,
+      sectionKey: args.sectionKey,
       productId: args.productId,
       productNaam: keepSnapshot ? args.productNaam : undefined,
       indicatieveEenheidsprijsExBtw: keepSnapshot ? args.indicatieveEenheidsprijsExBtw : undefined,
@@ -1169,6 +1270,7 @@ export const addMeasurementLinesBulk = mutation({
         eenheid: v.string(),
         notities: v.optional(v.string()),
         offerteRegelType: quoteLineType,
+        ...measurementBundleArgs,
         ...indicativeSnapshotArgs
       })
     )
@@ -1190,9 +1292,33 @@ export const addMeasurementLinesBulk = mutation({
     }
 
     const checkedRooms = new Set<string>();
-    const checkedProducts = new Set<string>();
+    const checkedProducts = new Map<string, Doc<"products">>();
     const now = Date.now();
     const lineIds: Array<Id<"measurementLines">> = [];
+
+    const requestedBundles = new Map<string, StairBundleLineLike[]>();
+    for (const regel of args.regels) {
+      assertCompleteBundleFields(regel);
+      if (!hasAnyBundleField(regel)) continue;
+      const bundleId = regel.bundleId!.trim();
+      requestedBundles.set(bundleId, [
+        ...(requestedBundles.get(bundleId) ?? []),
+        regel as StairBundleLineLike
+      ]);
+    }
+
+    for (const [bundleId, bundleLines] of requestedBundles) {
+      const existingBundleLines = await getMeasurementBundleLines(
+        ctx,
+        args.tenantId,
+        args.inmetingId,
+        bundleId
+      );
+      if (existingBundleLines.length > 0) {
+        throw new ConvexError("Deze trapbundel bestaat al binnen de inmeting.");
+      }
+      await assertValidStairRenovationBundle(ctx, args.tenantId, bundleLines);
+    }
 
     for (const regel of args.regels) {
       validateMeasurementQuantities(regel.aantal, regel.snijverliesPct);
@@ -1207,9 +1333,16 @@ export const addMeasurementLinesBulk = mutation({
         checkedRooms.add(regel.ruimteId);
       }
 
-      if (regel.productId && !checkedProducts.has(regel.productId)) {
-        await requireSelectableProduct(ctx, args.tenantId, regel.productId);
-        checkedProducts.add(regel.productId);
+      if (regel.productId) {
+        const productKey = String(regel.productId);
+        const cachedProduct = checkedProducts.get(productKey);
+        const product =
+          cachedProduct ?? (await requireSelectableProduct(ctx, args.tenantId, regel.productId));
+        if (!cachedProduct) {
+          checkedProducts.set(productKey, product);
+        }
+        assertProductCompatibleWithQuoteLineType(product, regel.offerteRegelType);
+        assertGuidedStairServiceHasBundle(product, hasAnyBundleField(regel));
       }
 
       const keepSnapshot =
@@ -1229,6 +1362,10 @@ export const addMeasurementLinesBulk = mutation({
         notities: regel.notities,
         offerteRegelType: regel.offerteRegelType,
         quotePreparationStatus: "draft",
+        bundleId: regel.bundleId?.trim(),
+        bundleType: regel.bundleType,
+        bundleRole: regel.bundleRole,
+        sectionKey: regel.sectionKey,
         productId: regel.productId,
         productNaam: keepSnapshot ? regel.productNaam : undefined,
         indicatieveEenheidsprijsExBtw: keepSnapshot
@@ -1276,12 +1413,30 @@ export const updateMeasurementLineStatus = mutation({
       );
     }
 
+    const statusLines = line.bundleId
+      ? await getMeasurementBundleLines(ctx, args.tenantId, line.inmetingId, line.bundleId)
+      : [line];
+
+    if (statusLines.some(isConvertedOrLinked)) {
+      throw new ConvexError(
+        "Verwerkte meetregels kunnen alleen via de gekoppelde offerte worden hersteld."
+      );
+    }
+
+    if (line.bundleId) {
+      await assertValidStairRenovationBundle(ctx, args.tenantId, statusLines);
+    } else if (hasAnyBundleField(line)) {
+      throw new ConvexError("Deze meetregel bevat een onvolledige trapbundelkoppeling.");
+    }
+
     const now = Date.now();
 
-    await ctx.db.patch(args.lineId, {
-      quotePreparationStatus: args.quotePreparationStatus,
-      gewijzigdOp: now
-    });
+    for (const statusLine of statusLines) {
+      await ctx.db.patch(statusLine._id, {
+        quotePreparationStatus: args.quotePreparationStatus,
+        gewijzigdOp: now
+      });
+    }
     await touchMeasurement(ctx, line.inmetingId, now);
 
     return args.lineId;
@@ -1305,6 +1460,7 @@ export const updateMeasurementLine = mutation({
     offerteRegelType: quoteLineType,
     quotePreparationStatus: v.optional(quotePreparationStatus),
     handmatigAangepast: v.optional(v.boolean()),
+    ...measurementBundleArgs,
     ...indicativeSnapshotArgs,
     /** Expliciet de productkeuze + snapshot wissen (undefined overleeft JSON niet). */
     clearProduct: v.optional(v.boolean())
@@ -1321,8 +1477,13 @@ export const updateMeasurementLine = mutation({
       throw new ConvexError("Inmeetregel niet gevonden.");
     }
 
-    if (line.quotePreparationStatus === "converted") {
+    if (isConvertedOrLinked(line)) {
       throw new ConvexError("Verwerkte meetregels kunnen niet direct worden aangepast.");
+    }
+    if (args.quotePreparationStatus === "converted") {
+      throw new ConvexError(
+        "Gebruik de verwerkingsactie om een meetregel aan een offerte te koppelen."
+      );
     }
     validateMeasurementQuantities(args.aantal, args.snijverliesPct);
 
@@ -1334,15 +1495,44 @@ export const updateMeasurementLine = mutation({
       }
     }
 
-    if (args.productId && args.productId !== line.productId) {
-      await requireSelectableProduct(ctx, args.tenantId, args.productId);
-    }
-
     // Productkeuze: alleen overschrijven als de aanroeper het veld meestuurt of
     // expliciet wist via clearProduct (undefined overleeft JSON-serialisatie niet).
+    const incomingBundleFields = {
+      bundleId: args.bundleId,
+      bundleType: args.bundleType,
+      bundleRole: args.bundleRole,
+      sectionKey: args.sectionKey
+    };
+    if (line.bundleId) {
+      const immutableBundleFields = ["bundleId", "bundleType", "bundleRole", "sectionKey"] as const;
+      for (const key of immutableBundleFields) {
+        if (hasArg(args, key) && incomingBundleFields[key] !== line[key]) {
+          throw new ConvexError(
+            "Lidmaatschap en rol van een trapbundel kunnen niet per losse regel worden gewijzigd."
+          );
+        }
+      }
+    } else if (hasAnyBundleField(line) || hasAnyBundleField(incomingBundleFields)) {
+      throw new ConvexError(
+        "Een trapbundel kan alleen als volledige set via de bulkactie worden gevormd."
+      );
+    }
+
     const touchesProduct = hasArg(args, "productId") || args.clearProduct === true;
     const nextProductId =
       args.clearProduct === true ? undefined : touchesProduct ? args.productId : line.productId;
+
+    if (nextProductId) {
+      const product =
+        nextProductId === line.productId
+          ? await ctx.db.get(nextProductId)
+          : await requireSelectableProduct(ctx, args.tenantId, nextProductId);
+      if (!product || product.tenantId !== args.tenantId) {
+        throw new ConvexError("Product niet gevonden.");
+      }
+      assertProductCompatibleWithQuoteLineType(product, args.offerteRegelType);
+      assertGuidedStairServiceHasBundle(product, Boolean(line.bundleId));
+    }
 
     // Productloze richtprijzen (raambekleding-matrix = "matrix"; dienst/legkost = "service_rule")
     // mogen opnieuw worden meegestuurd (her-prijzen bij gewijzigde maten) zónder product.
@@ -1365,6 +1555,37 @@ export const updateMeasurementLine = mutation({
     // staan nadat de eenheid naar m1/stuk is gewijzigd, en stroomt die als
     // vertrouwde prijs-per-nieuwe-eenheid de offerte in. Een vers meegestuurd
     // snapshot (usesArgsSnapshot) is per definitie bij de nieuwe eenheid gemaakt.
+    let bundleLinesForUpdate: Doc<"measurementLines">[] | undefined;
+    if (line.bundleId) {
+      bundleLinesForUpdate = await getMeasurementBundleLines(
+        ctx,
+        args.tenantId,
+        line.inmetingId,
+        line.bundleId
+      );
+      if (bundleLinesForUpdate.some(isConvertedOrLinked)) {
+        throw new ConvexError("Verwerkte trapbundels kunnen niet direct worden aangepast.");
+      }
+      const prospectiveLine: StairBundleLineLike = {
+        ...line,
+        ruimteId: args.ruimteId,
+        productGroep: args.productGroep,
+        aantal: args.aantal,
+        eenheid: args.eenheid,
+        invoer: args.invoer,
+        offerteRegelType: args.offerteRegelType,
+        productId: nextProductId,
+        quotePreparationStatus: args.quotePreparationStatus ?? line.quotePreparationStatus
+      };
+      const prospectiveBundle = bundleLinesForUpdate.map((bundleLine) => {
+        if (bundleLine._id === line._id) return prospectiveLine;
+        return args.quotePreparationStatus === undefined
+          ? bundleLine
+          : { ...bundleLine, quotePreparationStatus: args.quotePreparationStatus };
+      });
+      await assertValidStairRenovationBundle(ctx, args.tenantId, prospectiveBundle);
+    }
+
     const keepPriceSnapshot = Boolean(
       args.clearProduct !== true &&
       ((nextProductId &&
@@ -1392,6 +1613,10 @@ export const updateMeasurementLine = mutation({
       offerteRegelType: args.offerteRegelType,
       quotePreparationStatus: args.quotePreparationStatus ?? line.quotePreparationStatus,
       handmatigAangepast: args.handmatigAangepast ?? line.handmatigAangepast,
+      bundleId: hasArg(args, "bundleId") ? args.bundleId : line.bundleId,
+      bundleType: hasArg(args, "bundleType") ? args.bundleType : line.bundleType,
+      bundleRole: hasArg(args, "bundleRole") ? args.bundleRole : line.bundleRole,
+      sectionKey: hasArg(args, "sectionKey") ? args.sectionKey : line.sectionKey,
       productId: nextProductId,
       productNaam: keepProductName ? snapshotSource.productNaam : undefined,
       indicatieveEenheidsprijsExBtw: keepPriceSnapshot
@@ -1409,6 +1634,16 @@ export const updateMeasurementLine = mutation({
         : undefined,
       gewijzigdOp: Date.now()
     });
+    if (bundleLinesForUpdate && args.quotePreparationStatus !== undefined) {
+      const now = Date.now();
+      for (const bundleLine of bundleLinesForUpdate) {
+        if (bundleLine._id === line._id) continue;
+        await ctx.db.patch(bundleLine._id, {
+          quotePreparationStatus: args.quotePreparationStatus,
+          gewijzigdOp: now
+        });
+      }
+    }
     await touchMeasurement(ctx, line.inmetingId);
 
     return line._id;
@@ -1441,7 +1676,19 @@ export const deleteMeasurementLine = mutation({
       throw new ConvexError("Verwerkte meetregels kunnen niet direct worden verwijderd.");
     }
 
-    await ctx.db.delete(line._id);
+    const deleteLines = line.bundleId
+      ? await getMeasurementBundleLines(ctx, args.tenantId, line.inmetingId, line.bundleId)
+      : [line];
+    if (deleteLines.some(isConvertedOrLinked)) {
+      throw new ConvexError("Verwerkte meetregels kunnen niet direct worden verwijderd.");
+    }
+    if (!line.bundleId && hasAnyBundleField(line)) {
+      throw new ConvexError("Deze meetregel bevat een onvolledige trapbundelkoppeling.");
+    }
+
+    for (const deleteLine of deleteLines) {
+      await ctx.db.delete(deleteLine._id);
+    }
     await touchMeasurement(ctx, line.inmetingId);
 
     return line._id;

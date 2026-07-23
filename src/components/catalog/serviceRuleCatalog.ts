@@ -7,8 +7,36 @@
  */
 import type {
   ServiceRuleCalculationType,
+  ServiceRuleMetadata,
   ServiceRuleRow
 } from "../settings/settings/settingsTypes";
+
+/** Diensten uit deze familie horen bij de geleide trapcomposer, niet bij losse offerteregels. */
+export const GUIDED_STAIR_SERVICE_FAMILY = "stair_renovation";
+
+type ServiceFamilyRule = {
+  serviceFamily?: string;
+  serviceMetadata?: {
+    family?: string;
+  };
+};
+
+/** Herkent traprenovatie-diensten via zowel de platte als de geneste catalogusmetadata. */
+export function isGuidedStairServiceRule(rule: ServiceFamilyRule): boolean {
+  return (rule.serviceFamily ?? rule.serviceMetadata?.family) === GUIDED_STAIR_SERVICE_FAMILY;
+}
+
+/** Filterpredicate voor generieke dienstkiezers: trapdiensten lopen via Inmeting > Trap. */
+export function isStandaloneServiceRule(rule: ServiceFamilyRule): boolean {
+  return !isGuidedStairServiceRule(rule);
+}
+
+/** Pure lijsthelper voor eenvoudige native selects, zoals de inmeet-dienstselectie. */
+export function excludeGuidedStairServiceRules<T extends ServiceFamilyRule>(
+  rules: readonly T[]
+): T[] {
+  return rules.filter(isStandaloneServiceRule);
+}
 
 /**
  * Ruwe serviceCostRules-Doc zoals api.beheer.serviceCostRules.list hem teruggeeft
@@ -16,8 +44,22 @@ import type {
  */
 export type ServiceRuleDoc = {
   _id: string;
+  id: string;
+  productId: string;
   naam: string;
   omschrijving?: string;
+  sku?: string;
+  category?: string;
+  subcategory?: string;
+  prijsEenheid?: string;
+  priceUnit?: string;
+  productGroup?: ServiceRuleRow["productGroup"];
+  serviceMetadata?: ServiceRuleMetadata;
+  serviceFamily?: string;
+  covering?: string;
+  stairShape?: string;
+  serviceRole?: string;
+  sectionKey?: string;
   berekeningType: string;
   prijsExBtw: number;
   btwTarief: number;
@@ -88,9 +130,21 @@ export function calculationTypeToUnit(calculationType: string): string {
 /** Mapt een ruwe serviceCostRules-Doc naar de gedeelde ServiceRuleRow-vorm. */
 export function serviceRuleDocToRow(doc: ServiceRuleDoc): ServiceRuleRow {
   return {
-    id: String(doc._id),
+    id: String(doc.id || doc._id),
+    productId: String(doc.productId || doc.id || doc._id),
     name: doc.naam,
     description: doc.omschrijving,
+    sku: doc.sku,
+    category: doc.category,
+    subcategory: doc.subcategory,
+    priceUnit: doc.priceUnit ?? doc.prijsEenheid,
+    productGroup: doc.productGroup,
+    serviceMetadata: doc.serviceMetadata,
+    serviceFamily: doc.serviceFamily ?? doc.serviceMetadata?.family,
+    covering: doc.covering ?? doc.serviceMetadata?.covering,
+    stairShape: doc.stairShape ?? doc.serviceMetadata?.shape,
+    serviceRole: doc.serviceRole ?? doc.serviceMetadata?.role,
+    sectionKey: doc.sectionKey ?? doc.serviceMetadata?.sectionKey,
     calculationType: normalizeCalculationType(doc.berekeningType),
     priceExVat: doc.prijsExBtw,
     vatRate: doc.btwTarief,

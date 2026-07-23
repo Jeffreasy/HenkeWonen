@@ -37,6 +37,7 @@ import {
   polishQuoteTemplateLines,
   polishQuoteTemplateText
 } from "../../lib/quotes/quoteTemplateCopy";
+import { getQuoteStatusActions } from "../../lib/quotes/quoteStatusActions";
 import { Button } from "../ui/forms/Button";
 import { ConfirmDialog } from "../ui/overlays/ConfirmDialog";
 import { DataTable, type DataTableColumn } from "../ui/data-display/DataTable";
@@ -79,55 +80,13 @@ type QuoteBuilderProps = {
   mode?: "full" | "field";
 };
 
-const quoteStatusActions: Array<{
-  status: QuoteStatus;
-  label: string;
-  /** Afwijkend label voor de bevestigingsknop in de dialoog (default: label). */
-  confirmLabel?: string;
-  description: string;
-  variant: "primary" | "secondary" | "danger";
-  icon: typeof Send;
-}> = [
-  {
-    status: "draft",
-    label: "Terug naar concept",
-    description: "De offerte blijft bewerkbaar en wordt nog niet als verstuurd gezien.",
-    variant: "secondary",
-    icon: Pencil
-  },
-  {
-    status: "sent",
-    label: "Markeer verzonden",
-    description: "De offerte en projectstatus worden bijgewerkt naar verzonden.",
-    variant: "secondary",
-    icon: Send
-  },
-  {
-    status: "accepted",
-    label: "Akkoord",
-    description: "De offerte wordt akkoord gezet en het project gaat naar akkoord.",
-    variant: "primary",
-    icon: CheckCircle2
-  },
-  {
-    status: "rejected",
-    label: "Afwijzen",
-    description:
-      "De offerte wordt afgewezen en het project krijgt opvolgstatus afgewezen. Nog niet ontvangen leveranciersbestellingen van deze offerte worden mee-geannuleerd.",
-    variant: "danger",
-    icon: XCircle
-  },
-  {
-    status: "cancelled",
-    label: "Annuleren",
-    // Onderscheid met de dialoog-sluitknop, die óók "Annuleren" heet.
-    confirmLabel: "Offerte annuleren",
-    description:
-      "De offerte wordt geannuleerd. Dit is bedoeld voor vervallen concepten of ingetrokken offertes. Nog niet ontvangen leveranciersbestellingen van deze offerte worden mee-geannuleerd.",
-    variant: "secondary",
-    icon: Ban
-  }
-];
+const quoteStatusIcons = {
+  draft: Pencil,
+  sent: Send,
+  accepted: CheckCircle2,
+  rejected: XCircle,
+  cancelled: Ban
+} as const;
 
 function splitLines(value: string): string[] {
   return value
@@ -564,7 +523,12 @@ export default function QuoteBuilder({
         disabled={isSavingTitle}
         maxLength={120}
       />
-      <Button variant="primary" size="sm" onClick={() => void saveTitle()} isLoading={isSavingTitle}>
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={() => void saveTitle()}
+        isLoading={isSavingTitle}
+      >
         Opslaan
       </Button>
       <Button
@@ -739,10 +703,10 @@ export default function QuoteBuilder({
                 <div className="mobile-card-title">
                   <strong>{line.titel}</strong>
                   {line.omschrijving ? (
-            <small className="muted">
-              <OmschrijvingRegels tekst={line.omschrijving} />
-            </small>
-          ) : null}
+                    <small className="muted">
+                      <OmschrijvingRegels tekst={line.omschrijving} />
+                    </small>
+                  ) : null}
                 </div>
                 <LineTypeBadge lineType={line.regelType} />
               </div>
@@ -979,49 +943,31 @@ export default function QuoteBuilder({
     </CollapsiblePanel>
   );
 
-  const pendingStatusAction = quoteStatusActions.find((action) => action.status === pendingStatus);
-
-  // Buitendienst: alleen de 3 relevante statusacties
-  const fieldAllowedStatuses = new Set(["sent", "accepted", "rejected"] as const);
-
-  // Een terminale offerte (afgewezen/geannuleerd/verlopen) mag niet herleven naar
-  // verstuurd/akkoord — spiegelt de backend-guard zodat die knoppen niet verschijnen.
-  const terminalQuoteStatuses = new Set(["rejected", "cancelled", "expired"]);
-  const isTerminalQuote = terminalQuoteStatuses.has(quote.status);
-  const revivingStatuses = new Set(["sent", "accepted"]);
+  const availableStatusActions = getQuoteStatusActions(quote.status, mode, project?.status);
+  const pendingStatusAction = availableStatusActions.find(
+    (action) => action.status === pendingStatus
+  );
 
   const statusActions =
     canEdit && onUpdateStatus ? (
       <div className="toolbar quote-status-actions">
         <StatusBadge status={quote.status} label={formatQuoteStatus(quote.status)} />
-        {quoteStatusActions
-          .filter(
-            (action) =>
-              action.status !== quote.status &&
-              !(isTerminalQuote && revivingStatuses.has(action.status)) &&
-              // Een geaccepteerde offerte gaat alleen nog naar 'geannuleerd' — spiegelt
-              // de backend-guard: er kunnen al bestellingen op dit akkoord zijn geplaatst.
-              !(quote.status === "accepted" && action.status !== "cancelled") &&
-              (isFieldMode
-                ? fieldAllowedStatuses.has(action.status as "sent" | "accepted" | "rejected")
-                : true)
-          )
-          .map((action) => {
-            const Icon = action.icon;
+        {availableStatusActions.map((action) => {
+          const Icon = quoteStatusIcons[action.status];
 
-            return (
-              <Button
-                disabled={isUpdatingStatus}
-                key={action.status}
-                leftIcon={<Icon size={16} aria-hidden="true" />}
-                onClick={() => setPendingStatus(action.status)}
-                size="sm"
-                variant={action.variant}
-              >
-                {action.label}
-              </Button>
-            );
-          })}
+          return (
+            <Button
+              disabled={isUpdatingStatus}
+              key={action.status}
+              leftIcon={<Icon size={16} aria-hidden="true" />}
+              onClick={() => setPendingStatus(action.status)}
+              size="sm"
+              variant={action.variant}
+            >
+              {action.label}
+            </Button>
+          );
+        })}
         {/* Factuur aanmaken alleen in winkel-mode */}
         {!isFieldMode && quote.status === "accepted" && onCreateInvoice ? (
           <Button
@@ -1062,7 +1008,9 @@ export default function QuoteBuilder({
             ? `${pendingStatusAction.description} Dit wordt ook vastgelegd op het bijbehorende project.`
             : ""
         }
-        confirmLabel={pendingStatusAction?.confirmLabel ?? pendingStatusAction?.label ?? "Status aanpassen"}
+        confirmLabel={
+          pendingStatusAction?.confirmLabel ?? pendingStatusAction?.label ?? "Status aanpassen"
+        }
         tone={pendingStatus === "cancelled" || pendingStatus === "rejected" ? "danger" : "warning"}
         isBusy={isUpdatingStatus}
         onCancel={() => setPendingStatus(null)}
@@ -1256,7 +1204,7 @@ export default function QuoteBuilder({
         <CollapsiblePanel
           eyebrow="Toevoegen"
           title="Offertepost toevoegen"
-          description="Kies hoe je een post toevoegt: catalogusproduct, werkzaamheid of inmeting overnemen."
+          description="Kies een catalogusproduct, werkzaamheid, rekenhulp of bestaande inmeting."
         >
           {composer}
         </CollapsiblePanel>
