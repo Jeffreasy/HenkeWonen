@@ -127,8 +127,15 @@ const model: QuoteDocumentModel = {
 describe("Quote Document Preview", () => {
   const html = renderToStaticMarkup(React.createElement(QuoteDocumentPreview, { model }));
   const globalCss = fs.readFileSync(path.join(process.cwd(), "src/styles/global.css"), "utf8");
-  const printCss = fs.readFileSync(path.join(process.cwd(), "src/styles/layers/18-print.css"), "utf8");
-  const combinedCss = globalCss + "\n" + printCss;
+  const featureCss = fs.readFileSync(
+    path.join(process.cwd(), "src/styles/layers/14-features-quotes.css"),
+    "utf8"
+  );
+  const printCss = fs.readFileSync(
+    path.join(process.cwd(), "src/styles/layers/18-print.css"),
+    "utf8"
+  );
+  const combinedCss = globalCss + "\n" + featureCss + "\n" + printCss;
 
   it("should render the preview HTML document correctly", () => {
     expect(html.length).toBeGreaterThan(0);
@@ -136,6 +143,12 @@ describe("Quote Document Preview", () => {
     expect(html).toContain('class="quote-document-sheet"');
     expect(html).toContain('class="quote-document-front-page"');
     expect(html).toContain('class="quote-document-back-matter"');
+    expect(html).toContain('class="quote-document-title-reference"');
+    expect(html).toContain('class="quote-document-table quote-document-quote-table"');
+    expect(html).toContain('class="quote-document-quantity"');
+    expect(html).toContain('class="quote-document-section"');
+    expect(html).not.toContain('class="quote-document-section print-page-break-avoid"');
+    expect(html).not.toContain("<th>Eenheid</th>");
     expect(html).toContain('data-print-title="OFF-2026-014 - Familie Jansen"');
     expect(html).toContain('class="quote-document-logo"');
     expect(html).toContain('src="/images/logo-henke-wonen.png"');
@@ -175,16 +188,26 @@ describe("Quote Document Preview", () => {
     expect(combinedCss).toContain(".quote-document-agreement");
   });
 
-  it("should verify CSS classes and rules are defined", () => {
+  it("should verify CSS classes and professional print rules are defined", () => {
     expect(combinedCss).toContain(".quote-document-sheet");
-    expect(combinedCss).toContain("min-height: 297mm");
-    expect(combinedCss).toContain(".quote-print-root");
-    expect(combinedCss).toContain(".quote-document-logo");
-    expect(combinedCss).toContain("width: 48mm;");
-    expect(combinedCss).toContain(".quote-document-front-page");
-    expect(combinedCss).toContain("min-height: calc(297mm - 27mm);");
-    expect(combinedCss).toContain("margin: auto 0 0 auto;");
-    expect(combinedCss).toContain(".quote-document-back-matter");
+    expect(featureCss).toContain("min-height: 297mm");
+    expect(featureCss).toContain(".quote-document-quote-table");
+    expect(featureCss).toContain(".quote-document-quantity");
+    expect(printCss).toContain("@page");
+    expect(printCss).toContain("margin: 12mm 13mm 16mm;");
+    expect(printCss).toContain(".quote-print-root");
+    expect(printCss).toContain(".quote-document-logo");
+    expect(printCss).toContain("width: 42mm;");
+    expect(printCss).toContain(".quote-document-front-page");
+    expect(printCss).toContain(".quote-document-back-matter");
+    expect(printCss).toContain("break-before: page;");
+    expect(printCss).toContain("page-break-before: always;");
+    expect(printCss).toContain("@bottom-left");
+    expect(printCss).toContain("@bottom-right");
+    expect(printCss).toContain('content: "Pagina " counter(page) " van " counter(pages);');
+    expect(printCss).toContain("margin: 12pt 0 0 auto;");
+    expect(printCss).not.toContain("min-height: calc(297mm - 27mm);");
+    expect(printCss).not.toContain("margin: auto 0 0 auto;");
     expect(combinedCss).toContain("body.quote-print-active > :not(.quote-print-root)");
     expect(combinedCss).toContain("body.quote-print-active .quote-print-root");
     expect(combinedCss).toContain("position: static;");
