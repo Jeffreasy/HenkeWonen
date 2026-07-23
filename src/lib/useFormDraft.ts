@@ -23,6 +23,7 @@ export function useFormDraft<T extends Record<string, unknown>>(
   restore: (draft: Partial<T>) => void
 ): { clear: () => void } {
   const hasRestored = useRef(false);
+  const skipNextWrite = useRef(false);
   const serialized = JSON.stringify({ t: Date.now(), d: values } satisfies DraftEnvelope);
 
   useEffect(() => {
@@ -59,6 +60,14 @@ export function useFormDraft<T extends Record<string, unknown>>(
     if (!hasRestored.current) {
       return;
     }
+    // Na een succesvolle submit veranderen formulieren vaak direct hun state.
+    // Zonder dit vangnet zou die reset-render het zojuist gewiste concept meteen
+    // opnieuw opslaan. De eerstvolgende echte gebruikerswijziging wordt weer normaal
+    // bewaard.
+    if (skipNextWrite.current) {
+      skipNextWrite.current = false;
+      return;
+    }
     try {
       window.localStorage.setItem(key, serialized);
     } catch {
@@ -68,6 +77,7 @@ export function useFormDraft<T extends Record<string, unknown>>(
 
   return {
     clear: () => {
+      skipNextWrite.current = true;
       try {
         window.localStorage.removeItem(key);
       } catch {

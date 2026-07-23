@@ -73,6 +73,19 @@ const FIELD_ROOM_PRESETS: Array<{ label: string; name: string }> = [
   { label: "Sk4", name: "Sk4" }
 ];
 
+function measurementBundleRoleLabel(role?: MeasurementLineDoc["bundleRole"]) {
+  switch (role) {
+    case "material":
+      return "Materiaal";
+    case "labor":
+      return "Arbeid";
+    case "surcharge":
+      return "Toeslag";
+    default:
+      return null;
+  }
+}
+
 export default function MeasurementPanel({
   tenantId,
   projectId,
@@ -270,6 +283,7 @@ export default function MeasurementPanel({
   function indicativePriceTrusted(line: MeasurementLineDoc): boolean {
     return (
       line.indicatievePrijsSoort === "matrix" ||
+      line.indicatievePrijsSoort === "service_rule" ||
       line.indicatievePrijsEenheid === undefined ||
       isUnitCompatible(line.eenheid, line.indicatievePrijsEenheid)
     );
@@ -380,6 +394,14 @@ export default function MeasurementPanel({
           >
             {roomLines.map((line) => {
               const total = lineIndicativeTotal(line);
+              const bundleRole = measurementBundleRoleLabel(line.bundleRole);
+              const bundleName =
+                line.bundleType === "stair_renovation" || line.sectionKey === "traprenovatie"
+                  ? "Traprenovatie"
+                  : "Bundel";
+              const bundleContext = line.bundleId
+                ? `${bundleName}${bundleRole ? ` - ${bundleRole}` : ""}`
+                : null;
               return (
                 <div
                   key={line._id}
@@ -401,6 +423,11 @@ export default function MeasurementPanel({
                     {formatNumber(line.aantal)} {formatUnit(line.eenheid)}
                     {total ? ` · ${total}` : ""}
                   </div>
+                  {bundleContext ? (
+                    <div className="muted" style={{ fontSize: "var(--text-xs)" }}>
+                      {bundleContext}
+                    </div>
+                  ) : null}
                   <div
                     className="toolbar"
                     style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}
@@ -650,6 +677,25 @@ export default function MeasurementPanel({
     setError(null);
 
     try {
+      const selectedLine = lines.find((line) => line._id === lineId);
+      if (selectedLine?.bundleId) {
+        const bundleLineCount = lines.filter(
+          (line) => line.bundleId === selectedLine.bundleId
+        ).length;
+        await context.client.mutation(api.projecten.measurements.updateMeasurementLineStatus, {
+          tenantId: context.tenantId,
+          actor: mutationActorFromSession(session),
+          lineId: selectedLine._id as Id<"measurementLines">,
+          quotePreparationStatus: "ready_for_quote"
+        });
+        showToast({
+          title: `Trapbundel met ${bundleLineCount} meetregels klaargezet voor de offerte`,
+          tone: "success"
+        });
+        await loadMeasurement();
+        return;
+      }
+
       await context.client.mutation(api.projecten.measurements.updateMeasurementLineStatus, {
         tenantId: context.tenantId,
         actor: mutationActorFromSession(session),
@@ -758,6 +804,10 @@ export default function MeasurementPanel({
       setError("Vul een geldige hoeveelheid in.");
       return;
     }
+    if (line.bundleId && !Number.isInteger(quantity)) {
+      setError("Gebruik voor PVC-trapmaterialen een heel aantal.");
+      return;
+    }
 
     setIsSaving(true);
     setError(null);
@@ -769,7 +819,10 @@ export default function MeasurementPanel({
     // na productkeuze) én races met nog lopende weergave-lookups.
     let productArgs: Record<string, unknown> = {};
 
-    if (lineCorrectionDraft.productTouched && !lineCorrectionDraft.productId) {
+    if (line.offerteRegelType === "service" || line.offerteRegelType === "labor") {
+      // De vaste dienstkoppeling en service_rule-snapshot blijven read-only behouden.
+      productArgs = {};
+    } else if (lineCorrectionDraft.productTouched && !lineCorrectionDraft.productId) {
       productArgs = { clearProduct: true };
     } else if (lineCorrectionDraft.productId) {
       let freshPrice: IndicativePriceResult | null = null;
@@ -863,7 +916,12 @@ export default function MeasurementPanel({
         actor: mutationActorFromSession(session),
         lineId: pendingLineDelete._id as Id<"measurementLines">
       });
-      showToast({ title: "Meetregel verwijderd", tone: "warning" });
+      showToast({
+        title: pendingLineDelete.bundleId
+          ? "Volledige PVC-trapbundel verwijderd"
+          : "Meetregel verwijderd",
+        tone: "warning"
+      });
       setPendingLineDelete(null);
       await loadMeasurement();
     } catch (deleteError) {
@@ -891,9 +949,19 @@ export default function MeasurementPanel({
     >
       <ConfirmDialog
         open={Boolean(pendingLineDelete)}
-        title="Meetregel verwijderen?"
-        description="De meetregel verdwijnt uit de inmeting. Verwerkte regels blijven beschermd."
-        confirmLabel="Meetregel verwijderen"
+        title={
+          pendingLineDelete?.bundleId
+            ? "Volledige PVC-trapbundel verwijderen?"
+            : "Meetregel verwijderen?"
+        }
+        description={
+          pendingLineDelete?.bundleId
+            ? "Deze regel hoort bij een berekende trapbundel. Materiaal, arbeid en eventuele toeslag worden samen uit de inmeting verwijderd. Verwerkte bundels blijven beschermd."
+            : "De meetregel verdwijnt uit de inmeting. Verwerkte regels blijven beschermd."
+        }
+        confirmLabel={
+          pendingLineDelete?.bundleId ? "Trapbundel verwijderen" : "Meetregel verwijderen"
+        }
         tone="danger"
         isBusy={isSaving}
         onCancel={() => setPendingLineDelete(null)}
@@ -1088,6 +1156,14 @@ export default function MeasurementPanel({
   );
 
   function renderMeasurementLinesCard() {
+    const editingLine = lines.find((item) => item._id === editingLineId) ?? null;
+    const editingLineUsesOrderableProduct =
+      editingLine?.offerteRegelType === "product" || editingLine?.offerteRegelType === "material";
+    const editingLineUsesServiceProduct =
+      editingLine?.offerteRegelType === "service" || editingLine?.offerteRegelType === "labor";
+    const editingLineIsStairBundle =
+      editingLine?.bundleType === "stair_renovation" && Boolean(editingLine.bundleId);
+
     return (
       <Card>
         <SectionHeader
@@ -1118,10 +1194,17 @@ export default function MeasurementPanel({
               title="Meetregel bewerken"
               description="Je past nu deze meetregel aan. Verwerkte regels blijven beschermd."
             />
+            {editingLineIsStairBundle ? (
+              <Alert
+                variant="info"
+                description="Deze regel hoort bij een berekende PVC-trapbundel. Product, hoeveelheid, ruimte en eenheid blijven gekoppeld aan het recept. Verwijder en bouw de bundel opnieuw via Inmeting > Trap om de samenstelling te wijzigen; een statuswijziging geldt voor de volledige bundel."
+              />
+            ) : null}
             <div className="grid three-column">
               <Field htmlFor="measurement-line-edit-room" label="Ruimte">
                 <Select
                   id="measurement-line-edit-room"
+                  disabled={editingLineIsStairBundle}
                   value={lineCorrectionDraft.roomId}
                   onChange={(event) =>
                     setLineCorrectionDraft((current) => ({
@@ -1141,7 +1224,10 @@ export default function MeasurementPanel({
               <Field htmlFor="measurement-line-edit-quantity" label="Hoeveelheid" required>
                 <Input
                   id="measurement-line-edit-quantity"
-                  inputMode="decimal"
+                  inputMode={editingLineIsStairBundle ? "numeric" : "decimal"}
+                  disabled={editingLineIsStairBundle}
+                  min={editingLineIsStairBundle ? 1 : undefined}
+                  step={editingLineIsStairBundle ? 1 : "any"}
                   value={lineCorrectionDraft.quantity}
                   onChange={(event) =>
                     setLineCorrectionDraft((current) => ({
@@ -1155,6 +1241,7 @@ export default function MeasurementPanel({
               <Field htmlFor="measurement-line-edit-unit" label="Eenheid">
                 <Input
                   id="measurement-line-edit-unit"
+                  disabled={editingLineIsStairBundle}
                   value={lineCorrectionDraft.unit}
                   onChange={(event) =>
                     setLineCorrectionDraft((current) => ({ ...current, unit: event.target.value }))
@@ -1167,6 +1254,7 @@ export default function MeasurementPanel({
                 <Input
                   id="measurement-line-edit-waste"
                   inputMode="decimal"
+                  disabled={editingLineIsStairBundle}
                   value={lineCorrectionDraft.wastePercent}
                   onChange={(event) =>
                     setLineCorrectionDraft((current) => ({
@@ -1192,60 +1280,75 @@ export default function MeasurementPanel({
                 </Select>
               </Field>
             </div>
-            <SectionHeader
-              compact
-              title="Product en richtprijs"
-              description={
-                lineCorrectionDraft.productId
-                  ? `Gekozen: ${lineCorrectionDraft.productName || "product"}${
-                      lineCorrectionDraft.indicativeUnitPriceExVat !== undefined &&
-                      lineCorrectionDraft.indicativeVatRate !== undefined
-                        ? ` — richtprijs ${formatEuro(
-                            showPricesIncVat
-                              ? calculateIncVat(
-                                  lineCorrectionDraft.indicativeUnitPriceExVat,
-                                  lineCorrectionDraft.indicativeVatRate
-                                )
-                              : lineCorrectionDraft.indicativeUnitPriceExVat
-                          )} per ${formatUnit(lineCorrectionDraft.indicativePriceUnit ?? "custom")} (${
-                            showPricesIncVat ? "incl." : "excl."
-                          } btw, indicatief)`
-                        : " — nog geen richtprijs beschikbaar"
-                    }`
-                  : "Geen product gekozen. Kies hieronder een product om een richtprijs vast te leggen."
-              }
-              actions={
-                lineCorrectionDraft.productId ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => void selectEditLineProduct(null)}
-                  >
-                    Productkeuze wissen
-                  </Button>
-                ) : undefined
-              }
-            />
-            {(() => {
-              const editingLine = lines.find((item) => item._id === editingLineId);
-
-              return (
-                <CatalogProductPicker
-                  session={session}
-                  idPrefix="measure-edit"
-                  productGroupHint={
-                    editingLine && editingLine.productGroep !== "other"
-                      ? editingLine.productGroep
-                      : null
+            {editingLineUsesOrderableProduct && !editingLineIsStairBundle ? (
+              <>
+                <SectionHeader
+                  compact
+                  title="Product en richtprijs"
+                  description={
+                    lineCorrectionDraft.productId
+                      ? `Gekozen: ${lineCorrectionDraft.productName || "product"}${
+                          lineCorrectionDraft.indicativeUnitPriceExVat !== undefined &&
+                          lineCorrectionDraft.indicativeVatRate !== undefined
+                            ? ` — richtprijs ${formatEuro(
+                                showPricesIncVat
+                                  ? calculateIncVat(
+                                      lineCorrectionDraft.indicativeUnitPriceExVat,
+                                      lineCorrectionDraft.indicativeVatRate
+                                    )
+                                  : lineCorrectionDraft.indicativeUnitPriceExVat
+                              )} per ${formatUnit(lineCorrectionDraft.indicativePriceUnit ?? "custom")} (${
+                                showPricesIncVat ? "incl." : "excl."
+                              } btw, indicatief)`
+                            : " — nog geen richtprijs beschikbaar"
+                        }`
+                      : "Geen product gekozen. Kies hieronder een product om een richtprijs vast te leggen."
                   }
-                  selectedProductId={lineCorrectionDraft.productId}
-                  selectedProductLabel={lineCorrectionDraft.productName || undefined}
-                  onSelect={(product) => void selectEditLineProduct(product)}
-                  label="Product (optioneel)"
-                  emptyOptionLabel="Geen product gekozen"
+                  actions={
+                    lineCorrectionDraft.productId ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void selectEditLineProduct(null)}
+                      >
+                        Productkeuze wissen
+                      </Button>
+                    ) : undefined
+                  }
                 />
-              );
-            })()}
+                {(() => {
+                  const editingLine = lines.find((item) => item._id === editingLineId);
+
+                  return (
+                    <CatalogProductPicker
+                      session={session}
+                      idPrefix="measure-edit"
+                      scope="orderable"
+                      productGroupHint={
+                        editingLine && editingLine.productGroep !== "other"
+                          ? editingLine.productGroep
+                          : null
+                      }
+                      selectedProductId={lineCorrectionDraft.productId}
+                      selectedProductLabel={lineCorrectionDraft.productName || undefined}
+                      onSelect={(product) => void selectEditLineProduct(product)}
+                      label="Product (optioneel)"
+                      emptyOptionLabel="Geen product gekozen"
+                    />
+                  );
+                })()}
+              </>
+            ) : editingLineUsesServiceProduct ? (
+              <SectionHeader
+                compact
+                title="Dienstproduct"
+                description={
+                  lineCorrectionDraft.productId
+                    ? `Gekoppelde dienst: ${lineCorrectionDraft.productName || "dienst"}. De dienstkoppeling blijft behouden; hier pas je alleen de meetregel aan.`
+                    : "Handmatige dienstregel zonder vaste dienstkoppeling."
+                }
+              />
+            ) : null}
             <Field htmlFor="measurement-line-edit-notes" label="Notitie">
               <Textarea
                 id="measurement-line-edit-notes"

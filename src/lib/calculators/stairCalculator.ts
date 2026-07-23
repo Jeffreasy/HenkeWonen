@@ -1,14 +1,28 @@
-import type { IndicativeCalculationResult, StairType } from "./types";
-import { isValidNumber, roundToTwoDecimals } from "./number";
+import type {
+  IndicativeCalculationResult,
+  StairConstruction,
+  StairShape,
+  StairType
+} from "./types";
+import { roundToTwoDecimals } from "./number";
+import {
+  PVC_STAIR_RECIPE_KEY,
+  PVC_STAIR_RECIPE_VERSION,
+  validatePvcStairRecipeInput
+} from "../quotes/pvcStairCalculator";
 
 export type StairCalculationInput = {
-  stairType: StairType;
+  stairShape?: StairShape;
+  stairConstruction?: StairConstruction;
+  stairType?: StairType;
   treadCount: number;
   riserCount: number;
   stripLengthM?: number;
 };
 
 export type StairCalculationResult = IndicativeCalculationResult & {
+  stairShape: StairShape;
+  stairConstruction: StairConstruction;
   treadCount: number;
   riserCount: number;
   quoteQuantity: number;
@@ -17,32 +31,33 @@ export type StairCalculationResult = IndicativeCalculationResult & {
 };
 
 export function calculateStairs(input: StairCalculationInput): StairCalculationResult {
-  if (!isValidNumber(input.treadCount) || input.treadCount <= 0) {
-    return invalidStairResult("Vul minimaal 1 trede in.");
+  const selection = normalizeStairSelection(input);
+  const validation = validatePvcStairRecipeInput({
+    recipeKey: PVC_STAIR_RECIPE_KEY,
+    recipeVersion: PVC_STAIR_RECIPE_VERSION,
+    covering: "pvc",
+    stairShape: selection.stairShape,
+    stairConstruction: selection.stairConstruction,
+    treadCount: input.treadCount,
+    riserCount: input.riserCount,
+    ...(input.stripLengthM !== undefined ? { stripLengthM: input.stripLengthM } : {})
+  });
+  if (!validation.ok) {
+    return invalidStairResult(validation.errors.map((error) => error.message).join(" "));
   }
-
-  if (!isValidNumber(input.riserCount) || input.riserCount < 0) {
-    return invalidStairResult("Aantal stootborden mag niet negatief zijn.");
-  }
-
-  if (
-    input.stripLengthM !== undefined &&
-    (!isValidNumber(input.stripLengthM) || input.stripLengthM < 0)
-  ) {
-    return invalidStairResult("Strooklengte mag niet negatief zijn.");
-  }
-
+  const { stairShape, stairConstruction } = validation.value;
   const notes = [
-    `stairType:${input.stairType}`,
+    `stairShape:${stairShape}`,
+    `stairConstruction:${stairConstruction}`,
     `treadCount:${input.treadCount}`,
     `riserCount:${input.riserCount}`
   ];
 
-  if (input.stairType === "open") {
+  if (stairConstruction === "open") {
     notes.push("open staircase");
   }
 
-  if (input.stairType === "closed") {
+  if (stairConstruction === "closed") {
     notes.push("closed staircase");
   }
 
@@ -51,6 +66,8 @@ export function calculateStairs(input: StairCalculationInput): StairCalculationR
   }
 
   return {
+    stairShape,
+    stairConstruction,
     treadCount: input.treadCount,
     riserCount: input.riserCount,
     quoteQuantity: 1,
@@ -62,6 +79,8 @@ export function calculateStairs(input: StairCalculationInput): StairCalculationR
 
 function invalidStairResult(validationError: string): StairCalculationResult {
   return {
+    stairShape: "straight",
+    stairConstruction: "closed",
     treadCount: 0,
     riserCount: 0,
     quoteQuantity: 0,
@@ -72,3 +91,27 @@ function invalidStairResult(validationError: string): StairCalculationResult {
   };
 }
 
+function normalizeStairSelection(input: StairCalculationInput): {
+  stairShape: StairShape;
+  stairConstruction: StairConstruction;
+} {
+  let stairShape = input.stairShape;
+  let stairConstruction = input.stairConstruction;
+
+  if (
+    input.stairType === "straight" ||
+    input.stairType === "quarter_turn" ||
+    input.stairType === "half_turn"
+  ) {
+    stairShape ??= input.stairType;
+  }
+
+  if (input.stairType === "open" || input.stairType === "closed") {
+    stairConstruction ??= input.stairType;
+  }
+
+  return {
+    stairShape: stairShape ?? "straight",
+    stairConstruction: stairConstruction ?? "closed"
+  };
+}

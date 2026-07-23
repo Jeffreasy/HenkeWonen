@@ -54,12 +54,10 @@ import type * as projecten_nextStep from "../projecten/nextStep.js";
 import type * as projecten_workflowEvents from "../projecten/workflowEvents.js";
 import type * as seed_core from "../seed/core.js";
 import type * as seed_demo from "../seed/demo.js";
+import type * as stairBundles from "../stairBundles.js";
+import type * as stairServiceProducts from "../stairServiceProducts.js";
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
+import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
   authz: typeof authz;
@@ -108,6 +106,8 @@ declare const fullApi: ApiFromModules<{
   "projecten/workflowEvents": typeof projecten_workflowEvents;
   "seed/core": typeof seed_core;
   "seed/demo": typeof seed_demo;
+  stairBundles: typeof stairBundles;
+  stairServiceProducts: typeof stairServiceProducts;
 }>;
 
 /**
@@ -118,10 +118,7 @@ declare const fullApi: ApiFromModules<{
  * const myFunctionReference = api.myModule.myFunction;
  * ```
  */
-export declare const api: FilterApi<
-  typeof fullApi,
-  FunctionReference<any, "public">
->;
+export declare const api: FilterApi<typeof fullApi, FunctionReference<any, "public">>;
 
 /**
  * A utility for referencing Convex functions in your app's internal API.
@@ -131,9 +128,6 @@ export declare const api: FilterApi<
  * const myFunctionReference = internal.myModule.myFunction;
  * ```
  */
-export declare const internal: FilterApi<
-  typeof fullApi,
-  FunctionReference<any, "internal">
->;
+export declare const internal: FilterApi<typeof fullApi, FunctionReference<any, "internal">>;
 
 export declare const components: {};

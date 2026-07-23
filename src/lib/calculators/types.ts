@@ -22,5 +22,7 @@ export type ProductGroup =
 
 export type PatternType = "straight" | "herringbone" | "tile" | "custom";
 
-export type StairType = "straight" | "quarter_turn" | "half_turn" | "open" | "closed";
-
+export type StairShape = "straight" | "quarter_turn" | "half_turn";
+export type StairConstruction = "open" | "closed";
+/** Legacy combinatie; nieuwe code gebruikt StairShape + StairConstruction apart. */
+export type StairType = StairShape | StairConstruction;

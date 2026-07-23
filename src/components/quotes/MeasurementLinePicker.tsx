@@ -66,6 +66,10 @@ type ReadyLine = {
   productNaam?: string;
   indicatieveEenheidsprijsExBtw?: number;
   indicatiefBtwTarief?: number;
+  bundleId?: string;
+  bundleType?: "stair_renovation";
+  bundleRole?: "material" | "labor" | "surcharge";
+  sectionKey?: string;
 };
 
 type ReadyMeasurementLine = {
@@ -92,9 +96,64 @@ function formatNumber(value?: number) {
   }).format(value);
 }
 
+function bundleRoleLabel(role?: ReadyLine["bundleRole"]) {
+  switch (role) {
+    case "material":
+      return "Materiaal";
+    case "labor":
+      return "Arbeid";
+    case "surcharge":
+      return "Toeslag";
+    default:
+      return null;
+  }
+}
+
+function bundleContextLabel(line: ReadyLine) {
+  if (!line.bundleId) {
+    return null;
+  }
+
+  const bundle =
+    line.bundleType === "stair_renovation" || line.sectionKey === "traprenovatie"
+      ? "Traprenovatie"
+      : "Bundel";
+  const role = bundleRoleLabel(line.bundleRole);
+
+  return role ? `${bundle} - ${role}` : bundle;
+}
+
+export function measurementLineSelectionIds(
+  readyLines: ReadyMeasurementLine[],
+  target: ReadyMeasurementLine
+): string[] {
+  if (!target.line.bundleId) {
+    return [target.line._id];
+  }
+
+  return readyLines
+    .filter((item) => item.line.bundleId === target.line.bundleId)
+    .map((item) => item.line._id);
+}
+
+export function toggleMeasurementLineSelection(
+  currentIds: string[],
+  readyLines: ReadyMeasurementLine[],
+  target: ReadyMeasurementLine,
+  checked: boolean
+): string[] {
+  const next = new Set(currentIds);
+  for (const lineId of measurementLineSelectionIds(readyLines, target)) {
+    if (checked) next.add(lineId);
+    else next.delete(lineId);
+  }
+
+  return readyLines.filter((item) => next.has(item.line._id)).map((item) => item.line._id);
+}
+
 function buildLineTitle(item: ReadyMeasurementLine) {
   const parts = [
-    formatMeasurementProductGroup(item.line.productGroep),
+    item.line.productNaam ?? formatMeasurementProductGroup(item.line.productGroep),
     formatMeasurementCalculationType(item.line.berekeningType),
     item.room?.naam
   ].filter(Boolean);
@@ -170,6 +229,8 @@ export default function MeasurementLinePicker({
     } finally {
       setIsLoading(false);
     }
+    // De sessiereferentie is stabiel binnen deze workspace; project en tenant bepalen herladen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, tenantSlug]);
 
   useEffect(() => {
@@ -194,9 +255,7 @@ export default function MeasurementLinePicker({
             onChange={(event) => {
               const checked = event.target.checked;
               setSelectedIds((current) =>
-                checked
-                  ? [...current, item.line._id]
-                  : current.filter((lineId) => lineId !== item.line._id)
+                toggleMeasurementLineSelection(current, readyLines, item, checked)
               );
             }}
           />
@@ -211,7 +270,16 @@ export default function MeasurementLinePicker({
       {
         key: "group",
         header: "Productgroep",
-        render: (item) => formatMeasurementProductGroup(item.line.productGroep)
+        render: (item) => (
+          <div>
+            <span>{formatMeasurementProductGroup(item.line.productGroep)}</span>
+            {bundleContextLabel(item.line) ? (
+              <div className="muted" style={{ fontSize: "var(--text-xs)" }}>
+                {bundleContextLabel(item.line)}
+              </div>
+            ) : null}
+          </div>
+        )
       },
       {
         key: "calculation",
@@ -269,7 +337,7 @@ export default function MeasurementLinePicker({
         render: (item) => item.line.notities ?? "-"
       }
     ],
-    [selectedIds]
+    [readyLines, selectedIds]
   );
 
   async function importSelectedLines() {
@@ -423,15 +491,18 @@ export default function MeasurementLinePicker({
                         onChange={(event) => {
                           const checked = event.target.checked;
                           setSelectedIds((current) =>
-                            checked
-                              ? [...current, item.line._id]
-                              : current.filter((lineId) => lineId !== item.line._id)
+                            toggleMeasurementLineSelection(current, readyLines, item, checked)
                           );
                         }}
                       />
                       <StatusBadge status="warning" label="Richtprijs" />
                     </div>
                     <strong>{buildLineTitle(item)}</strong>
+                    {bundleContextLabel(item.line) ? (
+                      <p className="muted" style={{ margin: "4px 0" }}>
+                        {bundleContextLabel(item.line)}
+                      </p>
+                    ) : null}
                     <p className="muted">
                       {formatNumber(item.line.aantal)} {formatUnit(item.line.eenheid)}
                       {item.line.snijverliesPct !== undefined
@@ -455,9 +526,7 @@ export default function MeasurementLinePicker({
               />
 
               <div className="toolbar">
-                <span className="muted">
-                  {selectedIds.length} geselecteerd
-                </span>
+                <span className="muted">{selectedIds.length} geselecteerd</span>
                 <Button
                   // Uitgeschakeld als alles al geselecteerd is — NIET bij een lege
                   // selectie (dan is deze knop juist de bedoelde eerste klik).

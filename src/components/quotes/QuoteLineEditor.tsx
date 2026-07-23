@@ -10,12 +10,13 @@ import type {
   QuoteTemplateLine
 } from "../../lib/portalTypes";
 import { polishQuoteTemplateText } from "../../lib/quotes/quoteTemplateCopy";
+import { isSelectableQuoteTemplateLine } from "../../lib/quotes/quoteTemplateAvailability";
 import type { ServiceRuleRow } from "../settings/settings/settingsTypes";
 import { useFormDraft } from "../../lib/useFormDraft";
 import { quoteLineDraftKey, readQuoteLineDraft } from "../../lib/quoteLineDraft";
 import CatalogProductPicker from "../catalog/CatalogProductPicker";
 import ServiceRulePicker from "../catalog/ServiceRulePicker";
-import { calculationTypeToUnit } from "../catalog/serviceRuleCatalog";
+import { calculationTypeToUnit, isStandaloneServiceRule } from "../catalog/serviceRuleCatalog";
 import { Alert } from "../ui/feedback/Alert";
 import { Button } from "../ui/forms/Button";
 import { Field } from "../ui/forms/Field";
@@ -25,7 +26,6 @@ import { Select } from "../ui/forms/Select";
 import { Textarea } from "../ui/forms/Textarea";
 import LineTypeBadge from "./LineTypeBadge";
 import { LineTypeButtons } from "./LineTypeButtons";
-import WallpaperCalculator from "./WallpaperCalculator";
 import { LINE_TYPE_OPTIONS, isServiceRuleLineType } from "./quote/quoteConstants";
 import { parseQuoteLineNumbers } from "./quote/quoteLineInput";
 import type { QuoteLineFormValues } from "./quote/quoteTypes";
@@ -57,6 +57,33 @@ type QuoteLineEditorProps = {
   draftScopeId: string;
 };
 
+export function serviceRuleQuoteMetadata(rule: ServiceRuleRow): Record<string, unknown> {
+  const metadata = {
+    source: "serviceRule",
+    serviceRuleId: rule.id,
+    serviceSku: rule.sku,
+    calculationType: rule.calculationType,
+    sectionKey: rule.sectionKey ?? rule.serviceMetadata?.sectionKey,
+    serviceFamily: rule.serviceFamily ?? rule.serviceMetadata?.family,
+    covering: rule.covering ?? rule.serviceMetadata?.covering,
+    stairShape: rule.stairShape ?? rule.serviceMetadata?.shape,
+    serviceRole: rule.serviceRole ?? rule.serviceMetadata?.role
+  };
+
+  return Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== undefined));
+}
+
+export function serviceRuleProductId(
+  lineType: QuoteLineType,
+  rule: ServiceRuleRow | null
+): string | undefined {
+  if ((lineType === "service" || lineType === "labor") && rule) {
+    return rule.productId ?? rule.id;
+  }
+
+  return undefined;
+}
+
 export default function QuoteLineEditor({
   sortOrder,
   templateLines = [],
@@ -71,6 +98,7 @@ export default function QuoteLineEditor({
   draftScopeId
 }: QuoteLineEditorProps) {
   const isFieldMode = mode === "field";
+  const selectableTemplateLines = templateLines.filter(isSelectableQuoteTemplateLine);
   const availableLineTypes = useMemo<QuoteLineType[]>(
     () =>
       scope === "product"
@@ -109,8 +137,17 @@ export default function QuoteLineEditor({
   useFormDraft(
     quoteLineDraftKey(draftScopeId),
     {
-      lineType, title, description, quantity, unit,
-      unitPriceExVat, vatRate, discountExVat, projectRoomId, selectedProduct
+      lineType,
+      title,
+      description,
+      quantity,
+      unit,
+      unitPriceExVat,
+      vatRate,
+      discountExVat,
+      projectRoomId,
+      selectedProduct,
+      selectedServiceRule
     },
     (draft) => {
       const restored = readQuoteLineDraft(draft);
@@ -131,6 +168,13 @@ export default function QuoteLineEditor({
       if (restored.discountExVat !== undefined) setDiscountExVat(restored.discountExVat);
       if (restored.projectRoomId !== undefined) setProjectRoomId(restored.projectRoomId);
       if (restored.selectedProduct !== undefined) setSelectedProduct(restored.selectedProduct);
+      if (
+        restored.selectedServiceRule !== undefined &&
+        restored.selectedServiceRule !== null &&
+        isStandaloneServiceRule(restored.selectedServiceRule)
+      ) {
+        setSelectedServiceRule(restored.selectedServiceRule);
+      }
     }
   );
 
@@ -198,7 +242,7 @@ export default function QuoteLineEditor({
 
   function applyTemplateLine(templateKey: string) {
     setSelectedTemplateKey(templateKey);
-    const templateLine = templateLines.find(
+    const templateLine = selectableTemplateLines.find(
       (line) => `${line.sortOrder}-${line.titel}` === templateKey
     );
 
@@ -273,11 +317,7 @@ export default function QuoteLineEditor({
       : undefined;
     const serviceMetadata =
       showServicePicker && selectedServiceRule
-        ? {
-            source: "serviceRule",
-            serviceRuleId: selectedServiceRule.id,
-            calculationType: selectedServiceRule.calculationType
-          }
+        ? serviceRuleQuoteMetadata(selectedServiceRule)
         : undefined;
     const metadata =
       templateMetadata || productMetadata || serviceMetadata
@@ -292,7 +332,7 @@ export default function QuoteLineEditor({
     try {
       await onAdd({
         projectRoomId: projectRoomId || undefined,
-        productId: selectedProduct?.id,
+        productId: selectedProduct?.id ?? serviceRuleProductId(lineType, selectedServiceRule),
         lineType,
         title: title.trim(),
         description: description.trim() || undefined,
@@ -335,7 +375,7 @@ export default function QuoteLineEditor({
           actions={<LineTypeBadge lineType={lineType} />}
         />
       )}
-      {templateLines.length > 0 ? (
+      {selectableTemplateLines.length > 0 ? (
         <Field
           htmlFor="template-line"
           label="Standaardregel gebruiken"
@@ -347,7 +387,7 @@ export default function QuoteLineEditor({
             onChange={(event) => applyTemplateLine(event.target.value)}
           >
             <option value="">Geen standaardregel</option>
-            {templateLines
+            {selectableTemplateLines
               .slice()
               .sort((left, right) => left.sortOrder - right.sortOrder)
               .map((line) => (
@@ -404,6 +444,7 @@ export default function QuoteLineEditor({
             session={session}
             idPrefix="catalog"
             productGroupHint={productGroupHint}
+            scope="orderable"
             selectedProductId={selectedProduct?.id ?? ""}
             onSelect={applyProduct}
             label="Product kiezen"
@@ -418,15 +459,20 @@ export default function QuoteLineEditor({
           <SectionHeader
             compact
             title="Werkzaamheid uit de lijst"
-            description="Kies een vaste werkzaamheid; naam, prijs, btw en eenheid worden overgenomen. Zelf typen mag ook."
+            description="Kies een losse werkzaamheid; naam, prijs, btw en eenheid worden overgenomen."
           />
           <ServiceRulePicker
             session={session}
             idPrefix="service-rule"
             selectedRuleId={selectedServiceRule?.id ?? ""}
+            ruleFilter={isStandaloneServiceRule}
             onSelect={applyServiceRule}
             label="Werkzaamheid kiezen"
             showPriceInLabel
+          />
+          <Alert
+            variant="info"
+            description="PVC-trapwerk voeg je volledig toe via Inmeting › Trap; die geleide trapdiensten staan daarom niet in deze losse lijst."
           />
         </section>
       ) : null}
@@ -498,22 +544,6 @@ export default function QuoteLineEditor({
       </div>
       {numbersError ? (
         <Alert variant="warning" title="Controleer de invoer" description={numbersError} />
-      ) : null}
-      {scope !== "manual" ? (
-        <details className="wallpaper-calculator-details">
-          <summary>Behangcalculator openen</summary>
-          <WallpaperCalculator
-            onUseResult={(result) => {
-              setLineType("product");
-              setTitle((current) => current || "Behang merk, kleur");
-              setDescription(
-                (current) => current || "Aantal rollen indicatief berekend met de behangcalculator."
-              );
-              setQuantity(String(result.rollsNeeded));
-              setUnit("roll");
-            }}
-          />
-        </details>
       ) : null}
     </form>
   );

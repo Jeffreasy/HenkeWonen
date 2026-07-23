@@ -51,6 +51,40 @@ describe("restoreMeasurementProductSelection (productselectie overleeft tab-evic
     expect(restoreMeasurementProductSelection(draft).serviceRuleId).toBe("svc_9");
   });
 
+  it("herstelt gekozen trapmaterialen met een expliciete gemotiveerde override", () => {
+    const draft = throughDraft({
+      stairMaterials: [
+        { product: SAMPLE_PRODUCT, quantityOverride: "14", overrideReason: "Extra reservetrede" }
+      ]
+    });
+
+    expect(restoreMeasurementProductSelection(draft).stairMaterials).toEqual([
+      { product: SAMPLE_PRODUCT, quantityOverride: "14", overrideReason: "Extra reservetrede" }
+    ]);
+  });
+
+  it("herstelt een oud vast aantal niet als verouderde override", () => {
+    const restored = restoreMeasurementProductSelection({
+      stairMaterials: [{ product: SAMPLE_PRODUCT, quantity: "1" }]
+    });
+
+    expect(restored.stairMaterials).toEqual([{ product: SAMPLE_PRODUCT }]);
+  });
+
+  it("filtert ongeldige trapmateriaalregels uit een corrupt concept", () => {
+    const restored = restoreMeasurementProductSelection({
+      stairMaterials: [
+        { product: SAMPLE_PRODUCT, quantityOverride: "2", overrideReason: "Reserve" },
+        { product: { id: "half" }, quantity: "1" },
+        { product: SAMPLE_PRODUCT, quantity: 3 }
+      ]
+    });
+
+    expect(restored.stairMaterials).toEqual([
+      { product: SAMPLE_PRODUCT, quantityOverride: "2", overrideReason: "Reserve" }
+    ]);
+  });
+
   it("negeert een niet-string serviceRuleId uit een corrupt concept", () => {
     // Zet niet terug -> de state houdt zijn begininstelling ("") i.p.v. rommel.
     expect(
@@ -90,8 +124,8 @@ describe("isRestorablePortalProduct", () => {
     expect(isRestorablePortalProduct(undefined)).toBe(false);
     expect(isRestorablePortalProduct({})).toBe(false);
     // Lege id telt niet als keuze.
-    expect(
-      isRestorablePortalProduct({ id: "", naam: "a", weergaveNaam: "b", category: "c" })
-    ).toBe(false);
+    expect(isRestorablePortalProduct({ id: "", naam: "a", weergaveNaam: "b", category: "c" })).toBe(
+      false
+    );
   });
 });

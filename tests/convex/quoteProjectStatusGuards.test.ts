@@ -13,25 +13,82 @@ function stubAuth() {
   vi.stubEnv("ALLOW_DEV_AUTHZ_TOKENS", "true");
 }
 
-async function base(
-  t: ReturnType<typeof convexTest>,
-  projectStatus: Doc<"projects">["status"]
-) {
+async function base(t: ReturnType<typeof convexTest>, projectStatus: Doc<"projects">["status"]) {
   const now = Date.now();
   return await t.run(async (ctx) => {
     const tenantId = await ctx.db.insert("tenants", {
-      slug: "henke-wonen", naam: "Henke Wonen", status: "active", aangemaaktOp: now, gewijzigdOp: now
+      slug: "henke-wonen",
+      naam: "Henke Wonen",
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
     await ctx.db.insert("users", {
-      tenantId, externalUserId, email: "a@henke.nl", role: "admin", aangemaaktOp: now, gewijzigdOp: now
+      tenantId,
+      externalUserId,
+      email: "a@henke.nl",
+      role: "admin",
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
     const customerId = await ctx.db.insert("customers", {
-      tenantId, type: "private", weergaveNaam: "Testklant", status: "active", aangemaaktOp: now, gewijzigdOp: now
+      tenantId,
+      type: "private",
+      weergaveNaam: "Testklant",
+      status: "active",
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
     const projectId = await ctx.db.insert("projects", {
-      tenantId, klantId: customerId, titel: "Testproject", status: projectStatus, aangemaaktOp: now, gewijzigdOp: now
+      tenantId,
+      klantId: customerId,
+      titel: "Testproject",
+      status: projectStatus,
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
     return { tenantId, customerId, projectId };
+  });
+}
+
+async function insertPricedQuote(
+  t: ReturnType<typeof convexTest>,
+  ids: Awaited<ReturnType<typeof base>>,
+  status: Doc<"quotes">["status"],
+  offertenummer: string
+) {
+  const now = Date.now();
+  return await t.run(async (ctx) => {
+    const quoteId = await ctx.db.insert("quotes", {
+      tenantId: ids.tenantId,
+      projectId: ids.projectId,
+      klantId: ids.customerId,
+      offertenummer,
+      titel: "Offerte",
+      status,
+      subtotaalExBtw: 100,
+      btwTotaal: 21,
+      totaalInclBtw: 121,
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    await ctx.db.insert("quoteLines", {
+      tenantId: ids.tenantId,
+      quoteId,
+      regelType: "product",
+      titel: "PVC",
+      aantal: 1,
+      eenheid: "m2",
+      eenheidsprijsExBtw: 100,
+      btwTarief: 21,
+      regelTotaalExBtw: 100,
+      regelBtwTotaal: 21,
+      regelTotaalInclBtw: 121,
+      sortOrder: 1,
+      aangemaaktOp: now,
+      gewijzigdOp: now
+    });
+    return quoteId;
   });
 }
 
@@ -42,12 +99,31 @@ test("createQuote weigert op een geannuleerd dossier (geen stil herleven)", asyn
 
   await expect(
     t.mutation(api.portal.createQuote, {
-      tenantSlug: "henke-wonen", actor, projectId: String(ids.projectId), titel: "Herleefde offerte"
+      tenantSlug: "henke-wonen",
+      actor,
+      projectId: String(ids.projectId),
+      titel: "Herleefde offerte"
     })
   ).rejects.toThrow(/geannuleerd/i);
 
   const project = await t.run(async (ctx) => ctx.db.get(ids.projectId as Id<"projects">));
   expect(project?.status).toBe("cancelled");
+});
+
+test("een bestaande offerte op een geannuleerd dossier kan niet alsnog worden verstuurd", async () => {
+  stubAuth();
+  const t = convexTest(schema, modules);
+  const ids = await base(t, "cancelled");
+  const quoteId = await insertPricedQuote(t, ids, "draft", "OFF-GESTOPT");
+
+  await expect(
+    t.mutation(api.portal.updateQuoteStatus, {
+      tenantSlug: "henke-wonen",
+      actor,
+      quoteId: String(quoteId),
+      status: "sent"
+    })
+  ).rejects.toThrow(/dossier is geannuleerd/i);
 });
 
 test("createQuote op een lopend dossier (ordering) laat de projectstatus staan (meerwerk)", async () => {
@@ -56,7 +132,10 @@ test("createQuote op een lopend dossier (ordering) laat de projectstatus staan (
   const ids = await base(t, "ordering");
 
   await t.mutation(api.portal.createQuote, {
-    tenantSlug: "henke-wonen", actor, projectId: String(ids.projectId), titel: "Meerwerk"
+    tenantSlug: "henke-wonen",
+    actor,
+    projectId: String(ids.projectId),
+    titel: "Meerwerk"
   });
 
   const project = await t.run(async (ctx) => ctx.db.get(ids.projectId as Id<"projects">));
@@ -69,11 +148,57 @@ test("createQuote in de aanloopfase (lead) zet het dossier op quote_draft", asyn
   const ids = await base(t, "lead");
 
   await t.mutation(api.portal.createQuote, {
-    tenantSlug: "henke-wonen", actor, projectId: String(ids.projectId), titel: "Eerste offerte"
+    tenantSlug: "henke-wonen",
+    actor,
+    projectId: String(ids.projectId),
+    titel: "Eerste offerte"
   });
 
   const project = await t.run(async (ctx) => ctx.db.get(ids.projectId as Id<"projects">));
   expect(project?.status).toBe("quote_draft");
+});
+
+test("meerwerk verzenden en afwijzen laat een lopend dossier in ordering staan", async () => {
+  stubAuth();
+  const t = convexTest(schema, modules);
+  const ids = await base(t, "ordering");
+  const quoteId = await insertPricedQuote(t, ids, "draft", "OFF-MEERWERK");
+
+  await t.mutation(api.portal.updateQuoteStatus, {
+    tenantSlug: "henke-wonen",
+    actor,
+    quoteId: String(quoteId),
+    status: "sent"
+  });
+  let project = await t.run(async (ctx) => ctx.db.get(ids.projectId));
+  expect(project?.status).toBe("ordering");
+
+  await t.mutation(api.portal.updateQuoteStatus, {
+    tenantSlug: "henke-wonen",
+    actor,
+    quoteId: String(quoteId),
+    status: "rejected"
+  });
+  project = await t.run(async (ctx) => ctx.db.get(ids.projectId));
+  expect(project?.status).toBe("ordering");
+});
+
+test("afwijzen van één offerte houdt het dossier op verzonden zolang een andere offerte verzonden is", async () => {
+  stubAuth();
+  const t = convexTest(schema, modules);
+  const ids = await base(t, "quote_sent");
+  const rejectedQuoteId = await insertPricedQuote(t, ids, "sent", "OFF-A");
+  await insertPricedQuote(t, ids, "sent", "OFF-B");
+
+  await t.mutation(api.portal.updateQuoteStatus, {
+    tenantSlug: "henke-wonen",
+    actor,
+    quoteId: String(rejectedQuoteId),
+    status: "rejected"
+  });
+
+  const project = await t.run(async (ctx) => ctx.db.get(ids.projectId));
+  expect(project?.status).toBe("quote_sent");
 });
 
 test("offerte afwijzen logt een quote_rejected-event en annuleert open bestellingen (met telling)", async () => {
@@ -83,20 +208,35 @@ test("offerte afwijzen logt een quote_rejected-event en annuleert open bestellin
   const now = Date.now();
   const { quoteId, orderId } = await t.run(async (ctx) => {
     const quoteId = await ctx.db.insert("quotes", {
-      tenantId: ids.tenantId, projectId: ids.projectId, klantId: ids.customerId,
-      offertenummer: "OFF-2026-10", titel: "Offerte", status: "sent",
-      subtotaalExBtw: 100, btwTotaal: 21, totaalInclBtw: 121, aangemaaktOp: now, gewijzigdOp: now
+      tenantId: ids.tenantId,
+      projectId: ids.projectId,
+      klantId: ids.customerId,
+      offertenummer: "OFF-2026-10",
+      titel: "Offerte",
+      status: "sent",
+      subtotaalExBtw: 100,
+      btwTotaal: 21,
+      totaalInclBtw: 121,
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
     // Open leveranciersbestelling op deze offerte: moet mee-geannuleerd worden.
     const orderId = await ctx.db.insert("supplierOrders", {
-      tenantId: ids.tenantId, projectId: ids.projectId, quoteId, status: "ordered",
-      aangemaaktOp: now, gewijzigdOp: now
+      tenantId: ids.tenantId,
+      projectId: ids.projectId,
+      quoteId,
+      status: "ordered",
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
     return { quoteId, orderId };
   });
 
   await t.mutation(api.portal.updateQuoteStatus, {
-    tenantSlug: "henke-wonen", actor, quoteId: String(quoteId), status: "rejected"
+    tenantSlug: "henke-wonen",
+    actor,
+    quoteId: String(quoteId),
+    status: "rejected"
   });
 
   const { project, events, order } = await t.run(async (ctx) => ({
@@ -122,23 +262,81 @@ test("een geaccepteerde (nog niet gefactureerde) offerte kan alleen naar geannul
   const now = Date.now();
   const quoteId = await t.run(async (ctx) =>
     ctx.db.insert("quotes", {
-      tenantId: ids.tenantId, projectId: ids.projectId, klantId: ids.customerId,
-      offertenummer: "OFF-2026-11", titel: "Offerte", status: "accepted",
-      subtotaalExBtw: 100, btwTotaal: 21, totaalInclBtw: 121, aangemaaktOp: now, gewijzigdOp: now
+      tenantId: ids.tenantId,
+      projectId: ids.projectId,
+      klantId: ids.customerId,
+      offertenummer: "OFF-2026-11",
+      titel: "Offerte",
+      status: "accepted",
+      subtotaalExBtw: 100,
+      btwTotaal: 21,
+      totaalInclBtw: 121,
+      aangemaaktOp: now,
+      gewijzigdOp: now
     })
   );
 
   await expect(
     t.mutation(api.portal.updateQuoteStatus, {
-      tenantSlug: "henke-wonen", actor, quoteId: String(quoteId), status: "draft"
+      tenantSlug: "henke-wonen",
+      actor,
+      quoteId: String(quoteId),
+      status: "draft"
     })
   ).rejects.toThrow(/alleen worden geannuleerd/i);
 
   await t.mutation(api.portal.updateQuoteStatus, {
-    tenantSlug: "henke-wonen", actor, quoteId: String(quoteId), status: "cancelled"
+    tenantSlug: "henke-wonen",
+    actor,
+    quoteId: String(quoteId),
+    status: "cancelled"
   });
-  const quote = await t.run(async (ctx) => ctx.db.get(quoteId as Id<"quotes">));
+  const { quote, project } = await t.run(async (ctx) => ({
+    quote: await ctx.db.get(quoteId as Id<"quotes">),
+    project: await ctx.db.get(ids.projectId)
+  }));
   expect(quote?.status).toBe("cancelled");
+  // Een offerte annuleren is niet hetzelfde als het hele dossier annuleren.
+  expect(project?.status).toBe("quote_rejected");
+});
+
+test("annuleren van een geaccepteerde offerte sluit de acceptatie-opvolgtaken", async () => {
+  stubAuth();
+  const t = convexTest(schema, modules);
+  const ids = await base(t, "quote_accepted");
+  const quoteId = await insertPricedQuote(t, ids, "accepted", "OFF-AKKOORD");
+  const now = Date.now();
+  await t.run(async (ctx) => {
+    for (const type of ["confirmation_payment", "execution_call"] as const) {
+      await ctx.db.insert("projectTasks", {
+        tenantId: ids.tenantId,
+        projectId: ids.projectId,
+        quoteId,
+        type,
+        titel: type,
+        vervaltOp: now + 5 * 86400000,
+        status: "open",
+        aangemaaktOp: now,
+        gewijzigdOp: now
+      });
+    }
+  });
+
+  await t.mutation(api.portal.updateQuoteStatus, {
+    tenantSlug: "henke-wonen",
+    actor,
+    quoteId: String(quoteId),
+    status: "cancelled"
+  });
+
+  const tasks = await t.run(async (ctx) =>
+    ctx.db
+      .query("projectTasks")
+      .withIndex("by_quote", (q) => q.eq("tenantId", ids.tenantId).eq("quoteId", quoteId))
+      .collect()
+  );
+  expect(tasks).toHaveLength(2);
+  expect(tasks.every((task) => task.status === "dismissed")).toBe(true);
 });
 
 test("import naar offerte zet de inmeting op converted_to_quote; afwijzen zet 'm terug op reviewed", async () => {
@@ -148,21 +346,40 @@ test("import naar offerte zet de inmeting op converted_to_quote; afwijzen zet 'm
   const now = Date.now();
   const { quoteId, measurementId } = await t.run(async (ctx) => {
     const qid = await ctx.db.insert("quotes", {
-      tenantId: ids.tenantId, projectId: ids.projectId, klantId: ids.customerId,
-      offertenummer: "OFF-2026-12", titel: "Offerte", status: "draft",
-      subtotaalExBtw: 0, btwTotaal: 0, totaalInclBtw: 0, aangemaaktOp: now, gewijzigdOp: now
+      tenantId: ids.tenantId,
+      projectId: ids.projectId,
+      klantId: ids.customerId,
+      offertenummer: "OFF-2026-12",
+      titel: "Offerte",
+      status: "draft",
+      subtotaalExBtw: 0,
+      btwTotaal: 0,
+      totaalInclBtw: 0,
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
     const mid = await ctx.db.insert("measurements", {
-      tenantId: ids.tenantId, projectId: ids.projectId, klantId: ids.customerId,
-      status: "measured", aangemaaktOp: now, gewijzigdOp: now
+      tenantId: ids.tenantId,
+      projectId: ids.projectId,
+      klantId: ids.customerId,
+      status: "measured",
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
     await ctx.db.insert("measurementLines", {
-      tenantId: ids.tenantId, inmetingId: mid,
-      productGroep: "flooring", berekeningType: "area",
-      invoer: { lengte: 4, breedte: 5 }, resultaat: { m2: 20.6 },
-      snijverliesPct: 3, aantal: 20.6, eenheid: "m2",
-      offerteRegelType: "product", quotePreparationStatus: "ready_for_quote",
-      aangemaaktOp: now, gewijzigdOp: now
+      tenantId: ids.tenantId,
+      inmetingId: mid,
+      productGroep: "flooring",
+      berekeningType: "area",
+      invoer: { lengte: 4, breedte: 5 },
+      resultaat: { m2: 20.6 },
+      snijverliesPct: 3,
+      aantal: 20.6,
+      eenheid: "m2",
+      offerteRegelType: "product",
+      quotePreparationStatus: "ready_for_quote",
+      aangemaaktOp: now,
+      gewijzigdOp: now
     });
     return { quoteId: qid, measurementId: mid };
   });
@@ -171,12 +388,18 @@ test("import naar offerte zet de inmeting op converted_to_quote; afwijzen zet 'm
     (
       await ctx.db
         .query("measurementLines")
-        .withIndex("by_measurement", (q) => q.eq("tenantId", ids.tenantId).eq("inmetingId", measurementId))
+        .withIndex("by_measurement", (q) =>
+          q.eq("tenantId", ids.tenantId).eq("inmetingId", measurementId)
+        )
         .collect()
     ).map((line) => line._id)
   );
   await t.mutation(api.portal.importMeasurementLinesToQuote, {
-    tenantSlug: "henke-wonen", actor, quoteId: String(quoteId), lineIds, startSortOrder: 1
+    tenantSlug: "henke-wonen",
+    actor,
+    quoteId: String(quoteId),
+    lineIds,
+    startSortOrder: 1
   });
 
   let measurement = await t.run(async (ctx) => ctx.db.get(measurementId as Id<"measurements">));
@@ -187,21 +410,28 @@ test("import naar offerte zet de inmeting op converted_to_quote; afwijzen zet 'm
   const convertedLines = await t.run(async (ctx) =>
     ctx.db
       .query("measurementLines")
-      .withIndex("by_measurement", (q) => q.eq("tenantId", ids.tenantId).eq("inmetingId", measurementId))
+      .withIndex("by_measurement", (q) =>
+        q.eq("tenantId", ids.tenantId).eq("inmetingId", measurementId)
+      )
       .collect()
   );
   expect(convertedLines.every((line) => line.quotePreparationStatus === "converted")).toBe(true);
 
   // Afwijzen bevrijdt de meetregels én zet de inmetingsstatus terug.
   await t.mutation(api.portal.updateQuoteStatus, {
-    tenantSlug: "henke-wonen", actor, quoteId: String(quoteId), status: "rejected"
+    tenantSlug: "henke-wonen",
+    actor,
+    quoteId: String(quoteId),
+    status: "rejected"
   });
   measurement = await t.run(async (ctx) => ctx.db.get(measurementId as Id<"measurements">));
   expect(measurement?.status).toBe("reviewed");
   const lines = await t.run(async (ctx) =>
     ctx.db
       .query("measurementLines")
-      .withIndex("by_measurement", (q) => q.eq("tenantId", ids.tenantId).eq("inmetingId", measurementId))
+      .withIndex("by_measurement", (q) =>
+        q.eq("tenantId", ids.tenantId).eq("inmetingId", measurementId)
+      )
       .collect()
   );
   expect(lines.every((line) => line.quotePreparationStatus === "ready_for_quote")).toBe(true);

@@ -235,7 +235,7 @@ function activeFieldQuote(quotes: Doc<"quotes">[], projectId: Id<"projects">) {
 
 function latestMeasurement(measurements: Doc<"measurements">[], projectId: Id<"projects">) {
   return measurements
-    .filter((measurement) => measurement.projectId === projectId)
+    .filter((measurement) => measurement.projectId === projectId && !measurement.contextQuoteId)
     .sort((left, right) => right.gewijzigdOp - left.gewijzigdOp)[0];
 }
 

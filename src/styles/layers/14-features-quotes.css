@@ -1,4 +1,3 @@
-
 .quote-detail-workspace {
   gap: var(--space-4);
 }
@@ -15,6 +14,11 @@
 .quote-summary-panel,
 .quote-main-column {
   min-width: 0;
+}
+
+.quote-summary-panel {
+  display: grid;
+  gap: var(--space-4);
 }
 
 .quote-summary-panel .ui-section-header {
@@ -1007,7 +1011,6 @@
 .line-type-button.is-selected svg {
   color: var(--accent);
 }
-
 
 /* ── Presentatiemodus: fullscreen klantversie voor het winkelgesprek ─────────
    Het scherm gaat naar de klant toe: alleen het offertevel is zichtbaar.

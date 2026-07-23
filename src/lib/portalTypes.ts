@@ -140,6 +140,10 @@ export type PortalMeasurementLine = {
   notities?: string;
   offerteRegelType: QuoteLineType;
   quotePreparationStatus: QuotePreparationStatus;
+  bundleId?: string;
+  bundleType?: "stair_renovation";
+  bundleRole?: "material" | "labor" | "surcharge";
+  sectionKey?: string;
   productId?: string;
   productNaam?: string;
   indicatieveEenheidsprijsExBtw?: number;
@@ -172,13 +176,7 @@ export type PortalProjectMeasurementData = {
   wasteProfiles: PortalWasteProfile[];
 };
 
-export type QuoteStatus =
-  | "draft"
-  | "sent"
-  | "accepted"
-  | "rejected"
-  | "expired"
-  | "cancelled";
+export type QuoteStatus = "draft" | "sent" | "accepted" | "rejected" | "expired" | "cancelled";
 
 export type QuoteLineType =
   | "product"
@@ -358,6 +356,9 @@ export type ProductUnit =
   | "hour"
   | "stairs"
   | "custom";
+export type ProductAard = "standard" | "with_variants" | "made_to_measure" | "service" | "manual";
+
+export type ProductPickerScope = "orderable" | "service" | "all";
 
 export type ProductKind =
   | "click"
@@ -396,6 +397,9 @@ export type CommercialName = {
 export type PortalProduct = {
   id: string;
   tenantId: string;
+  sku?: string;
+  productAard?: ProductAard;
+  attributen?: Record<string, unknown>;
   category: string;
   supplier: string;
   displaySupplierName: string;
@@ -842,13 +846,7 @@ export type ImportProfile = {
 // Facturen
 // ---------------------------------------------------------------------------
 
-export type InvoiceStatus =
-  | "draft"
-  | "sent"
-  | "partially_paid"
-  | "paid"
-  | "overdue"
-  | "cancelled";
+export type InvoiceStatus = "draft" | "sent" | "partially_paid" | "paid" | "overdue" | "cancelled";
 
 export type PortalInvoice = {
   id: string;
@@ -917,4 +915,3 @@ export type PortalInvoiceDetail = {
   } | null;
   quoteLines: PortalInvoiceLine[];
 };
-

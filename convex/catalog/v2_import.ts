@@ -2,6 +2,8 @@ import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { mutationActorValidator, requireMutationRole } from "../authz";
 import type { Id } from "../_generated/dataModel";
+import { resolveStairMaterialMetadata } from "../../src/lib/quotes/stairMaterialCatalog";
+import { STAIR_SERVICE_METADATA_BY_SKU, type StairServiceMetadata } from "../stairServiceProducts";
 
 function slugify(value: string): string {
   return value
@@ -16,37 +18,57 @@ function slugify(value: string): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+async function findV2Supplier(ctx: any, tenantId: Id<"tenants">, sourceName: string) {
+  const importSleutel = `v2:${slugify(sourceName)}`;
+  const byImportKey = await ctx.db
+    .query("suppliers")
+    .withIndex("by_import_key", (q: any) =>
+      q.eq("tenantId", tenantId).eq("importSleutel", importSleutel)
+    )
+    .first();
+  if (byImportKey) return byImportKey;
+
+  return await ctx.db
+    .query("suppliers")
+    .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
+    .filter((q: any) => q.eq(q.field("naam"), sourceName))
+    .first();
+}
+
 export const clearCatalogProducts = mutation({
   args: {
     actor: mutationActorValidator,
-    tenantSlug: v.string(),
+    tenantSlug: v.string()
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["editor", "admin"]);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "editor",
+      "admin"
+    ]);
     const tenantId = tenant._id;
-    
+
     // Alleen producten en productPrices verwijderen om categorie-instellingen te behouden
     const prices = await ctx.db
       .query("productPrices")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
       .take(250);
-      
+
     for (const p of prices) {
       await ctx.db.delete(p._id);
     }
-    
+
     let products = [];
     if (prices.length < 250) {
       products = await ctx.db
         .query("products")
         .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
         .take(250);
-        
+
       for (const p of products) {
         await ctx.db.delete(p._id);
       }
     }
-    
+
     return {
       deletedPrices: prices.length,
       deletedProducts: products.length,
@@ -59,21 +81,24 @@ export const clearCatalogProducts = mutation({
 export const clearCatalogDataIssues = mutation({
   args: {
     actor: mutationActorValidator,
-    tenantSlug: v.string(),
+    tenantSlug: v.string()
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["editor", "admin"]);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "editor",
+      "admin"
+    ]);
     const tenantId = tenant._id;
-    
+
     const issues = await ctx.db
       .query("catalogDataIssues")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
       .take(250);
-      
+
     for (const issue of issues) {
       await ctx.db.delete(issue._id);
     }
-    
+
     return { deleted: issues.length };
   }
 });
@@ -81,60 +106,72 @@ export const clearCatalogDataIssues = mutation({
 export const clearOldImportData = mutation({
   args: {
     actor: mutationActorValidator,
-    tenantSlug: v.string(),
+    tenantSlug: v.string()
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["editor", "admin"]);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "editor",
+      "admin"
+    ]);
     const tenantId = tenant._id;
     let deleted = 0;
     let moreRows = false;
-    
+
     // First clear productImportRows by looping over batches
     const batchesForRows = await ctx.db
       .query("productImportBatches")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
       .collect();
-      
+
     for (const batch of batchesForRows) {
       const rows = await ctx.db
         .query("productImportRows")
         .withIndex("by_batch", (q: any) => q.eq("tenantId", tenantId).eq("batchId", batch._id))
         .take(100);
-        
+
       for (const row of rows) {
         await ctx.db.delete(row._id);
         deleted++;
       }
-      
+
       if (rows.length === 100) {
         moreRows = true;
         break; // Stop and let next chunk handle it
       }
     }
-    
+
     if (moreRows) {
       return { deleted, moreRows: true };
     }
-    
+
     // If we've deleted all rows, we can now safely delete the batches and profiles
     const batches = await ctx.db
       .query("productImportBatches")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
       .collect();
-    for (const b of batches) { await ctx.db.delete(b._id); deleted++; }
-    
+    for (const b of batches) {
+      await ctx.db.delete(b._id);
+      deleted++;
+    }
+
     const priceLists = await ctx.db
       .query("priceLists")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
       .collect();
-    for (const pl of priceLists) { await ctx.db.delete(pl._id); deleted++; }
-    
+    for (const pl of priceLists) {
+      await ctx.db.delete(pl._id);
+      deleted++;
+    }
+
     const profiles = await ctx.db
       .query("importProfiles")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
       .collect();
-    for (const p of profiles) { await ctx.db.delete(p._id); deleted++; }
-    
+    for (const p of profiles) {
+      await ctx.db.delete(p._id);
+      deleted++;
+    }
+
     return { deleted, moreRows: false };
   }
 });
@@ -143,33 +180,43 @@ export const fixSupplierBatches = mutation({
   args: {
     actor: mutationActorValidator,
     tenantSlug: v.string(),
-    counts: v.array(v.object({
-      supplier: v.string(),
-      productCount: v.number(),
-      priceCount: v.number()
-    }))
+    counts: v.array(
+      v.object({
+        supplier: v.string(),
+        productCount: v.number(),
+        priceCount: v.number()
+      })
+    )
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["editor", "admin"]);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "editor",
+      "admin"
+    ]);
     const tenantId = tenant._id;
     const now = Date.now();
-    
+
     const suppliers = await ctx.db
       .query("suppliers")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
       .collect();
-      
+
     let fixed = 0;
     for (const supplier of suppliers) {
-      const countData = args.counts.find((c: any) => c.supplier === supplier.naam);
+      const countData = args.counts.find(
+        (c: any) =>
+          supplier.importSleutel === `v2:${slugify(c.supplier)}` || c.supplier === supplier.naam
+      );
       if (!countData) continue; // Skip suppliers that weren't in this import run
-      
+
       const existingV2Batch = await ctx.db
         .query("productImportBatches")
-        .withIndex("by_supplier", (q: any) => q.eq("tenantId", tenantId).eq("leverancierId", supplier._id))
+        .withIndex("by_supplier", (q: any) =>
+          q.eq("tenantId", tenantId).eq("leverancierId", supplier._id)
+        )
         .filter((q: any) => q.eq(q.field("bestandsnaam"), "V2_Direct_Import"))
         .first();
-        
+
       if (!existingV2Batch) {
         await ctx.db.insert("productImportBatches", {
           tenantId,
@@ -187,7 +234,7 @@ export const fixSupplierBatches = mutation({
           waarschuwingRijen: 0,
           productRijen: countData.productCount,
           geimporteerdePrijzen: countData.priceCount,
-          onbekendeBtwModusRijen: 0 // V2 data already has correct VAT 
+          onbekendeBtwModusRijen: 0 // V2 data already has correct VAT
         });
       } else {
         await ctx.db.patch(existingV2Batch._id, {
@@ -201,12 +248,12 @@ export const fixSupplierBatches = mutation({
           onbekendeBtwModusRijen: 0
         });
       }
-      
+
       await ctx.db.patch(supplier._id, {
         gewijzigdOp: now,
         laatsteContactOp: now
       });
-      
+
       fixed++;
     }
     return { fixed };
@@ -216,23 +263,28 @@ export const fixSupplierBatches = mutation({
 export const syncSupplierStatuses = mutation({
   args: {
     actor: mutationActorValidator,
-    tenantSlug: v.string(),
+    tenantSlug: v.string()
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["editor", "admin"]);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "editor",
+      "admin"
+    ]);
     const tenantId = tenant._id;
     const now = Date.now();
-    
+
     const suppliers = await ctx.db
       .query("suppliers")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
       .collect();
-      
+
     let updated = 0;
     for (const supplier of suppliers) {
       const hasProducts = await ctx.db
         .query("products")
-        .withIndex("by_supplier_status", (q: any) => q.eq("tenantId", tenantId).eq("leverancierId", supplier._id).eq("status", "active"))
+        .withIndex("by_supplier_status", (q: any) =>
+          q.eq("tenantId", tenantId).eq("leverancierId", supplier._id).eq("status", "active")
+        )
         .first();
 
       // Alleen opwaarderen naar "received" bij daadwerkelijke producten.
@@ -253,39 +305,48 @@ export const syncSupplierStatuses = mutation({
 export const cleanLegacySuppliers = mutation({
   args: {
     actor: mutationActorValidator,
-    tenantSlug: v.string(),
+    tenantSlug: v.string()
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["editor", "admin"]);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "editor",
+      "admin"
+    ]);
     const tenantId = tenant._id;
-    
+
     const suppliers = await ctx.db
       .query("suppliers")
       .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
       .collect();
-      
+
     let deletedCount = 0;
     for (const supplier of suppliers) {
       const hasProducts = await ctx.db
         .query("products")
-        .withIndex("by_supplier_status", (q: any) => q.eq("tenantId", tenantId).eq("leverancierId", supplier._id).eq("status", "active"))
+        .withIndex("by_supplier_status", (q: any) =>
+          q.eq("tenantId", tenantId).eq("leverancierId", supplier._id).eq("status", "active")
+        )
         .first();
-        
+
       if (!hasProducts) {
         // Find and delete any batches associated
         const batches = await ctx.db
           .query("productImportBatches")
-          .withIndex("by_supplier", (q: any) => q.eq("tenantId", tenantId).eq("leverancierId", supplier._id))
+          .withIndex("by_supplier", (q: any) =>
+            q.eq("tenantId", tenantId).eq("leverancierId", supplier._id)
+          )
           .collect();
         for (const b of batches) await ctx.db.delete(b._id);
-        
+
         // Find and delete any priceLists
         const priceLists = await ctx.db
           .query("priceLists")
-          .withIndex("by_supplier", (q: any) => q.eq("tenantId", tenantId).eq("leverancierId", supplier._id))
+          .withIndex("by_supplier", (q: any) =>
+            q.eq("tenantId", tenantId).eq("leverancierId", supplier._id)
+          )
           .collect();
         for (const pl of priceLists) await ctx.db.delete(pl._id);
-        
+
         // Find and delete any importProfiles
         const profiles = await ctx.db
           .query("importProfiles")
@@ -296,7 +357,7 @@ export const cleanLegacySuppliers = mutation({
             await ctx.db.delete(p._id);
           }
         }
-        
+
         await ctx.db.delete(supplier._id);
         deletedCount++;
       }
@@ -312,23 +373,29 @@ export const cleanLegacySuppliers = mutation({
  * handmatig gezette waarde wordt hier bewust NIET overschreven.
  */
 const V2_CATEGORY_GROUPS: Record<string, string> = {
-  "PVC": "flooring",
-  "Tapijt": "flooring",
-  "Vinyl": "flooring",
+  PVC: "flooring",
+  Tapijt: "flooring",
+  Vinyl: "flooring",
   "Tapijt & Vinyl": "flooring",
-  "Karpetten": "flooring",
-  "Plinten": "plinths",
-  "Traprenovatie": "stairs",
-  "Gordijnen": "curtains",
-  "Gordijnstoffen": "curtains",
-  "Rolgordijnen": "curtains",
-  "Jaloezieën": "curtains",
-  "Behang": "wallpaper",
+  Karpetten: "flooring",
+  Plinten: "plinths",
+  Traprenovatie: "stairs",
+  "Traprenovatie (arbeid)": "stairs",
+  Gordijnen: "curtains",
+  Gordijnstoffen: "curtains",
+  Rolgordijnen: "curtains",
+  Jaloezieën: "curtains",
+  Behang: "wallpaper",
   "Akoestische Panelen": "wall_panels",
-  "Badkamer": "wall_panels"
+  Badkamer: "wall_panels"
 };
 
-async function ensureCategory(ctx: any, tenantId: Id<"tenants">, name: string, parentId?: Id<"categories">) {
+async function ensureCategory(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  name: string,
+  parentId?: Id<"categories">
+) {
   const now = Date.now();
   const slug = slugify(name);
   const productGroep = V2_CATEGORY_GROUPS[name];
@@ -371,18 +438,25 @@ async function ensureSupplier(
   name: string
 ): Promise<{ id: Id<"suppliers">; verkoopBtwModus?: "exclusive" | "inclusive" }> {
   const now = Date.now();
-  const existing = await ctx.db
-    .query("suppliers")
-    .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
-    .filter((q: any) => q.eq(q.field("naam"), name))
-    .first();
+  const importSleutel = `v2:${slugify(name)}`;
+  const existing = await findV2Supplier(ctx, tenantId, name);
 
   if (existing) {
     // Een leverancier waarvoor we zojuist producten importeren mag niet
     // gearchiveerd/inactief blijven staan (bv. Moduleo stond nog op
     // "archived" van vóór de V2-migratie).
-    if (existing.status === "archived" || existing.status === "inactive") {
-      await ctx.db.patch(existing._id, { status: "active", gewijzigdOp: now });
+    if (
+      existing.status === "archived" ||
+      existing.status === "inactive" ||
+      existing.importSleutel !== importSleutel
+    ) {
+      await ctx.db.patch(existing._id, {
+        importSleutel,
+        ...(existing.status === "archived" || existing.status === "inactive"
+          ? { status: "active" as const }
+          : {}),
+        gewijzigdOp: now
+      });
     }
     return { id: existing._id, verkoopBtwModus: existing.verkoopBtwModus };
   }
@@ -392,6 +466,7 @@ async function ensureSupplier(
     naam: name,
     prijslijstStatus: "received",
     aangemaaktOp: now,
+    importSleutel,
     gewijzigdOp: now
   });
   return { id };
@@ -405,6 +480,60 @@ const V2_UNITS = new Set(["m2", "m1", "pack", "piece", "roll", "step"]);
 
 function v2Unit(raw: string): "m2" | "m1" | "pack" | "piece" | "roll" | "step" {
   return (V2_UNITS.has(raw) ? raw : "piece") as "m2" | "m1" | "pack" | "piece" | "roll" | "step";
+}
+
+type V2ServiceMetadataInput = {
+  family?: string;
+  covering?: string;
+  shape?: string;
+  role?: string;
+  sectionKey?: string;
+  section_key?: string;
+};
+
+/**
+ * Stabiele fallback voor de huidige V2-werkzaamhedenbron, die nog geen
+ * service_metadata bevat. De SKU is de catalogusidentiteit; productnamen zijn
+ * uitsluitend presentatie en worden bewust nooit voor businesslogica geparsed.
+ */
+function nonEmptyText(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
+/**
+ * Bronmetadata is leidend en wordt veld voor veld aangevuld met de SKU-fallback.
+ * Voor een nieuwe/onbekende SKU moet de bron minimaal family, role en sectionKey
+ * aanleveren; een onvolledig object wordt niet als bruikbare metadata opgeslagen.
+ */
+function resolveV2ServiceMetadata(
+  supplierName: string,
+  sku: string,
+  source?: V2ServiceMetadataInput
+): StairServiceMetadata | undefined {
+  const fallback =
+    supplierName.trim().toLocaleLowerCase("nl") === "henke wonen diensten"
+      ? STAIR_SERVICE_METADATA_BY_SKU[sku.trim().toUpperCase()]
+      : undefined;
+  const family = nonEmptyText(source?.family) ?? fallback?.family;
+  const role = nonEmptyText(source?.role) ?? fallback?.role;
+  const sectionKey =
+    nonEmptyText(source?.sectionKey) ?? nonEmptyText(source?.section_key) ?? fallback?.sectionKey;
+
+  if (!family || !role || !sectionKey) {
+    return undefined;
+  }
+
+  const covering = nonEmptyText(source?.covering) ?? fallback?.covering;
+  const shape = nonEmptyText(source?.shape) ?? fallback?.shape;
+
+  return {
+    family,
+    ...(covering ? { covering } : {}),
+    ...(shape ? { shape } : {}),
+    role,
+    sectionKey
+  };
 }
 
 export const importChunk = mutation({
@@ -436,11 +565,45 @@ export const importChunk = mutation({
         unit: v.string(),
         pack_content_m2: v.optional(v.number()),
         width_cm: v.optional(v.number()),
+        // Optionele, bron-gestuurde classificatie voor dienstproducten. Het
+        // genormaliseerde object wordt opgeslagen onder attributen.serviceMetadata.
+        // section_key wordt naast sectionKey geaccepteerd voor Python/JSONL-bronnen.
+        service_metadata: v.optional(
+          v.object({
+            family: v.optional(v.string()),
+            covering: v.optional(v.string()),
+            shape: v.optional(v.string()),
+            role: v.optional(v.string()),
+            sectionKey: v.optional(v.string()),
+            section_key: v.optional(v.string())
+          })
+        ),
+        // Product-BOM metadata voor traprenovatie. De huidige Floorlife-SKU's
+        // krijgen daarnaast een stabiele fallback, zodat bestaande JSONL direct werkt.
+        stair_material_metadata: v.optional(
+          v.object({
+            family: v.optional(v.string()),
+            covering: v.optional(v.string()),
+            componentRole: v.optional(v.string()),
+            component_role: v.optional(v.string()),
+            isPrimary: v.optional(v.boolean()),
+            is_primary: v.optional(v.boolean()),
+            piecesPerPack: v.optional(v.number()),
+            pieces_per_pack: v.optional(v.number()),
+            orderUnit: v.optional(v.string()),
+            order_unit: v.optional(v.string()),
+            lengthMPerUnit: v.optional(v.number()),
+            length_m_per_unit: v.optional(v.number())
+          })
+        )
       })
-    ),
+    )
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["editor", "admin"]);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "editor",
+      "admin"
+    ]);
     const tenantId = tenant._id;
     const now = Date.now();
     let inserted = 0;
@@ -452,6 +615,12 @@ export const importChunk = mutation({
       const mainCatId = await ensureCategory(ctx, tenantId, row.main_category);
       const subCatId = await ensureCategory(ctx, tenantId, row.sub_category, mainCatId);
       const unit = v2Unit(row.unit);
+      const serviceMetadata = resolveV2ServiceMetadata(row.supplier, row.sku, row.service_metadata);
+      const stairMaterialMetadata =
+        row.stair_material_metadata ||
+        row.main_category.trim().toLocaleLowerCase("nl") === "trappen"
+          ? resolveStairMaterialMetadata({ sku: row.sku }, row.stair_material_metadata)
+          : undefined;
 
       // Upsert op leverancier+sku: productId's blijven stabiel over
       // prijslijst-updates heen, zodat offerteregels en bestellingen die naar
@@ -475,12 +644,19 @@ export const importChunk = mutation({
           | "standard",
         eenheid: unit,
         pakinhoudM2: row.pack_content_m2,
+        stuksPerPak: stairMaterialMetadata?.piecesPerPack,
+        verkoopEenheid: unit,
+        inkoopEenheid: unit,
+        bestelEenheid: stairMaterialMetadata?.orderUnit ?? unit,
+        bestelVeelvoud: stairMaterialMetadata?.orderUnit ? 1 : undefined,
         breedteMm: row.width_cm !== undefined ? Math.round(row.width_cm * 10) : undefined,
         status: "active" as const,
         gewijzigdOp: now,
         attributen: {
           product_type: row.product_type,
           price_unit_raw: row.price_unit,
+          ...(serviceMetadata ? { serviceMetadata } : {}),
+          ...(stairMaterialMetadata ? { stairMaterialMetadata } : {})
         }
       };
 
@@ -569,15 +745,14 @@ export const archiveVanishedProducts = mutation({
     cursor: v.optional(v.union(v.string(), v.null()))
   },
   handler: async (ctx, args) => {
-    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["editor", "admin"]);
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "editor",
+      "admin"
+    ]);
     const tenantId = tenant._id;
     const now = Date.now();
 
-    const supplier = await ctx.db
-      .query("suppliers")
-      .withIndex("by_tenant", (q: any) => q.eq("tenantId", tenantId))
-      .filter((q: any) => q.eq(q.field("naam"), args.supplierName))
-      .first();
+    const supplier = await findV2Supplier(ctx, tenantId, args.supplierName);
     if (!supplier) {
       return { supplierFound: false, archived: 0, isDone: true, continueCursor: null };
     }
@@ -621,7 +796,7 @@ export const setSupplierSalesVatMode = mutation({
     mode: v.union(v.literal("exclusive"), v.literal("inclusive")),
     dryRun: v.optional(v.boolean()),
     cursor: v.optional(v.string()),
-    batchSize: v.optional(v.number()),
+    batchSize: v.optional(v.number())
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, ["admin"]);
@@ -636,7 +811,14 @@ export const setSupplierSalesVatMode = mutation({
       .filter((q: any) => q.eq(q.field("naam"), args.supplierName))
       .first();
     if (!supplier) {
-      return { supplierFound: false, dryRun, scanned: 0, patched: 0, isDone: true, continueCursor: null };
+      return {
+        supplierFound: false,
+        dryRun,
+        scanned: 0,
+        patched: 0,
+        isDone: true,
+        continueCursor: null
+      };
     }
 
     if (!dryRun && supplier.verkoopBtwModus !== args.mode) {
@@ -645,14 +827,18 @@ export const setSupplierSalesVatMode = mutation({
 
     const paginated = await ctx.db
       .query("products")
-      .withIndex("by_supplier", (q: any) => q.eq("tenantId", tenantId).eq("leverancierId", supplier._id))
+      .withIndex("by_supplier", (q: any) =>
+        q.eq("tenantId", tenantId).eq("leverancierId", supplier._id)
+      )
       .paginate({ numItems: batchSize, cursor: args.cursor ?? null });
 
     let patched = 0;
     for (const product of paginated.page) {
       const prices = await ctx.db
         .query("productPrices")
-        .withIndex("by_product", (q: any) => q.eq("tenantId", tenantId).eq("productId", product._id))
+        .withIndex("by_product", (q: any) =>
+          q.eq("tenantId", tenantId).eq("productId", product._id)
+        )
         .collect();
       for (const price of prices) {
         if (price.prijsSoort !== "advice_retail" || price.btwModus === args.mode) continue;
@@ -670,7 +856,7 @@ export const setSupplierSalesVatMode = mutation({
       patched: dryRun ? 0 : patched,
       wouldPatch: dryRun ? patched : undefined,
       isDone: paginated.isDone,
-      continueCursor: paginated.isDone ? null : paginated.continueCursor,
+      continueCursor: paginated.isDone ? null : paginated.continueCursor
     };
   }
 });
@@ -679,7 +865,7 @@ export const cleanupOldLogsCron = internalMutation({
   args: {},
   handler: async (ctx) => {
     // Delete logs older than 7 days
-    const RETENTION_MS = 7 * 24 * 60 * 60 * 1000; 
+    const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
     const cutoffDate = Date.now() - RETENTION_MS;
     let deleted = 0;
 
@@ -693,7 +879,9 @@ export const cleanupOldLogsCron = internalMutation({
       // Find rows for this batch
       const rows = await ctx.db
         .query("productImportRows")
-        .withIndex("by_batch", (q: any) => q.eq("tenantId", batch.tenantId).eq("batchId", batch._id))
+        .withIndex("by_batch", (q: any) =>
+          q.eq("tenantId", batch.tenantId).eq("batchId", batch._id)
+        )
         .take(100);
 
       // If this batch has rows, delete them and break to let the next cron run handle the rest (or next loop)
@@ -705,7 +893,7 @@ export const cleanupOldLogsCron = internalMutation({
       // If we deleted rows, don't delete the batch yet because there might be more rows.
       if (rows.length === 100) {
         console.log(`Cron: Deleted ${deleted} rows, stopping chunk to avoid limits.`);
-        return { deleted, more: true }; 
+        return { deleted, more: true };
       }
 
       // If no more rows for this batch, we can delete the batch itself
@@ -713,9 +901,8 @@ export const cleanupOldLogsCron = internalMutation({
         await ctx.db.delete(batch._id);
       }
     }
-    
+
     console.log(`Cron: Deleted ${deleted} old logs. Batches cleaned: ${oldBatches.length}`);
     return { deleted, more: false };
   }
 });
-

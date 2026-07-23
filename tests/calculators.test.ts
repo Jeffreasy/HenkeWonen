@@ -110,7 +110,42 @@ describe("Measurements Calculators", () => {
     expect(stairs.riserCount).toBe(13);
     expect(stairs.quoteQuantity).toBe(1);
     expect(stairs.unit).toBe("stairs");
+    expect(stairs.stairShape).toBe("straight");
+    expect(stairs.stairConstruction).toBe("closed");
     expect(stairs.notes).toContain("closed staircase");
+  });
+
+  it("legt trapvorm en open/dicht onafhankelijk vast", () => {
+    const stairs = calculateStairs({
+      stairShape: "half_turn",
+      stairConstruction: "open",
+      treadCount: 14,
+      riserCount: 13
+    });
+
+    expect(stairs.stairShape).toBe("half_turn");
+    expect(stairs.stairConstruction).toBe("open");
+    expect(stairs.notes).toContain("stairShape:half_turn");
+    expect(stairs.notes).toContain("open staircase");
+  });
+
+  it("weigert halve treden en stootborden", () => {
+    expect(
+      calculateStairs({
+        stairShape: "straight",
+        stairConstruction: "closed",
+        treadCount: 12.5,
+        riserCount: 12
+      }).validationError
+    ).toMatch(/heel getal/i);
+    expect(
+      calculateStairs({
+        stairShape: "straight",
+        stairConstruction: "closed",
+        treadCount: 13,
+        riserCount: 12.5
+      }).validationError
+    ).toMatch(/heel getal/i);
   });
 
   it("should catch validation errors for invalid inputs", () => {

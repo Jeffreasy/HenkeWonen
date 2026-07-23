@@ -1,6 +1,7 @@
 import { mutation, query } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
+import { resolveStairMaterialMetadata } from "../../src/lib/quotes/stairMaterialCatalog";
 import {
   mutationActorValidator,
   readActorValidator,
@@ -27,7 +28,9 @@ function ensureNotFieldMode(workspaceMode: string) {
   // bedragen bewust (fieldService), maar zonder deze server-side grens kon een
   // monteur de inkoopprijzen via een directe API-aanroep alsnog opvragen.
   if (workspaceMode === "field") {
-    throw new ConvexError("Leveranciersbestellingen zijn niet beschikbaar in de buitendienst-werkplek.");
+    throw new ConvexError(
+      "Leveranciersbestellingen zijn niet beschikbaar in de buitendienst-werkplek."
+    );
   }
 }
 
@@ -38,7 +41,11 @@ function ensureNotFieldMode(workspaceMode: string) {
 export function selectPurchasePrice(
   prices: Doc<"productPrices">[],
   now: number
-): { bedrag?: number; bron: "net_purchase" | "purchase" | "none" } {
+): {
+  bedrag?: number;
+  bron: "net_purchase" | "purchase" | "none";
+  prijsEenheid?: string;
+} {
   const candidates = prices.filter(
     (price) =>
       (price.prijsSoort === "net_purchase" || price.prijsSoort === "purchase") &&
@@ -58,8 +65,145 @@ export function selectPurchasePrice(
   })[0];
 
   return best
-    ? { bedrag: best.bedrag, bron: best.prijsSoort as "net_purchase" | "purchase" }
+    ? {
+        bedrag: best.bedrag,
+        bron: best.prijsSoort as "net_purchase" | "purchase",
+        prijsEenheid: best.prijsEenheid
+      }
     : { bron: "none" };
+}
+
+function positiveInteger(value?: number): number | undefined {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
+function positiveNumber(value?: number): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function roundOrderQuantity(value: number): number {
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
+
+function canonicalOrderUnit(value?: string): string | undefined {
+  if (value === "meter") return "m1";
+  if (value === "package") return "pack";
+  return value;
+}
+
+/**
+ * Zet de klant-/offertehoeveelheid om naar wat werkelijk bij de leverancier
+ * besteld moet worden. PVC-traptreden worden per trede verkocht maar per pak
+ * besteld. PVC-profielen kunnen per meter worden verkocht en per volledige
+ * profiel-lengte worden besteld. De inkoopprijs volgt dezelfde omzetting.
+ */
+export function supplierOrderQuantity(
+  quantity: number,
+  lineUnit: string,
+  product: Pick<
+    Doc<"products">,
+    | "sku"
+    | "attributen"
+    | "eenheid"
+    | "bestelEenheid"
+    | "stuksPerPak"
+    | "minimumBestelAantal"
+    | "bestelVeelvoud"
+  >,
+  purchase: { bedrag?: number; prijsEenheid?: string },
+  category?: Pick<Doc<"categories">, "naam" | "productGroep">
+) {
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    return {
+      orderQuantity: 0,
+      orderUnit: product.bestelEenheid ?? lineUnit,
+      purchasePrice: purchase.bedrag,
+      note: undefined
+    };
+  }
+
+  let orderQuantity = quantity;
+  let orderUnit = lineUnit;
+  let purchasePrice = purchase.bedrag;
+  let note: string | undefined;
+
+  const piecesPerPack = positiveInteger(product.stuksPerPak);
+  const orderMultiple = positiveNumber(product.bestelVeelvoud);
+  const minimumOrder = positiveNumber(product.minimumBestelAantal);
+  const lineUnitKey = canonicalOrderUnit(lineUnit);
+  const productUnitKey = canonicalOrderUnit(product.eenheid);
+  const requestedOrderUnitKey = canonicalOrderUnit(product.bestelEenheid);
+  const allowSkuFallback =
+    category?.productGroep === "stairs" ||
+    category?.naam.trim().toLocaleLowerCase("nl") === "traprenovatie";
+  const stairMaterialMetadata = resolveStairMaterialMetadata({
+    sku: allowSkuFallback ? product.sku : undefined,
+    attributen: product.attributen as Record<string, unknown> | undefined
+  });
+  const lengthMPerUnit =
+    stairMaterialMetadata?.componentRole === "profile_length" &&
+    stairMaterialMetadata.orderUnit === "pack"
+      ? positiveNumber(stairMaterialMetadata.lengthMPerUnit)
+      : undefined;
+
+  const convertsPiecesToPacks =
+    requestedOrderUnitKey === "pack" &&
+    piecesPerPack !== undefined &&
+    (lineUnit === "step" || lineUnit === "piece") &&
+    productUnitKey !== "pack";
+  const convertsLengthToPacks =
+    requestedOrderUnitKey === "pack" &&
+    lineUnitKey === "m1" &&
+    productUnitKey === "m1" &&
+    lengthMPerUnit !== undefined;
+  const orderUnitMatchesLine =
+    requestedOrderUnitKey === undefined || requestedOrderUnitKey === lineUnitKey;
+  const appliesOrderConstraints =
+    convertsPiecesToPacks || convertsLengthToPacks || orderUnitMatchesLine;
+  const purchaseUsesSalesUnit =
+    canonicalOrderUnit(purchase.prijsEenheid) === lineUnitKey ||
+    canonicalOrderUnit(purchase.prijsEenheid) === productUnitKey;
+
+  if (convertsPiecesToPacks) {
+    orderQuantity = Math.ceil(quantity / piecesPerPack);
+    orderUnit = "pack";
+    if (purchasePrice !== undefined && purchaseUsesSalesUnit) {
+      purchasePrice = roundCents(purchasePrice * piecesPerPack);
+    }
+  } else if (convertsLengthToPacks && lengthMPerUnit) {
+    orderQuantity = Math.ceil(quantity / lengthMPerUnit);
+    orderUnit = "pack";
+    if (purchasePrice !== undefined && purchaseUsesSalesUnit) {
+      purchasePrice = roundCents(purchasePrice * lengthMPerUnit);
+    }
+  } else if (product.bestelEenheid && orderUnitMatchesLine) {
+    orderUnit = product.bestelEenheid;
+  }
+
+  // Minimum eerst toepassen en daarna pas op het bestelveelvoud afronden. Anders
+  // kan minimum=3 met veelvoud=2 ten onrechte 3 opleveren. Zonder expliciete
+  // bestelconstraint blijft een fractionele m2/m1-hoeveelheid exact behouden.
+  if (appliesOrderConstraints) {
+    if (minimumOrder !== undefined) {
+      orderQuantity = Math.max(orderQuantity, minimumOrder);
+    }
+    if (orderMultiple !== undefined) {
+      orderQuantity = roundOrderQuantity(
+        Math.ceil(orderQuantity / orderMultiple - 1e-10) * orderMultiple
+      );
+    }
+  }
+
+  if (convertsPiecesToPacks && piecesPerPack) {
+    const suppliedPieces = orderQuantity * piecesPerPack;
+    note = `${orderQuantity} pak(ken) van ${piecesPerPack} stuks voor ${quantity} benodigde ${lineUnit}; ${suppliedPieces - quantity} reserve.`;
+  } else if (convertsLengthToPacks && lengthMPerUnit) {
+    const suppliedLengthM = roundOrderQuantity(orderQuantity * lengthMPerUnit);
+    const reserveM = roundOrderQuantity(suppliedLengthM - quantity);
+    note = `${orderQuantity} pak(ken) van ${lengthMPerUnit} m voor ${quantity} benodigde ${lineUnit}; ${reserveM} m reserve.`;
+  }
+
+  return { orderQuantity, orderUnit, purchasePrice, note };
 }
 
 /**
@@ -127,22 +271,39 @@ export const generateSupplierOrdersFromQuote = mutation({
       .withIndex("by_quote", (q: any) => q.eq("tenantId", tenant._id).eq("quoteId", quote._id))
       .collect();
 
-    const productLines = quoteLines.filter(
-      (line: Doc<"quoteLines">) => line.regelType === "product" && line.productId
+    const linkedProductLines = quoteLines.filter(
+      (line: Doc<"quoteLines">) =>
+        (line.regelType === "product" || line.regelType === "material") && line.productId
     );
-    const nonProductCount = quoteLines.length - productLines.length;
+    const productLines = linkedProductLines.filter(
+      (line: Doc<"quoteLines">) => Number.isFinite(line.aantal) && line.aantal > 0
+    );
+    const nonProductCount = quoteLines.length - linkedProductLines.length;
+    const invalidQuantityCount = linkedProductLines.length - productLines.length;
 
     type Bucket = {
       leverancierId?: Id<"suppliers">;
-      lines: Array<{ qLine: Doc<"quoteLines">; product: Doc<"products"> }>;
+      lines: Array<{
+        qLine: Doc<"quoteLines">;
+        product: Doc<"products">;
+        category?: Doc<"categories">;
+      }>;
     };
     const buckets = new Map<string, Bucket>();
     let missingSupplierCount = 0;
+    let nonOrderableServiceCount = 0;
 
     for (const qLine of productLines) {
       const product = await ctx.db.get(qLine.productId as Id<"products">);
 
       if (!product || product.tenantId !== tenant._id) {
+        continue;
+      }
+
+      // Verdediging in de diepte: ook een foutief als `product` getypeerde offerteregel
+      // mag nooit een V2-dienstproduct naar een leveranciersbestelling promoveren.
+      if (product.productAard === "service") {
+        nonOrderableServiceCount++;
         continue;
       }
 
@@ -155,7 +316,12 @@ export const generateSupplierOrdersFromQuote = mutation({
       if (!buckets.has(key)) {
         buckets.set(key, { leverancierId: product.leverancierId, lines: [] });
       }
-      buckets.get(key)!.lines.push({ qLine, product });
+      const category = await ctx.db.get(product.categorieId);
+      buckets.get(key)!.lines.push({
+        qLine,
+        product,
+        category: category && category.tenantId === tenant._id ? category : undefined
+      });
     }
 
     const now = Date.now();
@@ -181,7 +347,7 @@ export const generateSupplierOrdersFromQuote = mutation({
       });
 
       let sortOrder = 0;
-      for (const { qLine, product } of bucket.lines) {
+      for (const { qLine, product, category } of bucket.lines) {
         const prices = await ctx.db
           .query("productPrices")
           .withIndex("by_product", (q: any) =>
@@ -190,12 +356,22 @@ export const generateSupplierOrdersFromQuote = mutation({
           .collect();
         const purchase = selectPurchasePrice(prices, now);
 
+        const ordering = supplierOrderQuantity(
+          qLine.aantal,
+          qLine.eenheid,
+          product,
+          purchase,
+          category
+        );
+
         if (purchase.bron === "none") {
           missingPriceCount++;
         }
 
         const regelTotaal =
-          purchase.bedrag !== undefined ? roundCents(qLine.aantal * purchase.bedrag) : undefined;
+          ordering.purchasePrice !== undefined
+            ? roundCents(ordering.orderQuantity * ordering.purchasePrice)
+            : undefined;
 
         await ctx.db.insert("supplierOrderLines", {
           tenantId: tenant._id,
@@ -208,12 +384,13 @@ export const generateSupplierOrdersFromQuote = mutation({
           // bestelregel naar de leverancier géén artikelnummer hebben.
           artikelnummer: product.artikelnummer ?? product.sku,
           leverancierCode: product.leverancierCode,
-          aantal: qLine.aantal,
-          eenheid: qLine.eenheid,
-          inkoopPrijsExBtw: purchase.bedrag,
+          aantal: ordering.orderQuantity,
+          eenheid: ordering.orderUnit,
+          inkoopPrijsExBtw: ordering.purchasePrice,
           inkoopPrijsBron: purchase.bron,
           regelTotaalExBtw: regelTotaal,
           status: "ordered",
+          notities: ordering.note,
           sortOrder: sortOrder++,
           aangemaaktOp: now,
           gewijzigdOp: now
@@ -227,6 +404,16 @@ export const generateSupplierOrdersFromQuote = mutation({
     if (nonProductCount > 0) {
       warnings.push(
         `${nonProductCount} niet-product-regel(s) overgeslagen (alleen catalogusproducten worden besteld).`
+      );
+    }
+    if (invalidQuantityCount > 0) {
+      warnings.push(
+        `${invalidQuantityCount} productregel(s) met een hoeveelheid van nul of lager overgeslagen.`
+      );
+    }
+    if (nonOrderableServiceCount > 0) {
+      warnings.push(
+        `${nonOrderableServiceCount} dienstproduct-regel(s) overgeslagen (diensten zijn niet bestelbaar).`
       );
     }
     if (missingSupplierCount > 0) {
@@ -506,9 +693,7 @@ export const cancelSupplierOrder = mutation({
 
     const lines = await ctx.db
       .query("supplierOrderLines")
-      .withIndex("by_order", (q: any) =>
-        q.eq("tenantId", tenant._id).eq("bestellingId", order._id)
-      )
+      .withIndex("by_order", (q: any) => q.eq("tenantId", tenant._id).eq("bestellingId", order._id))
       .collect();
     for (const line of lines) {
       if (line.status !== "received") {

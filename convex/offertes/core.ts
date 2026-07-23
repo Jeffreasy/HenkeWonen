@@ -26,8 +26,20 @@ import {
   assertQuoteStatusTransition,
   assertNoOtherAcceptedQuote,
   cancelOpenSupplierOrders,
-  applyProjectStatusForNewQuote
+  applyProjectStatusForNewQuote,
+  syncProjectStatusFromQuotes
 } from "../portalUtils";
+import {
+  assertCompleteBundleFields,
+  assertValidQuoteStairBundles,
+  assertValidStairRenovationBundle,
+  getMeasurementBundleLines,
+  hasAnyBundleField,
+  isConvertedOrLinked,
+  stairBundleProductMetadataSnapshot,
+  type StairBundleLineLike
+} from "../stairBundles";
+import { assertGuidedStairServiceHasBundle } from "../stairServiceProducts";
 
 const quoteStatus = v.union(
   v.literal("draft"),
@@ -48,11 +60,57 @@ const lineType = v.union(
   v.literal("manual")
 );
 
+const measurementProductGroup = v.union(
+  v.literal("flooring"),
+  v.literal("plinths"),
+  v.literal("wallpaper"),
+  v.literal("wall_panels"),
+  v.literal("curtains"),
+  v.literal("rails"),
+  v.literal("stairs"),
+  v.literal("other")
+);
+
+const measurementCalculationType = v.union(
+  v.literal("area"),
+  v.literal("perimeter"),
+  v.literal("rolls"),
+  v.literal("panels"),
+  v.literal("stairs"),
+  v.literal("matrix"),
+  v.literal("manual")
+);
+
+const measurementCompositionRuleFields = {
+  ruimteId: v.optional(v.id("measurementRooms")),
+  productGroep: measurementProductGroup,
+  berekeningType: measurementCalculationType,
+  invoer: v.any(),
+  resultaat: v.any(),
+  snijverliesPct: v.optional(v.number()),
+  aantal: v.number(),
+  eenheid: v.string(),
+  notities: v.optional(v.string()),
+  offerteRegelType: quoteLineType,
+  bundleId: v.optional(v.string()),
+  bundleType: v.optional(v.literal("stair_renovation")),
+  bundleRole: v.optional(
+    v.union(v.literal("material"), v.literal("labor"), v.literal("surcharge"))
+  ),
+  sectionKey: v.optional(v.string()),
+  productId: v.optional(v.id("products")),
+  productNaam: v.optional(v.string()),
+  indicatieveEenheidsprijsExBtw: v.optional(v.number()),
+  indicatiefBtwTarief: v.optional(v.number()),
+  indicatievePrijsEenheid: v.optional(v.string()),
+  indicatievePrijsSoort: v.optional(v.string()),
+  indicatiefVastgelegdOp: v.optional(v.number())
+};
+
+const MAX_COMPOSED_MEASUREMENT_LINES = 200;
 function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
-
-
 
 export const list = query({
   args: {
@@ -96,9 +154,7 @@ export const get = query({
 
     const lines = await ctx.db
       .query("quoteLines")
-      .withIndex("by_quote", (q) =>
-        q.eq("tenantId", args.tenantId).eq("quoteId", args.quoteId)
-      )
+      .withIndex("by_quote", (q) => q.eq("tenantId", args.tenantId).eq("quoteId", args.quoteId))
       .collect();
 
     return {
@@ -158,18 +214,31 @@ async function recalculateQuote(ctx: any, tenantId: any, quoteId: any) {
   });
 }
 
-
 function addCalendarDays(timestamp: number, days: number) {
   const date = new Date(timestamp);
   date.setDate(date.getDate() + days);
   return date.getTime();
 }
 
+function quoteLineSupportsCatalogProduct(regelType: string) {
+  return (
+    regelType === "product" ||
+    regelType === "material" ||
+    regelType === "service" ||
+    regelType === "labor"
+  );
+}
+
 async function validateQuoteLineProduct(
   ctx: any,
   tenantId: Id<"tenants">,
+  regelType: string,
   productId?: string
 ) {
+  if (!quoteLineSupportsCatalogProduct(regelType)) {
+    return undefined;
+  }
+
   if (!productId) {
     return undefined;
   }
@@ -191,7 +260,353 @@ async function validateQuoteLineProduct(
     throw new ConvexError("Dit product is niet (meer) actief en kan niet worden gekozen.");
   }
 
+  const isServiceProduct = product.productAard === "service";
+
+  if ((regelType === "product" || regelType === "material") && isServiceProduct) {
+    throw new ConvexError(
+      "Een dienstproduct kan niet als materiaal- of productregel worden opgeslagen."
+    );
+  }
+
+  if ((regelType === "service" || regelType === "labor") && !isServiceProduct) {
+    throw new ConvexError(
+      "Een service- of arbeidsregel met productkoppeling vereist een dienstproduct."
+    );
+  }
+
   return product._id;
+}
+
+async function assertQuoteProductHasRequiredBundle(
+  ctx: any,
+  productId: Id<"products"> | undefined,
+  isBundleMember: boolean
+): Promise<void> {
+  if (!productId) return;
+
+  const product = await ctx.db.get(productId);
+  if (product) {
+    assertGuidedStairServiceHasBundle(product, isBundleMember);
+  }
+}
+
+function importedMeasurementContext(invoer: unknown): Record<string, string | number | boolean> {
+  if (!invoer || typeof invoer !== "object" || Array.isArray(invoer)) {
+    return {};
+  }
+
+  const source = invoer as Record<string, unknown>;
+  const context: Record<string, string | number | boolean> = {};
+  const keys = [
+    "recipeKey",
+    "recipeVersion",
+    "covering",
+    "stairShape",
+    "stairConstruction",
+    "stairType",
+    "treadCount",
+    "riserCount",
+    "doubleTreadCount",
+    "stripLengthM",
+    "materialCompatibilityConfirmed",
+    "quantityMode",
+    "calculatedQuantity",
+    "quantityOverrideReason"
+  ] as const;
+
+  for (const key of keys) {
+    const value = source[key];
+
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      context[key] = value;
+    }
+  }
+
+  return context;
+}
+
+function metadataRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function hasQuoteBundleMetadata(value: unknown): boolean {
+  const metadata = metadataRecord(value);
+  return (
+    metadata.bundleId !== undefined ||
+    metadata.bundleType !== undefined ||
+    metadata.bundleRole !== undefined ||
+    metadata.sectionKey !== undefined
+  );
+}
+async function requireDraftQuoteCalculationContext(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  quoteId: Id<"quotes">
+) {
+  const quote = await ctx.db.get(quoteId);
+  if (!quote || quote.tenantId !== tenantId) {
+    throw new ConvexError("Offerte niet gevonden.");
+  }
+  if (quote.status !== "draft") {
+    throw new ConvexError("Alleen conceptoffertes kunnen inhoudelijk worden aangepast.");
+  }
+
+  const project = await ctx.db.get(quote.projectId);
+  if (
+    !project ||
+    project.tenantId !== tenantId ||
+    String(project.klantId) !== String(quote.klantId)
+  ) {
+    throw new ConvexError("Project van deze offerte is niet geldig.");
+  }
+
+  const customer = await ctx.db.get(quote.klantId);
+  if (
+    !customer ||
+    customer.tenantId !== tenantId ||
+    String(customer._id) !== String(project.klantId)
+  ) {
+    throw new ConvexError("Klant van deze offerte is niet geldig.");
+  }
+
+  return { quote, project, customer };
+}
+
+function validateComposedMeasurementQuantities(aantal: number, snijverliesPct?: number): void {
+  if (!Number.isFinite(aantal) || aantal < 0) {
+    throw new ConvexError("Aantal moet een eindig, niet-negatief getal zijn.");
+  }
+  if (
+    snijverliesPct !== undefined &&
+    (!Number.isFinite(snijverliesPct) || snijverliesPct < 0 || snijverliesPct > 100)
+  ) {
+    throw new ConvexError("Snijverlies-% moet een getal tussen 0 en 100 zijn.");
+  }
+}
+function validateComposedMeasurementSnapshot(
+  eenheid: string,
+  unitPriceExVat?: number,
+  vatRate?: number,
+  capturedAt?: number
+): void {
+  if (!eenheid.trim()) {
+    throw new ConvexError("Eenheid mag niet leeg zijn.");
+  }
+  if (unitPriceExVat !== undefined && (!Number.isFinite(unitPriceExVat) || unitPriceExVat < 0)) {
+    throw new ConvexError("Indicatieve eenheidsprijs moet een eindig, niet-negatief getal zijn.");
+  }
+  if (vatRate !== undefined && (!Number.isFinite(vatRate) || vatRate < 0 || vatRate > 100)) {
+    throw new ConvexError("Indicatief btw-tarief moet een getal tussen 0 en 100 zijn.");
+  }
+  if (capturedAt !== undefined && (!Number.isFinite(capturedAt) || capturedAt < 0)) {
+    throw new ConvexError(
+      "Tijdstip van de indicatieve prijs moet een eindig, niet-negatief getal zijn."
+    );
+  }
+}
+
+async function requireMeasurementRoomForQuote(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  quote: Doc<"quotes">,
+  measurement: Doc<"measurements">,
+  roomId?: Id<"measurementRooms">
+): Promise<Doc<"measurementRooms"> | null> {
+  if (!roomId) return null;
+
+  const room = await ctx.db.get(roomId);
+  if (!room || room.tenantId !== tenantId || room.inmetingId !== measurement._id) {
+    throw new ConvexError("Meetruimte niet gevonden.");
+  }
+
+  const projectRoom = await ctx.db.get(room.projectRuimteId);
+  if (
+    !projectRoom ||
+    projectRoom.tenantId !== tenantId ||
+    projectRoom.projectId !== quote.projectId
+  ) {
+    throw new ConvexError("Ruimte niet gevonden bij het project van deze offerte.");
+  }
+
+  return room;
+}
+
+async function nextQuoteLineSortOrder(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  quoteId: Id<"quotes">,
+  requestedStartSortOrder: number
+): Promise<number> {
+  const existingQuoteLines = await ctx.db
+    .query("quoteLines")
+    .withIndex("by_quote", (q: any) => q.eq("tenantId", tenantId).eq("quoteId", quoteId))
+    .collect();
+  const requestedSortOrder = Number.isFinite(requestedStartSortOrder)
+    ? Math.max(1, Math.round(requestedStartSortOrder))
+    : 1;
+  const nextAvailableSortOrder =
+    existingQuoteLines.reduce(
+      (highest: number, line: Doc<"quoteLines">) => Math.max(highest, line.sortOrder),
+      0
+    ) + 1;
+
+  return Math.max(requestedSortOrder, nextAvailableSortOrder);
+}
+
+async function insertQuoteLineFromMeasurement(
+  ctx: any,
+  tenantId: Id<"tenants">,
+  quote: Doc<"quotes">,
+  measurement: Doc<"measurements">,
+  room: Doc<"measurementRooms"> | null,
+  line: Doc<"measurementLines">,
+  sortOrder: number,
+  now: number,
+  strictProductValidation: boolean
+): Promise<Id<"quoteLines">> {
+  // Richtprijs-snapshot van de meetregel als voorinvulling gebruiken. De prijsreview
+  // blijft altijd verplicht. De directe offertecomposer valideert een gekozen product
+  // strikt; de historische import behoudt zijn tolerante gedrag voor gearchiveerde data.
+  let prefilledProductId: Id<"products"> | undefined;
+
+  if (line.productId) {
+    await assertQuoteProductHasRequiredBundle(ctx, line.productId, Boolean(line.bundleId));
+    if (line.bundleId || strictProductValidation) {
+      prefilledProductId = await validateQuoteLineProduct(
+        ctx,
+        tenantId,
+        line.offerteRegelType,
+        String(line.productId)
+      );
+    } else {
+      try {
+        prefilledProductId = await validateQuoteLineProduct(
+          ctx,
+          tenantId,
+          line.offerteRegelType,
+          String(line.productId)
+        );
+      } catch {
+        prefilledProductId = undefined;
+      }
+    }
+  }
+
+  const isTrustedProductlessLine =
+    !line.productId &&
+    ((line.indicatievePrijsSoort === "matrix" &&
+      line.berekeningType === "matrix" &&
+      line.offerteRegelType === "product") ||
+      (line.indicatievePrijsSoort === "service_rule" &&
+        (line.offerteRegelType === "service" || line.offerteRegelType === "labor")));
+  const bundleProductMetadata = line.bundleId
+    ? await stairBundleProductMetadataSnapshot(ctx, tenantId, line)
+    : {};
+  const hasIndicativePrice =
+    (prefilledProductId !== undefined || isTrustedProductlessLine) &&
+    line.indicatieveEenheidsprijsExBtw !== undefined &&
+    line.indicatiefBtwTarief !== undefined;
+  const unitPriceExVat = hasIndicativePrice ? line.indicatieveEenheidsprijsExBtw! : 0;
+  const vatRate = hasIndicativePrice ? line.indicatiefBtwTarief! : 0;
+  const totals = calculateLineTotals(line.offerteRegelType, line.aantal, unitPriceExVat, vatRate);
+
+  return await ctx.db.insert("quoteLines", {
+    tenantId,
+    quoteId: quote._id,
+    projectRuimteId: room?.projectRuimteId,
+    regelType: line.offerteRegelType,
+    titel: importedMeasurementLineTitle(line, room),
+    omschrijving: importedMeasurementLineDescription(line, hasIndicativePrice),
+    aantal: line.aantal,
+    eenheid: line.eenheid,
+    eenheidsprijsExBtw: unitPriceExVat,
+    btwTarief: vatRate,
+    productId: prefilledProductId,
+    regelTotaalExBtw: totals.lineTotalExVat,
+    regelBtwTotaal: totals.lineVatTotal,
+    regelTotaalInclBtw: totals.lineTotalIncVat,
+    sortOrder,
+    metadata: {
+      source: "measurement",
+      measurementId: measurement._id,
+      measurementLineId: line._id,
+      measurementRoomId: room?._id,
+      productGroup: line.productGroep,
+      calculationType: line.berekeningType,
+      wastePercent: line.snijverliesPct,
+      isIndicative: true,
+      productId: prefilledProductId ? line.productId : undefined,
+      productName: prefilledProductId || isTrustedProductlessLine ? line.productNaam : undefined,
+      sectionKey: line.sectionKey,
+      bundleId: line.bundleId,
+      bundleType: line.bundleType,
+      bundleRole: line.bundleRole,
+      ...importedMeasurementContext(line.invoer),
+      ...bundleProductMetadata,
+      indicativePriceType: hasIndicativePrice ? line.indicatievePrijsSoort : undefined,
+      indicativePriceUnit: hasIndicativePrice ? line.indicatievePrijsEenheid : undefined,
+      requiresManualProductReview: !prefilledProductId && !isTrustedProductlessLine,
+      requiresManualPriceReview: true,
+      requiresManualVatReview: !hasIndicativePrice
+    },
+    aangemaaktOp: now,
+    gewijzigdOp: now
+  });
+}
+
+function assertImmutableImportedBundleMetadata(existingValue: unknown, nextValue: unknown): void {
+  const existing = metadataRecord(existingValue);
+  const next = metadataRecord(nextValue);
+  const immutableKeys = [
+    "source",
+    "measurementId",
+    "productId",
+    "measurementLineId",
+    "measurementRoomId",
+    "productGroup",
+    "calculationType",
+    "sectionKey",
+    "bundleId",
+    "bundleType",
+    "bundleRole",
+    "covering",
+    "stairShape",
+    "recipeKey",
+    "recipeVersion",
+    "stairConstruction",
+    "treadCount",
+    "riserCount",
+    "doubleTreadCount",
+    "stripLengthM",
+    "materialCompatibilityConfirmed",
+    "quantityMode",
+    "calculatedQuantity",
+    "quantityOverrideReason",
+    "stairCatalogSalesUnit",
+    "stairMaterialFamily",
+    "stairMaterialCovering",
+    "stairMaterialComponentRole",
+    "stairMaterialIsPrimary",
+    "stairMaterialPiecesPerPack",
+    "stairMaterialOrderUnit",
+    "stairMaterialLengthMPerUnit",
+    "stairServiceSku",
+    "stairServiceFamily",
+    "stairServiceCovering",
+    "stairServiceShape",
+    "stairServiceRole",
+    "stairServiceSectionKey"
+  ] as const;
+
+  for (const key of immutableKeys) {
+    if (existing[key] !== next[key]) {
+      throw new ConvexError(
+        "De koppeling en rol van een geimporteerde trapbundel zijn onveranderlijk."
+      );
+    }
+  }
 }
 
 /**
@@ -346,6 +761,9 @@ export const deleteQuoteLine = mutation({
       )
       .collect();
 
+    const quoteLineIdsToDelete = new Set<string>([String(line._id)]);
+    let restoredBundleLink = false;
+
     for (const measurement of measurements) {
       const mLines = await ctx.db
         .query("measurementLines")
@@ -354,34 +772,113 @@ export const deleteQuoteLine = mutation({
         )
         .collect();
 
-      const linkedLine = mLines.find(
-        (ml: any) => ml.geconverteerdeOfferteregelId === line._id
-      );
+      const linkedLine = mLines.find((ml: any) => ml.geconverteerdeOfferteregelId === line._id);
+
+      if (linkedLine?.bundleId) {
+        const restoreLines = await getMeasurementBundleLines(
+          ctx,
+          tenant._id,
+          measurement._id,
+          linkedLine.bundleId
+        );
+        if (restoreLines.length === 0) {
+          throw new ConvexError("De gekoppelde trapbundel kan niet volledig worden hersteld.");
+        }
+
+        for (const restoreLine of restoreLines) {
+          if (
+            restoreLine.quotePreparationStatus !== "converted" ||
+            restoreLine.geconverteerdeOfferteId !== quote._id ||
+            !restoreLine.geconverteerdeOfferteregelId
+          ) {
+            throw new ConvexError(
+              "De gekoppelde trapbundel is niet volledig aan deze offerte gekoppeld."
+            );
+          }
+
+          const linkedQuoteLine = await ctx.db.get(restoreLine.geconverteerdeOfferteregelId);
+          if (
+            !linkedQuoteLine ||
+            linkedQuoteLine.tenantId !== tenant._id ||
+            linkedQuoteLine.quoteId !== quote._id
+          ) {
+            throw new ConvexError("De gekoppelde trapbundel bevat een ongeldige offerteregel.");
+          }
+          quoteLineIdsToDelete.add(String(linkedQuoteLine._id));
+        }
+
+        const now = Date.now();
+        if (measurement.contextQuoteId) {
+          if (measurement.contextQuoteId !== quote._id) {
+            throw new ConvexError("Offerte-rekencontext hoort niet bij deze offerte.");
+          }
+          for (const restoreLine of restoreLines) {
+            await ctx.db.delete(restoreLine._id);
+          }
+          await ctx.db.patch(measurement._id, { gewijzigdOp: now });
+        } else {
+          for (const restoreLine of restoreLines) {
+            await ctx.db.patch(restoreLine._id, {
+              quotePreparationStatus: "ready_for_quote",
+              geconverteerdeOfferteId: undefined,
+              geconverteerdeOfferteregelId: undefined,
+              gewijzigdOp: now
+            });
+          }
+
+          const restoredIds = new Set(restoreLines.map((restoreLine) => String(restoreLine._id)));
+          const nogGeconverteerd = mLines.some(
+            (measurementLine: Doc<"measurementLines">) =>
+              !restoredIds.has(String(measurementLine._id)) && isConvertedOrLinked(measurementLine)
+          );
+          await ctx.db.patch(measurement._id, {
+            ...(measurement.status === "converted_to_quote" && !nogGeconverteerd
+              ? { status: "reviewed" as const }
+              : {}),
+            gewijzigdOp: now
+          });
+        }
+        restoredBundleLink = true;
+        break;
+      }
 
       if (linkedLine) {
-        await ctx.db.patch(linkedLine._id, {
-          quotePreparationStatus: "ready_for_quote",
-          geconverteerdeOfferteId: undefined,
-          geconverteerdeOfferteregelId: undefined,
-          gewijzigdOp: Date.now()
-        });
-        // De inmeting is pas niet langer 'verwerkt naar offerte' als er ook geen
-        // ándere geconverteerde regels meer op staan — anders zou één verwijderde
-        // offertepost de status onterecht terugzetten (spiegel van de automatische
-        // doorzet in importMeasurementLinesToQuote).
-        const nogGeconverteerd = mLines.some(
-          (ml: any) => ml._id !== linkedLine._id && ml.quotePreparationStatus === "converted"
-        );
-        await ctx.db.patch(measurement._id, {
-          ...(measurement.status === "converted_to_quote" && !nogGeconverteerd
-            ? { status: "reviewed" as const }
-            : {}),
-          gewijzigdOp: Date.now()
-        });
+        const now = Date.now();
+        if (measurement.contextQuoteId) {
+          if (measurement.contextQuoteId !== quote._id) {
+            throw new ConvexError("Offerte-rekencontext hoort niet bij deze offerte.");
+          }
+          await ctx.db.delete(linkedLine._id);
+          await ctx.db.patch(measurement._id, { gewijzigdOp: now });
+        } else {
+          await ctx.db.patch(linkedLine._id, {
+            quotePreparationStatus: "ready_for_quote",
+            geconverteerdeOfferteId: undefined,
+            geconverteerdeOfferteregelId: undefined,
+            gewijzigdOp: now
+          });
+          // De inmeting is pas niet langer 'verwerkt naar offerte' als er ook geen
+          // andere geconverteerde regels meer op staan.
+          const nogGeconverteerd = mLines.some(
+            (ml: any) => ml._id !== linkedLine._id && ml.quotePreparationStatus === "converted"
+          );
+          await ctx.db.patch(measurement._id, {
+            ...(measurement.status === "converted_to_quote" && !nogGeconverteerd
+              ? { status: "reviewed" as const }
+              : {}),
+            gewijzigdOp: now
+          });
+        }
       }
     }
 
-    await ctx.db.delete(line._id);
+    if (hasQuoteBundleMetadata(line.metadata) && !restoredBundleLink) {
+      throw new ConvexError("De gekoppelde trapbundel kan niet veilig worden verwijderd.");
+    }
+
+    for (const quoteLineId of quoteLineIdsToDelete) {
+      await ctx.db.delete(quoteLineId as Id<"quoteLines">);
+    }
     await recalculateQuote(ctx, tenant._id, line.quoteId);
 
     return line._id;
@@ -444,20 +941,58 @@ export const updateQuoteLine = mutation({
       }
     }
 
+    const isImportedBundleLine = hasQuoteBundleMetadata(line.metadata);
+    const nextMetadata = args.metadata === undefined ? line.metadata : args.metadata;
+    if (isImportedBundleLine) {
+      if (String(projectRoomId ?? "") !== String(line.projectRuimteId ?? "")) {
+        throw new ConvexError(
+          "De ruimte van een geimporteerde trapbundel kan niet per losse regel worden gewijzigd."
+        );
+      }
+      assertImmutableImportedBundleMetadata(line.metadata, nextMetadata);
+    } else if (hasQuoteBundleMetadata(nextMetadata)) {
+      throw new ConvexError(
+        "Een trapbundel kan alleen als volledige set vanuit een inmeting worden geimporteerd."
+      );
+    }
+
+    const storedMetadata = clearedPriceReviewMetadata(nextMetadata);
     // Valideer het product alleen wanneer het daadwerkelijk WIJZIGT. Een ongewijzigd
     // product mag een latere deactivatie/pilot-verberging niet blokkeren — anders kan
     // een monteur de prijs of het aantal van een bestaande regel niet meer corrigeren.
     const productUnchanged =
-      args.regelType === "product" &&
+      quoteLineSupportsCatalogProduct(args.regelType) &&
+      args.regelType === line.regelType &&
       !!args.productId &&
       !!line.productId &&
       args.productId === String(line.productId);
-    const productId =
-      args.regelType !== "product"
-        ? undefined
-        : productUnchanged
-          ? line.productId
-          : await validateQuoteLineProduct(ctx, tenant._id, args.productId);
+    const productId = !quoteLineSupportsCatalogProduct(args.regelType)
+      ? undefined
+      : productUnchanged
+        ? line.productId
+        : await validateQuoteLineProduct(ctx, tenant._id, args.regelType, args.productId);
+    await assertQuoteProductHasRequiredBundle(ctx, productId, isImportedBundleLine);
+
+    if (isImportedBundleLine) {
+      const quoteLines = await ctx.db
+        .query("quoteLines")
+        .withIndex("by_quote", (q: any) => q.eq("tenantId", tenant._id).eq("quoteId", quote._id))
+        .collect();
+      const prospectiveLines = quoteLines.map((quoteLine: Doc<"quoteLines">) =>
+        quoteLine._id === line._id
+          ? ({
+              ...quoteLine,
+              projectRuimteId: projectRoomId,
+              productId,
+              regelType: args.regelType,
+              eenheid: args.eenheid,
+              aantal: args.aantal,
+              metadata: storedMetadata
+            } as Doc<"quoteLines">)
+          : quoteLine
+      );
+      await assertValidQuoteStairBundles(ctx, tenant._id, prospectiveLines);
+    }
 
     const totals = calculateLineTotals(
       args.regelType,
@@ -483,7 +1018,7 @@ export const updateQuoteLine = mutation({
       regelTotaalInclBtw: totals.lineTotalIncVat,
       sortOrder: args.sortOrder ?? line.sortOrder,
       // Een bewuste regel-bewerking telt als prijsreview: wis de review-vlag.
-      metadata: clearedPriceReviewMetadata(args.metadata),
+      metadata: storedMetadata,
       gewijzigdOp: Date.now()
     });
     await recalculateQuote(ctx, tenant._id, line.quoteId);
@@ -534,12 +1069,11 @@ export const updateQuoteStatus = mutation({
     status: quoteStatus
   },
   handler: async (ctx, args) => {
-    const { tenant, externalUserId } = await requireMutationRole(
-      ctx,
-      args.tenantSlug,
-      args.actor,
-      ["user", "editor", "admin"]
-    );
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const quote = await ctx.db.get(args.quoteId as Id<"quotes">);
 
     if (!quote || quote.tenantId !== tenant._id) {
@@ -556,6 +1090,14 @@ export const updateQuoteStatus = mutation({
     // workflow-events en een herhaalde sibling-cancel bij een dubbelklik).
     if (args.status === quote.status) {
       return quote._id;
+    }
+
+    if (project.status === "cancelled" || project.status === "closed") {
+      throw new ConvexError(
+        project.status === "cancelled"
+          ? "Dit dossier is geannuleerd; de offertestatus kan niet meer worden gewijzigd."
+          : "Dit dossier is afgesloten; de offertestatus kan niet meer worden gewijzigd."
+      );
     }
 
     // Een al-gefactureerde offerte is bevroren op 'akkoord': hij mag niet uit akkoord worden
@@ -589,13 +1131,25 @@ export const updateQuoteStatus = mutation({
     }
 
     const now = Date.now();
+    const returningToDraft = args.status === "draft";
     const quotePatch: Partial<Doc<"quotes">> = {
       status: args.status,
-      verzondenOp: args.status === "sent" ? quote.verzondenOp ?? now : quote.verzondenOp,
-      geldigTot:
-        args.status === "sent" ? quote.geldigTot ?? addCalendarDays(now, 30) : quote.geldigTot,
-      geaccepteerdOp: args.status === "accepted" ? now : quote.geaccepteerdOp,
-      afgewezenOp: args.status === "rejected" ? now : quote.afgewezenOp,
+      verzondenOp: returningToDraft ? undefined : args.status === "sent" ? now : quote.verzondenOp,
+      geldigTot: returningToDraft
+        ? undefined
+        : args.status === "sent"
+          ? (quote.geldigTot ?? addCalendarDays(now, 30))
+          : quote.geldigTot,
+      geaccepteerdOp: returningToDraft
+        ? undefined
+        : args.status === "accepted"
+          ? now
+          : quote.geaccepteerdOp,
+      afgewezenOp: returningToDraft
+        ? undefined
+        : args.status === "rejected"
+          ? now
+          : quote.afgewezenOp,
       gewijzigdOp: now
     };
 
@@ -604,31 +1158,27 @@ export const updateQuoteStatus = mutation({
     // Annuleer de overige open offertes van dit project en bevrijd hun inmeetregels (gedeeld
     // met het winkel-accept-pad zodat er nooit twee 'levende' offertes op één dossier blijven).
     if (args.status === "accepted") {
-      await cancelOtherOpenQuotesAndRestore(ctx, tenant._id, project._id, quote._id, now);
+      await cancelOtherOpenQuotesAndRestore(
+        ctx,
+        tenant._id,
+        project._id,
+        quote._id,
+        now,
+        externalUserId
+      );
     }
 
-    const statusMap: Partial<Record<Doc<"quotes">["status"], Doc<"projects">["status"]>> = {
-      draft: "quote_draft",
-      sent: "quote_sent",
-      accepted: "quote_accepted",
-      rejected: "quote_rejected",
-      // Geen aparte 'quote_expired' projectstatus; een verlopen offerte gedraagt zich als
-      // afgewezen (offerte-fase geëindigd zonder akkoord).
-      expired: "quote_rejected",
-      cancelled: "cancelled"
-    };
-    const nextProjectStatus = statusMap[args.status];
-
-    if (nextProjectStatus) {
-      await ctx.db.patch(project._id, {
-        status: nextProjectStatus,
-        geaccepteerdOp: args.status === "accepted" ? now : project.geaccepteerdOp,
-        gewijzigdOp: now
-      });
-    }
+    await syncProjectStatusFromQuotes(ctx, tenant._id, project, now);
 
     if (args.status === "sent") {
-      await addProjectEvent(ctx, tenant._id, project._id, "quote_sent", "Offerte verzonden", externalUserId);
+      await addProjectEvent(
+        ctx,
+        tenant._id,
+        project._id,
+        "quote_sent",
+        "Offerte verzonden",
+        externalUserId
+      );
       await upsertProjectTask(
         ctx,
         tenant._id,
@@ -642,8 +1192,22 @@ export const updateQuoteStatus = mutation({
     }
 
     if (args.status === "accepted") {
-      await addProjectEvent(ctx, tenant._id, project._id, "quote_accepted", "Offerte akkoord", externalUserId);
-      await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "done", quote._id);
+      await addProjectEvent(
+        ctx,
+        tenant._id,
+        project._id,
+        "quote_accepted",
+        "Offerte akkoord",
+        externalUserId
+      );
+      await closeOpenProjectTasks(
+        ctx,
+        tenant._id,
+        project._id,
+        "quote_follow_up",
+        "done",
+        quote._id
+      );
       await upsertProjectTask(
         ctx,
         tenant._id,
@@ -673,7 +1237,11 @@ export const updateQuoteStatus = mutation({
     // bestellingen blijven staan). De telling gaat mee in het workflow-event, zodat het
     // annuleren van bestellingen nooit onzichtbaar gebeurt.
     if (args.status === "cancelled" || args.status === "rejected" || args.status === "expired") {
-      await closeOpenProjectTasks(ctx, tenant._id, project._id, "quote_follow_up", "dismissed", quote._id);
+      await Promise.all(
+        (["quote_follow_up", "confirmation_payment", "execution_call"] as const).map((type) =>
+          closeOpenProjectTasks(ctx, tenant._id, project._id, type, "dismissed", quote._id)
+        )
+      );
       await restoreMeasurementLinesForQuote(ctx, tenant._id, project._id, quote._id);
       const cancelledOrderCount = await cancelOpenSupplierOrders(
         ctx,
@@ -841,12 +1409,11 @@ export const createQuote = mutation({
     createdByExternalUserId: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    const { tenant, externalUserId } = await requireMutationRole(
-      ctx,
-      args.tenantSlug,
-      args.actor,
-      ["user", "editor", "admin"]
-    );
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
     const project = await ctx.db.get(args.projectId as Id<"projects">);
 
     if (!project || project.tenantId !== tenant._id) {
@@ -997,9 +1564,19 @@ export const addQuoteLine = mutation({
       }
     }
 
-    const productId = args.regelType === "product"
-      ? await validateQuoteLineProduct(ctx, tenant._id, args.productId)
-      : undefined;
+    if (hasQuoteBundleMetadata(args.metadata)) {
+      throw new ConvexError(
+        "Een trapbundel kan alleen als volledige set vanuit een inmeting worden geimporteerd."
+      );
+    }
+
+    const productId = await validateQuoteLineProduct(
+      ctx,
+      tenant._id,
+      args.regelType,
+      args.productId
+    );
+    await assertQuoteProductHasRequiredBundle(ctx, productId, false);
 
     const totals = calculateLineTotals(
       args.regelType,
@@ -1034,6 +1611,356 @@ export const addQuoteLine = mutation({
     await recalculateQuote(ctx, tenant._id, quote._id);
 
     return lineId;
+  }
+});
+
+/**
+ * Maakt de minimale, interne inmeetcontext voor offerte-rekenhulpen klaar.
+ *
+ * Dit pad is nadrukkelijk géén planningactie: projectstatus, inmeetdatum en
+ * workflow-events blijven onaangeraakt. Bestaande echte dossier-ruimtes worden
+ * gekoppeld; zonder ruimtes blijft de context leeg totdat de gebruiker een echte
+ * ruimte toevoegt.
+ */
+export const ensureQuoteCalculationContext = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    quoteId: v.string(),
+    projectRuimteId: v.optional(v.id("projectRooms"))
+  },
+  handler: async (ctx, args) => {
+    const { tenant, externalUserId } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+    const { quote, project } = await requireDraftQuoteCalculationContext(
+      ctx,
+      tenant._id,
+      args.quoteId as Id<"quotes">
+    );
+    const now = Date.now();
+
+    const contextMeasurements = await ctx.db
+      .query("measurements")
+      .withIndex("by_quote_context", (q: any) =>
+        q.eq("tenantId", tenant._id).eq("contextQuoteId", quote._id)
+      )
+      .order("desc")
+      .collect();
+
+    let measurement: Doc<"measurements"> | null | undefined = contextMeasurements.find(
+      (candidate: Doc<"measurements">) =>
+        candidate.status === "draft" &&
+        candidate.projectId === project._id &&
+        candidate.klantId === quote.klantId
+    );
+    let createdMeasurement = false;
+    if (!measurement) {
+      const measurementId = await ctx.db.insert("measurements", {
+        contextQuoteId: quote._id,
+        tenantId: tenant._id,
+        projectId: project._id,
+        klantId: quote.klantId,
+        status: "draft",
+        notities: "Interne rekencontext voor de offerteopbouwer.",
+        createdByExternalUserId: externalUserId,
+        aangemaaktOp: now,
+        gewijzigdOp: now
+      });
+      measurement = await ctx.db.get(measurementId);
+      createdMeasurement = true;
+    }
+    if (!measurement) {
+      throw new ConvexError("Inmeetcontext kon niet worden aangemaakt.");
+    }
+
+    let targetProjectRooms: Doc<"projectRooms">[];
+    if (args.projectRuimteId) {
+      const requestedProjectRoom = await ctx.db.get(args.projectRuimteId);
+      if (
+        !requestedProjectRoom ||
+        requestedProjectRoom.tenantId !== tenant._id ||
+        requestedProjectRoom.projectId !== project._id
+      ) {
+        throw new ConvexError("Ruimte niet gevonden bij het project van deze offerte.");
+      }
+      targetProjectRooms = [requestedProjectRoom];
+    } else {
+      targetProjectRooms = (
+        await ctx.db
+          .query("projectRooms")
+          .withIndex("by_project", (q: any) =>
+            q.eq("tenantId", tenant._id).eq("projectId", project._id)
+          )
+          .collect()
+      )
+        .filter(
+          (room: Doc<"projectRooms">) =>
+            room.naam.trim().toLocaleLowerCase("nl-NL") !== "offertecalculatie"
+        )
+        .sort(
+          (left: Doc<"projectRooms">, right: Doc<"projectRooms">) =>
+            left.sortOrder - right.sortOrder || left.aangemaaktOp - right.aangemaaktOp
+        );
+    }
+
+    const existingMeasurementRooms = await ctx.db
+      .query("measurementRooms")
+      .withIndex("by_measurement", (q: any) =>
+        q.eq("tenantId", tenant._id).eq("inmetingId", measurement._id)
+      )
+      .collect();
+    const measurementRoomsByProjectRoom = new Map(
+      existingMeasurementRooms.map((room: Doc<"measurementRooms">) => [
+        String(room.projectRuimteId),
+        room
+      ])
+    );
+    let createdMeasurementRoom = false;
+    let nextSortOrder =
+      existingMeasurementRooms.reduce(
+        (highest: number, room: Doc<"measurementRooms">) => Math.max(highest, room.sortOrder),
+        0
+      ) + 1;
+
+    for (const projectRoom of targetProjectRooms) {
+      if (measurementRoomsByProjectRoom.has(String(projectRoom._id))) continue;
+
+      const measurementRoomId = await ctx.db.insert("measurementRooms", {
+        tenantId: tenant._id,
+        inmetingId: measurement._id,
+        projectRuimteId: projectRoom._id,
+        naam: projectRoom.naam,
+        verdieping: projectRoom.verdieping,
+        breedteM: projectRoom.breedteCm !== undefined ? projectRoom.breedteCm / 100 : undefined,
+        lengteM: projectRoom.lengteCm !== undefined ? projectRoom.lengteCm / 100 : undefined,
+        hoogteM: projectRoom.hoogteCm !== undefined ? projectRoom.hoogteCm / 100 : undefined,
+        oppervlakteM2: projectRoom.oppervlakteM2,
+        omtrekM: projectRoom.omtrekMeter,
+        notities: projectRoom.notities,
+        sortOrder: nextSortOrder,
+        aangemaaktOp: now,
+        gewijzigdOp: now
+      });
+      const insertedRoom = await ctx.db.get(measurementRoomId);
+      if (!insertedRoom) {
+        throw new ConvexError("Meetruimte kon niet worden aangemaakt.");
+      }
+      measurementRoomsByProjectRoom.set(String(projectRoom._id), insertedRoom);
+      nextSortOrder += 1;
+      createdMeasurementRoom = true;
+    }
+
+    const preferredProjectRoom = targetProjectRooms[0];
+    const preferredMeasurementRoom = preferredProjectRoom
+      ? measurementRoomsByProjectRoom.get(String(preferredProjectRoom._id))
+      : undefined;
+
+    return {
+      measurementId: measurement._id,
+      measurementRoomId: preferredMeasurementRoom?._id,
+      projectRoomId: preferredProjectRoom?._id,
+      createdMeasurement,
+      createdMeasurementRoom
+    };
+  }
+});
+
+/**
+ * Slaat rekenresultaten en offerteregels in één Convex-transactie op.
+ *
+ * Anders dan addMeasurementLinesBulk + importMeasurementLinesToQuote kan hier
+ * nooit een tussenstaat zichtbaar worden: elke meetregel wordt direct gekoppeld
+ * en als converted opgeslagen, of de volledige mutatie rolt terug.
+ */
+export const composeMeasurementLinesIntoQuote = mutation({
+  args: {
+    tenantSlug: v.string(),
+    actor: mutationActorValidator,
+    quoteId: v.string(),
+    measurementId: v.id("measurements"),
+    startSortOrder: v.number(),
+    regels: v.array(v.object(measurementCompositionRuleFields))
+  },
+  handler: async (ctx, args) => {
+    const { tenant } = await requireMutationRole(ctx, args.tenantSlug, args.actor, [
+      "user",
+      "editor",
+      "admin"
+    ]);
+    const { quote } = await requireDraftQuoteCalculationContext(
+      ctx,
+      tenant._id,
+      args.quoteId as Id<"quotes">
+    );
+    const measurement = await ctx.db.get(args.measurementId);
+    if (
+      !measurement ||
+      measurement.tenantId !== tenant._id ||
+      measurement.projectId !== quote.projectId ||
+      measurement.klantId !== quote.klantId ||
+      measurement.contextQuoteId !== quote._id
+    ) {
+      throw new ConvexError("Inmeting niet gevonden bij het project van deze offerte.");
+    }
+    if (measurement.status !== "draft") {
+      throw new ConvexError("Offerte-rekenhulpen vereisen een concept-inmeting.");
+    }
+
+    if (args.regels.length === 0) {
+      return { measurementLineIds: [], quoteLineIds: [], count: 0 };
+    }
+    if (args.regels.length > MAX_COMPOSED_MEASUREMENT_LINES) {
+      throw new ConvexError("Maximaal " + MAX_COMPOSED_MEASUREMENT_LINES + " regels per keer.");
+    }
+
+    const roomsById = new Map<string, Doc<"measurementRooms">>();
+    const requestedBundles = new Map<string, StairBundleLineLike[]>();
+
+    // Alle externe verwijzingen en de volledige traprecepten worden gecontroleerd
+    // vóór de eerste insert. Convex biedt daarnaast transactierollback als een
+    // latere snapshotcontrole onverwacht toch faalt.
+    for (const regel of args.regels) {
+      validateComposedMeasurementSnapshot(
+        regel.eenheid,
+        regel.indicatieveEenheidsprijsExBtw,
+        regel.indicatiefBtwTarief,
+        regel.indicatiefVastgelegdOp
+      );
+      validateComposedMeasurementQuantities(regel.aantal, regel.snijverliesPct);
+      assertCompleteBundleFields(regel);
+
+      if (regel.ruimteId && !roomsById.has(String(regel.ruimteId))) {
+        const room = await requireMeasurementRoomForQuote(
+          ctx,
+          tenant._id,
+          quote,
+          measurement,
+          regel.ruimteId
+        );
+        if (room) roomsById.set(String(room._id), room);
+      }
+
+      if (regel.productId) {
+        await validateQuoteLineProduct(
+          ctx,
+          tenant._id,
+          regel.offerteRegelType,
+          String(regel.productId)
+        );
+        await assertQuoteProductHasRequiredBundle(ctx, regel.productId, hasAnyBundleField(regel));
+      }
+
+      if (hasAnyBundleField(regel)) {
+        const bundleId = regel.bundleId!.trim();
+        requestedBundles.set(bundleId, [
+          ...(requestedBundles.get(bundleId) ?? []),
+          regel as StairBundleLineLike
+        ]);
+      }
+    }
+
+    if (requestedBundles.size > 0) {
+      const existingMeasurementLines = await ctx.db
+        .query("measurementLines")
+        .withIndex("by_measurement", (q: any) =>
+          q.eq("tenantId", tenant._id).eq("inmetingId", measurement._id)
+        )
+        .collect();
+      for (const [bundleId, bundleLines] of requestedBundles) {
+        if (
+          existingMeasurementLines.some(
+            (line: Doc<"measurementLines">) => line.bundleId?.trim() === bundleId
+          )
+        ) {
+          throw new ConvexError("Deze trapbundel bestaat al binnen de inmeting.");
+        }
+        await assertValidStairRenovationBundle(ctx, tenant._id, bundleLines);
+      }
+    }
+
+    const now = Date.now();
+    const startSortOrder = await nextQuoteLineSortOrder(
+      ctx,
+      tenant._id,
+      quote._id,
+      args.startSortOrder
+    );
+    const measurementLineIds: Id<"measurementLines">[] = [];
+    const quoteLineIds: Id<"quoteLines">[] = [];
+
+    for (const [index, regel] of args.regels.entries()) {
+      const keepSnapshot =
+        Boolean(regel.productId) || regel.indicatieveEenheidsprijsExBtw !== undefined;
+      const measurementLineId = await ctx.db.insert("measurementLines", {
+        tenantId: tenant._id,
+        inmetingId: measurement._id,
+        ruimteId: regel.ruimteId,
+        productGroep: regel.productGroep,
+        berekeningType: regel.berekeningType,
+        invoer: regel.invoer,
+        resultaat: regel.resultaat,
+        snijverliesPct: regel.snijverliesPct,
+        aantal: regel.aantal,
+        eenheid: regel.eenheid,
+        notities: regel.notities,
+        offerteRegelType: regel.offerteRegelType,
+        quotePreparationStatus: "draft",
+        bundleId: regel.bundleId?.trim(),
+        bundleType: regel.bundleType,
+        bundleRole: regel.bundleRole,
+        sectionKey: regel.sectionKey,
+        productId: regel.productId,
+        productNaam: keepSnapshot ? regel.productNaam : undefined,
+        indicatieveEenheidsprijsExBtw: keepSnapshot
+          ? regel.indicatieveEenheidsprijsExBtw
+          : undefined,
+        indicatiefBtwTarief: keepSnapshot ? regel.indicatiefBtwTarief : undefined,
+        indicatievePrijsEenheid: keepSnapshot ? regel.indicatievePrijsEenheid : undefined,
+        indicatievePrijsSoort: keepSnapshot ? regel.indicatievePrijsSoort : undefined,
+        indicatiefVastgelegdOp: keepSnapshot ? (regel.indicatiefVastgelegdOp ?? now) : undefined,
+        aangemaaktOp: now,
+        gewijzigdOp: now
+      });
+      const measurementLine = await ctx.db.get(measurementLineId);
+      if (!measurementLine) {
+        throw new ConvexError("Meetregel kon niet worden aangemaakt.");
+      }
+
+      const room = regel.ruimteId ? (roomsById.get(String(regel.ruimteId)) ?? null) : null;
+      const quoteLineId = await insertQuoteLineFromMeasurement(
+        ctx,
+        tenant._id,
+        quote,
+        measurement,
+        room,
+        measurementLine,
+        startSortOrder + index,
+        now,
+        true
+      );
+      await ctx.db.patch(measurementLineId, {
+        quotePreparationStatus: "converted",
+        geconverteerdeOfferteId: quote._id,
+        geconverteerdeOfferteregelId: quoteLineId,
+        gewijzigdOp: now
+      });
+      measurementLineIds.push(measurementLineId);
+      quoteLineIds.push(quoteLineId);
+    }
+
+    // De interne context blijft draft zodat meerdere rekenhulpen in dezelfde
+    // offerte overzichtelijk dezelfde context en ruimte kunnen hergebruiken.
+    await ctx.db.patch(measurement._id, { gewijzigdOp: now });
+    await recalculateQuote(ctx, tenant._id, quote._id);
+
+    return {
+      measurementLineIds,
+      quoteLineIds,
+      count: quoteLineIds.length
+    };
   }
 });
 
@@ -1072,6 +1999,8 @@ export const importMeasurementLinesToQuote = mutation({
     const now = Date.now();
     const insertedLineIds: Id<"quoteLines">[] = [];
     const touchedMeasurementIds = new Set<Id<"measurements">>();
+    const requestedLineIds = new Set(args.lineIds.map((lineId) => String(lineId)));
+    const validatedBundleKeys = new Set<string>();
     const existingQuoteLines = await ctx.db
       .query("quoteLines")
       .withIndex("by_quote", (q: any) => q.eq("tenantId", tenant._id).eq("quoteId", quote._id))
@@ -1093,8 +2022,50 @@ export const importMeasurementLinesToQuote = mutation({
         throw new ConvexError("Inmeetregel niet gevonden.");
       }
 
-      if (line.quotePreparationStatus !== "ready_for_quote") {
-        throw new ConvexError("Deze inmeetregel is nog niet klaar voor een offerte. Zet de regel eerst op 'klaar voor offerte'.");
+      if (line.quotePreparationStatus !== "ready_for_quote" || isConvertedOrLinked(line)) {
+        throw new ConvexError(
+          "Deze inmeetregel is nog niet klaar voor een offerte. Zet de regel eerst op 'klaar voor offerte'."
+        );
+      }
+
+      if (line.bundleId) {
+        const bundleKey = `${String(line.inmetingId)}:${line.bundleId.trim()}`;
+
+        if (!validatedBundleKeys.has(bundleKey)) {
+          const bundleLines = await getMeasurementBundleLines(
+            ctx,
+            tenant._id,
+            line.inmetingId,
+            line.bundleId
+          );
+
+          if (
+            bundleLines.some(
+              (bundleLine: Doc<"measurementLines">) =>
+                bundleLine.quotePreparationStatus !== "ready_for_quote" ||
+                isConvertedOrLinked(bundleLine)
+            )
+          ) {
+            throw new ConvexError(
+              "Alle gekoppelde regels in deze bundel moeten klaar voor offerte zijn."
+            );
+          }
+
+          if (
+            bundleLines.some(
+              (bundleLine: Doc<"measurementLines">) => !requestedLineIds.has(String(bundleLine._id))
+            )
+          ) {
+            throw new ConvexError(
+              "Een gekoppelde meetregelbundel moet volledig naar de offerte worden overgenomen."
+            );
+          }
+
+          await assertValidStairRenovationBundle(ctx, tenant._id, bundleLines);
+          validatedBundleKeys.add(bundleKey);
+        }
+      } else if (hasAnyBundleField(line)) {
+        throw new ConvexError("Deze meetregel bevat een onvolledige trapbundelkoppeling.");
       }
 
       const measurement = await ctx.db.get(line.inmetingId);
@@ -1109,10 +2080,7 @@ export const importMeasurementLinesToQuote = mutation({
 
       const room = line.ruimteId ? await ctx.db.get(line.ruimteId) : null;
 
-      if (
-        room &&
-        (room.tenantId !== tenant._id || room.inmetingId !== measurement._id)
-      ) {
+      if (room && (room.tenantId !== tenant._id || room.inmetingId !== measurement._id)) {
         throw new ConvexError("Meetruimte niet gevonden.");
       }
 
@@ -1136,10 +2104,25 @@ export const importMeasurementLinesToQuote = mutation({
       let prefilledProductId: Id<"products"> | undefined;
 
       if (line.productId) {
-        try {
-          prefilledProductId = await validateQuoteLineProduct(ctx, tenant._id, String(line.productId));
-        } catch {
-          prefilledProductId = undefined;
+        await assertQuoteProductHasRequiredBundle(ctx, line.productId, Boolean(line.bundleId));
+        if (line.bundleId) {
+          prefilledProductId = await validateQuoteLineProduct(
+            ctx,
+            tenant._id,
+            line.offerteRegelType,
+            String(line.productId)
+          );
+        } else {
+          try {
+            prefilledProductId = await validateQuoteLineProduct(
+              ctx,
+              tenant._id,
+              line.offerteRegelType,
+              String(line.productId)
+            );
+          } catch {
+            prefilledProductId = undefined;
+          }
         }
       }
 
@@ -1150,14 +2133,27 @@ export const importMeasurementLinesToQuote = mutation({
       // inactief catalogusproduct (productId stond er ooit, maar valideert niet
       // meer) blijft bewust leeg-geprijsd binnenkomen.
       const isTrustedProductlessLine =
-        line.indicatievePrijsSoort === "matrix" || line.indicatievePrijsSoort === "service_rule";
+        !line.productId &&
+        ((line.indicatievePrijsSoort === "matrix" &&
+          line.berekeningType === "matrix" &&
+          line.offerteRegelType === "product") ||
+          (line.indicatievePrijsSoort === "service_rule" &&
+            (line.offerteRegelType === "service" || line.offerteRegelType === "labor")));
+      const bundleProductMetadata = line.bundleId
+        ? await stairBundleProductMetadataSnapshot(ctx, tenant._id, line)
+        : {};
       const hasIndicativePrice =
         (prefilledProductId !== undefined || isTrustedProductlessLine) &&
         line.indicatieveEenheidsprijsExBtw !== undefined &&
         line.indicatiefBtwTarief !== undefined;
       const unitPriceExVat = hasIndicativePrice ? line.indicatieveEenheidsprijsExBtw! : 0;
       const vatRate = hasIndicativePrice ? line.indicatiefBtwTarief! : 0;
-      const totals = calculateLineTotals(line.offerteRegelType, line.aantal, unitPriceExVat, vatRate);
+      const totals = calculateLineTotals(
+        line.offerteRegelType,
+        line.aantal,
+        unitPriceExVat,
+        vatRate
+      );
       const quoteLineId = await ctx.db.insert("quoteLines", {
         tenantId: tenant._id,
         quoteId: quote._id,
@@ -1184,7 +2180,14 @@ export const importMeasurementLinesToQuote = mutation({
           wastePercent: line.snijverliesPct,
           isIndicative: true,
           productId: prefilledProductId ? line.productId : undefined,
-          productName: prefilledProductId || isTrustedProductlessLine ? line.productNaam : undefined,
+          productName:
+            prefilledProductId || isTrustedProductlessLine ? line.productNaam : undefined,
+          sectionKey: line.sectionKey,
+          bundleId: line.bundleId,
+          bundleType: line.bundleType,
+          bundleRole: line.bundleRole,
+          ...importedMeasurementContext(line.invoer),
+          ...bundleProductMetadata,
           indicativePriceType: hasIndicativePrice ? line.indicatievePrijsSoort : undefined,
           indicativePriceUnit: hasIndicativePrice ? line.indicatievePrijsEenheid : undefined,
           // Matrix- (raambekleding) en dienstregels hebben bewust geen catalogusproduct nodig.

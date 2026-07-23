@@ -15,7 +15,12 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { PortalProduct } from "../../src/lib/portalTypes";
+import type { PortalProduct, ProductPickerScope } from "../../src/lib/portalTypes";
+import { resolveStairMaterialMetadata } from "../../src/lib/quotes/stairMaterialCatalog";
+import {
+  matchesStairMaterialCatalogFilter,
+  type StairMaterialCatalogFilter
+} from "../../src/lib/quotes/stairMaterialFilter";
 import { readActorValidator, requireQueryRole } from "../authz";
 import {
   cleanProductDisplayName,
@@ -36,6 +41,11 @@ const measurementProductGroup = v.union(
   v.literal("stairs"),
   v.literal("other")
 );
+const productPickerScope = v.union(v.literal("orderable"), v.literal("service"), v.literal("all"));
+const stairMaterialCatalogFilter = v.object({
+  family: v.literal("stair_renovation"),
+  covering: v.literal("pvc")
+});
 
 /** Zelfde mapping als src/lib/quotes/measurementCatalogMapping.ts, maar server-side afgedwongen. */
 const PRODUCT_GROUP_CATEGORIES: Record<string, string[]> = {
@@ -70,6 +80,30 @@ type ProductStatus = "draft" | "active" | "inactive" | "archived";
 
 function normalizedStatus(status?: ProductStatus): ProductStatus {
   return status ?? "active";
+}
+
+function normalizePickerScope(scope?: ProductPickerScope): ProductPickerScope {
+  return scope ?? "orderable";
+}
+
+function productMatchesScope(product: Doc<"products">, scope: ProductPickerScope) {
+  if (scope === "all") {
+    return true;
+  }
+  if (scope === "service") {
+    return product.productAard === "service";
+  }
+  return product.productAard !== "service";
+}
+
+function productScopeExpression(q: any, scope: ProductPickerScope) {
+  if (scope === "service") {
+    return q.eq(q.field("productAard"), "service");
+  }
+  if (scope === "orderable") {
+    return q.neq(q.field("productAard"), "service");
+  }
+  return q.eq(q.field("status"), "active");
 }
 
 function matchesHaystack(
@@ -111,6 +145,10 @@ export const searchPickerProducts = query({
     search: v.optional(v.string()),
     limit: v.optional(v.number()),
     // Cursor voor het bladeren (oneindig scrollen). null/leeg = eerste pagina.
+    scope: v.optional(productPickerScope),
+    // Alleen voor de geleide trapcomposer: beperk de bestelbare catalogus
+    // structureel tot herkend PVC-trapmateriaal, niet op naam/leverancier.
+    stairMaterialFilter: v.optional(stairMaterialCatalogFilter),
     cursor: v.optional(v.union(v.string(), v.null()))
   },
   handler: async (ctx, args) => {
@@ -123,6 +161,7 @@ export const searchPickerProducts = query({
     const limit = Math.min(Math.max(args.limit ?? 30, 10), 100);
     const search = (args.search ?? "").trim().toLowerCase();
 
+    const scope = normalizePickerScope(args.scope);
     const [categories, suppliers] = await Promise.all([
       ctx.db
         .query("categories")
@@ -135,6 +174,24 @@ export const searchPickerProducts = query({
     ]);
     const categoryById = new Map(categories.map((category) => [String(category._id), category]));
     const supplierById = new Map(suppliers.map((supplier) => [String(supplier._id), supplier]));
+
+    function stairMaterialMetadataForProduct(product: Doc<"products">) {
+      const category = categoryById.get(String(product.categorieId));
+      const allowSkuFallback =
+        category?.productGroep === "stairs" || category?.naam === "Traprenovatie";
+      return resolveStairMaterialMetadata({
+        sku: allowSkuFallback ? product.sku : undefined,
+        attributen: product.attributen as Record<string, unknown> | undefined
+      });
+    }
+
+    function matchesRequestedStairMaterial(product: Doc<"products">): boolean {
+      if (!args.stairMaterialFilter) return true;
+      return matchesStairMaterialCatalogFilter(
+        stairMaterialMetadataForProduct(product),
+        args.stairMaterialFilter as StairMaterialCatalogFilter
+      );
+    }
 
     // Data-driven filter: categorieën waarvan de beheerde `productGroep` matcht met
     // de hint (beheer bestuurt dit via /instellingen/categorieen), AANGEVULD met de
@@ -186,14 +243,22 @@ export const searchPickerProducts = query({
         })),
         now
       );
-      const categoryName = categoryById.get(String(product.categorieId))?.naam ?? "Overig";
+      const category = categoryById.get(String(product.categorieId));
+      const categoryName = category?.naam ?? "Overig";
       const supplierName = product.leverancierId
         ? (supplierById.get(String(product.leverancierId))?.naam ?? "Onbekend")
         : "Onbekend";
+      const stairMaterialMetadata = stairMaterialMetadataForProduct(product);
 
       return {
         id: String(product._id),
         tenantId: tenant.slug,
+        sku: product.sku,
+        productAard: product.productAard,
+        attributen: {
+          ...((product.attributen as Record<string, unknown> | undefined) ?? {}),
+          ...(stairMaterialMetadata ? { stairMaterialMetadata } : {})
+        },
         category: categoryName,
         supplier: supplierName,
         displaySupplierName: displaySupplierName(supplierName),
@@ -213,6 +278,11 @@ export const searchPickerProducts = query({
         pakinhoudM2: product.pakinhoudM2,
         stuksPerPak: product.stuksPerPak,
         pakkenPerPallet: product.pakkenPerPallet,
+        verkoopEenheid: product.verkoopEenheid,
+        inkoopEenheid: product.inkoopEenheid,
+        bestelEenheid: product.bestelEenheid,
+        minimumBestelAantal: product.minimumBestelAantal,
+        bestelVeelvoud: product.bestelVeelvoud,
         palletAantal: product.palletAantal,
         vrachtwagenAantal: product.vrachtwagenAantal,
         bundelGrootte: product.bundelGrootte,
@@ -231,30 +301,50 @@ export const searchPickerProducts = query({
     //    ook met 10.000+ in de catalogus. Meetgroepen met meerdere categorieën en zoeken
     //    vallen hier bewust buiten (die versmallen al genoeg → top-N hieronder).
     if (!search && (allowedCategoryIds === null || singleCategoryId)) {
-      const page = singleCategoryId
-        ? await ctx.db
-            .query("products")
-            .withIndex("by_category_status_naam", (q) =>
-              q
-                .eq("tenantId", tenant._id)
-                .eq("categorieId", singleCategoryId)
-                .eq("status", "active")
-            )
-            .paginate({ numItems: limit, cursor: args.cursor ?? null })
-        : await ctx.db
-            .query("products")
-            .withIndex("by_status_naam", (q) =>
-              q.eq("tenantId", tenant._id).eq("status", "active")
-            )
-            .paginate({ numItems: limit, cursor: args.cursor ?? null });
+      const visible: Doc<"products">[] = [];
+      let cursor = args.cursor ?? null;
+      let isDone = false;
 
-      const visible = page.page.filter((product) => {
+      function isVisible(product: Doc<"products">): boolean {
         const categoryName = categoryById.get(String(product.categorieId))?.naam ?? "Overig";
-        return !pilotHiddenReason(product, categoryName);
-      });
+        return (
+          productMatchesScope(product, scope) &&
+          matchesRequestedStairMaterial(product) &&
+          !pilotHiddenReason(product, categoryName)
+        );
+      }
+
+      // Filters op beheerde metadata en pilotzichtbaarheid kunnen niet in de Convex-index
+      // worden uitgedrukt. Blijf daarom onderliggende pagina's lezen totdat de zichtbare
+      // pagina gevuld is of de index echt op is. Anders kan een eerste reeks niet-passende
+      // artikelen een lege pagina opleveren terwijl verderop wel geldige producten staan.
+      while (visible.length < limit && !isDone) {
+        const page = singleCategoryId
+          ? await ctx.db
+              .query("products")
+              .withIndex("by_category_status_naam", (q) =>
+                q
+                  .eq("tenantId", tenant._id)
+                  .eq("categorieId", singleCategoryId)
+                  .eq("status", "active")
+              )
+              .filter((q) => productScopeExpression(q, scope))
+              .paginate({ numItems: limit - visible.length, cursor })
+          : await ctx.db
+              .query("products")
+              .withIndex("by_status_naam", (q) =>
+                q.eq("tenantId", tenant._id).eq("status", "active")
+              )
+              .filter((q) => productScopeExpression(q, scope))
+              .paginate({ numItems: limit - visible.length, cursor });
+
+        visible.push(...page.page.filter(isVisible));
+        isDone = page.isDone;
+        cursor = page.isDone ? null : page.continueCursor;
+      }
 
       const items = await Promise.all(visible.map((product) => toPortalProduct(product)));
-      return { items, isDone: page.isDone, nextCursor: page.isDone ? null : page.continueCursor };
+      return { items, isDone, nextCursor: isDone ? null : cursor };
     }
 
     // ── Zoeken, of een meetgroep met meerdere categorieën bladeren: top-N (geen paginering). ──
@@ -270,6 +360,13 @@ export const searchPickerProducts = query({
       }
 
       const category = categoryById.get(String(product.categorieId));
+      if (!productMatchesScope(product, scope)) {
+        return;
+      }
+
+      if (!matchesRequestedStairMaterial(product)) {
+        return;
+      }
       const categoryName = category?.naam ?? "Overig";
 
       if (
@@ -339,12 +436,14 @@ export const searchPickerProducts = query({
           break;
         }
 
-        const page = await ctx.db
+        const productsQuery = ctx.db
           .query("products")
           .withIndex("by_category_status", (q) =>
             q.eq("tenantId", tenant._id).eq("categorieId", categoryId).eq("status", "active")
-          )
-          .take(limit);
+          );
+        const page = args.stairMaterialFilter
+          ? await productsQuery.collect()
+          : await productsQuery.take(limit);
 
         for (const product of page) {
           consider(product);
@@ -375,7 +474,8 @@ export const searchPickerProducts = query({
 export const pickerCategories = query({
   args: {
     tenantSlug: v.string(),
-    actor: readActorValidator
+    actor: readActorValidator,
+    scope: v.optional(productPickerScope)
   },
   handler: async (ctx, args) => {
     const { tenant } = await requireQueryRole(ctx, args.tenantSlug, args.actor, [
@@ -384,6 +484,7 @@ export const pickerCategories = query({
       "editor",
       "admin"
     ]);
+    const scope = normalizePickerScope(args.scope);
 
     const categories = await ctx.db
       .query("categories")
@@ -413,6 +514,7 @@ export const pickerCategories = query({
         .withIndex("by_category_status", (q) =>
           q.eq("tenantId", tenant._id).eq("categorieId", category._id).eq("status", "active")
         )
+        .filter((q) => productScopeExpression(q, scope))
         .first();
 
       if (firstProduct) {

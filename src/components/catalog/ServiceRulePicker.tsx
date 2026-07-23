@@ -31,6 +31,8 @@ type ServiceRulePickerProps = {
   required?: boolean;
   /** Toon de prijs excl. btw in het optielabel. */
   showPriceInLabel?: boolean;
+  /** Optioneel domeinfilter voor contexten die slechts een deel van de catalogus tonen. */
+  ruleFilter?: (rule: ServiceRuleRow) => boolean;
 };
 
 /**
@@ -50,7 +52,8 @@ export default function ServiceRulePicker({
   description,
   emptyOptionLabel = "Geen vaste werkzaamheid",
   required = false,
-  showPriceInLabel = false
+  showPriceInLabel = false,
+  ruleFilter
 }: ServiceRulePickerProps) {
   const titleId = useId();
   const [open, setOpen] = useState(false);
@@ -117,7 +120,14 @@ export default function ServiceRulePicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.tenantId]);
 
-  const filtered = useMemo(() => filterServiceRules(rules, search), [rules, search]);
+  const selectableRules = useMemo(
+    () => (ruleFilter ? rules.filter(ruleFilter) : rules),
+    [rules, ruleFilter]
+  );
+  const filtered = useMemo(
+    () => filterServiceRules(selectableRules, search),
+    [selectableRules, search]
+  );
   const selectedRule = useMemo(
     () => rules.find((rule) => rule.id === selectedRuleId) ?? null,
     [rules, selectedRuleId]
@@ -146,7 +156,12 @@ export default function ServiceRulePicker({
   }
 
   return (
-    <Field htmlFor={`${idPrefix}-service-rule`} label={label} description={description} required={required}>
+    <Field
+      htmlFor={`${idPrefix}-service-rule`}
+      label={label}
+      description={description}
+      required={required}
+    >
       <button
         type="button"
         id={`${idPrefix}-service-rule`}
@@ -157,7 +172,9 @@ export default function ServiceRulePicker({
         onClick={openDialog}
       >
         <Wrench size={16} aria-hidden="true" className="catalog-picker-trigger-icon" />
-        <span className="catalog-picker-trigger-label">{triggerText ?? "Kies een werkzaamheid…"}</span>
+        <span className="catalog-picker-trigger-label">
+          {triggerText ?? "Kies een werkzaamheid…"}
+        </span>
         <ChevronDown size={16} aria-hidden="true" className="catalog-picker-trigger-chevron" />
       </button>
 
@@ -172,7 +189,12 @@ export default function ServiceRulePicker({
             <h2 id={titleId} className="catalog-picker-title">
               {label}
             </h2>
-            <IconButton aria-label="Sluiten" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+            <IconButton
+              aria-label="Sluiten"
+              variant="ghost"
+              size="sm"
+              onClick={() => setOpen(false)}
+            >
               <X size={18} aria-hidden="true" />
             </IconButton>
           </div>
@@ -213,7 +235,7 @@ export default function ServiceRulePicker({
               <p className="catalog-picker-status">Werkzaamheden laden…</p>
             ) : filtered.length === 0 ? (
               <p className="catalog-picker-status">
-                {rules.length === 0
+                {selectableRules.length === 0
                   ? "Nog geen werkzaamheden. Voeg ze toe bij Instellingen › Werkzaamheden."
                   : "Geen werkzaamheden gevonden — pas de zoekterm aan."}
               </p>
@@ -238,9 +260,15 @@ export default function ServiceRulePicker({
                             {formatCalculationType(rule.calculationType)}
                           </span>
                         </span>
-                        {price ? <span className="catalog-picker-option-price">{price}</span> : null}
+                        {price ? (
+                          <span className="catalog-picker-option-price">{price}</span>
+                        ) : null}
                         {isActive ? (
-                          <Check size={16} aria-hidden="true" className="catalog-picker-option-check" />
+                          <Check
+                            size={16}
+                            aria-hidden="true"
+                            className="catalog-picker-option-check"
+                          />
                         ) : null}
                       </button>
                     </li>

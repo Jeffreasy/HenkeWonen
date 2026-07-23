@@ -416,18 +416,6 @@ const quoteTemplateLines = [
     productSoortHint: "duette"
   },
   {
-    sectieSleutel: "traprenovatie",
-    regelType: "manual",
-    titel: "Traprenovatie PVC fabrikant, kleur, kleur strip",
-    omschrijving: "Traprenovatie inclusief fabrikant, kleur en stripkleur.",
-    eenheid: "stairs",
-    standaardAantal: 1,
-    sortOrder: 11,
-    optioneel: true,
-    standaardIngeschakeld: false,
-    categorieHint: "Traprenovatie"
-  },
-  {
     sectieSleutel: "wandafwerking",
     regelType: "product",
     titel: "Wandpanelen merk, kleur",
@@ -620,9 +608,19 @@ const importProfiles = [
       quantityColumns: ["Aantal pakker per pallet"],
       priceColumns: [
         { header: "Palletprijs EUR m2", priceType: "pallet", priceUnit: "m2", vatMode: "unknown" },
-        { header: "Commissieprijs EUR m2", priceType: "commission", priceUnit: "m2", vatMode: "unknown" },
+        {
+          header: "Commissieprijs EUR m2",
+          priceType: "commission",
+          priceUnit: "m2",
+          vatMode: "unknown"
+        },
         { header: "Trailerprijs", priceType: "trailer", priceUnit: "m2", vatMode: "unknown" },
-        { header: "Adviesverkoopprijs EUR m2", priceType: "advice_retail", priceUnit: "m2", vatMode: "unknown" }
+        {
+          header: "Adviesverkoopprijs EUR m2",
+          priceType: "advice_retail",
+          priceUnit: "m2",
+          vatMode: "unknown"
+        }
       ]
     },
     notes: "PVC kan Ambiant en Floorlife commercialNames bevatten."
@@ -676,9 +674,21 @@ const importProfiles = [
       nameColumns: ["Kwaliteit", "Afmeting (cm)"],
       priceColumns: [
         { header: "Inkoopprijs", priceType: "purchase", priceUnit: "piece", vatMode: "unknown" },
-        { header: "Adviesverkoopprijs", priceType: "advice_retail", priceUnit: "piece", vatMode: "unknown" }
+        {
+          header: "Adviesverkoopprijs",
+          priceType: "advice_retail",
+          priceUnit: "piece",
+          vatMode: "unknown"
+        }
       ],
-      attributeColumns: ["Totale dikte (mm)", "Poolhoogte (mm)", "Verfmethode", "Poolmateriaal", "Soort Backing", "Garantie Woongebruik"]
+      attributeColumns: [
+        "Totale dikte (mm)",
+        "Poolhoogte (mm)",
+        "Verfmethode",
+        "Poolmateriaal",
+        "Soort Backing",
+        "Garantie Woongebruik"
+      ]
     },
     notes: "Karpetten zijn losse verkoopproducten, geen PVC en geen tapijtrol."
   },
@@ -696,9 +706,24 @@ const importProfiles = [
       supplierCodeColumn: "SAP codes floors",
       commercialCodeColumn: "Commercial Code",
       priceColumns: [
-        { header: "Adviesverkoopprijs vanaf 01/05/2026", priceType: "advice_retail", priceUnit: "pack", vatMode: "unknown" },
-        { header: "Netto inkoop per pak", priceType: "net_purchase", priceUnit: "pack", vatMode: "unknown" },
-        { header: "Adviesverkoopprijs / m2 vanaf 01/05/2026", priceType: "advice_retail", priceUnit: "m2", vatMode: "unknown" }
+        {
+          header: "Adviesverkoopprijs vanaf 01/05/2026",
+          priceType: "advice_retail",
+          priceUnit: "pack",
+          vatMode: "unknown"
+        },
+        {
+          header: "Netto inkoop per pak",
+          priceType: "net_purchase",
+          priceUnit: "pack",
+          vatMode: "unknown"
+        },
+        {
+          header: "Adviesverkoopprijs / m2 vanaf 01/05/2026",
+          priceType: "advice_retail",
+          priceUnit: "m2",
+          vatMode: "unknown"
+        }
       ],
       quantityColumns: ["Panels", "Packs"]
     },
@@ -719,8 +744,18 @@ const importProfiles = [
       priceColumns: [
         { header: "Coupageprijs", priceType: "cut_length", priceUnit: "m1", vatMode: "unknown" },
         { header: "Rolprijs", priceType: "roll", priceUnit: "roll", vatMode: "unknown" },
-        { header: "Adviesverkoopprijs per m1 /stuks", priceType: "advice_retail", priceUnit: "m1", vatMode: "unknown" },
-        { header: "Adviesverkoopprijs per m2 /stuks", priceType: "advice_retail", priceUnit: "m2", vatMode: "unknown" }
+        {
+          header: "Adviesverkoopprijs per m1 /stuks",
+          priceType: "advice_retail",
+          priceUnit: "m1",
+          vatMode: "unknown"
+        },
+        {
+          header: "Adviesverkoopprijs per m2 /stuks",
+          priceType: "advice_retail",
+          priceUnit: "m2",
+          vatMode: "unknown"
+        }
       ]
     },
     notes: "Geen harde artikelcodekolom; sectie en kwaliteit zijn belangrijk voor herkenning."
@@ -738,11 +773,36 @@ const importProfiles = [
       codeColumns: ["Artikelnummer", "EAN code"],
       quantityColumns: ["aantal per pallet"],
       priceColumns: [
-        { header: "Palletprijs / per verpakking", priceType: "pallet", priceUnit: "package", vatMode: "unknown" },
-        { header: "Palletprijs / per stuk, kilo, liter", priceType: "pallet", priceUnit: "custom", vatMode: "unknown" },
-        { header: "commisieprijs / per verpakking", priceType: "commission", priceUnit: "package", vatMode: "unknown" },
-        { header: "commisieprijs / per stuk, kilo, liter", priceType: "commission", priceUnit: "custom", vatMode: "unknown" },
-        { header: "Adviesverkoopprijs incl. BTW. per verpakking", priceType: "advice_retail", priceUnit: "package", vatMode: "inclusive" }
+        {
+          header: "Palletprijs / per verpakking",
+          priceType: "pallet",
+          priceUnit: "package",
+          vatMode: "unknown"
+        },
+        {
+          header: "Palletprijs / per stuk, kilo, liter",
+          priceType: "pallet",
+          priceUnit: "custom",
+          vatMode: "unknown"
+        },
+        {
+          header: "commisieprijs / per verpakking",
+          priceType: "commission",
+          priceUnit: "package",
+          vatMode: "unknown"
+        },
+        {
+          header: "commisieprijs / per stuk, kilo, liter",
+          priceType: "commission",
+          priceUnit: "custom",
+          vatMode: "unknown"
+        },
+        {
+          header: "Adviesverkoopprijs incl. BTW. per verpakking",
+          priceType: "advice_retail",
+          priceUnit: "package",
+          vatMode: "inclusive"
+        }
       ]
     },
     notes: "Let op adviesverkoop incl. BTW per verpakking."
@@ -761,11 +821,36 @@ const importProfiles = [
       sectionRows: true,
       quantityColumns: ["bundel", "Besteleenheid", "plinten per pallet", "plinten per trailer"],
       priceColumns: [
-        { header: "Palletprijs lengte (3,0)", priceType: "pallet", priceUnit: "meter", vatMode: "unknown" },
-        { header: "Palletprijs (3,0) m1", priceType: "pallet", priceUnit: "m1", vatMode: "unknown" },
-        { header: "Commissieprijs lengte (2,7)", priceType: "commission", priceUnit: "meter", vatMode: "unknown" },
-        { header: "Commissieprijs (2,7) m1", priceType: "commission", priceUnit: "m1", vatMode: "unknown" },
-        { header: "Adviesverkoopprijs lengte", priceType: "advice_retail", priceUnit: "meter", vatMode: "unknown" }
+        {
+          header: "Palletprijs lengte (3,0)",
+          priceType: "pallet",
+          priceUnit: "meter",
+          vatMode: "unknown"
+        },
+        {
+          header: "Palletprijs (3,0) m1",
+          priceType: "pallet",
+          priceUnit: "m1",
+          vatMode: "unknown"
+        },
+        {
+          header: "Commissieprijs lengte (2,7)",
+          priceType: "commission",
+          priceUnit: "meter",
+          vatMode: "unknown"
+        },
+        {
+          header: "Commissieprijs (2,7) m1",
+          priceType: "commission",
+          priceUnit: "m1",
+          vatMode: "unknown"
+        },
+        {
+          header: "Adviesverkoopprijs lengte",
+          priceType: "advice_retail",
+          priceUnit: "meter",
+          vatMode: "unknown"
+        }
       ]
     },
     notes: "Plinten combineren verkoopproduct, lengtematen, bundels en montage in offertes."
@@ -782,7 +867,14 @@ const importProfiles = [
       productKind: "carpet",
       supplierProductGroupColumn: "Artikelgroep",
       sectionRows: true,
-      priceColumns: ["Rolprijs EUR m1", "Rolprijs EUR m2", "Coupageprijs EUR m1", "Coupageprijs EUR m2", "Adviesverkoopprijs EUR m1", "Adviesverkoopprijs EUR m2"]
+      priceColumns: [
+        "Rolprijs EUR m1",
+        "Rolprijs EUR m2",
+        "Coupageprijs EUR m1",
+        "Coupageprijs EUR m2",
+        "Adviesverkoopprijs EUR m1",
+        "Adviesverkoopprijs EUR m2"
+      ]
     },
     notes: "Artikelgroep is assortimentgroep, niet als unieke artikelcode gebruiken."
   },
@@ -798,7 +890,14 @@ const importProfiles = [
       productKind: "vinyl",
       supplierProductGroupColumn: "Artikelgroep",
       sectionRows: true,
-      priceColumns: ["Rolprijs EUR m1", "Rolprijs EUR m2", "Coupageprijs EUR m1", "Coupageprijs EUR m2", "Adviesverkoopprijs EUR m1", "Adviesverkoopprijs EUR m2"]
+      priceColumns: [
+        "Rolprijs EUR m1",
+        "Rolprijs EUR m2",
+        "Coupageprijs EUR m1",
+        "Coupageprijs EUR m2",
+        "Adviesverkoopprijs EUR m1",
+        "Adviesverkoopprijs EUR m2"
+      ]
     },
     notes: "Vinyl bevat secties en rol/coupageprijzen per m1 en m2."
   },
@@ -815,10 +914,30 @@ const importProfiles = [
       codeColumns: ["Artikelnummer", "EAN code"],
       quantityColumns: ["Besteleenheid"],
       priceColumns: [
-        { header: "prijs per verpakkking", priceType: "package", priceUnit: "pack", vatMode: "unknown" },
-        { header: "prijs per trede / stuk", priceType: "step", priceUnit: "step", vatMode: "unknown" },
-        { header: "adviesverkoopprijs per verpakkking", priceType: "advice_retail", priceUnit: "pack", vatMode: "unknown" },
-        { header: "adviesverkoopprijs per trede / stuk", priceType: "advice_retail", priceUnit: "step", vatMode: "unknown" }
+        {
+          header: "prijs per verpakkking",
+          priceType: "package",
+          priceUnit: "pack",
+          vatMode: "unknown"
+        },
+        {
+          header: "prijs per trede / stuk",
+          priceType: "step",
+          priceUnit: "step",
+          vatMode: "unknown"
+        },
+        {
+          header: "adviesverkoopprijs per verpakkking",
+          priceType: "advice_retail",
+          priceUnit: "pack",
+          vatMode: "unknown"
+        },
+        {
+          header: "adviesverkoopprijs per trede / stuk",
+          priceType: "advice_retail",
+          priceUnit: "step",
+          vatMode: "unknown"
+        }
       ]
     },
     notes: "Traprenovatie combineert productregels met vaste arbeids-/prijsregels."
@@ -837,9 +956,24 @@ const importProfiles = [
       sectionRows: true,
       quantityColumns: ["Aantal panelen per pak", "Afname pallet = stuks"],
       priceColumns: [
-        { header: "Inkoopprijs per stuk", priceType: "purchase", priceUnit: "piece", vatMode: "unknown" },
-        { header: "Inkoopprijs per pallet", priceType: "purchase", priceUnit: "pallet", vatMode: "unknown" },
-        { header: "Adviesverkoopprijs per pak", priceType: "advice_retail", priceUnit: "pack", vatMode: "unknown" }
+        {
+          header: "Inkoopprijs per stuk",
+          priceType: "purchase",
+          priceUnit: "piece",
+          vatMode: "unknown"
+        },
+        {
+          header: "Inkoopprijs per pallet",
+          priceType: "purchase",
+          priceUnit: "pallet",
+          vatMode: "unknown"
+        },
+        {
+          header: "Adviesverkoopprijs per pak",
+          priceType: "advice_retail",
+          priceUnit: "pack",
+          vatMode: "unknown"
+        }
       ]
     },
     notes: "Bevat panelen en tegels met sectierijen; mapping per sectie bevestigen."
@@ -858,9 +992,24 @@ const importProfiles = [
       sectionRows: true,
       quantityColumns: ["Aantal panelen per pak", "Afname pallet = stuks"],
       priceColumns: [
-        { header: "Inkoopprijs per stuk", priceType: "purchase", priceUnit: "piece", vatMode: "unknown" },
-        { header: "Palletprijs per stuk", priceType: "pallet", priceUnit: "piece", vatMode: "unknown" },
-        { header: "Adviesverkoopprijs per stuk", priceType: "advice_retail", priceUnit: "piece", vatMode: "unknown" }
+        {
+          header: "Inkoopprijs per stuk",
+          priceType: "purchase",
+          priceUnit: "piece",
+          vatMode: "unknown"
+        },
+        {
+          header: "Palletprijs per stuk",
+          priceType: "pallet",
+          priceUnit: "piece",
+          vatMode: "unknown"
+        },
+        {
+          header: "Adviesverkoopprijs per stuk",
+          priceType: "advice_retail",
+          priceUnit: "piece",
+          vatMode: "unknown"
+        }
       ]
     },
     notes: "Panelen hebben materiaal/backing/vochtwerend als attributes."
@@ -878,8 +1027,18 @@ const importProfiles = [
       codeColumns: ["Artikelnummer", "EAN-code"],
       quantityColumns: ["Aantal m2 per pak", "Aantal pakken per pallet"],
       priceColumns: [
-        { header: "inkoop op commissie", priceType: "commission", priceUnit: "pack", vatMode: "unknown" },
-        { header: "Adviesverkoopprijs", priceType: "advice_retail", priceUnit: "m2", vatMode: "unknown" }
+        {
+          header: "inkoop op commissie",
+          priceType: "commission",
+          priceUnit: "pack",
+          vatMode: "unknown"
+        },
+        {
+          header: "Adviesverkoopprijs",
+          priceType: "advice_retail",
+          priceUnit: "m2",
+          vatMode: "unknown"
+        }
       ]
     },
     notes: "Palletafname is prijsbron/conditie; niet dedupliceren op bestandsnaam."
@@ -920,7 +1079,8 @@ const importProfiles = [
         "Fire resistance"
       ]
     },
-    notes: "Masureel behang NL NG 01052026. Sheets: MASUREEL (4633 rijen), PROJECTS (1346 rijen), COLMP4 (255 rijen), ART FACTORY (8 rijen), STOFFEN (42 rijen). Aankoopprijs excl. BTW, adviesverkoop incl. BTW per rol."
+    notes:
+      "Masureel behang NL NG 01052026. Sheets: MASUREEL (4633 rijen), PROJECTS (1346 rijen), COLMP4 (255 rijen), ART FACTORY (8 rijen), STOFFEN (42 rijen). Aankoopprijs excl. BTW, adviesverkoop incl. BTW per rol."
   }
 ];
 
@@ -1162,9 +1322,7 @@ export const run = internalMutation({
           header,
           sourceColumnIndex,
           vatMode:
-            existingVatModeForColumn(header, sourceColumnIndex) ??
-            baseColumn.vatMode ??
-          "unknown"
+            existingVatModeForColumn(header, sourceColumnIndex) ?? baseColumn.vatMode ?? "unknown"
         };
       });
       const mappingWithPreservedPriceColumns = {
