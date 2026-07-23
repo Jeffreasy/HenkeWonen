@@ -70,7 +70,13 @@ export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProp
     >
       <section className="quote-document-control-panel no-print" aria-label="Klantversie controle">
         <div className="quote-document-control-copy">
-          <span className={hasManualReviewLines ? "quote-document-control-icon warning" : "quote-document-control-icon success"}>
+          <span
+            className={
+              hasManualReviewLines
+                ? "quote-document-control-icon warning"
+                : "quote-document-control-icon success"
+            }
+          >
             {reviewStatus.icon}
           </span>
           <div>
@@ -119,7 +125,11 @@ export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProp
         <div className="quote-document-total-card" aria-label="Totaal offerte">
           <span>Totaal incl. btw</span>
           <strong>{formatCurrencyEUR(model.totals.totalIncVat)}</strong>
-          <small>{model.quote.validUntil ? `Geldig tot ${formatDateNL(model.quote.validUntil)}` : "Geldigheid niet ingevuld"}</small>
+          <small>
+            {model.quote.validUntil
+              ? `Geldig tot ${formatDateNL(model.quote.validUntil)}`
+              : "Geldigheid niet ingevuld"}
+          </small>
         </div>
       </section>
 
@@ -147,220 +157,233 @@ export default function QuoteDocumentPreview({ model }: QuoteDocumentPreviewProp
 
       {/* Het vel: dit deel is wat de klant op papier krijgt (zie .quote-document-sheet). */}
       <div className="quote-document-sheet">
-      <div className="quote-document-front-page">
-        <section className="quote-document-letterhead print-page-break-avoid">
-          <div>
-            {model.company.logoUrl ? (
-              <img
-                className="quote-document-logo"
-                src={model.company.logoUrl}
-                alt={model.company.name}
-                width="220"
-                height="58"
-              />
-            ) : (
-              <strong>{model.company.name}</strong>
-            )}
-            {model.company.addressLines.map((line) => (
-              <span key={line}>{line}</span>
-            ))}
-          </div>
-          <div>
-            <span>{model.company.contactLine}</span>
-            <span>{model.company.legalLine}</span>
-          </div>
-        </section>
-
-        <section className="quote-document-print-title print-only print-page-break-avoid">
-          <p className="eyebrow">Offerte</p>
-          <h1>{model.quote.subject}</h1>
-        </section>
-
-        <section className="quote-document-meta-grid print-page-break-avoid">
-          <div>
-            <p className="eyebrow">Klant</p>
-            <strong>{model.customer.name}</strong>
-            {model.customer.addressLines.map((line) => (
-              <span key={line}>{line}</span>
-            ))}
-            {model.customer.telefoon ? <span>{model.customer.telefoon}</span> : null}
-            {model.customer.email ? <span>{model.customer.email}</span> : null}
-          </div>
-          <div>
-            <p className="eyebrow">Offerte</p>
-            <dl>
-              <div>
-                <dt>Offertenummer</dt>
-                <dd>{model.quote.quoteNumber}</dd>
-              </div>
-              <div>
-                <dt>Datum</dt>
-                <dd>{formatDateNL(model.quote.quoteDate)}</dd>
-              </div>
-              {model.quote.validUntil ? (
-                <div>
-                  <dt>Geldig tot</dt>
-                  <dd>{formatDateNL(model.quote.validUntil)}</dd>
-                </div>
-              ) : null}
-              <div>
-                <dt>Onderwerp</dt>
-                <dd>{model.quote.subject}</dd>
-              </div>
-            </dl>
-          </div>
-        </section>
-
-        <section className="quote-document-copy print-page-break-avoid">
-          <p>{model.customer.salutation}</p>
-          {model.quote.introText ? <p>{model.quote.introText}</p> : null}
-        </section>
-
-        <section className="quote-document-sections">
-          {model.sections.map((section, sectionIndex) => (
-            <div
-              className="quote-document-section print-page-break-avoid"
-              key={section.key ?? `section-${sectionIndex}`}
-            >
-              {section.title ? <h3>{section.title}</h3> : null}
-              <div className="quote-document-table-wrap">
-                <table className="quote-document-table">
-                  <thead>
-                    <tr>
-                      <th>Aantal</th>
-                      <th>Eenheid</th>
-                      <th>Omschrijving</th>
-                      <th>Prijs excl. btw</th>
-                      <th>Btw</th>
-                      <th>Totaal incl. btw</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {section.lines.map((line, lineIndex) =>
-                      line.isText ? (
-                        // Tekstregel: alleen de tekst, geen 0-bedragen — zelfde opmaak
-                        // als de factuur-klantversie (InvoiceDocumentPreview).
-                        <tr key={`${section.key ?? sectionIndex}-${lineIndex}`}>
-                          <td />
-                          <td />
-                          <td colSpan={4}>
-                            <span className="muted">
-                              <DescriptionText description={line.description} />
-                            </span>
-                          </td>
-                        </tr>
-                      ) : (
-                        <tr
-                          className={line.requiresManualReview ? "quote-document-line-needs-review" : undefined}
-                          key={`${section.key ?? sectionIndex}-${lineIndex}`}
-                        >
-                          <td>{formatQuantity(line.quantity)}</td>
-                          <td>{line.unit}</td>
-                          <td>
-                            <DescriptionText description={line.description} />
-                            {line.requiresManualReview ? (
-                              <small className="quote-document-review-warning no-print">
-                                <AlertTriangle size={14} aria-hidden="true" />
-                                Controleer product, prijs en btw.
-                              </small>
-                            ) : null}
-                          </td>
-                          <td>{formatCurrencyEUR(line.unitPriceExVat)}</td>
-                          <td>{formatVatRate(line.vatRate)}</td>
-                          <td>{formatCurrencyEUR(line.lineTotalIncVat)}</td>
-                        </tr>
-                      )
-                    )}
-                  </tbody>
-                </table>
-              </div>
+        <div className="quote-document-front-page">
+          <section className="quote-document-letterhead print-page-break-avoid">
+            <div>
+              {model.company.logoUrl ? (
+                <img
+                  className="quote-document-logo"
+                  src={model.company.logoUrl}
+                  alt={model.company.name}
+                  width="220"
+                  height="58"
+                />
+              ) : (
+                <strong>{model.company.name}</strong>
+              )}
+              {model.company.addressLines.map((line) => (
+                <span key={line}>{line}</span>
+              ))}
             </div>
-          ))}
-        </section>
+            <div>
+              <span>{model.company.contactLine}</span>
+              <span>{model.company.legalLine}</span>
+            </div>
+          </section>
 
-        <section className="quote-document-totals print-keep-together" aria-label="Offertetotalen">
-          <div>
-            <span>Subtotaal excl. btw</span>
-            <strong>{formatCurrencyEUR(model.totals.subtotalExVat)}</strong>
-          </div>
-          {shouldShowCostBreakdown(model.totals.costBreakdown)
-            ? model.totals.costBreakdown.map((row) => (
-                <div key={row.category} className="quote-document-cost-row">
-                  <span>waarvan {row.label.toLowerCase()}</span>
+          <section className="quote-document-print-title print-only print-page-break-avoid">
+            <div>
+              <p className="eyebrow">Offerte</p>
+              <h1>{model.quote.subject}</h1>
+            </div>
+            <div className="quote-document-title-reference">
+              <span>Offertenummer</span>
+              <strong>{model.quote.quoteNumber}</strong>
+            </div>
+          </section>
+
+          <section className="quote-document-meta-grid print-page-break-avoid">
+            <div>
+              <p className="eyebrow">Klant</p>
+              <strong>{model.customer.name}</strong>
+              {model.customer.addressLines.map((line) => (
+                <span key={line}>{line}</span>
+              ))}
+              {model.customer.telefoon ? <span>{model.customer.telefoon}</span> : null}
+              {model.customer.email ? <span>{model.customer.email}</span> : null}
+            </div>
+            <div>
+              <p className="eyebrow">Offertegegevens</p>
+              <dl>
+                <div>
+                  <dt>Datum</dt>
+                  <dd>{formatDateNL(model.quote.quoteDate)}</dd>
+                </div>
+                {model.quote.validUntil ? (
+                  <div>
+                    <dt>Geldig tot</dt>
+                    <dd>{formatDateNL(model.quote.validUntil)}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            </div>
+          </section>
+
+          <section className="quote-document-copy print-page-break-avoid">
+            <p>{model.customer.salutation}</p>
+            {model.quote.introText ? <p>{model.quote.introText}</p> : null}
+          </section>
+
+          <section className="quote-document-sections">
+            {model.sections.map((section, sectionIndex) => (
+              <div
+                className="quote-document-section"
+                key={section.key ?? `section-${sectionIndex}`}
+              >
+                {section.title ? <h3>{section.title}</h3> : null}
+                <div className="quote-document-table-wrap">
+                  <table className="quote-document-table quote-document-quote-table">
+                    <thead>
+                      <tr>
+                        <th>Aantal</th>
+                        <th>Omschrijving</th>
+                        <th>Prijs excl. btw</th>
+                        <th>Btw</th>
+                        <th>Totaal incl. btw</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {section.lines.map((line, lineIndex) =>
+                        line.isText ? (
+                          // Tekstregel: alleen de tekst, geen 0-bedragen — zelfde opmaak
+                          // als de factuur-klantversie (InvoiceDocumentPreview).
+                          <tr key={`${section.key ?? sectionIndex}-${lineIndex}`}>
+                            <td />
+                            <td colSpan={4}>
+                              <span className="muted">
+                                <DescriptionText description={line.description} />
+                              </span>
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr
+                            className={
+                              line.requiresManualReview
+                                ? "quote-document-line-needs-review"
+                                : undefined
+                            }
+                            key={`${section.key ?? sectionIndex}-${lineIndex}`}
+                          >
+                            <td>
+                              <span className="quote-document-quantity">
+                                {formatQuantity(line.quantity)}
+                                {line.unit ? <small>{line.unit}</small> : null}
+                              </span>
+                            </td>
+                            <td>
+                              <DescriptionText description={line.description} />
+                              {line.requiresManualReview ? (
+                                <small className="quote-document-review-warning no-print">
+                                  <AlertTriangle size={14} aria-hidden="true" />
+                                  Controleer product, prijs en btw.
+                                </small>
+                              ) : null}
+                            </td>
+                            <td>{formatCurrencyEUR(line.unitPriceExVat)}</td>
+                            <td>{formatVatRate(line.vatRate)}</td>
+                            <td>{formatCurrencyEUR(line.lineTotalIncVat)}</td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </section>
+
+          <section
+            className="quote-document-totals print-keep-together"
+            aria-label="Offertetotalen"
+          >
+            <div>
+              <span>Subtotaal excl. btw</span>
+              <strong>{formatCurrencyEUR(model.totals.subtotalExVat)}</strong>
+            </div>
+            {shouldShowCostBreakdown(model.totals.costBreakdown)
+              ? model.totals.costBreakdown.map((row) => (
+                  <div key={row.category} className="quote-document-cost-row">
+                    <span>waarvan {row.label.toLowerCase()}</span>
+                    <strong>{formatCurrencyEUR(row.amount)}</strong>
+                  </div>
+                ))
+              : null}
+            {model.totals.vatBreakdown.length > 0 ? (
+              // Zelfde btw-uitsplitsing per tarief als op de factuur.
+              model.totals.vatBreakdown.map((row) => (
+                <div key={row.rate}>
+                  <span>
+                    Btw {formatVatRate(row.rate)} over {formatCurrencyEUR(row.base)}
+                  </span>
                   <strong>{formatCurrencyEUR(row.amount)}</strong>
                 </div>
               ))
-            : null}
-          {model.totals.vatBreakdown.length > 0 ? (
-            // Zelfde btw-uitsplitsing per tarief als op de factuur.
-            model.totals.vatBreakdown.map((row) => (
-              <div key={row.rate}>
-                <span>
-                  Btw {formatVatRate(row.rate)} over {formatCurrencyEUR(row.base)}
-                </span>
-                <strong>{formatCurrencyEUR(row.amount)}</strong>
+            ) : (
+              <div>
+                <span>Btw</span>
+                <strong>{formatCurrencyEUR(model.totals.vatTotal)}</strong>
               </div>
-            ))
-          ) : (
-            <div>
-              <span>Btw</span>
-              <strong>{formatCurrencyEUR(model.totals.vatTotal)}</strong>
+            )}
+            <div className="quote-document-total-row">
+              <span>Totaal incl. btw</span>
+              <strong>{formatCurrencyEUR(model.totals.totalIncVat)}</strong>
             </div>
-          )}
-          <div className="quote-document-total-row">
-            <span>Totaal incl. btw</span>
-            <strong>{formatCurrencyEUR(model.totals.totalIncVat)}</strong>
-          </div>
-          <p>{model.totals.vatLabel}</p>
-        </section>
-      </div>
+            <p>{model.totals.vatLabel}</p>
+          </section>
+        </div>
 
-      <div className="quote-document-back-matter">
-        {model.agreements.length > 0 ? (
-          <section className="quote-document-terms print-page-break-avoid">
+        <div className="quote-document-back-matter">
+          {model.agreements.length > 0 ? (
+            <section className="quote-document-terms print-page-break-avoid">
+              <div>
+                <h3>Afspraken</h3>
+                <TextLines lines={model.agreements} />
+              </div>
+            </section>
+          ) : null}
+          <section className="quote-document-terms">
             <div>
-              <h3>Afspraken</h3>
-              <TextLines lines={model.agreements} />
+              <h3>Voorwaarden</h3>
+              <TextLines lines={model.terms} />
+            </div>
+            <div>
+              <h3>Facturering en betaling</h3>
+              <TextLines lines={model.paymentTerms} />
             </div>
           </section>
-        ) : null}
-        <section className="quote-document-terms">
-          <div>
-            <h3>Voorwaarden</h3>
-            <TextLines lines={model.terms} />
-          </div>
-          <div>
-            <h3>Facturering en betaling</h3>
-            <TextLines lines={model.paymentTerms} />
-          </div>
-        </section>
 
-        <section className="quote-document-closing print-page-break-avoid">
-          {model.quote.closingText ? <p>{model.quote.closingText}</p> : null}
-          <p>Met vriendelijke groet,</p>
-          <strong>{model.company.name}</strong>
-          <span>{model.company.signatoryName}</span>
-        </section>
+          <section className="quote-document-closing print-page-break-avoid">
+            {model.quote.closingText ? <p>{model.quote.closingText}</p> : null}
+            <p>Met vriendelijke groet,</p>
+            <strong>{model.company.name}</strong>
+            <span>{model.company.signatoryName}</span>
+          </section>
 
-        <section className="quote-document-agreement print-page-break-avoid" aria-label="Akkoord klant">
-          <h3>Voor akkoord</h3>
-          <p>
-            Voor akkoord met deze offerte
-            {model.quote.validUntil ? ` (geldig tot ${formatDateNL(model.quote.validUntil)})` : ""}:
-          </p>
-          <div className="quote-document-agreement-grid">
-            <div>
-              <span>Naam</span>
+          <section
+            className="quote-document-agreement print-page-break-avoid"
+            aria-label="Akkoord klant"
+          >
+            <h3>Voor akkoord</h3>
+            <p>
+              Voor akkoord met deze offerte
+              {model.quote.validUntil
+                ? ` (geldig tot ${formatDateNL(model.quote.validUntil)})`
+                : ""}
+              :
+            </p>
+            <div className="quote-document-agreement-grid">
+              <div>
+                <span>Naam</span>
+              </div>
+              <div>
+                <span>Datum</span>
+              </div>
+              <div>
+                <span>Handtekening</span>
+              </div>
             </div>
-            <div>
-              <span>Datum</span>
-            </div>
-            <div>
-              <span>Handtekening</span>
-            </div>
-          </div>
-        </section>
-      </div>
+          </section>
+        </div>
       </div>
     </article>
   );

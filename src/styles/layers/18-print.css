@@ -5,7 +5,34 @@
 
 @page {
   size: A4;
-  margin: 0;
+  margin: 12mm 13mm 16mm;
+
+  @bottom-left {
+    content: "Henke Wonen";
+    border-top: 0.5pt solid #d8d2c9;
+    padding-top: 3pt;
+    color: #746e65;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 7.4pt;
+  }
+
+  @bottom-center {
+    content: "Offerte";
+    border-top: 0.5pt solid #d8d2c9;
+    padding-top: 3pt;
+    color: #746e65;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 7.4pt;
+  }
+
+  @bottom-right {
+    content: "Pagina " counter(page) " van " counter(pages);
+    border-top: 0.5pt solid #d8d2c9;
+    padding-top: 3pt;
+    color: #746e65;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 7.4pt;
+  }
 }
 
 @media print {
@@ -16,7 +43,7 @@
     min-height: auto;
     margin: 0;
     background: #fff !important;
-    color: #111 !important;
+    color: #1c1a17 !important;
   }
 
   body.quote-print-active > :not(.quote-print-root),
@@ -27,10 +54,8 @@
     display: none !important;
   }
 
-  /* Klantversie printen kan vanuit een open top-layer <dialog> gebeuren
-     (FormModal met de voorbeeldweergave). Top-layer-rendering bij printen
-     verschilt per browser-engine; verberg de dialoog en zijn scrim daarom
-     expliciet zodat de PDF-uitvoer nooit verdonkert of dubbellaagt. */
+  /* Een klantversie kan vanuit een open dialoog worden geprint. Verberg die
+     top-layer en scrim expliciet, zodat de PDF nooit verdonkert of dubbellaagt. */
   body.quote-print-active .app-dialog,
   body.quote-print-active .app-dialog::backdrop {
     display: none !important;
@@ -60,28 +85,29 @@
     box-sizing: border-box;
     position: static;
     display: block;
-    width: 210mm;
-    min-height: 297mm;
-    margin: 0 auto;
+    width: auto;
+    min-height: 0;
+    margin: 0;
     border: 0;
     border-radius: 0;
     background: #fff !important;
     box-shadow: none;
-    color: #111 !important;
+    color: #1c1a17 !important;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 9.4pt;
-    line-height: 1.42;
-    padding: 14mm 13mm 13mm;
+    font-size: 9.2pt;
+    line-height: 1.38;
+    padding: 0;
     orphans: 3;
     widows: 3;
   }
 
-  .quote-document-preview > * + * {
-    margin-top: 10pt;
+  .quote-document-preview > * + *,
+  .quote-document-sheet > * + * {
+    margin-top: 0;
   }
 
-  /* Het scherm-"A4-vel" is in print alleen een doorgeefluik: de paginamaat,
-     marges en typografie komen van .quote-document-preview hierboven. */
+  /* Het scherm-"A4-vel" is in print alleen een inhoudscontainer. De echte
+     @page-marges worden daardoor op iedere fysieke pagina herhaald. */
   .quote-document-sheet {
     display: block;
     width: auto;
@@ -95,27 +121,27 @@
     font-family: inherit;
   }
 
-  .quote-document-sheet > * + * {
-    margin-top: 10pt;
-  }
-
-  .quote-document-sheet .quote-document-print-title h1 {
-    font-size: 17pt;
-  }
-
   .quote-document-front-page {
-    display: flex;
-    flex-direction: column;
-    min-height: calc(297mm - 27mm);
+    display: block;
+    min-height: 0;
   }
 
   .quote-document-front-page > * + * {
-    margin-top: 10pt;
+    margin-top: 9pt;
   }
 
+  /* Voorwaarden en ondertekening krijgen een eigen, rustige tweede pagina. */
   .quote-document-back-matter {
-    break-inside: avoid;
-    page-break-inside: avoid;
+    display: block;
+    break-before: page;
+    break-inside: auto;
+    margin-top: 0;
+    page-break-before: always;
+    page-break-inside: auto;
+  }
+
+  .quote-document-back-matter > * + * {
+    margin-top: 13pt;
   }
 
   .quote-document-letterhead,
@@ -126,98 +152,168 @@
   }
 
   .quote-document-letterhead {
-    gap: 18pt;
-    border-top: 0;
-    border-bottom: 1px solid #bbb;
-    padding: 0 0 10pt;
+    align-items: start;
+    gap: 22pt;
+    border: 0;
+    border-bottom: 1px solid #b9ad9f;
+    padding: 0 0 8pt;
+  }
+
+  .quote-document-letterhead > div:last-child {
+    justify-items: end;
+    text-align: right;
   }
 
   .quote-document-letterhead strong {
-    font-size: 11pt;
+    font-size: 10.5pt;
+  }
+
+  .quote-document-letterhead span {
+    font-size: 8.3pt;
+    line-height: 1.35;
   }
 
   .quote-document-logo {
-    width: 48mm;
+    width: 42mm;
     max-width: 100%;
     height: auto;
-    margin: 0 0 5pt;
+    margin: 0 0 4pt;
   }
 
   .quote-document-print-title {
-    border-bottom: 2px solid #111;
-    padding-bottom: 8pt;
+    display: grid !important;
+    align-items: end;
+    gap: 18pt;
+    grid-template-columns: minmax(0, 1fr) minmax(42mm, auto);
+    border: 0;
+    border-bottom: 2px solid #70563b;
+    padding: 2pt 0 8pt;
   }
 
   .quote-document-print-title .eyebrow {
     margin: 0 0 3pt;
+    color: #70563b !important;
+    letter-spacing: 0.12em;
   }
 
   .quote-document-print-title h1 {
     margin: 0;
-    color: #111 !important;
+    color: #1c1a17 !important;
     font-size: 17pt;
-    line-height: 1.15;
+    font-weight: 700;
+    line-height: 1.14;
+  }
+
+  .quote-document-title-reference {
+    display: grid;
+    gap: 2pt;
+    justify-items: end;
+    text-align: right;
+  }
+
+  .quote-document-title-reference span {
+    color: #6d675e !important;
+    font-size: 7.6pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .quote-document-title-reference strong {
+    font-size: 9pt;
+    overflow-wrap: anywhere;
   }
 
   .quote-document-meta-grid {
-    gap: 18pt;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    align-items: start;
+    gap: 22pt;
+    grid-template-columns: minmax(0, 1.12fr) minmax(46mm, 0.88fr);
+    border-bottom: 1px solid #ded8cf;
+    padding-bottom: 8pt;
+  }
+
+  .quote-document-meta-grid > div {
+    gap: 2pt;
+  }
+
+  .quote-document-meta-grid .eyebrow {
+    margin: 0 0 3pt;
+  }
+
+  .quote-document-meta-grid strong {
+    margin-bottom: 1pt;
+  }
+
+  .quote-document-meta-grid span,
+  .quote-document-meta-grid dt,
+  .quote-document-meta-grid dd {
+    font-size: 8.7pt;
   }
 
   .quote-document-meta-grid dl {
-    gap: 4pt;
+    gap: 3pt;
   }
 
   .quote-document-meta-grid dl > div {
     gap: 8pt;
-    grid-template-columns: 28mm minmax(0, 1fr);
+    grid-template-columns: 21mm minmax(0, 1fr);
   }
 
   .quote-document-copy {
-    margin-top: 16pt;
+    margin-top: 11pt;
+  }
+
+  .quote-document-copy p + p {
+    margin-top: 4pt;
   }
 
   .quote-document-sections {
-    display: grid;
-    gap: 10pt;
-    margin-top: 12pt;
+    display: block;
+    margin-top: 11pt;
   }
 
   .quote-document-section {
+    display: block;
     break-after: auto;
-    break-inside: avoid;
+    break-inside: auto;
     page-break-after: auto;
-    page-break-inside: avoid;
+    page-break-inside: auto;
+  }
+
+  .quote-document-section + .quote-document-section {
+    margin-top: 10pt;
   }
 
   .quote-document-section h3 {
     break-after: avoid;
     margin: 0 0 5pt;
-    font-size: 11pt;
+    color: #382f26 !important;
+    font-size: 10.5pt;
     page-break-after: avoid;
   }
 
   .quote-document-table-wrap {
     break-before: avoid;
     overflow: visible;
-    border-color: #bbb;
+    border-color: #cfc7bd;
+    border-radius: 0;
     page-break-before: avoid;
   }
 
   .quote-document-table {
     min-width: 0;
-    font-size: 9pt;
+    font-size: 8.4pt;
     table-layout: fixed;
   }
 
-  /* Productnaam met nadruk; toelichting kleiner en gedempt. */
   .quote-document-line-description span:first-child {
     font-weight: 700;
   }
 
   .quote-document-line-description span + span {
-    color: #555 !important;
-    font-size: 8pt;
+    color: #5b564e !important;
+    font-size: 7.6pt;
+    line-height: 1.35;
   }
 
   .quote-document-table thead {
@@ -231,11 +327,12 @@
 
   .quote-document-table th,
   .quote-document-table td {
-    border-color: #ccc;
+    border-color: #d8d2c9;
     overflow-wrap: anywhere;
-    padding: 5pt;
+    padding: 4.5pt;
   }
 
+  /* Zes kolommen blijven de standaard voor de factuurweergave. */
   .quote-document-table th:nth-child(1),
   .quote-document-table td:nth-child(1) {
     width: 10%;
@@ -266,13 +363,72 @@
     width: 20%;
   }
 
-  .quote-document-table th {
-    background: #f1f1f1 !important;
-    color: #333 !important;
+  /* De offerte combineert aantal en eenheid, zodat de omschrijving ruimte krijgt. */
+  .quote-document-quote-table th:nth-child(1),
+  .quote-document-quote-table td:nth-child(1) {
+    width: 12%;
   }
 
-  .quote-document-table td:nth-child(3) span {
+  .quote-document-quote-table th:nth-child(2),
+  .quote-document-quote-table td:nth-child(2) {
+    width: 43%;
+  }
+
+  .quote-document-quote-table th:nth-child(3),
+  .quote-document-quote-table td:nth-child(3) {
+    width: 16%;
+  }
+
+  .quote-document-quote-table th:nth-child(4),
+  .quote-document-quote-table td:nth-child(4) {
+    width: 9%;
+  }
+
+  .quote-document-quote-table th:nth-child(5),
+  .quote-document-quote-table td:nth-child(5) {
+    width: 20%;
+  }
+
+  .quote-document-table th {
+    background: #f0ede8 !important;
+    color: #4d473f !important;
+    font-size: 7.4pt;
+    letter-spacing: 0.035em;
+    overflow-wrap: normal;
+  }
+
+  .quote-document-quote-table th:nth-child(1),
+  .quote-document-quote-table th:nth-child(3),
+  .quote-document-quote-table th:nth-child(4),
+  .quote-document-quote-table th:nth-child(5),
+  .quote-document-quote-table td:nth-child(1),
+  .quote-document-quote-table td:nth-child(3),
+  .quote-document-quote-table td:nth-child(4),
+  .quote-document-quote-table td:nth-child(5) {
+    text-align: right;
+  }
+
+  .quote-document-quote-table td:nth-child(2) {
+    text-align: left;
+    white-space: normal;
+  }
+
+  .quote-document-quote-table td:nth-child(2) .quote-document-line-description {
     min-width: 0;
+  }
+
+  .quote-document-quantity {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 3pt;
+    white-space: nowrap;
+  }
+
+  .quote-document-quantity small {
+    color: #6d675e !important;
+    font-size: 7.3pt;
+    font-weight: 400;
   }
 
   .quote-document-review-warning {
@@ -288,27 +444,36 @@
     break-before: avoid;
     break-inside: avoid;
     justify-self: end;
-    width: 72mm;
-    margin: auto 0 0 auto;
-    border-color: #888;
+    width: 78mm;
+    margin: 12pt 0 0 auto;
+    border-color: #8f887c;
     page-break-before: avoid;
     page-break-inside: avoid;
   }
 
+  .quote-document-totals > div {
+    gap: 14pt;
+  }
+
   .quote-document-total-row {
-    border-color: #bbb;
+    border-color: #cfc7bd;
   }
 
   .quote-document-terms {
     break-inside: avoid;
-    gap: 16pt;
-    margin-top: 16pt;
+    gap: 18pt;
+    margin-top: 0;
     page-break-inside: avoid;
+  }
+
+  .quote-document-terms + .quote-document-terms {
+    margin-top: 13pt;
   }
 
   .quote-document-terms h3 {
     margin: 0 0 5pt;
-    font-size: 11pt;
+    color: #382f26 !important;
+    font-size: 10.5pt;
   }
 
   .quote-document-text-list {
@@ -318,34 +483,36 @@
 
   .quote-document-closing {
     break-inside: avoid;
-    margin-top: 14pt;
-    padding-top: 10pt;
+    margin-top: 15pt;
+    padding-top: 9pt;
     page-break-inside: avoid;
   }
 
   .quote-document-agreement {
     break-inside: avoid;
-    margin-top: 16pt;
+    margin-top: 15pt;
     page-break-inside: avoid;
   }
 
   .quote-document-agreement h3 {
     margin: 0 0 5pt;
-    font-size: 11pt;
+    color: #382f26 !important;
+    font-size: 10.5pt;
   }
 
   .quote-document-agreement-grid {
     gap: 24pt;
+    margin-top: 12pt;
   }
 
   .quote-document-agreement-grid > div {
-    padding-top: 34pt;
+    padding-top: 28pt;
   }
 
   .quote-document-agreement-grid span {
-    border-top-color: #111;
-    color: #333 !important;
-    font-size: 8.5pt;
+    border-top-color: #382f26;
+    color: #4d473f !important;
+    font-size: 8.2pt;
   }
 
   .print-keep-together,
@@ -358,7 +525,7 @@
   .ui-badge {
     border-color: #bbb !important;
     background: #fff !important;
-    color: #111 !important;
+    color: #1c1a17 !important;
     box-shadow: none !important;
   }
 
@@ -370,6 +537,6 @@
   .quote-document-totals p,
   .quote-document-closing p,
   .quote-document-text-list {
-    color: #333 !important;
+    color: #4d473f !important;
   }
 }

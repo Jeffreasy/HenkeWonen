@@ -324,9 +324,15 @@
 /* De documenttitel (Factuur/Offerte + onderwerp) is onderdeel van het vel en
    dus ook op het scherm zichtbaar — buiten het vel blijft .print-only gelden. */
 .quote-document-sheet .quote-document-print-title {
-  display: block;
+  display: grid;
+  gap: var(--space-3);
   border-bottom: 2px solid var(--ink);
   padding-bottom: var(--space-2);
+}
+
+.quote-document-title-reference {
+  display: grid;
+  gap: 2px;
 }
 
 .quote-document-sheet .quote-document-print-title h1 {
@@ -341,6 +347,17 @@
 }
 
 /* Ondertekening onderaan het vel laten "ademen" zoals op papier. */
+.quote-document-title-reference span {
+  color: var(--subtle);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.quote-document-title-reference strong {
+  overflow-wrap: anywhere;
+}
+
 .quote-document-sheet .quote-document-back-matter {
   margin-top: auto;
 }
@@ -399,6 +416,11 @@
     padding: 14mm 13mm 13mm;
   }
 
+  .quote-document-sheet .quote-document-print-title {
+    align-items: end;
+    grid-template-columns: minmax(0, 1fr) minmax(210px, auto);
+  }
+
   .quote-document-sheet .quote-document-table {
     min-width: 0;
     table-layout: fixed;
@@ -445,6 +467,36 @@
 
   .quote-document-sheet .quote-document-table th:nth-child(6),
   .quote-document-sheet .quote-document-table td:nth-child(6) {
+    width: 20%;
+  }
+
+  .quote-document-title-reference {
+    justify-items: end;
+    text-align: right;
+  }
+
+  .quote-document-sheet .quote-document-quote-table th:nth-child(1),
+  .quote-document-sheet .quote-document-quote-table td:nth-child(1) {
+    width: 12%;
+  }
+
+  .quote-document-sheet .quote-document-quote-table th:nth-child(2),
+  .quote-document-sheet .quote-document-quote-table td:nth-child(2) {
+    width: 43%;
+  }
+
+  .quote-document-sheet .quote-document-quote-table th:nth-child(3),
+  .quote-document-sheet .quote-document-quote-table td:nth-child(3) {
+    width: 16%;
+  }
+
+  .quote-document-sheet .quote-document-quote-table th:nth-child(4),
+  .quote-document-sheet .quote-document-quote-table td:nth-child(4) {
+    width: 9%;
+  }
+
+  .quote-document-sheet .quote-document-quote-table th:nth-child(5),
+  .quote-document-sheet .quote-document-quote-table td:nth-child(5) {
     width: 20%;
   }
 }
@@ -748,6 +800,51 @@
 .quote-document-table td:nth-child(3) .quote-document-line-description span {
   display: block;
   overflow-wrap: anywhere;
+}
+
+.quote-document-quote-table {
+  min-width: 680px;
+}
+
+.quote-document-quote-table th:nth-child(3),
+.quote-document-quote-table th:nth-child(4),
+.quote-document-quote-table th:nth-child(5),
+.quote-document-quote-table td:nth-child(3),
+.quote-document-quote-table td:nth-child(4),
+.quote-document-quote-table td:nth-child(5) {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.quote-document-quote-table td:nth-child(2) {
+  text-align: left;
+  white-space: normal;
+}
+
+.quote-document-quote-table td:nth-child(2) .quote-document-line-description {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 220px;
+  overflow-wrap: anywhere;
+}
+
+.quote-document-quote-table td:nth-child(2) .quote-document-line-description span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.quote-document-quantity {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.quote-document-quantity small {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 400;
 }
 
 .quote-document-review-warning {
